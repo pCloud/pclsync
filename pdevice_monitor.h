@@ -3,6 +3,7 @@
 #ifndef _PDEVICE_MONITOR
 #define _PDEVICE_MONITOR
 #include <stdint.h>
+#include "psynclib.h"
 typedef enum {
   Dev_Types_UsbRemovableDisk = 1,
   Dev_Types_UsbFixedDisk,
@@ -21,10 +22,8 @@ typedef struct _pdevice_info pdevice_info;
 struct _pdevice_info {
   pdevice_types type;
   device_event event;
-  int size;
   int isextended;
   char * filesystem_path;
-  pdevice_info *me;
 };
 
 typedef struct _pdevice_extended_info pdevice_extended_info;
@@ -32,13 +31,11 @@ typedef struct _pdevice_extended_info pdevice_extended_info;
 struct _pdevice_extended_info {
   pdevice_types type;
   device_event event;
-  int size;
   int isextended;
   char *filesystem_path;
   char *vendor;
   char *product;
   char *device_id;
-  pdevice_extended_info * me;
 };
 
 typedef void(*device_event_callback)(void * device_info_);
@@ -50,6 +47,8 @@ extern "C" {
   void padd_monitor_callback(device_event_callback callback);
 
   void pinit_device_monitor();
+  
+
 
 #ifdef __cplusplus
 }
