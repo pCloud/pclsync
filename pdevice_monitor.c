@@ -32,6 +32,7 @@ void padd_monitor_callback(device_event_callback callback) {
   callbacks[clbnum++] = callback;
 }
 
+
 static pdevice_info * new_dev_info( char *szPath, pdevice_types type, device_event evt) {
   /*int pathsize = strlen(szPath);
   int infstrsize = sizeof(pdevice_info);
@@ -40,7 +41,7 @@ static pdevice_info * new_dev_info( char *szPath, pdevice_types type, device_eve
   pdevice_info *infop = (pdevice_info *)psync_malloc(sizeof(pdevice_info));
   //ZeroMemory(infop, infsize);
   //infop->filesystem_path = (char *)(infop) + infstrsize;
-  infop->filesystem_path = _strdup(szPath);
+  infop->filesystem_path = strdup(szPath);
   //memcpy(infop->filesystem_path, szPath, pathsize);
   //infop->filesystem_path[pathsize] = '\0';
   infop->event = evt;
@@ -79,10 +80,10 @@ static pdevice_extended_info * new_dev_ext_info(char *szPath, char * vendor, cha
   infop->size = infsize;
   infop->me = infop;*/
   pdevice_extended_info *infop = (pdevice_extended_info *)psync_malloc(sizeof(pdevice_extended_info));
-  infop->filesystem_path = _strdup(szPath);
-  infop->vendor = _strdup(vendor);
-  infop->product = _strdup(product);
-  infop->device_id = _strdup(deviceid);
+  infop->filesystem_path = strdup(szPath);
+  infop->vendor = strdup(vendor);
+  infop->product = strdup(product);
+  infop->device_id = strdup(deviceid);
   infop->type = type;
   infop->event = evt;
   infop->isextended = 1;
@@ -110,6 +111,11 @@ static void notify_callbacks_free_run(void * param) {
   psync_free(p);
 }
 
+
+static void notify_callbacks_free(void * param) {
+  psync_run_thread1("Device notifications", notify_callbacks_free_run, param);
+}
+
 #ifdef P_OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #define _WIN32_WINNT   0x0601
@@ -128,10 +134,6 @@ static void notify_callbacks_free_run(void * param) {
 #define WM_USER_MEDIACHANGED WM_USER+88
 
 #define MAX_LOADSTRING 100
-
-static void notify_callbacks_free(void * param) {
-  psync_run_thread1("Device notifications", notify_callbacks_free_run, param);
-}
 
 static pdevice_types dev_decode_type(STORAGE_BUS_TYPE bustype, DWORD drivetype) {
  
@@ -393,20 +395,20 @@ void pinit_device_monitor() {
 #include <unistd.h>
 
 void scan_all_usb_dev(){
-  struct udev *udev;
+  struct udev *udevs;
   struct udev_enumerate *enumerate;
   struct udev_list_entry *devices, *dev_list_entry;
   struct udev_device *dev;
   
   /* Create the udev object */
-  udev = udev_new();
-  if (!udev) {
+  udevs = udev_new();
+  if (!udevs) {
     printf("Can't create udev\n");
     exit(1);
   }
   
   /* Create a list of the devices in the 'hidraw' subsystem. */
-  enumerate = udev_enumerate_new(udev);
+  enumerate = udev_enumerate_new(udevs);
   udev_enumerate_add_match_subsystem(enumerate, "hidraw");
   udev_enumerate_scan_devices(enumerate);
   devices = udev_enumerate_get_list_entry(enumerate);
@@ -421,7 +423,7 @@ void scan_all_usb_dev(){
     /* Get the filename of the /sys entry for the device
        and create a udev_device object (dev) representing it */
     path = udev_list_entry_get_name(dev_list_entry);
-    dev = udev_device_new_from_syspath(udev, path);
+    dev = udev_device_new_from_syspath(udevs, path);
 
     /* usb_device_get_devnode() returns the path to the device node
        itself in /dev. */
@@ -462,15 +464,15 @@ void scan_all_usb_dev(){
   /* Free the enumerator object */
   udev_enumerate_unref(enumerate);
 
-  udev_unref(udev);
+  udev_unref(udevs);
 }
 
 
 static struct udev_device*
-get_child(struct udev* udev, struct udev_device* parent, const char* subsystem)
+get_child(struct udev* udevs, struct udev_device* parent, const char* subsystem)
 {
     struct udev_device* child = NULL;
-    struct udev_enumerate *enumerate = udev_enumerate_new(udev);
+    struct udev_enumerate *enumerate = udev_enumerate_new(udevs);
 
     udev_enumerate_add_match_parent(enumerate, parent);
     udev_enumerate_add_match_subsystem(enumerate, subsystem);
@@ -481,7 +483,7 @@ get_child(struct udev* udev, struct udev_device* parent, const char* subsystem)
 
     udev_list_entry_foreach(entry, devices) {
         const char *path = udev_list_entry_get_name(entry);
-        child = udev_device_new_from_syspath(udev, path);
+        child = udev_device_new_from_syspath(udevs, path);
         break;
     }
 
@@ -491,8 +493,8 @@ get_child(struct udev* udev, struct udev_device* parent, const char* subsystem)
 
 
 
-void print_scsi (udev *udev, udev_device *scsi) {
- udev_device *usb; 
+void print_scsi (struct udev *udevs,struct udev_device *scsi) {
+ struct udev_device *usb; 
  struct udev_device* scsi_disk;
  struct udev_device* block;
  usb = udev_device_get_parent_with_subsystem_devtype(
@@ -504,8 +506,8 @@ void print_scsi (udev *udev, udev_device *scsi) {
   }
   
  
- block = get_child(udev, scsi, "block");
- scsi_disk = get_child(udev, scsi, "scsi_disk");
+ block = get_child(udevs, scsi, "block");
+ scsi_disk = get_child(udevs, scsi, "scsi_disk");
  if (block && scsi_disk) {
 
   
@@ -526,8 +528,8 @@ void print_scsi (udev *udev, udev_device *scsi) {
  }
 }
 
-void print_hidrow (udev *udev, udev_device *dev) {
-  udev_device *dev1;
+void print_hidrow (struct udev *udevs,struct udev_device *dev) {
+  struct udev_device *dev1;
 
   dev1 = udev_device_get_parent_with_subsystem_devtype(
            dev,
@@ -548,10 +550,10 @@ void print_hidrow (udev *udev, udev_device *dev) {
   printf("   Devtype: %s\n", udev_device_get_devtype(dev1));
 }
 
-void enumerate_devices (udev *udev, const char * subsystem) {
-  udev_enumerate *enumerate;
-  udev_list_entry *devices,*dev_list_entry;
-  udev_device *dev;
+void enumerate_devices (struct udev *udev, const char * subsystem) {
+  struct udev_enumerate *enumerate;
+  struct udev_list_entry *devices,*dev_list_entry;
+  struct udev_device *dev;
   
   enumerate = udev_enumerate_new(udev);
   //udev_enumerate_add_match_subsystem(enumerate, "scsi_device");
@@ -587,8 +589,6 @@ void enumerate_devices (udev *udev, const char * subsystem) {
 void monitor_usb_dev () {
   struct udev *udev;
   struct udev_device *dev;
-  struct udev_device *dev1;
-
   struct udev_monitor *mon;
   int fd;
   
