@@ -59,9 +59,9 @@ static void modify_screenshot_public_link(void* linkidp) {
   binresult *bres;
   uint64_t result;
   const char *errorret;
-  int64_t linkid = *((int64_t*)linkidp);
+  int64_t* linkid = (int64_t*)linkidp;
   
-  binparam params[] = {P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("expire",  psync_timer_time() + 2592000 )};
+  binparam params[] = {P_STR("auth", psync_my_auth), P_NUM("linkid", *linkid), P_NUM("expire",  psync_timer_time() + 2592000 )};
   api = psync_apipool_get();
   if (unlikely(!api)) {
     debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
@@ -81,20 +81,23 @@ static void modify_screenshot_public_link(void* linkidp) {
   result=psync_find_result(bres, "result", PARAM_NUM)->num;
   if (unlikely(result)) {
     errorret = psync_find_result(bres, "error", PARAM_STR)->str;
-    debug(D_WARNING, "command changepublink returned error code %u msg [%s]", (unsigned)result, errorret);
+    debug(D_WARNING, "command changepublink for link [%lld] returned error code %u msg [%s]",(long long int)*linkid ,(unsigned)result, errorret);
     psync_process_api_error(result);
     psync_handle_api_result(result);
     if (result == 2261)
       debug(D_NOTICE, "Unable to set expiration date on screen-shot link. Paid account required.");
   }
 
+  psync_free(linkid);
   psync_free(bres);
 }
 
 int64_t do_psync_screenshot_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/) {
-  int64_t res =  do_psync_file_public_link(path, code, err, 0, 0, 0);
-  psync_run_thread1("Modify link expiration.",modify_screenshot_public_link, &res);
-  return res;
+  int64_t *res= psync_malloc(sizeof(int64_t));
+  *res=  do_psync_file_public_link(path, code, err, 0, 0, 0);
+  int64_t res1 = *res;
+  psync_run_thread1("Modify link expiration.",modify_screenshot_public_link, res);
+  return res1;
 }
 
 
