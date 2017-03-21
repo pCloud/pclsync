@@ -1,4 +1,3 @@
-
 #include "pcompat.h"
 #include "plibs.h"
 #include "psynclib.h"
@@ -7,6 +6,7 @@
 #include "pnetlibs.h"
 #include "pbusinessaccount.h"
 
+#include <search.h>
 
 #define P_DEVICE_VERBOSE
 
@@ -19,6 +19,40 @@ static device_event_callback *callbacks;
 
 static int clbsize = 10;
 static int clbnum = 0;
+
+pdevice_extended_info devices[100];
+
+typedef struct
+{
+  int key;
+  char* value;
+} intstr_map;
+
+static int compar(const void *l, const void *r)
+{
+  const intstr_map *lm = l;
+  const intstr_map *lr = r;
+  return lm->key - lr->key;
+}
+
+int test(int argc, char **argv)
+{
+    void *root = 0;
+
+    intstr_map *a = malloc(sizeof(intstr_map));
+    a->key = 2;
+    a->value = strdup("two");
+    tsearch(a, &root, compar); /* insert */
+
+    intstr_map *find_a = malloc(sizeof(intstr_map));
+    find_a->key = 2;
+
+    void *r = tfind(find_a, &root, compar); /* read */
+    printf("%s", (*(intstr_map**)r)->value);
+
+    return 0;
+}
+
 
 void padd_monitor_callback(device_event_callback callback) {
   if (callback) {
@@ -121,6 +155,299 @@ static void notify_callbacks_free_run(void * param) {
 static void notify_callbacks_free(void * param) {
   psync_run_thread1("Device notifications", notify_callbacks_free_run, param);
 }
+
+#ifdef P_OS_LINUX
+#include <libudev.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <locale.h>
+#include <unistd.h>
+
+void scan_all_usb_dev(){
+  struct udev *udevs;
+  struct udev_enumerate *enumerate;
+  struct udev_list_entry *devices, *dev_list_entry;
+  struct udev_device *dev;
+  
+  /* Create the udev object */
+  udevs = udev_new();
+  if (!udevs) {
+    printf("Can't create udev\n");
+    exit(1);
+  }
+  
+  /* Create a list of the devices in the 'hidraw' subsystem. */
+  enumerate = udev_enumerate_new(udevs);
+  udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+  udev_enumerate_scan_devices(enumerate);
+  devices = udev_enumerate_get_list_entry(enumerate);
+  /* For each item enumerated, print out its information.
+     udev_list_entry_foreach is a macro which expands to
+     a loop. The loop will be executed for each member in
+     devices, setting dev_list_entry to a list entry
+     which contains the device's path in /sys. */
+  udev_list_entry_foreach(dev_list_entry, devices) {
+    const char *path;
+    
+    /* Get the filename of the /sys entry for the device
+       and create a udev_device object (dev) representing it */
+    path = udev_list_entry_get_name(dev_list_entry);
+    dev = udev_device_new_from_syspath(udevs, path);
+
+    /* usb_device_get_devnode() returns the path to the device node
+       itself in /dev. */
+    printf("Device Node Path: %s\n", udev_device_get_devnode(dev));
+
+    /* The device pointed to by dev contains information about
+       the hidraw device. In order to get information about the
+       USB device, get the parent device with the
+       subsystem/devtype pair of "usb"/"usb_device". This will
+       be several levels up the tree, but the function will find
+       it.*/
+    dev = udev_device_get_parent_with_subsystem_devtype(
+           dev,
+           "usb",
+           "usb_device");
+    if (!dev) {
+      printf("Unable to find parent usb device.");
+      exit(1);
+    }
+  
+    /* From here, we can call get_sysattr_value() for each file
+       in the device's /sys entry. The strings passed into these
+       functions (idProduct, idVendor, serial, etc.) correspond
+       directly to the files in the directory which represents
+       the USB device. Note that USB strings are Unicode, UCS2
+       encoded, but the strings returned from
+       udev_device_get_sysattr_value() are UTF-8 encoded. */
+    printf("  VID/PID: %s %s\n",
+            udev_device_get_sysattr_value(dev,"idVendor"),
+            udev_device_get_sysattr_value(dev, "idProduct"));
+    printf("  %s\n  %s\n",
+            udev_device_get_sysattr_value(dev,"manufacturer"),
+            udev_device_get_sysattr_value(dev,"product"));
+    printf("  serial: %s\n",
+             udev_device_get_sysattr_value(dev, "serial"));
+    udev_device_unref(dev);
+  }
+  /* Free the enumerator object */
+  udev_enumerate_unref(enumerate);
+
+  udev_unref(udevs);
+}
+
+
+static struct udev_device*
+get_child(struct udev* udevs, struct udev_device* parent, const char* subsystem)
+{
+    struct udev_device* child = NULL;
+    struct udev_enumerate *enumerate = udev_enumerate_new(udevs);
+
+    udev_enumerate_add_match_parent(enumerate, parent);
+    udev_enumerate_add_match_subsystem(enumerate, subsystem);
+    udev_enumerate_scan_devices(enumerate);
+
+    struct udev_list_entry *devices = udev_enumerate_get_list_entry(enumerate);
+    struct udev_list_entry *entry;
+
+    udev_list_entry_foreach(entry, devices) {
+        const char *path = udev_list_entry_get_name(entry);
+        child = udev_device_new_from_syspath(udevs, path);
+        break;
+    }
+
+    udev_enumerate_unref(enumerate);
+    return child;
+}
+
+
+
+void print_scsi (struct udev *udevs,struct udev_device *scsi) {
+ struct udev_device *usb; 
+ struct udev_device* scsi_disk;
+ struct udev_device* block;
+ usb = udev_device_get_parent_with_subsystem_devtype(
+           scsi,
+           "usb",
+           "usb_device");
+  if (!usb) {
+    return;
+  }
+  
+ 
+ block = get_child(udevs, scsi, "block");
+ scsi_disk = get_child(udevs, scsi, "scsi_disk");
+ if (block && scsi_disk) {
+
+  
+  printf("Device Node Path: %s\n", udev_device_get_devnode(block));
+  printf("  VID/PID: %s %s\n",
+          udev_device_get_sysattr_value(usb,"idVendor"),
+          udev_device_get_sysattr_value(usb, "idProduct"));
+  printf("  %s\n  %s\n",
+          udev_device_get_sysattr_value(scsi,"vendor"),
+          udev_device_get_sysattr_value(scsi,"model"));
+  printf("  serial: %s\n",
+            udev_device_get_sysattr_value(usb, "serial"));
+  printf("   Subsystem: %s\n", udev_device_get_subsystem(scsi));
+  printf("   Devtype: %s\n", udev_device_get_devtype(scsi));
+  
+  udev_device_unref(block);
+  udev_device_unref(scsi_disk);
+ }
+}
+
+void print_hidrow (struct udev *udevs,struct udev_device *dev) {
+  struct udev_device *dev1;
+
+  dev1 = udev_device_get_parent_with_subsystem_devtype(
+           dev,
+           "usb",
+           "usb_device");
+  if (!dev1) {
+    return;
+  }
+  printf("Device Node Path: %s\n", udev_device_get_devnode(dev));
+  printf("  VID/PID: %s %s\n",
+          udev_device_get_sysattr_value(dev1,"idVendor"),
+          udev_device_get_sysattr_value(dev1, "idProduct"));
+  printf("  %s\n  %s\n",
+          udev_device_get_sysattr_value(dev1,"manufacturer"),
+          udev_device_get_sysattr_value(dev1,"product"));
+  printf("  serial: %s\n", udev_device_get_sysattr_value(dev1, "serial"));
+  printf("   Subsystem: %s\n", udev_device_get_subsystem(dev1));
+  printf("   Devtype: %s\n", udev_device_get_devtype(dev1));
+}
+
+#define UDEV_SUBSYSTEMS_CNT 2
+const char *subsystems[UDEV_SUBSYSTEMS_CNT] = { "scsi_device", "hidraw" };
+void enumerate_devices (struct udev *udev) {
+  struct udev_enumerate *enumerate;
+  struct udev_list_entry *devices,*dev_list_entry;
+  struct udev_device *dev;
+  char * subsystem;
+  
+  //udev_enumerate_add_match_subsystem(enumerate, "scsi_device");
+ // udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+  for (int i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
+    enumerate = udev_enumerate_new(udev);
+    subsystem = subsystems[i];
+    if (subsystem[0] == 's') {
+      udev_enumerate_add_match_subsystem(enumerate, "scsi");
+      udev_enumerate_add_match_property(enumerate, "DEVTYPE", subsystem);
+    } else {
+      udev_enumerate_add_match_subsystem(enumerate, subsystem);
+    }
+    udev_enumerate_scan_devices(enumerate);
+    devices = udev_enumerate_get_list_entry(enumerate);
+    
+    udev_list_entry_foreach(dev_list_entry, devices) {
+      const char *path;
+
+      path = udev_list_entry_get_name(dev_list_entry);
+      dev = udev_device_new_from_syspath(udev, path);
+      
+      if (subsystem[0] == 's') {
+        print_scsi (udev, dev);
+      } else if (subsystem[0] == 'h') {
+        print_hidrow(udev, dev);
+      }
+
+      udev_device_unref(dev);
+    }
+    udev_enumerate_unref(enumerate);
+  }
+  /* Free the enumerator object */
+  
+}
+
+void monitor_usb_dev () {
+  struct udev *udev;
+  struct udev_device *dev;
+  struct udev_monitor *mon;
+  int fd;
+  
+  /* Create the udev object */
+  udev = udev_new();
+  if (!udev) {
+    printf("Can't create udev\n");
+    exit(1);
+  }
+  
+  enumerate_devices(udev);
+  
+  /* Set up a monitor to monitor hidraw devices */
+  mon = udev_monitor_new_from_netlink(udev, "udev");
+  udev_monitor_filter_add_match_subsystem_devtype(mon, "scsi_disk", NULL);
+  udev_monitor_filter_add_match_subsystem_devtype(mon, "hidraw", NULL);
+  udev_monitor_enable_receiving(mon);
+  /* Get the file descriptor (fd) for the monitor.
+     This fd will get passed to select() */
+  fd = udev_monitor_get_fd(mon);
+  
+  while (1) {
+    /* Set up the call to select(). In this case, select() will
+       only operate on a single file descriptor, the one
+       associated with our udev_monitor. Note that the timeval
+       object is set to 0, which will cause select() to not
+       block. */
+    fd_set fds;
+    struct timeval tv;
+    int ret;
+    
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    
+    ret = select(fd+1, &fds, NULL, NULL, &tv);
+    
+    /* Check if our file descriptor has received data. */
+    if (ret > 0 && FD_ISSET(fd, &fds)) {
+      printf("\nselect() says there should be data\n");
+      
+      /* Make the call to receive the device.
+         select() ensured that this will not block. */
+      dev = udev_monitor_receive_device(mon);
+      if (dev) {
+        printf("Got Device\n");
+        printf("  VID/PID: %s %s\n",
+          udev_device_get_sysattr_value(dev,"idVendor"),
+          udev_device_get_sysattr_value(dev, "idProduct"));
+        printf("  %s\n  %s\n",
+          udev_device_get_sysattr_value(dev,"manufacturer"),
+          udev_device_get_sysattr_value(dev,"product"));
+        printf("  serial: %s\n", udev_device_get_sysattr_value(dev, "serial"));
+        printf("   Node: %s\n", udev_device_get_devnode(dev));
+        printf("   Subsystem: %s\n", udev_device_get_subsystem(dev));
+        printf("   Devtype: %s\n", udev_device_get_devtype(dev));
+        printf("   Action: %s\n", udev_device_get_action(dev));
+        udev_device_unref(dev);
+      }
+      else {
+        printf("No Device from receive_device(). An error occured.\n");
+      }         
+    }
+    usleep(250*1000);
+    printf(".");
+    fflush(stdout);
+  }
+
+
+  udev_unref(udev);
+
+  return;       
+}
+
+void pinit_device_monitor() {
+  //scan_all_usb_dev();
+  debug(D_NOTICE, "waiting for new devices..");
+  monitor_usb_dev();
+  
+}
+
+#endif //P_OS_LINUX
+
 
 #ifdef P_OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
@@ -392,290 +719,3 @@ void pinit_device_monitor() {
 	return 0;
 }
 #endif  //P_OS_WINDOWS
-
-#ifdef P_OS_LINUX
-#include <libudev.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <locale.h>
-#include <unistd.h>
-
-void scan_all_usb_dev(){
-  struct udev *udevs;
-  struct udev_enumerate *enumerate;
-  struct udev_list_entry *devices, *dev_list_entry;
-  struct udev_device *dev;
-  
-  /* Create the udev object */
-  udevs = udev_new();
-  if (!udevs) {
-    printf("Can't create udev\n");
-    exit(1);
-  }
-  
-  /* Create a list of the devices in the 'hidraw' subsystem. */
-  enumerate = udev_enumerate_new(udevs);
-  udev_enumerate_add_match_subsystem(enumerate, "hidraw");
-  udev_enumerate_scan_devices(enumerate);
-  devices = udev_enumerate_get_list_entry(enumerate);
-  /* For each item enumerated, print out its information.
-     udev_list_entry_foreach is a macro which expands to
-     a loop. The loop will be executed for each member in
-     devices, setting dev_list_entry to a list entry
-     which contains the device's path in /sys. */
-  udev_list_entry_foreach(dev_list_entry, devices) {
-    const char *path;
-    
-    /* Get the filename of the /sys entry for the device
-       and create a udev_device object (dev) representing it */
-    path = udev_list_entry_get_name(dev_list_entry);
-    dev = udev_device_new_from_syspath(udevs, path);
-
-    /* usb_device_get_devnode() returns the path to the device node
-       itself in /dev. */
-    printf("Device Node Path: %s\n", udev_device_get_devnode(dev));
-
-    /* The device pointed to by dev contains information about
-       the hidraw device. In order to get information about the
-       USB device, get the parent device with the
-       subsystem/devtype pair of "usb"/"usb_device". This will
-       be several levels up the tree, but the function will find
-       it.*/
-    dev = udev_device_get_parent_with_subsystem_devtype(
-           dev,
-           "usb",
-           "usb_device");
-    if (!dev) {
-      printf("Unable to find parent usb device.");
-      exit(1);
-    }
-  
-    /* From here, we can call get_sysattr_value() for each file
-       in the device's /sys entry. The strings passed into these
-       functions (idProduct, idVendor, serial, etc.) correspond
-       directly to the files in the directory which represents
-       the USB device. Note that USB strings are Unicode, UCS2
-       encoded, but the strings returned from
-       udev_device_get_sysattr_value() are UTF-8 encoded. */
-    printf("  VID/PID: %s %s\n",
-            udev_device_get_sysattr_value(dev,"idVendor"),
-            udev_device_get_sysattr_value(dev, "idProduct"));
-    printf("  %s\n  %s\n",
-            udev_device_get_sysattr_value(dev,"manufacturer"),
-            udev_device_get_sysattr_value(dev,"product"));
-    printf("  serial: %s\n",
-             udev_device_get_sysattr_value(dev, "serial"));
-    udev_device_unref(dev);
-  }
-  /* Free the enumerator object */
-  udev_enumerate_unref(enumerate);
-
-  udev_unref(udevs);
-}
-
-
-static struct udev_device*
-get_child(struct udev* udevs, struct udev_device* parent, const char* subsystem)
-{
-    struct udev_device* child = NULL;
-    struct udev_enumerate *enumerate = udev_enumerate_new(udevs);
-
-    udev_enumerate_add_match_parent(enumerate, parent);
-    udev_enumerate_add_match_subsystem(enumerate, subsystem);
-    udev_enumerate_scan_devices(enumerate);
-
-    struct udev_list_entry *devices = udev_enumerate_get_list_entry(enumerate);
-    struct udev_list_entry *entry;
-
-    udev_list_entry_foreach(entry, devices) {
-        const char *path = udev_list_entry_get_name(entry);
-        child = udev_device_new_from_syspath(udevs, path);
-        break;
-    }
-
-    udev_enumerate_unref(enumerate);
-    return child;
-}
-
-
-
-void print_scsi (struct udev *udevs,struct udev_device *scsi) {
- struct udev_device *usb; 
- struct udev_device* scsi_disk;
- struct udev_device* block;
- usb = udev_device_get_parent_with_subsystem_devtype(
-           scsi,
-           "usb",
-           "usb_device");
-  if (!usb) {
-    return;
-  }
-  
- 
- block = get_child(udevs, scsi, "block");
- scsi_disk = get_child(udevs, scsi, "scsi_disk");
- if (block && scsi_disk) {
-
-  
-  printf("Device Node Path: %s\n", udev_device_get_devnode(block));
-  printf("  VID/PID: %s %s\n",
-          udev_device_get_sysattr_value(usb,"idVendor"),
-          udev_device_get_sysattr_value(usb, "idProduct"));
-  printf("  %s\n  %s\n",
-          udev_device_get_sysattr_value(scsi,"vendor"),
-          udev_device_get_sysattr_value(scsi,"model"));
-  printf("  serial: %s\n",
-            udev_device_get_sysattr_value(usb, "serial"));
-  printf("   Subsystem: %s\n", udev_device_get_subsystem(scsi));
-  printf("   Devtype: %s\n", udev_device_get_devtype(scsi));
-  
-  udev_device_unref(block);
-  udev_device_unref(scsi_disk);
- }
-}
-
-void print_hidrow (struct udev *udevs,struct udev_device *dev) {
-  struct udev_device *dev1;
-
-  dev1 = udev_device_get_parent_with_subsystem_devtype(
-           dev,
-           "usb",
-           "usb_device");
-  if (!dev1) {
-    return;
-  }
-  printf("Device Node Path: %s\n", udev_device_get_devnode(dev));
-  printf("  VID/PID: %s %s\n",
-          udev_device_get_sysattr_value(dev1,"idVendor"),
-          udev_device_get_sysattr_value(dev1, "idProduct"));
-  printf("  %s\n  %s\n",
-          udev_device_get_sysattr_value(dev1,"manufacturer"),
-          udev_device_get_sysattr_value(dev1,"product"));
-  printf("  serial: %s\n", udev_device_get_sysattr_value(dev1, "serial"));
-  printf("   Subsystem: %s\n", udev_device_get_subsystem(dev1));
-  printf("   Devtype: %s\n", udev_device_get_devtype(dev1));
-}
-
-void enumerate_devices (struct udev *udev, const char * subsystem) {
-  struct udev_enumerate *enumerate;
-  struct udev_list_entry *devices,*dev_list_entry;
-  struct udev_device *dev;
-  
-  enumerate = udev_enumerate_new(udev);
-  //udev_enumerate_add_match_subsystem(enumerate, "scsi_device");
- // udev_enumerate_add_match_subsystem(enumerate, "hidraw");
-   if (subsystem[0] == 's') {
-    udev_enumerate_add_match_subsystem(enumerate, "scsi");
-    udev_enumerate_add_match_property(enumerate, "DEVTYPE", subsystem);
-  } else {
-    udev_enumerate_add_match_subsystem(enumerate, subsystem);
-  }
-  udev_enumerate_scan_devices(enumerate);
-  devices = udev_enumerate_get_list_entry(enumerate);
-  
-  udev_list_entry_foreach(dev_list_entry, devices) {
-    const char *path;
-
-    path = udev_list_entry_get_name(dev_list_entry);
-    dev = udev_device_new_from_syspath(udev, path);
-    
-    if (subsystem[0] == 's') {
-      print_scsi (udev, dev);
-    } else if (subsystem[0] == 'h') {
-      print_hidrow(udev, dev);
-    }
-
-    udev_device_unref(dev);
-  }
-  /* Free the enumerator object */
-  udev_enumerate_unref(enumerate);
-  
-}
-
-void monitor_usb_dev () {
-  struct udev *udev;
-  struct udev_device *dev;
-  struct udev_monitor *mon;
-  int fd;
-  
-  /* Create the udev object */
-  udev = udev_new();
-  if (!udev) {
-    printf("Can't create udev\n");
-    exit(1);
-  }
-  
-  enumerate_devices(udev, "scsi_device");
-  enumerate_devices(udev, "hidraw");
-  
-  /* Set up a monitor to monitor hidraw devices */
-  mon = udev_monitor_new_from_netlink(udev, "udev");
-  udev_monitor_filter_add_match_subsystem_devtype(mon, "scsi_disk", NULL);
-  udev_monitor_filter_add_match_subsystem_devtype(mon, "hidraw", NULL);
-  udev_monitor_enable_receiving(mon);
-  /* Get the file descriptor (fd) for the monitor.
-     This fd will get passed to select() */
-  fd = udev_monitor_get_fd(mon);
-  
-  while (1) {
-    /* Set up the call to select(). In this case, select() will
-       only operate on a single file descriptor, the one
-       associated with our udev_monitor. Note that the timeval
-       object is set to 0, which will cause select() to not
-       block. */
-    fd_set fds;
-    struct timeval tv;
-    int ret;
-    
-    FD_ZERO(&fds);
-    FD_SET(fd, &fds);
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-    
-    ret = select(fd+1, &fds, NULL, NULL, &tv);
-    
-    /* Check if our file descriptor has received data. */
-    if (ret > 0 && FD_ISSET(fd, &fds)) {
-      printf("\nselect() says there should be data\n");
-      
-      /* Make the call to receive the device.
-         select() ensured that this will not block. */
-      dev = udev_monitor_receive_device(mon);
-      if (dev) {
-        printf("Got Device\n");
-        printf("  VID/PID: %s %s\n",
-          udev_device_get_sysattr_value(dev,"idVendor"),
-          udev_device_get_sysattr_value(dev, "idProduct"));
-        printf("  %s\n  %s\n",
-          udev_device_get_sysattr_value(dev,"manufacturer"),
-          udev_device_get_sysattr_value(dev,"product"));
-        printf("  serial: %s\n", udev_device_get_sysattr_value(dev, "serial"));
-        printf("   Node: %s\n", udev_device_get_devnode(dev));
-        printf("   Subsystem: %s\n", udev_device_get_subsystem(dev));
-        printf("   Devtype: %s\n", udev_device_get_devtype(dev));
-        printf("   Action: %s\n", udev_device_get_action(dev));
-        udev_device_unref(dev);
-      }
-      else {
-        printf("No Device from receive_device(). An error occured.\n");
-      }         
-    }
-    usleep(250*1000);
-    printf(".");
-    fflush(stdout);
-  }
-
-
-  udev_unref(udev);
-
-  return;       
-}
-
-void pinit_device_monitor() {
-  //scan_all_usb_dev();
-  debug(D_NOTICE, "waiting for new devices..");
-  monitor_usb_dev();
-  
-}
-
-#endif //P_OS_LINUX

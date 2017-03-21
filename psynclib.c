@@ -1848,3 +1848,10 @@ void psync_fs_clean_read_cache(){
 int psync_fs_move_cache(const char *path){
   return  psync_pagecache_move_cache(path);
 }
+
+char * psync_get_token()
+{
+  if (psync_my_auth[0])
+    return psync_strdup(psync_my_auth);
+  else return NULL;
+}
