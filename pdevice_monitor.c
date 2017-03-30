@@ -5,8 +5,7 @@
 #include "papi.h"
 #include "pnetlibs.h"
 #include "pbusinessaccount.h"
-
-#include <search.h>
+#include "pdevicemap.h"
 
 #define P_DEVICE_VERBOSE
 
@@ -15,44 +14,10 @@
 #endif
 
 #define MAX_LOADSTRING 100
-static device_event_callback *callbacks;
+device_event_callback *callbacks;
 
-static int clbsize = 10;
-static int clbnum = 0;
-
-pdevice_extended_info devices[100];
-
-typedef struct
-{
-  int key;
-  char* value;
-} intstr_map;
-
-static int compar(const void *l, const void *r)
-{
-  const intstr_map *lm = l;
-  const intstr_map *lr = r;
-  return lm->key - lr->key;
-}
-
-int test(int argc, char **argv)
-{
-    void *root = 0;
-
-    intstr_map *a = malloc(sizeof(intstr_map));
-    a->key = 2;
-    a->value = strdup("two");
-    tsearch(a, &root, compar); /* insert */
-
-    intstr_map *find_a = malloc(sizeof(intstr_map));
-    find_a->key = 2;
-
-    void *r = tfind(find_a, &root, compar); /* read */
-    printf("%s", (*(intstr_map**)r)->value);
-
-    return 0;
-}
-
+int clbsize = 10;
+int clbnum = 0;
 
 void padd_monitor_callback(device_event_callback callback) {
   if (callback) {
@@ -90,14 +55,6 @@ static pdevice_info * new_dev_info( char *szPath, pdevice_types type, device_eve
   return infop;
 }
 
-static void put_into_storage(char **prop, char **dst, char* src, uint32_t size)
-{
-  *prop = *dst;
-  memcpy(*dst, src, size);
-  char * end = *dst;
-  end[size] = '\0';
-  (*dst) += (size+1);
-}
 
 static pdevice_extended_info * new_dev_ext_info(char *szPath, char * vendor, char *product, char* deviceid, pdevice_types type, device_event evt) {
  /*uint32_t pathsize = strlen(szPath);
@@ -125,35 +82,16 @@ static pdevice_extended_info * new_dev_ext_info(char *szPath, char * vendor, cha
   infop->product = strdup(product);
   infop->device_id = strdup(deviceid);
   infop->type = type;
-  infop->event = evt;
   infop->isextended = 1;
   return infop;
 }
 
-static void notify_callbacks_free_run(void * param) {
-  int i = 0; 
-  while (i < clbnum) {
-    device_event_callback c = callbacks[i];
-    c(param);
-    i++;
-  }
-  pdevice_info *p = (pdevice_info*)param;
-  if (p->isextended) {
-    pdevice_extended_info *e = (pdevice_extended_info*)param;
-    psync_free(e->device_id);
-    psync_free(e->filesystem_path);
-    psync_free(e->product);
-    psync_free(e->vendor);
-    psync_free(e);
-    return;
-  }
-  psync_free(p->filesystem_path);
-  psync_free(p);
-}
 
-
-static void notify_callbacks_free(void * param) {
-  psync_run_thread1("Device notifications", notify_callbacks_free_run, param);
+void pnotify_device_callbacks(pdevice_extended_info * param, device_event event) {
+  if (event == Dev_Event_arrival)
+    psync_run_thread1("Device notifications", do_notify_device_callbacks_in, (void*)param);
+  else 
+    psync_run_thread1("Device notifications", do_notify_device_callbacks_out, (void*)param);
 }
 
 #ifdef P_OS_LINUX
@@ -321,11 +259,14 @@ void print_hidrow (struct udev *udevs,struct udev_device *dev) {
 
 #define UDEV_SUBSYSTEMS_CNT 2
 const char *subsystems[UDEV_SUBSYSTEMS_CNT] = { "scsi_device", "hidraw" };
-void enumerate_devices (struct udev *udev) {
+void enumerate_devices (struct udev *udev,device_event event) {
   struct udev_enumerate *enumerate;
   struct udev_list_entry *devices,*dev_list_entry;
   struct udev_device *dev;
   char * subsystem;
+  struct udev_device *usb; 
+  struct udev_device* scsi_disk;
+  struct udev_device* block;
   
   //udev_enumerate_add_match_subsystem(enumerate, "scsi_device");
  // udev_enumerate_add_match_subsystem(enumerate, "hidraw");
@@ -349,8 +290,33 @@ void enumerate_devices (struct udev *udev) {
       
       if (subsystem[0] == 's') {
         print_scsi (udev, dev);
+        usb = udev_device_get_parent_with_subsystem_devtype(
+                  dev,
+                  "usb",
+                  "usb_device");
+        if (!usb)
+          continue; 
+        block = get_child(udev, dev, "block");
+        scsi_disk = get_child(udev, dev, "scsi_disk");
+        if (block && scsi_disk) {
+          add_device (Dev_Types_UsbRemovableDisk, 1, udev_device_get_devnode(block), udev_device_get_sysattr_value(dev,"vendor"),
+                        udev_device_get_sysattr_value(dev,"model"),udev_device_get_sysattr_value(usb, "serial"));
+          udev_device_unref(block);
+          udev_device_unref(scsi_disk);
+        }
       } else if (subsystem[0] == 'h') {
         print_hidrow(udev, dev);
+        struct udev_device *dev1;
+
+        dev1 = udev_device_get_parent_with_subsystem_devtype(
+                dev,
+                "usb",
+                "usb_device");
+        if (!dev1) {
+          continue;
+        }
+        add_device (Dev_Types_UsbRemovableDisk, 1, udev_device_get_devnode(dev), udev_device_get_sysattr_value(dev1,"manufacturer"),
+                      udev_device_get_sysattr_value(dev1,"product"), udev_device_get_sysattr_value(dev1, "serial"));
       }
 
       udev_device_unref(dev);

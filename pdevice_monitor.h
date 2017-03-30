@@ -21,7 +21,6 @@ typedef struct _pdevice_info pdevice_info;
 
 struct _pdevice_info {
   pdevice_types type;
-  device_event event;
   int isextended;
   char * filesystem_path;
 };
@@ -30,7 +29,6 @@ typedef struct _pdevice_extended_info pdevice_extended_info;
 
 struct _pdevice_extended_info {
   pdevice_types type;
-  device_event event;
   int isextended;
   char *filesystem_path;
   char *vendor;
@@ -38,7 +36,7 @@ struct _pdevice_extended_info {
   char *device_id;
 };
 
-typedef void(*device_event_callback)(void * device_info_);
+typedef void(*device_event_callback)(device_event event, void * device_info_);
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,8 +46,7 @@ extern "C" {
 
   void pinit_device_monitor();
   
-
-
+  void pnotify_device_callbacks(pdevice_extended_info *param, device_event event);
 #ifdef __cplusplus
 }
 #endif
