@@ -94,14 +94,13 @@ static void modify_screenshot_public_link(void* linkidp) {
 
 int64_t do_psync_screenshot_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/) {
   int64_t *res= psync_malloc(sizeof(int64_t));
-  *res=  do_psync_file_public_link(path, code, err, 0, 0, 0);
-  int64_t res1 = *res;
+  int64_t ret =  do_psync_file_public_link(path, res, code, err, 0, 0, 0);
   psync_run_thread1("Modify link expiration.",modify_screenshot_public_link, res);
-  return res1;
+  return ret;
 }
 
 
-int64_t do_psync_file_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic) {
+int64_t do_psync_file_public_link(const char *path, int64_t* plinkid, char **code /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic) {
   psync_socket *api;
   binresult *bres;
   uint64_t result;
@@ -168,10 +167,12 @@ int64_t do_psync_file_public_link(const char *path, char **code /*OUT*/, char **
   rescode = psync_find_result(bres, "code", PARAM_STR)->str;
   *code = psync_strndup(rescode, strlen(rescode));
   linkid = psync_find_result(bres, "linkid", PARAM_NUM)->num;
-  
+  if (plinkid)
+    *plinkid = linkid;
+    
 free_ret:
   psync_free(bres);
-  return linkid;
+  return (int64_t)result;
 }
 
 
