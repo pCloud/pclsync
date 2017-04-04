@@ -95,7 +95,7 @@ static void modify_screenshot_public_link(void* linkidp) {
 int64_t do_psync_screenshot_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/) {
   int64_t *res= psync_malloc(sizeof(int64_t));
   int64_t ret =  do_psync_file_public_link(path, res, code, err, 0, 0, 0);
-  psync_run_thread1("Modify link expiration.",modify_screenshot_public_link, res);
+  //psync_run_thread1("Modify link expiration.",modify_screenshot_public_link, res);
   return ret;
 }
 
