@@ -38,53 +38,52 @@ void padd_monitor_callback(device_event_callback callback) {
 }
 
 
-static pdevice_info * new_dev_info( char *szPath, pdevice_types type, device_event evt) {
-  /*int pathsize = strlen(szPath);
-  int infstrsize = sizeof(pdevice_info);
-  int infsize = pathsize + infstrsize + 1;*/
- // pdevice_info *infop = (pdevice_info *)psync_malloc(infsize);
-  pdevice_info *infop = (pdevice_info *)psync_malloc(sizeof(pdevice_info));
-  //ZeroMemory(infop, infsize);
-  //infop->filesystem_path = (char *)(infop) + infstrsize;
-  infop->filesystem_path = strdup(szPath);
-  //memcpy(infop->filesystem_path, szPath, pathsize);
-  //infop->filesystem_path[pathsize] = '\0';
-  infop->event = evt;
-  infop->type = type;
-  infop->isextended = 0;
-  return infop;
-}
+// static pdevice_info * new_dev_info( char *szPath, pdevice_types type, device_event evt) {
+//   /*int pathsize = strlen(szPath);
+//   int infstrsize = sizeof(pdevice_info);
+//   int infsize = pathsize + infstrsize + 1;*/
+//  // pdevice_info *infop = (pdevice_info *)psync_malloc(infsize);
+//   pdevice_info *infop = (pdevice_info *)psync_malloc(sizeof(pdevice_info));
+//   //ZeroMemory(infop, infsize);
+//   //infop->filesystem_path = (char *)(infop) + infstrsize;
+//   infop->filesystem_path = strdup(szPath);
+//   //memcpy(infop->filesystem_path, szPath, pathsize);
+//   //infop->filesystem_path[pathsize] = '\0';
+//   infop->type = type;
+//   infop->isextended = 0;
+//   return infop;
+// }
 
 
-static pdevice_extended_info * new_dev_ext_info(char *szPath, char * vendor, char *product, char* deviceid, pdevice_types type, device_event evt) {
- /*uint32_t pathsize = strlen(szPath);
-  uint32_t vndsize = strlen(vendor);
-  uint32_t prdsize = strlen(product);
-  uint32_t devsize = strlen(deviceid);
-  uint32_t infstrsize = sizeof(pdevice_extended_info);
-  uint32_t infsize = pathsize + infstrsize + pathsize + vndsize + prdsize + 5;
-  void * infovp = psync_malloc(infsize);
-  pdevice_extended_info *infop = (pdevice_extended_info *)infovp;
-  ZeroMemory(infop, infsize);
-  char *storage_begin = (char *)(infovp)+infstrsize;
-  put_into_storage(&infop->filesystem_path, &storage_begin, szPath, pathsize);
-  put_into_storage(&infop->vendor, &storage_begin, vendor, vndsize);
-  put_into_storage(&infop->product, &storage_begin, product, prdsize);
-  put_into_storage(&infop->device_id, &storage_begin, deviceid, devsize);
-  infop->type = type;
-  infop->event = evt;
-  infop->isextended = 1;
-  infop->size = infsize;
-  infop->me = infop;*/
-  pdevice_extended_info *infop = (pdevice_extended_info *)psync_malloc(sizeof(pdevice_extended_info));
-  infop->filesystem_path = strdup(szPath);
-  infop->vendor = strdup(vendor);
-  infop->product = strdup(product);
-  infop->device_id = strdup(deviceid);
-  infop->type = type;
-  infop->isextended = 1;
-  return infop;
-}
+// static pdevice_extended_info * new_dev_ext_info(char *szPath, char * vendor, char *product, char* deviceid, pdevice_types type, device_event evt) {
+//  /*uint32_t pathsize = strlen(szPath);
+//   uint32_t vndsize = strlen(vendor);
+//   uint32_t prdsize = strlen(product);
+//   uint32_t devsize = strlen(deviceid);
+//   uint32_t infstrsize = sizeof(pdevice_extended_info);
+//   uint32_t infsize = pathsize + infstrsize + pathsize + vndsize + prdsize + 5;
+//   void * infovp = psync_malloc(infsize);
+//   pdevice_extended_info *infop = (pdevice_extended_info *)infovp;
+//   ZeroMemory(infop, infsize);
+//   char *storage_begin = (char *)(infovp)+infstrsize;
+//   put_into_storage(&infop->filesystem_path, &storage_begin, szPath, pathsize);
+//   put_into_storage(&infop->vendor, &storage_begin, vendor, vndsize);
+//   put_into_storage(&infop->product, &storage_begin, product, prdsize);
+//   put_into_storage(&infop->device_id, &storage_begin, deviceid, devsize);
+//   infop->type = type;
+//   infop->event = evt;
+//   infop->isextended = 1;
+//   infop->size = infsize;
+//   infop->me = infop;*/
+//   pdevice_extended_info *infop = (pdevice_extended_info *)psync_malloc(sizeof(pdevice_extended_info));
+//   infop->filesystem_path = strdup(szPath);
+//   infop->vendor = strdup(vendor);
+//   infop->product = strdup(product);
+//   infop->device_id = strdup(deviceid);
+//   infop->type = type;
+//   infop->isextended = 1;
+//   return infop;
+// }
 
 
 void pnotify_device_callbacks(pdevice_extended_info * param, device_event event) {
@@ -263,13 +262,13 @@ void enumerate_devices (struct udev *udev,device_event event) {
   struct udev_enumerate *enumerate;
   struct udev_list_entry *devices,*dev_list_entry;
   struct udev_device *dev;
-  char * subsystem;
+  const char * subsystem;
   struct udev_device *usb; 
   struct udev_device* scsi_disk;
   struct udev_device* block;
   
   //udev_enumerate_add_match_subsystem(enumerate, "scsi_device");
- // udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+  //udev_enumerate_add_match_subsystem(enumerate, "hidraw");
   for (int i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
     enumerate = udev_enumerate_new(udev);
     subsystem = subsystems[i];
@@ -340,7 +339,7 @@ void monitor_usb_dev () {
     exit(1);
   }
   
-  enumerate_devices(udev);
+  enumerate_devices(udev, Dev_Event_arrival);
   
   /* Set up a monitor to monitor hidraw devices */
   mon = udev_monitor_new_from_netlink(udev, "udev");
@@ -376,19 +375,8 @@ void monitor_usb_dev () {
          select() ensured that this will not block. */
       dev = udev_monitor_receive_device(mon);
       if (dev) {
-        printf("Got Device\n");
-        printf("  VID/PID: %s %s\n",
-          udev_device_get_sysattr_value(dev,"idVendor"),
-          udev_device_get_sysattr_value(dev, "idProduct"));
-        printf("  %s\n  %s\n",
-          udev_device_get_sysattr_value(dev,"manufacturer"),
-          udev_device_get_sysattr_value(dev,"product"));
-        printf("  serial: %s\n", udev_device_get_sysattr_value(dev, "serial"));
-        printf("   Node: %s\n", udev_device_get_devnode(dev));
-        printf("   Subsystem: %s\n", udev_device_get_subsystem(dev));
-        printf("   Devtype: %s\n", udev_device_get_devtype(dev));
-        printf("   Action: %s\n", udev_device_get_action(dev));
-        udev_device_unref(dev);
+        print_hidrow( udev,dev);
+        print_scsi( udev,dev);
       }
       else {
         printf("No Device from receive_device(). An error occured.\n");
