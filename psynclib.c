@@ -1768,8 +1768,8 @@ int64_t psync_file_public_link(const char *path, char **code /*OUT*/, char **err
   return ret;
 }
 
-int64_t psync_screenshot_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/) {
-  return do_psync_screenshot_public_link(path, code, err);
+int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t delay, char **code /*OUT*/, char **err /*OUT*/) {
+  return do_psync_screenshot_public_link(path, hasdelay, delay, code, err);
 }
 
 int64_t psync_folder_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/) {
