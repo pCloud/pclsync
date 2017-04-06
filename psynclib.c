@@ -1406,10 +1406,12 @@ static int psync_download_new_version(const binresult *res, char **lpath){
   psync_stat_t st;
   psync_file_t fd;
   int rd;
+  char cookie[128];
   sock=psync_http_connect_multihost(psync_find_result(res, "hosts", PARAM_ARRAY), &host);
   if (unlikely_log(!sock))
     return -1;
-  if (unlikely_log(psync_http_request(sock, host, psync_find_result(res, "path", PARAM_STR)->str, 0, 0))){
+  psync_slprintf(cookie, sizeof(cookie), "Cookie: dwltag=%s\015\012", psync_find_result(res, "dwltag", PARAM_STR)->str);
+  if (unlikely_log(psync_http_request(sock, host, psync_find_result(res, "path", PARAM_STR)->str, 0, 0, cookie))){
     psync_http_close(sock);
     return -1;
   }

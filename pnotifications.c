@@ -66,6 +66,7 @@ void psync_notifications_notify(binresult *res){
 static void psync_notifications_download_thumb(const binresult *thumb, const char *thumbpath){
   const char *path, *filename, *host;
   char *filepath, *tmpfilepath, *buff;
+  char cookie[128];
   psync_http_socket *sock;
   psync_stat_t st;
   psync_file_t fd;
@@ -87,7 +88,8 @@ static void psync_notifications_download_thumb(const binresult *thumb, const cha
   sock=psync_http_connect_multihost(psync_find_result(thumb, "hosts", PARAM_ARRAY), &host);
   if (unlikely_log(!sock))
     goto err2;
-  if (unlikely_log(psync_http_request(sock, host, path, 0, 0)))
+  psync_slprintf(cookie, sizeof(cookie), "Cookie: dwltag=%s\015\012", psync_find_result(thumb, "dwltag", PARAM_STR)->str);
+  if (unlikely_log(psync_http_request(sock, host, path, 0, 0, cookie)))
     goto err3;
   if (unlikely_log(psync_http_next_request(sock)))
     goto err3;
