@@ -1836,8 +1836,10 @@ static int psync_pagecache_read_range_from_sock(psync_request_t *request, psync_
     } while (x);\
   } while (0)
 #define PSYNC_CONSTRUCT_HEADER "X-Range-Next:"
-char *psync_http_construct_range_next_header(psync_request_t *request){
+#define PSYNC_DWLTAG_HEADER "Cookie: dwltag="
+char *psync_http_construct_range_next_header(psync_request_t *request, psync_urls_t *urls){
   char buff[2048];
+  const binresult *dwltag;
   uint64_t nm;
   psync_request_range_t *range;
   psync_list *l;
@@ -1847,6 +1849,16 @@ char *psync_http_construct_range_next_header(psync_request_t *request){
   buff[off--]=0;
   buff[off--]='\012';
   buff[off--]='\015';
+  dwltag=psync_find_result(urls->urls, "dwltag", PARAM_STR);
+  if (dwltag->length<=40 && dwltag->length>0) {
+    off-=dwltag->length-1;
+    memcpy(buff+off, dwltag->str, dwltag->length);
+    off-=sizeof(PSYNC_DWLTAG_HEADER)-1;
+    memcpy(buff+off, PSYNC_DWLTAG_HEADER, sizeof(PSYNC_DWLTAG_HEADER)-1);
+    off--;
+    buff[off--]='\012';
+    buff[off--]='\015';
+  }
   while (l->prev!=&request->ranges){
     range=psync_list_element(l, psync_request_range_t, list);
     nm=range->offset+range->length-1;
@@ -1869,6 +1881,7 @@ static void psync_pagecache_read_unmodified_thread(void *ptr){
   psync_socket *api;
   const char *host;
   const char *path;
+  char cookie[128];
   psync_request_range_t *range;
   const binresult *hosts;
   psync_urls_t *urls;
@@ -1910,6 +1923,7 @@ retry:
     return;
   }
   hosts=psync_find_result(urls->urls, "hosts", PARAM_ARRAY);
+  psync_slprintf(cookie, sizeof(cookie), "Cookie: dwltag=%s\015\012", psync_find_result(urls->urls, "dwltag", PARAM_STR)->str);
   sock=psync_http_connect_multihost_from_cache(hosts, &host);
   if (!sock){
     if ((api=psync_apipool_get_from_cache())){
@@ -1988,13 +2002,13 @@ err_api0:
   psync_list_for_each_element(range, &request->ranges, psync_request_range_t, list){
     debug(D_NOTICE, "sending request for offset %lu, size %lu", (unsigned long)range->offset, (unsigned long)range->length);
     if (psync_list_is_head(&request->ranges, &range->list) && !psync_list_is_tail(&request->ranges, &range->list)){
-      char *range_hdr=psync_http_construct_range_next_header(request);
+      char *range_hdr=psync_http_construct_range_next_header(request, urls);
       debug(D_NOTICE, "sending additional header: %s", range_hdr);
       err=psync_http_request_range_additional(sock, host, path, range->offset, range->offset+range->length-1, range_hdr);
       psync_free(range_hdr);
     }
     else
-      err=psync_http_request(sock, host, path, range->offset, range->offset+range->length-1);
+      err=psync_http_request(sock, host, path, range->offset, range->offset+range->length-1, cookie);
     if (err){
       if (tries++<5){
         psync_http_close(sock);

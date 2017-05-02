@@ -526,6 +526,7 @@ static int task_download_file(download_task_t *dt){
   unsigned char serverhashhex[PSYNC_HASH_DIGEST_HEXLEN],
                 localhashhex[PSYNC_HASH_DIGEST_HEXLEN],
                 localhashbin[PSYNC_HASH_DIGEST_LEN];
+  char cookie[128];
   uint32_t i;
   psync_file_t fd, ifd;
   int rd, rt;
@@ -670,6 +671,7 @@ static int task_download_file(download_task_t *dt){
 
   hosts=psync_find_result(res, "hosts", PARAM_ARRAY);
   requestpath=psync_find_result(res, "path", PARAM_STR)->str;
+  psync_slprintf(cookie, sizeof(cookie), "Cookie: dwltag=%s\015\012", psync_find_result(res, "dwltag", PARAM_STR)->str);
   buff=psync_malloc(PSYNC_COPY_BUFFER_SIZE);
   http=NULL;
   psync_hash_init(&hashctx);
@@ -679,7 +681,7 @@ static int task_download_file(download_task_t *dt){
     if (range->type==PSYNC_RANGE_TRANSFER){
       debug(D_NOTICE, "downloading %lu bytes from offset %lu of fileid %lu", (unsigned long)range->len, (unsigned long)range->off, (unsigned long)dt->dwllist.fileid);
       for (i=0; i<hosts->length; i++)
-        if ((http=psync_http_connect(hosts->array[i]->str, requestpath, range->off, (range->len==serversize&&range->off==0)?0:(range->len+range->off-1))))
+        if ((http=psync_http_connect(hosts->array[i]->str, requestpath, range->off, (range->len==serversize&&range->off==0)?0:(range->len+range->off-1), cookie)))
           break;
       if (unlikely_log(!http))
         goto err2;
