@@ -35,6 +35,8 @@ struct _pdevice_extended_info {
   char *vendor;
   char *product;
   char *device_id;
+  pdevice_extended_info* next;
+  pdevice_extended_info* prev;
 };
 
 typedef void(*device_event_callback)(device_event event, void * device_info_);

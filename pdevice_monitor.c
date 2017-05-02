@@ -14,26 +14,27 @@
 #endif
 
 #define MAX_LOADSTRING 100
-device_event_callback *callbacks;
+device_event_callback *device_callbacks;
 
-int clbsize = 10;
-int clbnum = 0;
+int device_clbsize = 10;
+int device_clbnum = 0;
 
 void padd_monitor_callback(device_event_callback callback) {
   if (callback) {
-    if (clbnum == 0)
-      callbacks = (device_event_callback *)psync_malloc(sizeof(device_event_callback)*clbsize);
+    if (device_clbnum == 0)
+      device_callbacks = (device_event_callback *)psync_malloc(sizeof(device_event_callback)*device_clbsize);
     else {
-      while (clbnum > clbsize) {
-        device_event_callback *callbacks_old = callbacks;
-        callbacks = (device_event_callback *)psync_malloc(sizeof(device_event_callback)*clbsize*2);
-        memccpy(callbacks, callbacks_old, 0,sizeof(device_event_callback)*clbsize);
-        clbsize = clbsize * 2;
+      while (device_clbnum > device_clbsize) {
+        device_event_callback *callbacks_old = device_callbacks;
+        device_callbacks = (device_event_callback *)psync_malloc(sizeof(device_event_callback)*device_clbsize*2);
+        memccpy(device_callbacks, callbacks_old, 0,sizeof(device_event_callback)*device_clbsize);
+        device_clbsize = device_clbsize * 2;
         psync_free(callbacks_old);
       }
     }
-    callbacks[clbnum] = callback;
-    clbnum++;
+    device_callbacks[device_clbnum] = callback;
+    device_clbnum
+    ++;
   }
 }
 
@@ -99,6 +100,44 @@ void pnotify_device_callbacks(pdevice_extended_info * param, device_event event)
 #include <stdlib.h>
 #include <locale.h>
 #include <unistd.h>
+static char * get_device_mountpoit (const char* device){
+  FILE *fp;
+  char path[1035];
+  int buffsize = 50 + strlen(device);
+  char* result = 0;
+  char* command = (char *)malloc(buffsize);
+  sprintf (command, "cat /proc/mounts |grep %s | awk '{print $2}'", device);
+  
+  /* Open the command for reading. */
+  fp = popen(command, "r");
+  if (fp == NULL) {
+    printf("Failed to run command\n" );
+    return 0;
+  }
+
+  /* Read the output a line at a time - output it. */
+  while (fgets(path, sizeof(path)-1, fp) != NULL) {
+    if (result) {
+      int ressize = strlen(result);
+      result = (char*)realloc(result, ressize + strlen (path)+1);
+      strcat(result, path);
+    }else {
+      result = (char*)malloc(strlen (path)+1);
+      result = strdup(path);
+    }
+    //printf("\nReal system path\n{%s} with size of %d \n", result, strlen(result));
+  }
+  
+  if (result) {
+    int i = strlen(result) - 1;
+    if ((i > 0) && (result[i] == '\n')) result[i] = '\0';
+  }
+  /* close */
+  pclose(fp);
+  free(command);
+  return result;
+
+}
 
 void scan_all_usb_dev(){
   struct udev *udevs;
@@ -109,7 +148,7 @@ void scan_all_usb_dev(){
   /* Create the udev object */
   udevs = udev_new();
   if (!udevs) {
-    printf("Can't create udev\n");
+   // printf("Can't create udev\n");
     exit(1);
   }
   
@@ -269,6 +308,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
   
   //udev_enumerate_add_match_subsystem(enumerate, "scsi_device");
   //udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+  init_devices();
   for (int i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
     enumerate = udev_enumerate_new(udev);
     subsystem = subsystems[i];
@@ -288,7 +328,6 @@ void enumerate_devices (struct udev *udev,device_event event) {
       dev = udev_device_new_from_syspath(udev, path);
       
       if (subsystem[0] == 's') {
-        print_scsi (udev, dev);
         usb = udev_device_get_parent_with_subsystem_devtype(
                   dev,
                   "usb",
@@ -296,15 +335,21 @@ void enumerate_devices (struct udev *udev,device_event event) {
         if (!usb)
           continue; 
         block = get_child(udev, dev, "block");
+        const char *device_path = udev_device_get_devnode(block);
+        if (!device_path)
+          continue;
         scsi_disk = get_child(udev, dev, "scsi_disk");
         if (block && scsi_disk) {
-          add_device (Dev_Types_UsbRemovableDisk, 1, udev_device_get_devnode(block), udev_device_get_sysattr_value(dev,"vendor"),
-                        udev_device_get_sysattr_value(dev,"model"),udev_device_get_sysattr_value(usb, "serial"));
-          udev_device_unref(block);
-          udev_device_unref(scsi_disk);
+          char* fs_path = get_device_mountpoit(device_path);
+          if (fs_path) {
+            add_device (Dev_Types_UsbRemovableDisk, 1, fs_path, udev_device_get_sysattr_value(dev,"vendor"),
+                       udev_device_get_sysattr_value(dev,"model"),udev_device_get_sysattr_value(usb, "serial"));
+            udev_device_unref(block);
+            udev_device_unref(scsi_disk);
+       //     debug_execute(D_NOTICE, print_scsi (udev, dev));
+          }
         }
       } else if (subsystem[0] == 'h') {
-        print_hidrow(udev, dev);
         struct udev_device *dev1;
 
         dev1 = udev_device_get_parent_with_subsystem_devtype(
@@ -314,8 +359,16 @@ void enumerate_devices (struct udev *udev,device_event event) {
         if (!dev1) {
           continue;
         }
-        add_device (Dev_Types_UsbRemovableDisk, 1, udev_device_get_devnode(dev), udev_device_get_sysattr_value(dev1,"manufacturer"),
-                      udev_device_get_sysattr_value(dev1,"product"), udev_device_get_sysattr_value(dev1, "serial"));
+        
+        const char *device_path = udev_device_get_devnode(dev);
+        if (!device_path)
+          continue;
+        char* fs_path = get_device_mountpoit(device_path);
+        if (fs_path) {
+            add_device (Dev_Types_UsbRemovableDisk, 1, fs_path, udev_device_get_sysattr_value(dev1,"manufacturer"),
+                        udev_device_get_sysattr_value(dev1,"product"), udev_device_get_sysattr_value(dev1, "serial"));
+           // debug_execute(D_NOTICE, print_hidrow(udev, dev));
+        }
       }
 
       udev_device_unref(dev);
@@ -323,6 +376,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
     udev_enumerate_unref(enumerate);
   }
   /* Free the enumerator object */
+    filter_unconnected_device ();
   
 }
 
@@ -340,6 +394,8 @@ void monitor_usb_dev () {
   }
   
   enumerate_devices(udev, Dev_Event_arrival);
+  
+  //debug_execute(D_NOTICE, print_stree());
   
   /* Set up a monitor to monitor hidraw devices */
   mon = udev_monitor_new_from_netlink(udev, "udev");
@@ -369,17 +425,16 @@ void monitor_usb_dev () {
     
     /* Check if our file descriptor has received data. */
     if (ret > 0 && FD_ISSET(fd, &fds)) {
-      printf("\nselect() says there should be data\n");
       
       /* Make the call to receive the device.
          select() ensured that this will not block. */
       dev = udev_monitor_receive_device(mon);
       if (dev) {
-        print_hidrow( udev,dev);
-        print_scsi( udev,dev);
+        enumerate_devices(udev, Dev_Event_arrival);
+      //  debug_execute(D_NOTICE, print_stree());
       }
       else {
-        printf("No Device from receive_device(). An error occured.\n");
+       // printf("No Device from receive_device(). An error occured.\n");
       }         
     }
     usleep(250*1000);
@@ -393,11 +448,23 @@ void monitor_usb_dev () {
   return;       
 }
 
+void arivalmonitor(device_event event, void * device_info_)
+{
+  
+  if (event == Dev_Event_arrival)
+    printf("Device arrived. \n{");
+  else 
+    printf("Device removed. \n{");
+  if (device_info_)
+    print_device_info((pdevice_extended_info *) device_info_);
+  printf("}\n");
+}
+
 void pinit_device_monitor() {
   //scan_all_usb_dev();
   debug(D_NOTICE, "waiting for new devices..");
+  debug_execute(D_NOTICE, padd_monitor_callback(arivalmonitor));
   monitor_usb_dev();
-  
 }
 
 #endif //P_OS_LINUX
