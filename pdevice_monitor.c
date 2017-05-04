@@ -98,12 +98,12 @@ static void arivalmonitor(device_event event, void * device_info_)
 {
 
   if (event == Dev_Event_arrival)
-    printf("Device arrived. \n{");
+    debug(D_NOTICE, "Device arrived. \n{");
   else
-    printf("Device removed. \n{");
+    debug(D_NOTICE, "Device removed. \n{");
   if (device_info_)
     print_device_info((pdevice_extended_info *)device_info_);
-  printf("}\n");
+  debug(D_NOTICE,"}\n");
 }
 
 #ifdef P_OS_LINUX
@@ -123,7 +123,7 @@ static char * get_device_mountpoit (const char* device){
   /* Open the command for reading. */
   fp = popen(command, "r");
   if (fp == NULL) {
-    printf("Failed to run command\n" );
+    debug(D_NOTICE,"Failed to run command\n" );
     return 0;
   }
 
@@ -137,7 +137,6 @@ static char * get_device_mountpoit (const char* device){
       result = (char*)malloc(strlen (path)+1);
       result = strdup(path);
     }
-    //printf("\nReal system path\n{%s} with size of %d \n", result, strlen(result));
   }
   
   if (result) {
@@ -150,80 +149,6 @@ static char * get_device_mountpoit (const char* device){
   return result;
 
 }
-
-void scan_all_usb_dev(){
-  struct udev *udevs;
-  struct udev_enumerate *enumerate;
-  struct udev_list_entry *devices, *dev_list_entry;
-  struct udev_device *dev;
-  
-  /* Create the udev object */
-  udevs = udev_new();
-  if (!udevs) {
-   // printf("Can't create udev\n");
-    exit(1);
-  }
-  
-  /* Create a list of the devices in the 'hidraw' subsystem. */
-  enumerate = udev_enumerate_new(udevs);
-  udev_enumerate_add_match_subsystem(enumerate, "hidraw");
-  udev_enumerate_scan_devices(enumerate);
-  devices = udev_enumerate_get_list_entry(enumerate);
-  /* For each item enumerated, print out its information.
-     udev_list_entry_foreach is a macro which expands to
-     a loop. The loop will be executed for each member in
-     devices, setting dev_list_entry to a list entry
-     which contains the device's path in /sys. */
-  udev_list_entry_foreach(dev_list_entry, devices) {
-    const char *path;
-    
-    /* Get the filename of the /sys entry for the device
-       and create a udev_device object (dev) representing it */
-    path = udev_list_entry_get_name(dev_list_entry);
-    dev = udev_device_new_from_syspath(udevs, path);
-
-    /* usb_device_get_devnode() returns the path to the device node
-       itself in /dev. */
-    printf("Device Node Path: %s\n", udev_device_get_devnode(dev));
-
-    /* The device pointed to by dev contains information about
-       the hidraw device. In order to get information about the
-       USB device, get the parent device with the
-       subsystem/devtype pair of "usb"/"usb_device". This will
-       be several levels up the tree, but the function will find
-       it.*/
-    dev = udev_device_get_parent_with_subsystem_devtype(
-           dev,
-           "usb",
-           "usb_device");
-    if (!dev) {
-      printf("Unable to find parent usb device.");
-      exit(1);
-    }
-  
-    /* From here, we can call get_sysattr_value() for each file
-       in the device's /sys entry. The strings passed into these
-       functions (idProduct, idVendor, serial, etc.) correspond
-       directly to the files in the directory which represents
-       the USB device. Note that USB strings are Unicode, UCS2
-       encoded, but the strings returned from
-       udev_device_get_sysattr_value() are UTF-8 encoded. */
-    printf("  VID/PID: %s %s\n",
-            udev_device_get_sysattr_value(dev,"idVendor"),
-            udev_device_get_sysattr_value(dev, "idProduct"));
-    printf("  %s\n  %s\n",
-            udev_device_get_sysattr_value(dev,"manufacturer"),
-            udev_device_get_sysattr_value(dev,"product"));
-    printf("  serial: %s\n",
-             udev_device_get_sysattr_value(dev, "serial"));
-    udev_device_unref(dev);
-  }
-  /* Free the enumerator object */
-  udev_enumerate_unref(enumerate);
-
-  udev_unref(udevs);
-}
-
 
 static struct udev_device*
 get_child(struct udev* udevs, struct udev_device* parent, const char* subsystem)
@@ -248,9 +173,7 @@ get_child(struct udev* udevs, struct udev_device* parent, const char* subsystem)
     return child;
 }
 
-
-
-void print_scsi (struct udev *udevs,struct udev_device *scsi) {
+/*static void print_scsi (struct udev *udevs,struct udev_device *scsi) {
  struct udev_device *usb; 
  struct udev_device* scsi_disk;
  struct udev_device* block;
@@ -268,24 +191,24 @@ void print_scsi (struct udev *udevs,struct udev_device *scsi) {
  if (block && scsi_disk) {
 
   
-  printf("Device Node Path: %s\n", udev_device_get_devnode(block));
-  printf("  VID/PID: %s %s\n",
+  debug(D_NOTICE, "Device Node Path: %s\n", udev_device_get_devnode(block));
+  debug(D_NOTICE, "  VID/PID: %s %s\n",
           udev_device_get_sysattr_value(usb,"idVendor"),
           udev_device_get_sysattr_value(usb, "idProduct"));
-  printf("  %s\n  %s\n",
+  debug(D_NOTICE, "  %s\n  %s\n",
           udev_device_get_sysattr_value(scsi,"vendor"),
           udev_device_get_sysattr_value(scsi,"model"));
-  printf("  serial: %s\n",
+  debug(D_NOTICE, "  serial: %s\n",
             udev_device_get_sysattr_value(usb, "serial"));
-  printf("   Subsystem: %s\n", udev_device_get_subsystem(scsi));
-  printf("   Devtype: %s\n", udev_device_get_devtype(scsi));
+  debug(D_NOTICE, "   Subsystem: %s\n", udev_device_get_subsystem(scsi));
+  debug(D_NOTICE,"   Devtype: %s\n", udev_device_get_devtype(scsi));
   
   udev_device_unref(block);
   udev_device_unref(scsi_disk);
  }
 }
 
-void print_hidrow (struct udev *udevs,struct udev_device *dev) {
+static void print_hidrow (struct udev *udevs,struct udev_device *dev) {
   struct udev_device *dev1;
 
   dev1 = udev_device_get_parent_with_subsystem_devtype(
@@ -295,17 +218,17 @@ void print_hidrow (struct udev *udevs,struct udev_device *dev) {
   if (!dev1) {
     return;
   }
-  printf("Device Node Path: %s\n", udev_device_get_devnode(dev));
-  printf("  VID/PID: %s %s\n",
+  debug(D_NOTICE, "Device Node Path: %s\n", udev_device_get_devnode(dev));
+  debug(D_NOTICE, "  VID/PID: %s %s\n",
           udev_device_get_sysattr_value(dev1,"idVendor"),
           udev_device_get_sysattr_value(dev1, "idProduct"));
-  printf("  %s\n  %s\n",
+  debug(D_NOTICE, "  %s\n  %s\n",
           udev_device_get_sysattr_value(dev1,"manufacturer"),
           udev_device_get_sysattr_value(dev1,"product"));
-  printf("  serial: %s\n", udev_device_get_sysattr_value(dev1, "serial"));
-  printf("   Subsystem: %s\n", udev_device_get_subsystem(dev1));
-  printf("   Devtype: %s\n", udev_device_get_devtype(dev1));
-}
+  debug(D_NOTICE, "  serial: %s\n", udev_device_get_sysattr_value(dev1, "serial"));
+  debug(D_NOTICE, "   Subsystem: %s\n", udev_device_get_subsystem(dev1));
+  debug(D_NOTICE, "   Devtype: %s\n", udev_device_get_devtype(dev1));
+}*/
 
 #define UDEV_SUBSYSTEMS_CNT 2
 const char *subsystems[UDEV_SUBSYSTEMS_CNT] = { "scsi_device", "hidraw" };
@@ -318,8 +241,6 @@ void enumerate_devices (struct udev *udev,device_event event) {
   struct udev_device* scsi_disk;
   struct udev_device* block;
   
-  //udev_enumerate_add_match_subsystem(enumerate, "scsi_device");
-  //udev_enumerate_add_match_subsystem(enumerate, "hidraw");
   init_devices();
   for (int i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
     enumerate = udev_enumerate_new(udev);
@@ -401,8 +322,8 @@ void monitor_usb_dev () {
   /* Create the udev object */
   udev = udev_new();
   if (!udev) {
-    printf("Can't create udev\n");
-    exit(1);
+    debug(D_WARNING, "Can't create udev\n");
+    return;
   }
   
   enumerate_devices(udev, Dev_Event_arrival);
@@ -450,7 +371,6 @@ void monitor_usb_dev () {
       }         
     }
     usleep(250*1000);
-    printf(".");
     fflush(stdout);
   }
 
@@ -461,7 +381,6 @@ void monitor_usb_dev () {
 }
 
 void pinit_device_monitor() {
-  //scan_all_usb_dev();
   debug(D_NOTICE, "waiting for new devices..");
   debug_execute(D_NOTICE, padd_monitor_callback(arivalmonitor));
   monitor_usb_dev();
@@ -578,69 +497,69 @@ typedef struct {
 
 static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lparam)
 {
-	switch (uint)
-	{
-	case WM_NCCREATE:
+  switch (uint)
+  {
+  case WM_NCCREATE:
     return 1;
     break;
-	case WM_CREATE:
-	  return 0;
-    break;
-	case WM_DEVICECHANGE:
+  case WM_CREATE:
     return 0;
     break;
-	case WM_USER_MEDIACHANGED:
-	{
-		SHNOTIFYSTRUCT *shns = (SHNOTIFYSTRUCT *)wparam;
-		char szPath[MAX_PATH];
-		ZeroMemory(&szPath, MAX_PATH);
-		switch (lparam)
-		{
-		case SHCNE_MEDIAINSERTED:        // media inserted event
-		{
-			SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
+  case WM_DEVICECHANGE:
+    return 0;
+    break;
+  case WM_USER_MEDIACHANGED:
+  {
+    SHNOTIFYSTRUCT *shns = (SHNOTIFYSTRUCT *)wparam;
+    char szPath[MAX_PATH];
+    ZeroMemory(&szPath, MAX_PATH);
+    switch (lparam)
+    {
+    case SHCNE_MEDIAINSERTED:        // media inserted event
+    {
+      SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
       //pdevice_info *p = new_dev_info(szPath, Dev_Types_CDRomMedia, Dev_Event_arrival);
-			add_device(Dev_Types_CDRomMedia, 0, szPath, "","", "CDROM");
-			break;
-		}
-		case SHCNE_MEDIAREMOVED:        // media removed event
-		{
+      add_device(Dev_Types_CDRomMedia, 0, szPath, "","", "CDROM");
+      break;
+    }
+    case SHCNE_MEDIAREMOVED:        // media removed event
+    {
       SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
       remove_device(szPath);
-			break;
-		}
-		case SHCNE_DRIVEADD:        // media removed event
-		{
+      break;
+    }
+    case SHCNE_DRIVEADD:        // media removed event
+    {
 
-			DWORD	drivetype;
-			HANDLE	hDevice;
-			PSTORAGE_DEVICE_DESCRIPTOR pDevDesc;
+      DWORD  drivetype;
+      HANDLE  hDevice;
+      PSTORAGE_DEVICE_DESCRIPTOR pDevDesc;
 
-			SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
-			// "X:\"    -> for GetDriveType
-			char szRootPath[] = "X:\\";
-			szRootPath[0] = szPath[0];
-			// "X:"     -> for QueryDosDevice
-			char szDevicePath[] = "X:";
-			szDevicePath[0] = szPath[0];
+      SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
+      // "X:\"    -> for GetDriveType
+      char szRootPath[] = "X:\\";
+      szRootPath[0] = szPath[0];
+      // "X:"     -> for QueryDosDevice
+      char szDevicePath[] = "X:";
+      szDevicePath[0] = szPath[0];
 
-			// "\\.\X:" -> to open the volume
-			char szVolumeAccessPath[] = "\\\\.\\X:";
-			szVolumeAccessPath[4] = szPath[0];
+      // "\\.\X:" -> to open the volume
+      char szVolumeAccessPath[] = "\\\\.\\X:";
+      szVolumeAccessPath[4] = szPath[0];
       drivetype = GetDriveTypeA(szRootPath);
       switch (drivetype)
       {
-      case 0:					// The drive type cannot be determined.
+      case 0:          // The drive type cannot be determined.
         debug(D_NOTICE, "The drive type cannot be determined!");
         break;
-      case 1:					// The root directory does not exist.
+      case 1:          // The root directory does not exist.
         debug(D_NOTICE, "The root directory does not exist!");
         break;
-      case DRIVE_CDROM:		// The drive is a CD-ROM drive.
+      case DRIVE_CDROM:    // The drive is a CD-ROM drive.
         debug(D_NOTICE, "The drive is a CD-ROM drive.");
-      case DRIVE_REMOVABLE:	// The drive can be removed from the drive.
-      case DRIVE_FIXED:		// The disk cannot be removed from the drive.
-      case DRIVE_REMOTE:		// The drive is a remote (network) drive.
+      case DRIVE_REMOVABLE:  // The drive can be removed from the drive.
+      case DRIVE_FIXED:    // The disk cannot be removed from the drive.
+      case DRIVE_REMOTE:    // The drive is a remote (network) drive.
         if (GetPhysicalDriveParams(szVolumeAccessPath, drivetype, szPath) != NO_ERROR)
         {
           add_device(dev_decode_type(BusTypeUsb, drivetype),
@@ -651,22 +570,22 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
             "UnknowenDevice");
         }
 
-      case DRIVE_RAMDISK:		// The drive is a RAM disk.
+      case DRIVE_RAMDISK:    // The drive is a RAM disk.
         break;
       }
-			break;
-		}
-		case SHCNE_DRIVEREMOVED:        // media removed event
-		{
-			SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
-      remove_device(szPath);
-			break;
+      break;
     }
-		}
-		break;
-	}
-	}
-	return 0;
+    case SHCNE_DRIVEREMOVED:        // media removed event
+    {
+      SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
+      remove_device(szPath);
+      break;
+    }
+    }
+    break;
+  }
+  }
+  return 0;
 
 }
 
@@ -681,65 +600,65 @@ static void device_change(void *param) {
 }
 
 void pinit_device_monitor() {
-	HWND hWnd = NULL;
-	WNDCLASSEXA wx;
+  HWND hWnd = NULL;
+  WNDCLASSEXA wx;
 
   debug(D_NOTICE, "waiting for new devices..");
   debug_execute(D_NOTICE, padd_monitor_callback(arivalmonitor));
 
-	ZeroMemory(&wx, sizeof(wx));
+  ZeroMemory(&wx, sizeof(wx));
 
-	wx.cbSize = sizeof(WNDCLASSEXA);
-	wx.lpfnWndProc = (WNDPROC) (message_handler);
-	wx.hInstance = (HINSTANCE) (GetModuleHandleA(0));
-	wx.style = CS_HREDRAW | CS_VREDRAW;
-	//wx.hInstance = GetModuleHandle(0);
-	wx.hbrBackground = (HBRUSH)(COLOR_WINDOW);
-	wx.lpszClassName = CLS_NAME;
+  wx.cbSize = sizeof(WNDCLASSEXA);
+  wx.lpfnWndProc = (WNDPROC) (message_handler);
+  wx.hInstance = (HINSTANCE) (GetModuleHandleA(0));
+  wx.style = CS_HREDRAW | CS_VREDRAW;
+  //wx.hInstance = GetModuleHandle(0);
+  wx.hbrBackground = (HBRUSH)(COLOR_WINDOW);
+  wx.lpszClassName = CLS_NAME;
 
-	if (RegisterClassExA(&wx)) {
-		hWnd = CreateWindowA(CLS_NAME, L"DevNotifWnd", WS_ICONIC,
-			0, 0, CW_USEDEFAULT, 0, HWND_MESSAGE,
-			NULL, GetModuleHandleA(0), NULL);//(void*)&guid);
-	}
+  if (RegisterClassExA(&wx)) {
+    hWnd = CreateWindowA(CLS_NAME, L"DevNotifWnd", WS_ICONIC,
+      0, 0, CW_USEDEFAULT, 0, HWND_MESSAGE,
+      NULL, GetModuleHandleA(0), NULL);//(void*)&guid);
+  }
 
-	if (hWnd == NULL) {
+  if (hWnd == NULL) {
     debug(D_NOTICE, "Could not create message window! %d", GetLastError());
-		return 1;
-	}
+    return 1;
+  }
 
-	ULONG m_ulSHChangeNotifyRegister;
-	LPITEMIDLIST ppidl;
-	if (SHGetSpecialFolderLocation(hWnd, CSIDL_DESKTOP, &ppidl) == NOERROR)
-	{
-		SHChangeNotifyEntry shCNE;
-		shCNE.pidl = ppidl;
-		shCNE.fRecursive = TRUE;
+  ULONG m_ulSHChangeNotifyRegister;
+  LPITEMIDLIST ppidl;
+  if (SHGetSpecialFolderLocation(hWnd, CSIDL_DESKTOP, &ppidl) == NOERROR)
+  {
+    SHChangeNotifyEntry shCNE;
+    shCNE.pidl = ppidl;
+    shCNE.fRecursive = TRUE;
 
-		m_ulSHChangeNotifyRegister = SHChangeNotifyRegister(hWnd,
-			SHCNE_DISKEVENTS,
-			SHCNE_MEDIAINSERTED | SHCNE_MEDIAREMOVED | SHCNE_DRIVEREMOVED | SHCNE_DRIVEADD,
-			WM_USER_MEDIACHANGED,
-			1,
-			&shCNE); 
+    m_ulSHChangeNotifyRegister = SHChangeNotifyRegister(hWnd,
+      SHCNE_DISKEVENTS,
+      SHCNE_MEDIAINSERTED | SHCNE_MEDIAREMOVED | SHCNE_DRIVEREMOVED | SHCNE_DRIVEADD,
+      WM_USER_MEDIACHANGED,
+      1,
+      &shCNE); 
 
     if (m_ulSHChangeNotifyRegister == 0) {
       debug(D_NOTICE, "Shell Device Notify registration CD failed with error %d", GetLastError());
       return 2;
     }
-	}
-	else
+  }
+  else
     debug(D_NOTICE, "Shell Device Notify registration CD failed with error %d ", GetLastError());
 
 
   debug(D_NOTICE, "waiting for new devices..");
 
-	MSG msg;
-	while (GetMessage(&msg, NULL, 0, 0))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-	return 0;
+  MSG msg;
+  while (GetMessage(&msg, NULL, 0, 0))
+  {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+  return 0;
 }
 #endif  //P_OS_WINDOWS

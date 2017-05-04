@@ -238,9 +238,9 @@ void print_stree()
 
 void print_device_info(pdevice_extended_info *ret ) {
   if (ret->isextended )
-    printf("DeviceID [%s]\n", ret->device_id );
-  printf("File system path [%s] \n", ret->filesystem_path);
+    debug(D_NOTICE, "DeviceID [%s]\n", ret->device_id );
+  debug(D_NOTICE,"File system path [%s] \n", ret->filesystem_path);
   if (ret->isextended ) 
-    printf("Vendor [%s] / Product [%s] \n", ret->vendor, ret->product);
-  printf("Type [%d]; Extended [%d] \n",ret->type, ret->isextended);
+    debug(D_NOTICE,"Vendor [%s] / Product [%s] \n", ret->vendor, ret->product);
+  debug(D_NOTICE,"Type [%d]; Extended [%d] \n",ret->type, ret->isextended);
 }
