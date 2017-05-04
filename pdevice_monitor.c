@@ -94,6 +94,18 @@ void pnotify_device_callbacks(pdevice_extended_info * param, device_event event)
     psync_run_thread1("Device notifications", do_notify_device_callbacks_out, (void*)param);
 }
 
+static void arivalmonitor(device_event event, void * device_info_)
+{
+
+  if (event == Dev_Event_arrival)
+    printf("Device arrived. \n{");
+  else
+    printf("Device removed. \n{");
+  if (device_info_)
+    print_device_info((pdevice_extended_info *)device_info_);
+  printf("}\n");
+}
+
 #ifdef P_OS_LINUX
 #include <libudev.h>
 #include <stdio.h>
@@ -448,18 +460,6 @@ void monitor_usb_dev () {
   return;       
 }
 
-void arivalmonitor(device_event event, void * device_info_)
-{
-  
-  if (event == Dev_Event_arrival)
-    printf("Device arrived. \n{");
-  else 
-    printf("Device removed. \n{");
-  if (device_info_)
-    print_device_info((pdevice_extended_info *) device_info_);
-  printf("}\n");
-}
-
 void pinit_device_monitor() {
   //scan_all_usb_dev();
   debug(D_NOTICE, "waiting for new devices..");
@@ -511,7 +511,7 @@ static pdevice_types dev_decode_type(STORAGE_BUS_TYPE bustype, DWORD drivetype) 
   }
 }
 
-static DWORD GetPhysicalDriveParams(char *strdrivepath IN, DWORD drivetype, char *fspath, void **deviceinfo OUT)
+static DWORD GetPhysicalDriveParams(char *strdrivepath IN, DWORD drivetype, char *fspath)
 {
   DWORD dwRet = NO_ERROR;
 
@@ -556,12 +556,12 @@ static DWORD GetPhysicalDriveParams(char *strdrivepath IN, DWORD drivetype, char
   }
 
   STORAGE_DEVICE_DESCRIPTOR* pDeviceDescriptor = (STORAGE_DEVICE_DESCRIPTOR*)pOutBuffer;
-  *deviceinfo = new_dev_ext_info(fspath,
+  add_device(dev_decode_type(pDeviceDescriptor->BusType, drivetype),
+    1,
+    fspath,
     (char *)(pOutBuffer + pDeviceDescriptor->VendorIdOffset),
     (char *)(pOutBuffer + pDeviceDescriptor->ProductIdOffset),
-    (char *)(pOutBuffer + pDeviceDescriptor->SerialNumberOffset),
-    dev_decode_type(pDeviceDescriptor->BusType, drivetype),
-    Dev_Event_arrival);
+    (char *)(pOutBuffer + pDeviceDescriptor->SerialNumberOffset));
 
   // Do cleanup and return
   free (pOutBuffer);
@@ -593,21 +593,20 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
 	{
 		SHNOTIFYSTRUCT *shns = (SHNOTIFYSTRUCT *)wparam;
 		char szPath[MAX_PATH];
-    ZeroMemory(&szPath, MAX_PATH);
+		ZeroMemory(&szPath, MAX_PATH);
 		switch (lparam)
 		{
 		case SHCNE_MEDIAINSERTED:        // media inserted event
 		{
 			SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
-      pdevice_info *p = new_dev_info(szPath, Dev_Types_CDRomMedia, Dev_Event_arrival);
-      notify_callbacks_free(p);
+      //pdevice_info *p = new_dev_info(szPath, Dev_Types_CDRomMedia, Dev_Event_arrival);
+			add_device(Dev_Types_CDRomMedia, 0, szPath, "","", "CDROM");
 			break;
 		}
 		case SHCNE_MEDIAREMOVED:        // media removed event
 		{
       SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
-      pdevice_info *p = new_dev_info(szPath, Dev_Types_CDRomMedia, Dev_Event_removed);
-      notify_callbacks_free(p);
+      remove_device(szPath);
 			break;
 		}
 		case SHCNE_DRIVEADD:        // media removed event
@@ -616,7 +615,6 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
 			DWORD	drivetype;
 			HANDLE	hDevice;
 			PSTORAGE_DEVICE_DESCRIPTOR pDevDesc;
-      pdevice_extended_info *deviceinfo = NULL;
 
 			SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
 			// "X:\"    -> for GetDriveType
@@ -643,12 +641,16 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
       case DRIVE_REMOVABLE:	// The drive can be removed from the drive.
       case DRIVE_FIXED:		// The disk cannot be removed from the drive.
       case DRIVE_REMOTE:		// The drive is a remote (network) drive.
-        GetPhysicalDriveParams(szVolumeAccessPath, drivetype, szDevicePath, &deviceinfo);
-        if (deviceinfo)
-          notify_callbacks_free(deviceinfo);
-        else
-          notify_callbacks_free(new_dev_info(szPath, dev_decode_type(BusTypeUsb, drivetype), Dev_Event_arrival));
-        break;
+        if (GetPhysicalDriveParams(szVolumeAccessPath, drivetype, szPath) != NO_ERROR)
+        {
+          add_device(dev_decode_type(BusTypeUsb, drivetype),
+            0,
+            szDevicePath,
+            "",
+            "",
+            "UnknowenDevice");
+        }
+
       case DRIVE_RAMDISK:		// The drive is a RAM disk.
         break;
       }
@@ -657,10 +659,9 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
 		case SHCNE_DRIVEREMOVED:        // media removed event
 		{
 			SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
-      pdevice_info *p = new_dev_info(szPath, Dev_Types_UsbFixedDisk, Dev_Event_removed);
-      notify_callbacks_free(p);
+      remove_device(szPath);
 			break;
-		}
+    }
 		}
 		break;
 	}
@@ -671,7 +672,7 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
 
 static void device_change(void *param) {
   pdevice_info * pd = (pdevice_info*)param;
-  debug(D_NOTICE, "type [%d] event [%d] size [%d] isex [%d] fspath [%s] \n", pd->type, pd->event, pd->size, pd->isextended, pd->filesystem_path);
+  debug(D_NOTICE, "type [%d] isex [%d] fspath [%s] \n", pd->type, pd->isextended, pd->filesystem_path);
   if (pd->isextended) {
     pdevice_extended_info* pde = (pdevice_extended_info*)param;
     debug(D_NOTICE, "vendor [%s] product [%s] deviceid [%s] \n", pde->vendor, pde->product, pde->device_id);
@@ -682,9 +683,10 @@ static void device_change(void *param) {
 void pinit_device_monitor() {
 	HWND hWnd = NULL;
 	WNDCLASSEXA wx;
-#ifdef P_DEVICE_VERBOSE
-  padd_monitor_callback(device_change);
-#endif
+
+  debug(D_NOTICE, "waiting for new devices..");
+  debug_execute(D_NOTICE, padd_monitor_callback(arivalmonitor));
+
 	ZeroMemory(&wx, sizeof(wx));
 
 	wx.cbSize = sizeof(WNDCLASSEXA);
