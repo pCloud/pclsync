@@ -16,4 +16,5 @@ void filter_unconnected_device ();
 void init_devices ();
 void print_stree();
 void print_device_info(pdevice_extended_info *ret );
+
 #endif //_PDEVICE_MAP

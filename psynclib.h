@@ -436,6 +436,38 @@ typedef struct {
   link_info_t entries[];
 } plink_info_list_t;
 
+typedef enum {
+  Dev_Types_UsbRemovableDisk = 1,
+  Dev_Types_UsbFixedDisk,
+  Dev_Types_CDRomMedia,
+  Dev_Types_CameraDevice,
+  Dev_Types_AndroidDevice,
+  Dev_Types_Unknown
+} pdevice_types;
+
+typedef enum {
+  Dev_Event_arrival = 1,
+  Dev_Event_removed
+} device_event;
+
+typedef struct {
+  pdevice_types type;
+  const char *device_id;
+  int isextended;
+  const char *filesystem_path;
+  const char *vendor;
+  const char *product;
+  int enabled;
+  int connected;
+} pdevice_item_t;
+
+typedef struct {
+  uint32_t entrycnt;
+  pdevice_item_t entries[];
+} pdevice_item_list_t;
+
+typedef void(*device_event_callback)(device_event event, void * device_info_);
+
 typedef struct {
   const char *name;
   uint64_t created;
@@ -1206,6 +1238,20 @@ void psync_update_cryptostatus();
 psync_folderid_t psync_check_and_create_folder (const char * path);
 
 char * psync_get_token();
+
+/*Devices monitoring functions 
+ */
+
+//Adds device monitoring callback which is invoked every time a new not disabled device arrives.
+void padd_device_monitor_callback(device_event_callback callback);
+//Lists all stored devices 
+pdevice_item_list_t * psync_list_devices(char **err /*OUT*/);
+//Enables device. This info is stored in the database so will be present after restart.
+void penable_device(const char* device_id);
+//Disable device
+void pdisable_device(const char* device_id);
+//Remove db information about device 
+void premove_device(const char* device_id);
 
 #ifdef __cplusplus
 }

@@ -19,7 +19,7 @@ device_event_callback *device_callbacks;
 int device_clbsize = 10;
 int device_clbnum = 0;
 
-void padd_monitor_callback(device_event_callback callback) {
+void padd_device_monitor_callback(device_event_callback callback) {
   if (callback) {
     if (device_clbnum == 0)
       device_callbacks = (device_event_callback *)psync_malloc(sizeof(device_event_callback)*device_clbsize);
@@ -382,7 +382,7 @@ void monitor_usb_dev () {
 
 void pinit_device_monitor() {
   debug(D_NOTICE, "waiting for new devices..");
-  debug_execute(D_NOTICE, padd_monitor_callback(arivalmonitor));
+  debug_execute(D_NOTICE, padd_device_monitor_callback(arivalmonitor));
   monitor_usb_dev();
 }
 

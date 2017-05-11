@@ -5,6 +5,7 @@
 #include <search.h>
 #include <string.h>
 #include <stdio.h>
+#include <stddef.h>
 
 extern device_event_callback *device_callbacks;
 
@@ -153,6 +154,17 @@ void add_device (pdevice_types type, int isextended,const char *filesystem_path,
   //pdevice_extended_info* data = construct_deviceininfo(Dev_Types_Unknown, 1, "/test/", "test",  "just a test", "test device id");
   
   if (isextended) {
+    uint64_t enabled = 1;
+    psync_uint_row row;
+    psync_sql_res * res=psync_sql_query("SELECT enabled FROM devices WHERE id = ? ");
+    psync_sql_bind_string(res, 1, device_id);
+    if ((row=psync_sql_fetch_rowint(res)))
+        enabled = row[0];
+    psync_sql_free_result(res);
+
+    if (!enabled)
+      return;
+    
     q=psync_sql_prep_statement("INSERT or replace INTO devices (id, last_path, type, vendor, product, connected, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)");
     psync_sql_bind_string(q, 1, device_id);
     psync_sql_bind_string(q, 2, filesystem_path);
@@ -243,4 +255,64 @@ void print_device_info(pdevice_extended_info *ret ) {
   if (ret->isextended ) 
     debug(D_NOTICE,"Vendor [%s] / Product [%s] \n", ret->vendor, ret->product);
   debug(D_NOTICE,"Type [%d]; Extended [%d] \n",ret->type, ret->isextended);
+}
+
+
+void penable_device(const char* device_id) {
+  psync_sql_res *q=psync_sql_prep_statement("UPDATE devices SET enabled = 1 WHERE id = ? ");
+  psync_sql_bind_string(q, 1, device_id);
+  psync_sql_run_free(q);
+}
+
+void pdisable_device(const char* device_id) {
+  psync_sql_res *q=psync_sql_prep_statement("UPDATE devices SET enabled = 0 WHERE id = ? ");
+  psync_sql_bind_string(q, 1, device_id);
+  psync_sql_run_free(q);
+}
+
+void premove_device(const char* device_id) {
+  psync_sql_res *q=psync_sql_prep_statement("DELETE FROM devices WHERE id = ? ");
+  psync_sql_bind_string(q, 1, device_id);
+  psync_sql_run_free(q);
+}
+
+static int create_device_item(psync_list_builder_t *builder, void *element, psync_variant_row row){
+  pdevice_item_t *device;
+  const char *str;
+  size_t len;
+
+  device=(pdevice_item_t *)element;
+  str=psync_get_lstring(row[0], &len);
+  device->device_id=str;
+  psync_list_add_lstring_offset(builder, offsetof(pdevice_item_t, device_id), len);
+  str=psync_get_lstring(row[1], &len);
+  device->filesystem_path=str;
+  psync_list_add_lstring_offset(builder, offsetof(pdevice_item_t, filesystem_path), len);
+  device->type = psync_get_number(row[2]);
+  str=psync_get_lstring(row[3], &len);
+  device->vendor=str;
+  psync_list_add_lstring_offset(builder, offsetof(pdevice_item_t, vendor), len);
+  str=psync_get_lstring(row[4], &len);
+  device->product=str;
+  psync_list_add_lstring_offset(builder, offsetof(pdevice_item_t, product), len);
+  device->connected = psync_get_number(row[5]);
+  device->enabled = psync_get_number(row[6]);
+  return 0;
+}
+
+
+pdevice_item_list_t * psync_list_devices(char **err /*OUT*/) {
+
+  psync_list_builder_t *builder;
+  psync_sql_res *res;
+  *err = 0;
+
+  builder=psync_list_builder_create(sizeof(pdevice_item_t), offsetof(pdevice_item_list_t, entries));
+
+  res=psync_sql_query_rdlock("SELECT id, last_path, type, vendor, product, connected, enabled FROM devices");
+
+  psync_list_bulder_add_sql(builder, res, create_device_item);
+
+
+  return (pdevice_item_list_t *)psync_list_builder_finalize(builder);
 }
