@@ -604,7 +604,7 @@ void pinit_device_monitor() {
   WNDCLASSEXA wx;
 
   debug(D_NOTICE, "waiting for new devices..");
-  debug_execute(D_NOTICE, padd_monitor_callback(arivalmonitor));
+  debug_execute(D_NOTICE, padd_device_monitor_callback(arivalmonitor));
 
   ZeroMemory(&wx, sizeof(wx));
 
