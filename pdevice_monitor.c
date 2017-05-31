@@ -109,7 +109,227 @@ static void arivalmonitor(device_event event, void * device_info_)
 
 #ifdef P_OS_MACOSX
 
+#include <CoreFoundation/CoreFoundation.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/IOMessage.h>
+#include <IOKit/IOCFPlugIn.h>
+#include <IOKit/usb/IOUSBLib.h>
+
+//#include <IOKit/IOUBSD.h>
+//#include <IOKit/IOSerialKeys.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct MyPrivateData {
+    io_object_t notification;
+    const char* systempath;
+} MyPrivateData;
+
+ 
+static IONotificationPortRef    gNotifyPort;
+static io_iterator_t            gAddedIter;
+static CFRunLoopRef             gRunLoop;
+#define SYSPATHRPT 4
+#define USLEEPINT 500000
+
+
+static char * get_device_mountpoit (const char* device){
+  FILE *fp;
+  char path[1035];
+  int buffsize = 63 + strlen(device);
+  char* result = 0;
+  char* command = (char *)malloc(buffsize);
+  //sprintf (command, "cat /proc/mounts |grep %s | awk '{print $2}'", device);
+  sprintf (command, "system_profiler SPUSBDataType | grep '%s' -A 25 |grep -E 'Mount'", device);
+  
+  /* Open the command for reading. */
+  fp = popen(command, "r");
+  if (fp == NULL) {
+    fprintf(stderr, "Failed to run command\n" );
+    return 0;
+  }
+
+  /* Read the output a line at a time - output it. */
+  while (fgets(path, sizeof(path)-1, fp) != NULL) {
+    if (result) {
+      int ressize = strlen(result);
+      result = (char*)realloc(result, ressize + strlen (path)+1);
+      strcat(result, path);
+    }else {
+      result = (char*)malloc(strlen (path)+1);
+      result = strdup(path);
+    }
+  }
+  
+  if (result) {
+    char * resol = result;
+    result = strdup(strchr(result, '/'));
+    free (resol);
+  }
+  /* close */
+  pclose(fp);
+  free(command);
+  return result;
+
+}
+
+void DeviceNotification(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
+{
+  kern_return_t   kr;
+  MyPrivateData   *privateDataRef = (MyPrivateData *) refCon;
+  
+  if (messageType == kIOMessageServiceIsTerminated) {
+    //fprintf(stderr, "Device removed.\n");
+    //fprintf(stderr, "privateDataRef->deviceName: %s \n", privateDataRef->systempath);
+    remove_device(privateDataRef->systempath);
+    free(privateDataRef->systempath);
+    kr = IOObjectRelease(privateDataRef->notification);
+    free(privateDataRef);
+  }
+}
+
+void DeviceAdded(void *refCon, io_iterator_t iterator)
+{
+  kern_return_t kr;
+  io_service_t usbDevice;
+  IOCFPlugInInterface **plugInInterface = NULL;
+  SInt32 score;
+  HRESULT res;
+  int rpt = 0;
+  CFStringRef     deviceNameAsCFString;
+
+  while ((usbDevice = IOIteratorNext(iterator))) {
+    io_name_t deviceName;
+    MyPrivateData *privateDataRef = NULL;
+    UInt32 locationID;
+    io_string_t pathName;
+    const char* systemPath;
+    
+    privateDataRef = malloc(sizeof(MyPrivateData));
+    bzero(privateDataRef, sizeof(MyPrivateData));
+
+
+  // Ought to work now, regardless of version of OSX being ran.
+    CFStringRef usbSerial = (CFStringRef) IORegistryEntrySearchCFProperty(
+      usbDevice,
+      kIOServicePlane,
+      CFSTR("USB Serial Number"),
+      kCFAllocatorDefault,
+      kIORegistryIterateRecursively
+      );
+    
+    if (!usbSerial) continue;
+    
+    // Ought to work now, regardless of version of OSX being ran.
+    CFStringRef usbVendor = (CFStringRef) IORegistryEntrySearchCFProperty(
+      usbDevice,
+      kIOServicePlane,
+      CFSTR("USB Vendor Name"),
+      kCFAllocatorDefault,
+      kIORegistryIterateRecursively
+      );
+    
+    if (!usbVendor) continue;
+    
+    
+    // Get the USB device's name.
+    kr = IORegistryEntryGetName(usbDevice, deviceName);
+    if (KERN_SUCCESS != kr) {
+      deviceName[0] = '\0';
+    }
+    
+    deviceNameAsCFString = CFStringCreateWithCString(kCFAllocatorDefault, deviceName, 
+                                                    kCFStringEncodingASCII);
+    
+    if (!deviceNameAsCFString) continue;
+    
+    //fprintf(stderr, "Device added.\n");
+   // fprintf(stderr, "Serial number: "); CFShow(usbSerial);
+    //fprintf(stderr, "Vendor: "); CFShow(usbVendor);
+   // fprintf(stderr, "Product: "); CFShow(deviceNameAsCFString);
+    
+    systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
+    
+    while  (!systemPath ) {
+      if (rpt > SYSPATHRPT) {
+        debug(D_NOTICE, "Giving up ... \n");
+        break;
+      }
+      //fprintf(stderr, "Sleeping ... \n");
+      usleep(USLEEPINT);
+      systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
+      rpt++;
+    }
+    
+    if (!systemPath) continue;
+    
+    privateDataRef->systempath = systemPath;
+    
+    add_device (Dev_Types_UsbRemovableDisk, 1, systemPath, 
+                CFStringGetCStringPtr( usbVendor, kCFStringEncodingMacRoman ),
+                CFStringGetCStringPtr( deviceNameAsCFString, kCFStringEncodingMacRoman ),
+                CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
+    
+    // Register for an interest notification of this device being removed. Use a reference to our
+    // private data as the refCon which will be passed to the notification callback.
+    kr = IOServiceAddInterestNotification(gNotifyPort,                      // notifyPort
+                                          usbDevice,                        // service
+                                          kIOGeneralInterest,               // interestType
+                                          DeviceNotification,               // callback
+                                          privateDataRef,                   // refCon
+                                          &(privateDataRef->notification)   // notification
+                                          );
+                                            
+    if (KERN_SUCCESS != kr) {
+      printf("IOServiceAddInterestNotification returned 0x%08x.\n", kr);
+    }
+    
+    // Done with this USB device; release the reference added by IOIteratorNext
+    kr = IOObjectRelease(usbDevice);
+  }
+}
+ 
 void pinit_device_monitor() {
+    CFMutableDictionaryRef  matchingDict;
+    CFRunLoopSourceRef      runLoopSource;
+    CFNumberRef             numberRef;
+    kern_return_t           kr;
+
+ 
+    matchingDict = IOServiceMatching(kIOUSBDeviceClassName);    // Interested in instances of class
+                                                                // IOUSBDevice and its subclasses
+    if (matchingDict == NULL) {
+        debug(D_NOTICE, "IOServiceMatching returned NULL.\n");
+        return -1;
+    }
+    
+
+    gNotifyPort = IONotificationPortCreate(kIOMasterPortDefault);
+    runLoopSource = IONotificationPortGetRunLoopSource(gNotifyPort);
+    
+    gRunLoop = CFRunLoopGetCurrent();
+    CFRunLoopAddSource(gRunLoop, runLoopSource, kCFRunLoopDefaultMode);
+    
+    // Now set up a notification to be called when a device is first matched by I/O Kit.
+    kr = IOServiceAddMatchingNotification(gNotifyPort,                  // notifyPort
+                                          kIOFirstMatchNotification,    // notificationType
+                                          matchingDict,                 // matching
+                                          DeviceAdded,                  // callback
+                                          NULL,                         // refCon
+                                          &gAddedIter                   // notification
+                                          );        
+                                            
+    // Iterate once to get already-present devices and arm the notification    
+    DeviceAdded(NULL, gAddedIter);  
+
+    // Start the run loop. Now we'll receive notifications.
+    debug(D_NOTICE, "Starting run loop.\n\n");
+    CFRunLoopRun();
+        
+    // We should never get here
+    debug(D_NOTICE, "Unexpectedly back from CFRunLoopRun()!");
+    return 0;
 }
 
 #endif //P_OS_MACOSX
