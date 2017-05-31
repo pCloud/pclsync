@@ -180,8 +180,8 @@ void DeviceNotification(void *refCon, io_service_t service, natural_t messageTyp
   MyPrivateData   *privateDataRef = (MyPrivateData *) refCon;
   
   if (messageType == kIOMessageServiceIsTerminated) {
-    //fprintf(stderr, "Device removed.\n");
-    //fprintf(stderr, "privateDataRef->deviceName: %s \n", privateDataRef->systempath);
+    debug(D_NOTICE, "Device removed.\n");
+    debug(D_NOTICE, "privateDataRef->deviceName: %s \n", privateDataRef->systempath);
     remove_device(privateDataRef->systempath);
     free(privateDataRef->systempath);
     kr = IOObjectRelease(privateDataRef->notification);
@@ -244,10 +244,10 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
     
     if (!deviceNameAsCFString) continue;
     
-    //fprintf(stderr, "Device added.\n");
-   // fprintf(stderr, "Serial number: "); CFShow(usbSerial);
-    //fprintf(stderr, "Vendor: "); CFShow(usbVendor);
-   // fprintf(stderr, "Product: "); CFShow(deviceNameAsCFString);
+    debug(D_NOTICE,"Device added.\n");
+    debug(D_NOTICE, "Serial number: "); CFShow(usbSerial);
+    debug(D_NOTICE, "Vendor: "); CFShow(usbVendor);
+    debug(D_NOTICE, "Product: "); CFShow(deviceNameAsCFString);
     
     systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
     
@@ -256,7 +256,7 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
         debug(D_NOTICE, "Giving up ... \n");
         break;
       }
-      //fprintf(stderr, "Sleeping ... \n");
+      debug(D_NOTICE,"Sleeping ... \n");
       usleep(USLEEPINT);
       systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
       rpt++;
@@ -270,6 +270,8 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
                 CFStringGetCStringPtr( usbVendor, kCFStringEncodingMacRoman ),
                 CFStringGetCStringPtr( deviceNameAsCFString, kCFStringEncodingMacRoman ),
                 CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
+    
+    debug(D_NOTICE, "filesystempath %s", systemPath);
     
     // Register for an interest notification of this device being removed. Use a reference to our
     // private data as the refCon which will be passed to the notification callback.
