@@ -130,7 +130,7 @@ typedef struct MyPrivateData {
 static IONotificationPortRef    gNotifyPort;
 static io_iterator_t            gAddedIter;
 static CFRunLoopRef             gRunLoop;
-#define SYSPATHRPT 4
+#define SYSPATHRPT 10
 #define USLEEPINT 500000
 
 
