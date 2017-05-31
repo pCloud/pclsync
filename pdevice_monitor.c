@@ -9,9 +9,10 @@
 
 #define P_DEVICE_VERBOSE
 
+
 #ifdef P_OS_POSIX
 #define _strdup strdup
-#endif
+#endif //P_OS_POSIX
 
 #define MAX_LOADSTRING 100
 device_event_callback *device_callbacks;
@@ -105,6 +106,13 @@ static void arivalmonitor(device_event event, void * device_info_)
     print_device_info((pdevice_extended_info *)device_info_);
   debug(D_NOTICE,"}\n");
 }
+
+#ifdef P_OS_MACOSX
+
+void pinit_device_monitor() {
+}
+
+#endif //P_OS_MACOSX
 
 #ifdef P_OS_LINUX
 #include <libudev.h>
