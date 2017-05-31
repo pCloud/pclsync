@@ -616,7 +616,7 @@ int api_error_result(binresult* res) {
 
 
 void psync_update_cryptostatus(){
- if (psync_my_auth && psync_my_auth[0]) {
+ if (psync_my_auth[0]) {
     binresult *res;
     const binresult *cres;
     psync_sql_res *q;

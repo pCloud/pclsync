@@ -118,16 +118,17 @@ void do_notify_device_callbacks_out(void * param) {
 pdevice_extended_info* construct_deviceininfo( pdevice_types type, int isextended,const char *filesystem_path, 
                                                const char *vendor,const char *product,const char *device_id){
   pdevice_extended_info* ret = (pdevice_extended_info*)psync_malloc(sizeof(pdevice_extended_info));
+  memset(ret, 0, sizeof(pdevice_extended_info));
   if (isextended && device_id){
-    ret->vendor = psync_strdup(vendor);
-    ret->product = psync_strdup(product);
+    if (vendor)
+      ret->vendor = psync_strdup(vendor);
+    if (product)
+      ret->product = psync_strdup(product);
     ret->device_id = psync_strdup(device_id);
   }
   ret->type = type;
   ret->isextended = isextended;
   ret->filesystem_path = psync_strdup(filesystem_path);
-  ret->next = NULL;
-  ret->prev = NULL;
   return ret;
 }
 
