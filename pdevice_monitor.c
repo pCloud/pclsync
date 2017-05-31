@@ -301,7 +301,7 @@ void pinit_device_monitor() {
                                                                 // IOUSBDevice and its subclasses
     if (matchingDict == NULL) {
         debug(D_NOTICE, "IOServiceMatching returned NULL.\n");
-        return -1;
+        return;
     }
     
 
@@ -329,7 +329,7 @@ void pinit_device_monitor() {
         
     // We should never get here
     debug(D_NOTICE, "Unexpectedly back from CFRunLoopRun()!");
-    return 0;
+    return;
 }
 
 #endif //P_OS_MACOSX
