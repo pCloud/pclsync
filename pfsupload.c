@@ -926,7 +926,7 @@ int upload_modify(uint64_t taskid, psync_folderid_t folderid, const char *name, 
         reqs++;
         coff+=len;
         if (len>=64*1024*1024) {
-          timeout=len/(20*1024);
+          timeout=len/(10*1024);
           if (timeout<PSYNC_SOCK_READ_TIMEOUT*1000)
             timeout=PSYNC_SOCK_READ_TIMEOUT*1000;
           while (reqs) {
