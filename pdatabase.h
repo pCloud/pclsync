@@ -269,8 +269,8 @@ UPDATE setting SET value=17 WHERE id='dbversion'; \
 UPDATE setting SET value=0 WHERE id='diffid'; \
 COMMIT;",
 "BEGIN;\
-CREATE TABLE IF NOT EXISTS devices (id VARCHAR(2048) PRIMARY KEY, last_path VARCHAR(1024), type INTEGER, vendor VARCHAR(2048), product VARCHAR(2048),\
-  connected INTEGER, enabled INTEGER);\
+CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY, last_path VARCHAR(1024), type INTEGER, vendor VARCHAR(2048), product VARCHAR(2048), device_id VARCHAR(4096),\
+  connected INTEGER, enabled INTEGER); \
 COMMIT;"
 };
 
