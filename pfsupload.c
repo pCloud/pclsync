@@ -836,7 +836,7 @@ int upload_modify(uint64_t taskid, psync_folderid_t folderid, const char *name, 
   psync_socket *api;
   binresult *res;
   psync_sql_res *sql;
-  int64_t fsize, coff, len;
+  int64_t fsize, coff, len, timeout;
   uint64_t result, asize;
   psync_uploadid_t uploadid;
   psync_uint_t reqs;
@@ -910,7 +910,7 @@ int upload_modify(uint64_t taskid, psync_folderid_t folderid, const char *name, 
   reqs=0;
   cinterval=psync_interval_tree_get_first(tree);
   while (coff<fsize){
-    if (reqs && (psync_socket_pendingdata(api) || psync_select_in(&api->sock, 1, 0)!=SOCKET_ERROR)){
+    if (reqs && (psync_socket_pendingdata(api) || psync_select_in(&api->sock, 1, reqs>=16?PSYNC_SOCK_READ_TIMEOUT*1000:0)!=SOCKET_ERROR)){
       if ((ret=upload_modify_read_req(api))){
         if (unlikely_log(ret==PSYNC_NET_PERMFAIL))
           perm_fail_upload_task(taskid);
@@ -925,6 +925,25 @@ int upload_modify(uint64_t taskid, psync_folderid_t folderid, const char *name, 
         ret=upload_modify_send_copy_from(api, uploadid, coff, len, fileid, hash, &asize);
         reqs++;
         coff+=len;
+        if (len>=64*1024*1024) {
+          timeout=len/(20*1024);
+          if (timeout<PSYNC_SOCK_READ_TIMEOUT*1000)
+            timeout=PSYNC_SOCK_READ_TIMEOUT*1000;
+          while (reqs) {
+            if (psync_socket_pendingdata(api) || psync_select_in(&api->sock, 1, timeout)!=SOCKET_ERROR){
+              if ((ret=upload_modify_read_req(api))){
+                if (unlikely_log(ret==PSYNC_NET_PERMFAIL))
+                  perm_fail_upload_task(taskid);
+                goto err3;
+              }
+              else
+                reqs--;
+            }
+            else{
+              goto err3;
+            }
+          }
+        }
       }
       else if (cinterval->from<=coff && cinterval->to>coff){
         ret=upload_modify_send_local(api, uploadid, coff, i64min(cinterval->to, fsize)-coff, fd, &asize);

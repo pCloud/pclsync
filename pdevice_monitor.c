@@ -91,7 +91,7 @@ void padd_device_monitor_callback(device_event_callback callback) {
 void pnotify_device_callbacks(pdevice_extended_info * param, device_event event) {
   if (event == Dev_Event_arrival)
     psync_run_thread1("Device notifications", do_notify_device_callbacks_in, (void*)param);
-  else 
+  else
     psync_run_thread1("Device notifications", do_notify_device_callbacks_out, (void*)param);
 }
 
@@ -126,7 +126,7 @@ typedef struct MyPrivateData {
     const char* systempath;
 } MyPrivateData;
 
- 
+
 static IONotificationPortRef    gNotifyPort;
 static io_iterator_t            gAddedIter;
 static CFRunLoopRef             gRunLoop;
@@ -142,7 +142,7 @@ static char * get_device_mountpoit (const char* device){
   char* command = (char *)malloc(buffsize);
   //sprintf (command, "cat /proc/mounts |grep %s | awk '{print $2}'", device);
   sprintf (command, "system_profiler SPUSBDataType | grep '%s' -A 25 |grep -E 'Mount'", device);
-  
+
   /* Open the command for reading. */
   fp = popen(command, "r");
   if (fp == NULL) {
@@ -161,7 +161,7 @@ static char * get_device_mountpoit (const char* device){
       result = strdup(path);
     }
   }
-  
+
   if (result) {
     char * resol = result;
     result = strdup(strchr(result, '/'));
@@ -178,7 +178,7 @@ void DeviceNotification(void *refCon, io_service_t service, natural_t messageTyp
 {
   kern_return_t   kr;
   MyPrivateData   *privateDataRef = (MyPrivateData *) refCon;
-  
+
   if (messageType == kIOMessageServiceIsTerminated) {
     //fprintf(stderr, "Device removed.\n");
     //fprintf(stderr, "privateDataRef->deviceName: %s \n", privateDataRef->systempath);
@@ -205,7 +205,7 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
     UInt32 locationID;
     io_string_t pathName;
     const char* systemPath;
-    
+
     privateDataRef = malloc(sizeof(MyPrivateData));
     bzero(privateDataRef, sizeof(MyPrivateData));
 
@@ -218,9 +218,9 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
       kCFAllocatorDefault,
       kIORegistryIterateRecursively
       );
-    
+
     if (!usbSerial) continue;
-    
+
     // Ought to work now, regardless of version of OSX being ran.
     CFStringRef usbVendor = (CFStringRef) IORegistryEntrySearchCFProperty(
       usbDevice,
@@ -229,28 +229,28 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
       kCFAllocatorDefault,
       kIORegistryIterateRecursively
       );
-    
+
     if (!usbVendor) continue;
-    
-    
+
+
     // Get the USB device's name.
     kr = IORegistryEntryGetName(usbDevice, deviceName);
     if (KERN_SUCCESS != kr) {
       deviceName[0] = '\0';
     }
-    
-    deviceNameAsCFString = CFStringCreateWithCString(kCFAllocatorDefault, deviceName, 
+
+    deviceNameAsCFString = CFStringCreateWithCString(kCFAllocatorDefault, deviceName,
                                                     kCFStringEncodingASCII);
-    
+
     if (!deviceNameAsCFString) continue;
-    
+
     //fprintf(stderr, "Device added.\n");
    // fprintf(stderr, "Serial number: "); CFShow(usbSerial);
     //fprintf(stderr, "Vendor: "); CFShow(usbVendor);
    // fprintf(stderr, "Product: "); CFShow(deviceNameAsCFString);
-    
+
     systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
-    
+
     while  (!systemPath ) {
       if (rpt < SYSPATHRPT) {
         debug(D_NOTICE, "Giving up ... \n");
@@ -261,16 +261,16 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
       systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
       rpt++;
     }
-    
+
     if (!systemPath) continue;
-    
+
     privateDataRef->systempath = systemPath;
-    
-    add_device (Dev_Types_UsbRemovableDisk, 1, systemPath, 
+
+    add_device (Dev_Types_UsbRemovableDisk, 1, systemPath,
                 CFStringGetCStringPtr( usbVendor, kCFStringEncodingMacRoman ),
                 CFStringGetCStringPtr( deviceNameAsCFString, kCFStringEncodingMacRoman ),
                 CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
-    
+
     // Register for an interest notification of this device being removed. Use a reference to our
     // private data as the refCon which will be passed to the notification callback.
     kr = IOServiceAddInterestNotification(gNotifyPort,                      // notifyPort
@@ -280,37 +280,37 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
                                           privateDataRef,                   // refCon
                                           &(privateDataRef->notification)   // notification
                                           );
-                                            
+
     if (KERN_SUCCESS != kr) {
       printf("IOServiceAddInterestNotification returned 0x%08x.\n", kr);
     }
-    
+
     // Done with this USB device; release the reference added by IOIteratorNext
     kr = IOObjectRelease(usbDevice);
   }
 }
- 
+
 void pinit_device_monitor() {
     CFMutableDictionaryRef  matchingDict;
     CFRunLoopSourceRef      runLoopSource;
     CFNumberRef             numberRef;
     kern_return_t           kr;
 
- 
+
     matchingDict = IOServiceMatching(kIOUSBDeviceClassName);    // Interested in instances of class
                                                                 // IOUSBDevice and its subclasses
     if (matchingDict == NULL) {
         debug(D_NOTICE, "IOServiceMatching returned NULL.\n");
         return;
     }
-    
+
 
     gNotifyPort = IONotificationPortCreate(kIOMasterPortDefault);
     runLoopSource = IONotificationPortGetRunLoopSource(gNotifyPort);
-    
+
     gRunLoop = CFRunLoopGetCurrent();
     CFRunLoopAddSource(gRunLoop, runLoopSource, kCFRunLoopDefaultMode);
-    
+
     // Now set up a notification to be called when a device is first matched by I/O Kit.
     kr = IOServiceAddMatchingNotification(gNotifyPort,                  // notifyPort
                                           kIOFirstMatchNotification,    // notificationType
@@ -318,15 +318,15 @@ void pinit_device_monitor() {
                                           DeviceAdded,                  // callback
                                           NULL,                         // refCon
                                           &gAddedIter                   // notification
-                                          );        
-                                            
-    // Iterate once to get already-present devices and arm the notification    
-    DeviceAdded(NULL, gAddedIter);  
+                                          );
+
+    // Iterate once to get already-present devices and arm the notification
+    DeviceAdded(NULL, gAddedIter);
 
     // Start the run loop. Now we'll receive notifications.
     debug(D_NOTICE, "Starting run loop.\n\n");
     CFRunLoopRun();
-        
+
     // We should never get here
     debug(D_NOTICE, "Unexpectedly back from CFRunLoopRun()!");
     return;
@@ -347,7 +347,7 @@ static char * get_device_mountpoit (const char* device){
   char* result = 0;
   char* command = (char *)malloc(buffsize);
   sprintf (command, "cat /proc/mounts |grep %s | awk '{print $2}'", device);
-  
+
   /* Open the command for reading. */
   fp = popen(command, "r");
   if (fp == NULL) {
@@ -366,7 +366,7 @@ static char * get_device_mountpoit (const char* device){
       result = strdup(path);
     }
   }
-  
+
   if (result) {
     int i = strlen(result) - 1;
     if ((i > 0) && (result[i] == '\n')) result[i] = '\0';
@@ -402,7 +402,7 @@ get_child(struct udev* udevs, struct udev_device* parent, const char* subsystem)
 }
 
 /*static void print_scsi (struct udev *udevs,struct udev_device *scsi) {
- struct udev_device *usb; 
+ struct udev_device *usb;
  struct udev_device* scsi_disk;
  struct udev_device* block;
  usb = udev_device_get_parent_with_subsystem_devtype(
@@ -412,13 +412,13 @@ get_child(struct udev* udevs, struct udev_device* parent, const char* subsystem)
   if (!usb) {
     return;
   }
-  
- 
+
+
  block = get_child(udevs, scsi, "block");
  scsi_disk = get_child(udevs, scsi, "scsi_disk");
  if (block && scsi_disk) {
 
-  
+
   debug(D_NOTICE, "Device Node Path: %s\n", udev_device_get_devnode(block));
   debug(D_NOTICE, "  VID/PID: %s %s\n",
           udev_device_get_sysattr_value(usb,"idVendor"),
@@ -430,7 +430,7 @@ get_child(struct udev* udevs, struct udev_device* parent, const char* subsystem)
             udev_device_get_sysattr_value(usb, "serial"));
   debug(D_NOTICE, "   Subsystem: %s\n", udev_device_get_subsystem(scsi));
   debug(D_NOTICE,"   Devtype: %s\n", udev_device_get_devtype(scsi));
-  
+
   udev_device_unref(block);
   udev_device_unref(scsi_disk);
  }
@@ -465,12 +465,13 @@ void enumerate_devices (struct udev *udev,device_event event) {
   struct udev_list_entry *devices,*dev_list_entry;
   struct udev_device *dev;
   const char * subsystem;
-  struct udev_device *usb; 
+  struct udev_device *usb;
   struct udev_device* scsi_disk;
   struct udev_device* block;
-  
+  int i;
+
   init_devices();
-  for (int i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
+  for (i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
     enumerate = udev_enumerate_new(udev);
     subsystem = subsystems[i];
     if (subsystem[0] == 's') {
@@ -481,20 +482,20 @@ void enumerate_devices (struct udev *udev,device_event event) {
     }
     udev_enumerate_scan_devices(enumerate);
     devices = udev_enumerate_get_list_entry(enumerate);
-    
+
     udev_list_entry_foreach(dev_list_entry, devices) {
       const char *path;
 
       path = udev_list_entry_get_name(dev_list_entry);
       dev = udev_device_new_from_syspath(udev, path);
-      
+
       if (subsystem[0] == 's') {
         usb = udev_device_get_parent_with_subsystem_devtype(
                   dev,
                   "usb",
                   "usb_device");
         if (!usb)
-          continue; 
+          continue;
         block = get_child(udev, dev, "block");
         const char *device_path = udev_device_get_devnode(block);
         if (!device_path)
@@ -520,7 +521,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
         if (!dev1) {
           continue;
         }
-        
+
         const char *device_path = udev_device_get_devnode(dev);
         if (!device_path)
           continue;
@@ -538,7 +539,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
   }
   /* Free the enumerator object */
     filter_unconnected_device ();
-  
+
 }
 
 void monitor_usb_dev () {
@@ -546,18 +547,18 @@ void monitor_usb_dev () {
   struct udev_device *dev;
   struct udev_monitor *mon;
   int fd;
-  
+
   /* Create the udev object */
   udev = udev_new();
   if (!udev) {
     debug(D_WARNING, "Can't create udev\n");
     return;
   }
-  
+
   enumerate_devices(udev, Dev_Event_arrival);
-  
+
   //debug_execute(D_NOTICE, print_stree());
-  
+
   /* Set up a monitor to monitor hidraw devices */
   mon = udev_monitor_new_from_netlink(udev, "udev");
   udev_monitor_filter_add_match_subsystem_devtype(mon, "scsi_disk", NULL);
@@ -566,7 +567,7 @@ void monitor_usb_dev () {
   /* Get the file descriptor (fd) for the monitor.
      This fd will get passed to select() */
   fd = udev_monitor_get_fd(mon);
-  
+
   while (1) {
     /* Set up the call to select(). In this case, select() will
        only operate on a single file descriptor, the one
@@ -576,17 +577,17 @@ void monitor_usb_dev () {
     fd_set fds;
     struct timeval tv;
     int ret;
-    
+
     FD_ZERO(&fds);
     FD_SET(fd, &fds);
     tv.tv_sec = 0;
     tv.tv_usec = 0;
-    
+
     ret = select(fd+1, &fds, NULL, NULL, &tv);
-    
+
     /* Check if our file descriptor has received data. */
     if (ret > 0 && FD_ISSET(fd, &fds)) {
-      
+
       /* Make the call to receive the device.
          select() ensured that this will not block. */
       dev = udev_monitor_receive_device(mon);
@@ -596,7 +597,7 @@ void monitor_usb_dev () {
       }
       else {
        // printf("No Device from receive_device(). An error occured.\n");
-      }         
+      }
     }
     usleep(250*1000);
     fflush(stdout);
@@ -605,7 +606,7 @@ void monitor_usb_dev () {
 
   udev_unref(udev);
 
-  return;       
+  return;
 }
 
 void pinit_device_monitor() {
@@ -637,7 +638,7 @@ void pinit_device_monitor() {
 #define MAX_LOADSTRING 100
 
 static pdevice_types dev_decode_type(STORAGE_BUS_TYPE bustype, DWORD drivetype) {
- 
+
   switch (bustype) {
   case BusTypeScsi:
   case BusTypeiScsi:
@@ -719,8 +720,8 @@ static DWORD GetPhysicalDriveParams(char *strdrivepath IN, DWORD drivetype, char
 
 
 typedef struct {
-  DWORD dwItem1;    // dwItem1 contains the previous PIDL or name of the folder. 
-  DWORD dwItem2;    // dwItem2 contains the new PIDL or name of the folder. 
+  DWORD dwItem1;    // dwItem1 contains the previous PIDL or name of the folder.
+  DWORD dwItem2;    // dwItem2 contains the new PIDL or name of the folder.
 } SHNOTIFYSTRUCT;
 
 static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lparam)
@@ -868,7 +869,7 @@ void pinit_device_monitor() {
       SHCNE_MEDIAINSERTED | SHCNE_MEDIAREMOVED | SHCNE_DRIVEREMOVED | SHCNE_DRIVEADD,
       WM_USER_MEDIACHANGED,
       1,
-      &shCNE); 
+      &shCNE);
 
     if (m_ulSHChangeNotifyRegister == 0) {
       debug(D_NOTICE, "Shell Device Notify registration CD failed with error %d", GetLastError());
