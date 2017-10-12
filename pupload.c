@@ -821,7 +821,8 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
       else
         respwait++;
     }
-    while (respwait && (le->type==PSYNC_URANGE_LAST || psync_socket_pendingdata(api) || psync_select_in(&api->sock, 1, 0)!=SOCKET_ERROR)){
+    while (respwait && (le->type==PSYNC_URANGE_LAST || psync_socket_pendingdata(api) ||
+                        psync_select_in(&api->sock, 1, respwait>=PSYNC_MAX_PENDING_UPLOAD_REQS?PSYNC_SOCK_READ_TIMEOUT*1000:0)!=SOCKET_ERROR)){
       res=get_result(api);
       if (unlikely_log(!res))
         goto err1;

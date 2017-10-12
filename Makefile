@@ -4,7 +4,7 @@ RANLIB=ranlib
 #USESSL=openssl
 USESSL=mbed
 
-CFLAGS=-Wall -Wpointer-arith -O2 -g -mtune=core2
+CFLAGS=-Wall -Wpointer-arith -O2 -g -mtune=core2 -I../sqlite
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -fsanitize=address -mtune=core2
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I../sqlite/ -fPIC
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -mtune=core2 -I../sqlite -pg -m32 -D_FILE_OFFSET_BITS=64
