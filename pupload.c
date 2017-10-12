@@ -807,6 +807,15 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
   }
   rid=0;
   respwait=0;
+  psync_list_for_each_element(le, &rlist, psync_upload_range_list_t, list)
+    if ((le->type==PSYNC_URANGE_COPY_FILE || le->type==PSYNC_URANGE_COPY_UPLOAD) && le->len>PSYNC_MAX_COPY_FROM_REQ) {
+      le2=psync_new(psync_upload_range_list_t);
+      *le2=*le;
+      le->len=PSYNC_MAX_COPY_FROM_REQ;
+      le2->off+=PSYNC_MAX_COPY_FROM_REQ;
+      le2->len-=PSYNC_MAX_COPY_FROM_REQ;
+      psync_list_add_after(&le->list, &le2->list);
+    }
   le=psync_new(psync_upload_range_list_t);
   le->type=PSYNC_URANGE_LAST;
   psync_list_add_tail(&rlist, &le->list);
