@@ -1566,6 +1566,7 @@ static int psync_net_get_checksums(psync_socket *api, psync_fileid_t fileid, uin
   psync_http_close(http);
   memset(cs->next, 0, sizeof(uint32_t)*i);
   *checksums=cs;
+  debug(D_NOTICE, "checksums downloaded");
   return PSYNC_NET_OK;
 err1:
   psync_free(cs);

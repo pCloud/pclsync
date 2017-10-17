@@ -225,7 +225,7 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
                          P_NUM("os", P_OS_ID)};
-      res=send_command(sock, "login", params);
+      res=send_command(sock, "userinfo", params);
     }
     psync_free(device);
     if (unlikely_log(!res)){

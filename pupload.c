@@ -716,6 +716,7 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
   binresult *res;
   psync_sql_res *sql;
   psync_uint_row row;
+  psync_str_row srow;
   psync_full_result_int *fr;
   psync_upload_range_list_t *le, *le2;
   psync_list rlist;
@@ -783,18 +784,64 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
     return -1;
   }
   if (likely(uploadoffset<fsize)){
+    uint64_t fileid, hash;
+    fileid=0;
     sql=psync_sql_query_rdlock("SELECT fileid, hash FROM localfile WHERE id=?");
     psync_sql_bind_uint(sql, 1, localfileid);
     if ((row=psync_sql_fetch_rowint(sql))){
-      uint64_t fileid, hash;
       fileid=row[0];
       hash=row[1];
       psync_sql_free_result(sql);
+      debug(D_NOTICE, "fileid(local)=%lu", (unsigned long)fileid);
       if (fileid && psync_net_scan_file_for_blocks(api, &rlist, fileid, hash, fd)==PSYNC_NET_TEMPFAIL)
         goto err1;
     }
     else
       psync_sql_free_result(sql);
+    if (!fileid) {
+      debug(D_NOTICE, "looking for folderid=%lu and name=%s in file", (unsigned long)folderid, name);
+      sql=psync_sql_query_rdlock("SELECT id, hash FROM file WHERE parentfolderid=? AND name=?");
+      psync_sql_bind_uint(sql, 1, folderid);
+      psync_sql_bind_string(sql, 2, name);
+      if ((row=psync_sql_fetch_rowint(sql))){
+        fileid=row[0];
+        hash=row[1];
+        psync_sql_free_result(sql);
+        debug(D_NOTICE, "fileid(file)=%lu", (unsigned long)fileid);
+        if (fileid && psync_net_scan_file_for_blocks(api, &rlist, fileid, hash, fd)==PSYNC_NET_TEMPFAIL)
+          goto err1;
+      }
+      else
+        psync_sql_free_result(sql);
+
+    }
+    if (!fileid) {
+      sql=psync_sql_query_rdlock("SELECT name FROM localfile WHERE id=?");
+      psync_sql_bind_uint(sql, 1, localfileid);
+      if ((srow=psync_sql_fetch_rowstr(sql))){
+        char *nname=psync_strdup(srow[0]);
+        psync_sql_free_result(sql);
+        debug(D_NOTICE, "looking for folderid=%lu and name=%s in file", (unsigned long)folderid, nname);
+        sql=psync_sql_query_rdlock("SELECT id, hash FROM file WHERE parentfolderid=? AND name=?");
+        psync_sql_bind_uint(sql, 1, folderid);
+        psync_sql_bind_string(sql, 2, nname);
+        if ((row=psync_sql_fetch_rowint(sql))){
+          fileid=row[0];
+          hash=row[1];
+          psync_sql_free_result(sql);
+          debug(D_NOTICE, "fileid(file, local name)=%lu", (unsigned long)fileid);
+          if (fileid && psync_net_scan_file_for_blocks(api, &rlist, fileid, hash, fd)==PSYNC_NET_TEMPFAIL){
+            psync_free(nname);
+            goto err1;
+          }
+        }
+        else
+          psync_sql_free_result(sql);
+        psync_free(nname);
+      }
+      else
+        psync_sql_free_result(sql);
+    }
     sql=psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 5");
     psync_sql_bind_uint(sql, 1, localfileid);
     fr=psync_sql_fetchall_int(sql);
