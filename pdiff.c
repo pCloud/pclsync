@@ -122,7 +122,7 @@ static binresult *get_userinfo_user_digest(psync_socket *sock, const char *usern
                       P_BOOL("getapiserver", 1),
                       P_BOOL("cryptokeyssign", 1),
                       P_NUM("os", P_OS_ID)};
-  return send_command(sock, "userinfo", params);
+  return send_command(sock, "login", params);
 }
 
 static binresult *get_userinfo_user_pass(psync_socket *sock, const char *username, const char *password, const char *device){
@@ -215,7 +215,7 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
                          P_NUM("os", P_OS_ID)};
-      res=send_command(sock, "userinfo", params);
+      res=send_command(sock, "login", params);
       }
     else {
       binparam params[]={P_STR("timeformat", "timestamp"),
@@ -225,7 +225,7 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
                          P_NUM("os", P_OS_ID)};
-      res=send_command(sock, "userinfo", params);
+      res=send_command(sock, "login", params);
     }
     psync_free(device);
     if (unlikely_log(!res)){
