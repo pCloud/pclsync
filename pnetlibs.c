@@ -2035,23 +2035,17 @@ static int check_range_for_blocks(psync_file_checksums *checksums, psync_file_ch
       }
       blockidx=psync_net_hash_has_adler_and_sha1(hash, checksums, adler, sha1bin);
       if (blockidx){
-        debug(D_NOTICE, "got block, buffoff+outbyteoff=%lu, off=%lu, blockidx=%u", buffoff+outbyteoff, off, (unsigned)(blockidx-1));
-        if (IS_DEBUG){
-          char sha1hex[PSYNC_SHA1_DIGEST_HEXLEN+2];
-          psync_binhex(sha1hex, sha1bin, PSYNC_SHA1_DIGEST_LEN);
-          sha1hex[PSYNC_SHA1_DIGEST_HEXLEN]=0;
-          debug(D_NOTICE, "found block for offset %lu sha %s", (unsigned long)(buffoff+outbyteoff), sha1hex);
-        }
+        //debug(D_NOTICE, "got block, buffoff+outbyteoff=%lu, off=%lu, blockidx=%u", buffoff+outbyteoff, off, (unsigned)(blockidx-1));
         if (buffoff+outbyteoff+checksums->blocksize<=len)
           blen=checksums->blocksize;
         else
           blen=len-buffoff-outbyteoff;
-        if (ur && ur->off+ur->len==(blockidx-1)*checksums->blocksize && ur->uploadoffset+ur->len==off+buffoff+outbyteoff)
+        if (ur && ur->off+ur->len==(uint64_t)(blockidx-1)*checksums->blocksize && ur->uploadoffset+ur->len==off+buffoff+outbyteoff)
           ur->len+=blen;
         else{
           ur=psync_new(psync_upload_range_list_t);
           ur->uploadoffset=off+buffoff+outbyteoff;
-          ur->off=(blockidx-1)*checksums->blocksize;
+          ur->off=(uint64_t)(blockidx-1)*checksums->blocksize;
           ur->len=blen;
           psync_list_add_tail(nr, &ur->list);
         }
