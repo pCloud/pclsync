@@ -3037,13 +3037,13 @@ int psync_set_crtime_mtime(const char *path, time_t crtime, time_t mtime){
 #elif defined(P_OS_MACOSX)
   if (crtime){
     struct attrlist attr;
-    struct timespec crtime;
+    struct timespec crtimes;
     memset(&attr, 0, sizeof(attr));
     attr.bitmapcount=ATTR_BIT_MAP_COUNT;
     attr.commonattr=ATTR_CMN_CRTIME;
-    crtime.tv_sec=ctime;
-    crtime.tv_nsec=0;
-    if (setattrlist(path, &attr, &crtime, sizeof(struct timespec), FSOPT_NOFOLLOW))
+    crtimes.tv_sec=crtime;
+    crtimes.tv_nsec=0;
+    if (setattrlist(path, &attr, &crtimes, sizeof(struct timespec), FSOPT_NOFOLLOW))
       return -1;
   }
   if (mtime){
@@ -3102,13 +3102,13 @@ int psync_set_crtime_mtime_by_fd(psync_file_t fd, const char *path, time_t crtim
 #elif defined(P_OS_MACOSX)
   if (crtime){
     struct attrlist attr;
-    struct timespec crtime;
+    struct timespec crtimes;
     memset(&attr, 0, sizeof(attr));
     attr.bitmapcount=ATTR_BIT_MAP_COUNT;
     attr.commonattr=ATTR_CMN_CRTIME;
-    crtime.tv_sec=ctime;
-    crtime.tv_nsec=0;
-    if (fsetattrlist(fd, &attr, &crtime, sizeof(struct timespec), FSOPT_NOFOLLOW))
+    crtimes.tv_sec=crtime;
+    crtimes.tv_nsec=0;
+    if (fsetattrlist(fd, &attr, &crtimes, sizeof(struct timespec), FSOPT_NOFOLLOW))
       return -1;
   }
   if (mtime){
