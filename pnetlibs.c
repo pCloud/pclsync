@@ -1878,15 +1878,8 @@ static void psync_net_check_file_for_blocks(const char *name, psync_file_checksu
         psync_sha1_final(sha1bin, &ctx);
       }
       off=psync_net_hash_has_adler_and_sha1(hash, checksums, adler, sha1bin);
-      if (off){
-        if (IS_DEBUG){
-          char sha1hex[PSYNC_SHA1_DIGEST_HEXLEN+2];
-          psync_binhex(sha1hex, sha1bin, PSYNC_SHA1_DIGEST_LEN);
-          sha1hex[PSYNC_SHA1_DIGEST_HEXLEN]=0;
-          debug(D_NOTICE, "found block for offset %lu sha %s", (unsigned long)(buffoff+outbyteoff), sha1hex);
-        }
+      if (off)
         psync_net_block_match_found(hash, checksums, blockactions, off, fileidx, buffoff+outbyteoff);
-      }
     }
     if (unlikely((inbyteoff&blockmask)==0)){
       if (outbyteoff>=bufferlen){
@@ -2042,7 +2035,13 @@ static int check_range_for_blocks(psync_file_checksums *checksums, psync_file_ch
       }
       blockidx=psync_net_hash_has_adler_and_sha1(hash, checksums, adler, sha1bin);
       if (blockidx){
-//        debug(D_NOTICE, "got block, buffoff+outbyteoff=%lu, off=%lu, blockidx=%u", buffoff+outbyteoff, off, (unsigned)(blockidx-1));
+        debug(D_NOTICE, "got block, buffoff+outbyteoff=%lu, off=%lu, blockidx=%u", buffoff+outbyteoff, off, (unsigned)(blockidx-1));
+        if (IS_DEBUG){
+          char sha1hex[PSYNC_SHA1_DIGEST_HEXLEN+2];
+          psync_binhex(sha1hex, sha1bin, PSYNC_SHA1_DIGEST_LEN);
+          sha1hex[PSYNC_SHA1_DIGEST_HEXLEN]=0;
+          debug(D_NOTICE, "found block for offset %lu sha %s", (unsigned long)(buffoff+outbyteoff), sha1hex);
+        }
         if (buffoff+outbyteoff+checksums->blocksize<=len)
           blen=checksums->blocksize;
         else
