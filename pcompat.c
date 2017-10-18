@@ -2243,6 +2243,14 @@ int psync_socket_writeall_thread(psync_socket *sock, const void *buff, int num){
     return psync_socket_writeall_plain_thread(sock, buff, num);
 }
 
+static void copy_address(struct sockaddr_storage *dst, const struct sockaddr *src) {
+  dst->ss_family=src->sa_family;
+  if (src->sa_family==AF_INET)
+    memcpy(&((struct sockaddr_in *)dst)->sin_addr, &((const struct sockaddr_in *)src)->sin_addr, sizeof(((struct sockaddr_in *)dst)->sin_addr));
+  else
+    memcpy(&((struct sockaddr_in6 *)dst)->sin6_addr, &((const struct sockaddr_in6 *)src)->sin6_addr, sizeof(((struct sockaddr_in6 *)dst)->sin6_addr));
+}
+
 psync_interface_list_t *psync_list_ip_adapters(){
   psync_interface_list_t *ret;
   size_t cnt;
@@ -2275,13 +2283,9 @@ psync_interface_list_t *psync_list_ip_adapters(){
           sz=sizeof(struct sockaddr_in);
         else
           sz=sizeof(struct sockaddr_in6);
-        memcpy(&ret->interfaces[cnt].address, addr->ifa_addr, sz);
-        memcpy(&ret->interfaces[cnt].broadcast, addr->ifa_broadaddr, sz);
-        memcpy(&ret->interfaces[cnt].netmask, addr->ifa_netmask, sz);
-        if (family==AF_INET)
-          ((struct sockaddr_in *)&ret->interfaces[cnt].address)->sin_port=0;
-        else
-          ((struct sockaddr_in6 *)&ret->interfaces[cnt].address)->sin6_port=0;
+        copy_address(&ret->interfaces[cnt].address, addr->ifa_addr);
+        copy_address(&ret->interfaces[cnt].broadcast, addr->ifa_broadaddr);
+        copy_address(&ret->interfaces[cnt].netmask, addr->ifa_netmask);
         ret->interfaces[cnt].addrsize=sz;
         cnt++;
       }
