@@ -2291,7 +2291,7 @@ static void psync_diff_adapter_hash(void *out){
   psync_fast_hash256_ctx ctx;
   psync_interface_list_t *list;
   list=psync_list_ip_adapters();
-  if (IS_DEBUG){
+/*  if (IS_DEBUG){
     char buffa[NI_MAXHOST], buffb[NI_MAXHOST], buffn[NI_MAXHOST];
     size_t i;
     for (i=0; i<list->interfacecnt; i++) {
@@ -2301,7 +2301,7 @@ static void psync_diff_adapter_hash(void *out){
       debug(D_NOTICE, "%s %s %s", buffa, buffb, buffn);
     }
     debug(D_NOTICE, "list end");
-  }
+  } */
   psync_fast_hash256_init(&ctx);
   psync_fast_hash256_update(&ctx, list->interfaces, list->interfacecnt*sizeof(psync_interface_t));
   psync_fast_hash256_final(out, &ctx);
