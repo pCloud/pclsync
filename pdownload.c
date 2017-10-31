@@ -1229,7 +1229,7 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   }
   else {
     psync_run_thread1("download file", task_run_download_file_thread, dt);
-    psync_milisleep(750); // do not run downloads strictly in parallel so we reuse some API connections
+    psync_milisleep(25); // do not run downloads strictly in parallel so we reuse some API connections
   }
   return -1;
 }
