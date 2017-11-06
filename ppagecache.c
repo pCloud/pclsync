@@ -2638,6 +2638,18 @@ int psync_pagecache_read_unmodified_encrypted_locked(psync_openfile_t *of, char 
         ret=ap->waiter->error;
     }
     if (ap->parent && !ret){
+#ifdef P_NO_CHECKSUM_CHECK
+#if IS_DEBUG
+      debug(D_NOTICE, "NOT checking chain checksums for pages %lu-%lu tree level %d",
+            (unsigned long)ap->firstpageid, (unsigned long)ap->firstpageid+ap->size/PSYNC_CRYPTO_AUTH_SIZE, (int)offsets.treelevels);
+      psync_fs_lock_file(of);
+      if (likely(of->hash==hash))
+        psync_interval_tree_add(&of->authenticatedints, ap->firstpageid*PSYNC_FS_PAGE_SIZE, (ap->firstpageid+ap->size/PSYNC_CRYPTO_AUTH_SIZE)*PSYNC_FS_PAGE_SIZE);
+      pthread_mutex_unlock(&of->mutex);
+#else
+      abort();
+#endif
+#else
       psync_crypto_sector_auth_t sa;
       psync_crypto_auth_page *p;
       debug(D_NOTICE, "checking chain checksums for pages %lu-%lu tree level %d",
@@ -2667,6 +2679,7 @@ int psync_pagecache_read_unmodified_encrypted_locked(psync_openfile_t *of, char 
           psync_interval_tree_add(&of->authenticatedints, ap->firstpageid*PSYNC_FS_PAGE_SIZE, (ap->firstpageid+ap->size/PSYNC_CRYPTO_AUTH_SIZE)*PSYNC_FS_PAGE_SIZE);
         pthread_mutex_unlock(&of->mutex);
       }
+#endif
     }
     if (dp[i].waiter){
       wait_waiter(dp[i].waiter, hash, "data");
