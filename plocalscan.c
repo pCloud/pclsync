@@ -934,7 +934,7 @@ static void psync_do_wake_localscan(){
 }
 
 void psync_wake_localscan(){
-  psync_run_ratelimited("wake localscan", psync_do_wake_localscan, PSYNC_LOCALSCAN_MIN_INTERVAL, 1);
+  psync_run_ratelimited("wake localscan", psync_do_wake_localscan, PSYNC_LOCALSCAN_MIN_INTERVAL, 0);
 }
 
 void psync_restart_localscan(){
