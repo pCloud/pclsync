@@ -827,7 +827,8 @@ static int task_delete_file(psync_syncid_t syncid, psync_fileid_t fileid, const 
       }
       else
         debug(D_NOTICE, "local file %s deleted", name);
-      psync_send_event_by_path(PEVENT_LOCAL_FILE_DELETED, row[1], name, fileid, remotepath);
+//      threre are some reports about crashes here, comment out for now as events are not fully implemented anyway
+//      psync_send_event_by_path(PEVENT_LOCAL_FILE_DELETED, row[1], name, fileid, remotepath);
       psync_free(name);
     }
     stmt=psync_sql_prep_statement("DELETE FROM localfile WHERE id=?");
