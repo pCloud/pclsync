@@ -123,6 +123,7 @@ static char proxy_port[8];
 static int psync_page_size;
 
 static const char *psync_software_name="pCloudSync library "PSYNC_LIB_VERSION;
+static const char *psync_os_name=NULL;
 
 PSYNC_THREAD const char *psync_thread_name="no name";
 static pthread_mutex_t socket_mutex=PTHREAD_MUTEX_INITIALIZER;
@@ -3368,12 +3369,12 @@ int64_t psync_file_size(psync_file_t fd){
   else
     return st.st_size;
 #elif defined(P_OS_WINDOWS)
-   ULARGE_INTEGER li;
-   li.LowPart=GetFileSize(fd, &li.HighPart);
-   if (unlikely_log(li.LowPart==INVALID_FILE_SIZE && GetLastError()!=NO_ERROR))
-     return -1;
-   else
-     return li.QuadPart;
+  ULARGE_INTEGER li;
+  li.LowPart=GetFileSize(fd, &li.HighPart);
+  if (unlikely_log(li.LowPart==INVALID_FILE_SIZE && GetLastError()!=NO_ERROR))
+    return -1;
+  else
+    return li.QuadPart;
 #else
 #error "Function not implemented for your operating system"
 #endif
@@ -3381,6 +3382,18 @@ int64_t psync_file_size(psync_file_t fd){
 
 void psync_set_software_name(const char *snm){
   psync_software_name=snm;
+}
+
+void psync_set_os_name(const char *osnm){
+  psync_os_name=osnm;
+}
+
+char *psync_deviceos(){
+  return psync_os_name?psync_strdup(psync_os_name):psync_deviceid();
+}
+
+const char *psync_appname(){
+  return psync_software_name;
 }
 
 char *psync_deviceid(){
@@ -3426,7 +3439,7 @@ char *psync_deviceid(){
     psync_slprintf(versbuff, sizeof(versbuff), "%u.%u", (unsigned int)vmajor, (unsigned int)vminor);
     ver=versbuff;
   }
-  device=psync_strcat(hardware, ", Windows ", ver, ", ", psync_software_name, NULL);
+  device=psync_strcat(hardware, ", Windows ", ver, NULL);
 #elif defined(P_OS_MACOSX)
   struct utsname un;
   const char *ver;
@@ -3452,7 +3465,7 @@ char *psync_deviceid(){
   if (sysctlbyname("hw.model", modelname, &len, NULL, 0))
     psync_strlcpy(modelname, "Mac", sizeof(modelname));
   versbuff[sizeof(versbuff)-1]=0;
-  device=psync_strcat(modelname, ", ", ver, ", ", psync_software_name, NULL);
+  device=psync_strcat(modelname, ", ", ver, NULL);
 #elif defined(P_OS_LINUX)
   DIR *dh;
   struct dirent entry, *de;
@@ -3478,9 +3491,9 @@ char *psync_deviceid(){
       }
     closedir(dh);
   }
-  device=psync_strcat(hardware, ", Linux, ", psync_software_name, NULL);
+  device=psync_strcat(hardware, ", Linux", NULL);
 #else
-  device=psync_strcat("Desktop, ", psync_software_name, NULL);
+  device=psync_strcat("Desktop", NULL);
 #endif
   debug(D_NOTICE, "detected device: %s", device);
   return device;

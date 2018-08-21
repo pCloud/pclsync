@@ -509,6 +509,9 @@ int psync_file_truncate(psync_file_t fd);
 int64_t psync_file_size(psync_file_t fd);
 
 void psync_set_software_name(const char *snm);
+void psync_set_os_name(const char *osnm);
+char *psync_deviceos();
+const char *psync_appname();
 char *psync_deviceid();
 
 #if defined(P_OS_WINDOWS) && !defined(gmtime_r)

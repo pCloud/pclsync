@@ -161,6 +161,11 @@ void psync_set_software_string(const char *str){
   psync_set_software_name(str);
 }
 
+void psync_set_os_string(const char *str){
+  debug(D_NOTICE, "setting os name to %s", str);
+  psync_set_os_name(str);
+}
+
 static void psync_stop_crypto_on_sleep(){
   if (psync_setting_get_bool(_PS(sleepstopcrypto)) && psync_crypto_isstarted()){
     psync_cloud_crypto_stop();
@@ -378,7 +383,10 @@ void psync_logout(){
 }
 
 void psync_unlink(){
+  psync_sql_res *res;
+  char *deviceid;
   int ret;
+  deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
   debug(D_NOTICE, "unlink");
   psync_diff_lock();
   psync_stop_all_download();
@@ -400,11 +408,18 @@ void psync_unlink(){
   ret=psync_sql_close();
   psync_file_delete(psync_database);
   if (ret){
+    psync_free(deviceid);
     debug(D_ERROR, "failed to close database, exiting");
     exit(1);
   }
   psync_pagecache_clean_cache();
   psync_sql_connect(psync_database);
+  if (deviceid){
+    res=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('deviceid', ?)");
+    psync_sql_bind_string(res, 1, deviceid);
+    psync_sql_run_free(res);
+    psync_free(deviceid);
+  }
   /*
     psync_sql_res *res;
     psync_variant_row row;
@@ -470,6 +485,95 @@ void psync_unlink(){
   psync_resume_localscan();
   if (psync_fs_need_per_folder_refresh())
     psync_fs_refresh_folder(0);
+}
+
+static void check_tfa_result(uint64_t result){
+  if (result==2064){
+    if (psync_status_get(PSTATUS_TYPE_AUTH)==PSTATUS_AUTH_TFAERR){
+      psync_free(psync_my_2fa_token);
+      psync_my_2fa_token=NULL;
+      psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+    }
+  }
+}
+
+int psync_tfa_send_sms(char **country_code, char **phone_number){
+  if (country_code)
+    *country_code=NULL;
+  if (phone_number)
+    *phone_number=NULL;
+  if (!psync_my_2fa_token){
+    return -2;
+  }
+  else{
+    binresult *res;
+    uint64_t code;
+    binparam params[]={P_STR("token", psync_my_2fa_token)};
+    res=psync_api_run_command("tfa_sendcodeviasms", params);
+    if (!res)
+      return -1;
+    code=psync_find_result(res, "result", PARAM_NUM)->num;
+    if (code){
+      free(res);
+      check_tfa_result(code);
+      return code;
+    }
+    if (country_code || phone_number) {
+      const binresult *cres=psync_find_result(res, "phonedata", PARAM_HASH);
+      if (country_code)
+        *country_code=psync_strdup(psync_find_result(cres, "countrycode", PARAM_STR)->str);
+      if (phone_number)
+        *phone_number=psync_strdup(psync_find_result(cres, "msisdn", PARAM_STR)->str);
+    }
+    free(res);
+    return 0;
+  }
+}
+
+int psync_tfa_send_nofification(plogged_device_list_t **devices_list){
+  if (devices_list)
+    *devices_list=NULL;
+  if (!psync_my_2fa_token){
+    return -2;
+  }
+  else{
+    binresult *res;
+    uint64_t code;
+    binparam params[]={P_STR("token", psync_my_2fa_token)};
+    res=psync_api_run_command("tfa_sendcodeviasms", params);
+    if (!res)
+      return -1;
+    code=psync_find_result(res, "result", PARAM_NUM)->num;
+    if (code){
+      free(res);
+      check_tfa_result(code);
+      return code;
+    }
+    if (devices_list){
+      const binresult *cres=psync_find_result(res, "devices", PARAM_ARRAY);
+      psync_list_builder_t *builder;
+      uint32_t i;
+      builder=psync_list_builder_create(sizeof(plogged_device_t), offsetof(plogged_device_list_t, devices));
+      for (i=0; i<cres->length; i++){
+        plogged_device_t *dev=(plogged_device_t *)psync_list_bulder_add_element(builder);
+        const binresult *str=psync_find_result(cres->array[i], "name", PARAM_STR);
+        dev->type=psync_find_result(cres->array[i], "type", PARAM_NUM)->num;
+        dev->name=str->str;
+        psync_list_add_lstring_offset(builder, offsetof(plogged_device_t, name), str->length);
+      }
+      *devices_list=(plogged_device_list_t *)psync_list_builder_finalize(builder);
+    }
+    free(res);
+    return 0;
+  }
+}
+
+void psync_tfa_set_code(const char *code, int trusted, int is_recovery){
+  strncpy(psync_my_2fa_code, code, sizeof(psync_my_2fa_code));
+  psync_my_2fa_code[sizeof(psync_my_2fa_code)-1]=0;
+  psync_my_2fa_trust=trusted;
+  psync_my_2fa_code_type=is_recovery?2:1;
+  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 }
 
 psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotepath, psync_synctype_t synctype){
