@@ -544,7 +544,7 @@ int psync_tfa_send_nofification(plogged_device_list_t **devices_list){
     binresult *res;
     uint64_t code;
     binparam params[]={P_STR("token", psync_my_2fa_token)};
-    res=psync_api_run_command("tfa_sendcodeviasms", params);
+    res=psync_api_run_command("tfa_sendcodeviasysnotification", params);
     if (!res)
       return -1;
     code=psync_find_result(res, "result", PARAM_NUM)->num;
