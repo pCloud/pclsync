@@ -284,7 +284,7 @@ static psync_socket *get_connected_socket(){
       if (result==2297){
         psync_socket_close(sock);
         psync_free(psync_my_2fa_token);
-        psync_my_2fa_token=psync_strdup(psync_find_result(res, "token", PARAM_NUM)->str);
+        psync_my_2fa_token=psync_strdup(psync_find_result(res, "token", PARAM_STR)->str);
         psync_free(res);
         psync_my_2fa_code_type=0;
         psync_my_2fa_code[0]=0;

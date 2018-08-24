@@ -122,7 +122,7 @@ static char proxy_port[8];
 
 static int psync_page_size;
 
-static const char *psync_software_name="pCloudSync library "PSYNC_LIB_VERSION;
+static const char *psync_software_name=PSYNC_LIB_VERSION;
 static const char *psync_os_name=NULL;
 
 PSYNC_THREAD const char *psync_thread_name="no name";
