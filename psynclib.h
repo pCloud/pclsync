@@ -668,6 +668,8 @@ void psync_unlink();
  *    and call psync_tfa_set_code(code, trusted, 0)
  * 3) use recovery code, in this case the user provides the recovery code and application calls psync_tfa_set_code(code, trusted, 1)
  *
+ * psync_tfa_has_devices() - can be called after PSTATUS_TFA_REQUIRED is received and returns true if the user has other devices logged in
+ *
  * psync_tfa_send_sms() - sends SMS with two factor authentication code to the phone number on file. If parameters country_code and phone_number are not NULL,
  *  those are filled with user's phone number (split in two parts). In this case the caller needs to free the returned values. Returns -1 in case of network error or
  *  one of the positive error codes listed at https://docsqa2.pcloud.com/methods/auth/tfa_sendcodeviasms.html
@@ -683,6 +685,7 @@ void psync_unlink();
  *
  */
 
+int psync_tfa_has_devices();
 int psync_tfa_send_sms(char **country_code, char **phone_number);
 int psync_tfa_send_nofification(plogged_device_list_t **devices_list);
 void psync_tfa_set_code(const char *code, int trusted, int is_recovery);
