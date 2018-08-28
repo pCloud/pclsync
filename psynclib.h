@@ -688,6 +688,7 @@ void psync_unlink();
 int psync_tfa_has_devices();
 int psync_tfa_send_sms(char **country_code, char **phone_number);
 int psync_tfa_send_nofification(plogged_device_list_t **devices_list);
+plogged_device_list_t *psync_tfa_send_nofification_res();
 void psync_tfa_set_code(const char *code, int trusted, int is_recovery);
 
 /* psync_add_sync_by_path and psync_add_sync_by_folderid are to be used to add a folder to be synced,

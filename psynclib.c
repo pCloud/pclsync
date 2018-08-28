@@ -572,6 +572,14 @@ int psync_tfa_send_nofification(plogged_device_list_t **devices_list){
   }
 }
 
+plogged_device_list_t *psync_tfa_send_nofification_res(){
+  plogged_device_list_t *devices_list;
+  if (psync_tfa_send_nofification(&devices_list))
+    return NULL;
+  else
+    return devices_list;
+}
+
 void psync_tfa_set_code(const char *code, int trusted, int is_recovery){
   strncpy(psync_my_2fa_code, code, sizeof(psync_my_2fa_code));
   psync_my_2fa_code[sizeof(psync_my_2fa_code)-1]=0;
