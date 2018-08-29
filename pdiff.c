@@ -478,6 +478,8 @@ static psync_socket *get_connected_socket(){
     psync_free(pass);
     psync_free(psync_my_2fa_token);
     psync_my_2fa_token=NULL;
+    psync_my_2fa_code_type=0;
+    psync_my_2fa_code[0]=0;
     psync_free(deviceid);
     psync_sql_sync();
     return sock;
