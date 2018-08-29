@@ -3392,6 +3392,13 @@ char *psync_deviceos(){
   return psync_os_name?psync_strdup(psync_os_name):psync_deviceid();
 }
 
+char *psync_device_string(){
+  char *osname=psync_deviceos();
+  char *ret=psync_strcat(osname, ", ", psync_software_name, NULL);
+  free(osname);
+  return ret;
+}
+
 const char *psync_appname(){
   return psync_software_name;
 }

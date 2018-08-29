@@ -512,6 +512,7 @@ void psync_set_software_name(const char *snm);
 void psync_set_os_name(const char *osnm);
 char *psync_deviceos();
 const char *psync_appname();
+char *psync_device_string();
 char *psync_deviceid();
 
 #if defined(P_OS_WINDOWS) && !defined(gmtime_r)
