@@ -104,11 +104,13 @@ typedef struct {
 #define PSTATUS_CONNECTING             12
 #define PSTATUS_SCANNING               13
 #define PSTATUS_USER_MISMATCH          14
-#define PSTATUS_ACCOUT_EXPIRED         15
+#define PSTATUS_ACCOUNT_EXPIRED        15
 #define PSTATUS_TFA_REQUIRED           16
+#define PSTATUS_BAD_TFA_CODE           17
 
 
 #define PSTATUS_ACCOUT_TFAERR          PSTATUS_TFA_REQUIRED
+#define PSTATUS_ACCOUT_EXPIRED         PSTATUS_ACCOUNT_EXPIRED
 
 typedef struct pstatus_struct_ {
   const char *downloadstr; /* formatted string with the status of uploads */

@@ -294,7 +294,7 @@ static psync_socket *get_connected_socket(){
         psync_free(res);
         psync_my_2fa_code_type=0;
         psync_my_2fa_code[0]=0;
-        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_TFAERR);
+        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_TFAREQ);
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
         continue;
       }
@@ -303,7 +303,9 @@ static psync_socket *get_connected_socket(){
       if (result==2000 || result==2012 || result==2064 || result==2074){
         psync_my_2fa_code_type=0;
         psync_my_2fa_code[0]=0;
-        if (user && pass)
+        if (result==2012 || result==2064 || result==2074)
+          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
+        else if (user && pass)
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
         else
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADTOKEN);
