@@ -493,7 +493,7 @@ int psync_tfa_has_devices() {
 
 static void check_tfa_result(uint64_t result){
   if (result==2064){
-    if (psync_status_get(PSTATUS_TYPE_AUTH)==PSTATUS_AUTH_TFAERR){
+    if (psync_status_get(PSTATUS_TYPE_AUTH)==PSTATUS_AUTH_TFAREQ){
       psync_free(psync_my_2fa_token);
       psync_my_2fa_token=NULL;
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
