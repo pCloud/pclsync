@@ -501,6 +501,28 @@ static void check_tfa_result(uint64_t result){
   }
 }
 
+static char *binresult_to_str(const binresult *res){
+  if (!res)
+    return psync_strdup("field not found");
+  if (res->type==PARAM_STR)
+    return psync_strdup(res->str);
+  else if (res->type==PARAM_NUM){
+    char buff[32], *ptr;
+    uint64_t n;
+    ptr=buff+sizeof(buff);
+    *--ptr=0;
+    n=res->num;
+    do {
+      *--ptr='0'+n%10;
+      n/=10;
+    } while (n);
+    return psync_strdup(ptr);
+  }
+  else{
+    return psync_strdup("bad field type");
+  }
+}
+
 int psync_tfa_send_sms(char **country_code, char **phone_number){
   if (country_code)
     *country_code=NULL;
@@ -525,9 +547,9 @@ int psync_tfa_send_sms(char **country_code, char **phone_number){
     if (country_code || phone_number) {
       const binresult *cres=psync_find_result(res, "phonedata", PARAM_HASH);
       if (country_code)
-        *country_code=psync_strdup(psync_find_result(cres, "countrycode", PARAM_STR)->str);
+        *country_code=binresult_to_str(psync_get_result(cres, "countrycode"));
       if (phone_number)
-        *phone_number=psync_strdup(psync_find_result(cres, "msisdn", PARAM_STR)->str);
+        *phone_number=binresult_to_str(psync_get_result(cres, "msisdn"));
     }
     free(res);
     return 0;
