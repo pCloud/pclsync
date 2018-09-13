@@ -104,9 +104,10 @@ static void scanner_set_syncs_to_list(psync_list *lst){
   size_t lplen;
   psync_stat_t st;
   psync_deviceid_t deviceid;
+  psync_inode_t inodeid;
   psync_list_init(lst);
   syncmp=psync_fs_getmountpoint();
-  res=psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype, deviceid FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
+  res=psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype, deviceid, inode FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
   while ((row=psync_sql_fetch_row(res))){
     lp=psync_get_lstring(row[2], &lplen);
     if (unlikely(psync_stat(lp, &st))){
@@ -118,7 +119,8 @@ static void scanner_set_syncs_to_list(psync_list *lst){
       continue;
     }
     deviceid=psync_get_number(row[4]);
-    if (unlikely(deviceid!=psync_stat_device(&st))){
+    inodeid=psync_get_number(row[5]);
+    if (unlikely(deviceid!=psync_stat_device(&st) && inodeid!=psync_stat_inode(&st))){
       debug(D_WARNING, "folder %s deviceid is different, ignoring", lp);
       continue;
     }
