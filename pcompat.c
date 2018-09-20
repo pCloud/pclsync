@@ -3393,10 +3393,14 @@ char *psync_deviceos(){
 }
 
 char *psync_device_string(){
-  char *osname=psync_deviceos();
-  char *ret=psync_strcat(osname, ", ", psync_software_name, NULL);
-  free(osname);
-  return ret;
+//#if defined(P_OS_LINUX)
+//	char *osname=psync_deviceos();
+//	char *ret = psync_strcat(osname, ", ", psync_software_name, NULL);
+//	free(osname);
+//	return ret;
+//	
+//#endif
+  return psync_strcat(psync_deviceid(), ", ", psync_software_name, NULL);
 }
 
 const char *psync_appname(){
