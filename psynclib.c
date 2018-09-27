@@ -491,6 +491,10 @@ int psync_tfa_has_devices() {
   return psync_my_2fa_has_devices;
 }
 
+int psync_tfa_type() {
+	return psync_my_2fa_type;
+}
+
 static void check_tfa_result(uint64_t result){
   if (result==2064){
     if (psync_status_get(PSTATUS_TYPE_AUTH)==PSTATUS_AUTH_TFAREQ){

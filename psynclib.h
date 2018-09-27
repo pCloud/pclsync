@@ -672,6 +672,10 @@ void psync_unlink();
  *
  * psync_tfa_has_devices() - can be called after PSTATUS_TFA_REQUIRED is received and returns true if the user has other devices logged in
  *
+ * psync_tfa_type() - can be called after PSTATUS_TFA_REQUIRED is received and returns TFA type.
+ *  1 - msisdn 
+ *  2 - google authenticator
+ *
  * psync_tfa_send_sms() - sends SMS with two factor authentication code to the phone number on file. If parameters country_code and phone_number are not NULL,
  *  those are filled with user's phone number (split in two parts). In this case the caller needs to free the returned values. Returns -1 in case of network error or
  *  one of the positive error codes listed at https://docsqa2.pcloud.com/methods/auth/tfa_sendcodeviasms.html
@@ -688,6 +692,7 @@ void psync_unlink();
  */
 
 int psync_tfa_has_devices();
+int psync_tfa_type();
 int psync_tfa_send_sms(char **country_code, char **phone_number);
 int psync_tfa_send_nofification(plogged_device_list_t **devices_list);
 plogged_device_list_t *psync_tfa_send_nofification_res();

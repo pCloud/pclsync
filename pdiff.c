@@ -291,6 +291,7 @@ static psync_socket *get_connected_socket(){
         psync_free(psync_my_2fa_token);
         psync_my_2fa_token=psync_strdup(psync_find_result(res, "token", PARAM_STR)->str);
         psync_my_2fa_has_devices=psync_find_result(res, "hasdevices", PARAM_BOOL)->num;
+		psync_my_2fa_type=psync_find_result(res, "tfatype", PARAM_NUM)->num;
         psync_free(res);
         psync_my_2fa_code_type=0;
         psync_my_2fa_code[0]=0;
