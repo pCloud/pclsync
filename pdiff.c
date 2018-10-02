@@ -306,8 +306,17 @@ static psync_socket *get_connected_socket(){
         psync_my_2fa_code[0]=0;
         if (result==2012 || result==2064 || result==2074)
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
-        else if (user && pass)
-          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
+		else if (user && pass){
+			//Ugly fix, sorry :(
+			if (!strcmp(user, "pass") && !strcmp(pass, "dummy"))
+			{
+			  debug(D_NOTICE, "got %lu, for user=%s, not rising PSTATUS_AUTH_BADLOGIN", (unsigned long)result, user);
+			  psync_milisleep(1000);
+			  continue;
+			}
+			else
+			  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
+		}
         else
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADTOKEN);
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
