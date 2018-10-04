@@ -71,7 +71,7 @@ typedef struct {
   uint64_t uploadlinkid;
 } subscribed_ids;
 
-static uint64_t used_quota=0, current_quota=0;
+static uint64_t used_quota=0, current_quota=0, free_quota=0;
 static time_t last_event=0;
 static psync_uint_t needdownload=0;
 static psync_socket_t exceptionsockwrite=INVALID_SOCKET;
@@ -337,6 +337,7 @@ static psync_socket *get_connected_socket(){
     }
     psync_my_userid=userid=psync_find_result(res, "userid", PARAM_NUM)->num;
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
+	free_quota = psync_find_result(res, "freequota", PARAM_NUM)->num;
     luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
     psync_is_business=psync_find_result(res, "business", PARAM_BOOL)->num;
     psync_sql_start_transaction();
@@ -366,6 +367,9 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "quota");
       psync_sql_bind_uint(q, 2, current_quota);
       psync_sql_run(q);
+	  psync_sql_bind_string(q, 1, "freequota");
+	  psync_sql_bind_uint(q, 2, free_quota);
+	  psync_sql_run(q);
       psync_sql_bind_string(q, 1, "usedquota");
       psync_sql_bind_uint(q, 2, 0);
       psync_sql_run(q);
@@ -1304,6 +1308,10 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_string(q, 1, "quota");
   current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
   psync_sql_bind_uint(q, 2, current_quota);
+  psync_sql_run(q);
+  psync_sql_bind_string(q, 1, "freequota");
+  free_quota = psync_find_result(res, "freequota", PARAM_NUM)->num;
+  psync_sql_bind_uint(q, 2, free_quota);
   psync_sql_run(q);
   u=psync_find_result(res, "premium", PARAM_BOOL)->num;
   psync_sql_bind_string(q, 1, "premium");
