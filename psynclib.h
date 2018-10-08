@@ -892,9 +892,13 @@ int psync_set_string_setting(const char *settingname, const char *value);
  * language  (string) - two letter, lowercase ISO 639-1 code of the user's language preference
  * quota (uint) - user's quota in bytes
  * usedquota (uint) - used space of the quota in bytes
+ * freequota (uint) - maximum quota that free user can obtain
  * diffid (uint) - diffid of the user status, see https://docs.pcloud.com/methods/general/diff.html, can be used to detect account changes
  * auth (string) - user's auth token (if the user is logged in and saveauth is true), see https://docs.pcloud.com/methods/intro/authentication.html
- *
+ * plan (uint) - user's plan id
+ * business (bool) - If true the user is part of a business account. Always provided
+ * vivapcloud (bool) - If it's Viva pCloud user it will be true otherwise the parameter won't be provided
+ * premiumlifetime (bool) - If true user's premium is life time. Always provided
  */
 
 int psync_has_value(const char *valuename);

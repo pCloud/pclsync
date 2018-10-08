@@ -396,6 +396,20 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "language");
       psync_sql_bind_string(q, 2, psync_find_result(res, "language", PARAM_STR)->str);
       psync_sql_run(q);
+	  psync_sql_bind_string(q, 1, "plan");
+	  psync_sql_bind_string(q, 2, psync_find_result(res, "plan", PARAM_NUM)->num);
+	  psync_sql_run(q);
+	  psync_sql_bind_string(q, 1, "business");
+	  psync_sql_bind_string(q, 2, psync_find_result(res, "business", PARAM_BOOL)->num);
+	  psync_sql_run(q);
+	  psync_sql_bind_string(q, 1, "premiumlifetime");
+	  psync_sql_bind_string(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
+	  psync_sql_run(q);
+	  psync_sql_bind_string(q, 1, "vivapcloud");
+	  psync_sql_bind_string(q, 2, psync_find_result(res, "vivapcloud", PARAM_BOOL)->num);
+	  psync_sql_run(q);
+
+
       if (saveauth){
         psync_sql_bind_string(q, 1, "auth");
         psync_sql_bind_string(q, 2, psync_my_auth);
@@ -1332,6 +1346,18 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_run(q);
   psync_sql_bind_string(q, 1, "language");
   psync_sql_bind_string(q, 2, psync_find_result(res, "language", PARAM_STR)->str);
+  psync_sql_run(q);
+  psync_sql_bind_string(q, 1, "plan");
+  psync_sql_bind_string(q, 2, psync_find_result(res, "plan", PARAM_NUM)->num);
+  psync_sql_run(q);
+  psync_sql_bind_string(q, 1, "business");
+  psync_sql_bind_string(q, 2, psync_find_result(res, "business", PARAM_BOOL)->num);
+  psync_sql_run(q);
+  psync_sql_bind_string(q, 1, "premiumlifetime");
+  psync_sql_bind_string(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
+  psync_sql_run(q);
+  psync_sql_bind_string(q, 1, "vivapcloud");
+  psync_sql_bind_string(q, 2, psync_find_result(res, "vivapcloud", PARAM_BOOL)->num);
   psync_sql_run(q);
   u=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
   psync_sql_bind_string(q, 1, "cryptosetup");
