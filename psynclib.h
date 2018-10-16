@@ -107,6 +107,7 @@ typedef struct {
 #define PSTATUS_ACCOUNT_EXPIRED        15
 #define PSTATUS_TFA_REQUIRED           16
 #define PSTATUS_BAD_TFA_CODE           17
+#define PSTATUS_VERIFY_REQUIRED        18
 
 
 #define PSTATUS_ACCOUT_TFAERR          PSTATUS_TFA_REQUIRED
@@ -807,6 +808,22 @@ int psync_register(const char *email, const char *password, int termsaccepted, c
  */
 
 int psync_verify_email(char **err);
+
+/* Upon seeing a status of PSTATUS_VERIFY_REQUIRED an error should appear in the client, showing that
+* access is restricted with "Cancel" and "Verify" options.
+*
+* psync_verify_email_restricted() - Sends verification email to the user.
+* Returns zero on success, -1 if network error occurs or a positive error code from
+* this list:
+* https://docsqa2.pcloud.com/methods/auth/sendverificationemail.html
+* In case of error.
+*
+* If err is not NULL in all cases of non-zero return it will be set to point to a
+* psync_malloc-allocated buffer with English language error text, suitable to display
+* to the user. This buffer must be freed by the application.
+*/
+
+int psync_verify_email_restricted(char **err);
 
 /* Sends email with link to reset password to the user with specified email, return value and err are
  * the same as with registering.

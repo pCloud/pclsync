@@ -62,6 +62,8 @@ static uint32_t psync_calc_status(){
       return PSTATUS_ACCOUNT_EXPIRED;
     else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_TFAREQ)
       return PSTATUS_TFA_REQUIRED;
+	else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_VERIFYREQ)
+		return PSTATUS_VERIFY_REQUIRED;
     else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_BADCODE)
       return PSTATUS_BAD_TFA_CODE;
     else {

@@ -1035,6 +1035,11 @@ int psync_verify_email(char **err){
   return psync_run_command("sendverificationemail", params, err);
 }
 
+int psync_verify_email_restricted(char **err){
+	binparam params[] = { P_STR("verifytoken", psync_my_verify_token) };
+	return psync_run_command("sendverificationemail", params, err);
+}
+
 int psync_lost_password(const char *email, char **err){
   binparam params[]={P_STR("mail", email)};
   return psync_run_command("lostpassword", params, err);

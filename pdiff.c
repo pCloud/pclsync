@@ -299,6 +299,15 @@ static psync_socket *get_connected_socket(){
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
         continue;
       }
+	  if (result == 2306){
+		  psync_socket_close(sock);
+		  psync_free(psync_my_verify_token);
+		  psync_my_verify_token = psync_strdup(psync_find_result(res, "verifytoken", PARAM_STR)->str);
+		  psync_free(res);
+		  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_VERIFYREQ);
+		  psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+		  continue;
+	  }
       psync_socket_close(sock);
       psync_free(res);
       if (result==2000 || result==2012 || result==2064 || result==2074){
