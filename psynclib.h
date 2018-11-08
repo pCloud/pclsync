@@ -1331,6 +1331,13 @@ void pdisable_device(const char* device_id);
 //Remove db information about device
 void premove_device(const char* device_id);
 
+/* Checks for promotions. 
+ * If url is empty there is no ptomotion.
+ * Returns -1 in case of network error or
+ * one of the positive error codes
+*/
+int psync_get_promo(char **url);
+
 #ifdef __cplusplus
 }
 #endif
