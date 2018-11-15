@@ -2016,7 +2016,7 @@ int psync_get_promo(char **url)
   uint64_t result;
   binresult *res;
   binparam params[]={ P_STR("auth", psync_my_auth), P_NUM("os", P_OS_ID) };
-
+  *url = 0;
   res = psync_api_run_command("getpromourl", params);
   if (unlikely_log(!res)){
 	return -1;
