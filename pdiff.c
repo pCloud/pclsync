@@ -417,8 +417,12 @@ static psync_socket *get_connected_socket(){
 	  psync_sql_bind_string(q, 1, "vivapcloud");
 	  psync_sql_bind_uint(q, 2, psync_find_result(res, "vivapcloud", PARAM_BOOL)->num);
 	  psync_sql_run(q);
-
-
+	  cres = psync_check_result(res, "family", PARAM_HASH);
+	  if (cres){
+		psync_sql_bind_string(q, 1, "owner");
+		psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
+		psync_sql_run(q);
+	  }
       if (saveauth){
         psync_sql_bind_string(q, 1, "auth");
         psync_sql_bind_string(q, 2, psync_my_auth);
@@ -1368,6 +1372,12 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_string(q, 1, "vivapcloud");
   psync_sql_bind_uint(q, 2, psync_find_result(res, "vivapcloud", PARAM_BOOL)->num);
   psync_sql_run(q);
+  cres = psync_check_result(res, "family", PARAM_HASH);
+  if (cres){
+	psync_sql_bind_string(q, 1, "owner");
+	psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
+	psync_sql_run(q);
+  }
   u=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
   psync_sql_bind_string(q, 1, "cryptosetup");
   psync_sql_bind_uint(q, 2, u);
