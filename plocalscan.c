@@ -313,7 +313,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
         fdisk->remoteid=fdb->remoteid;
         if (!fdisk->isfolder && (fdisk->mtimenat!=fdb->mtimenat || fdisk->size!=fdb->size || fdisk->inode!=fdb->inode))
           add_modified_file(fdisk, fdb, folderid, localfolderid, syncid, synctype);
-        if (fdisk->isfolder && fdisk->deviceid!=fdb->deviceid){
+        if (fdisk->isfolder && fdisk->deviceid!=fdb->deviceid && fdisk->inode!=fdb->inode){
           if (fdisk->deviceid==deviceid){
             debug(D_NOTICE, "deviceid of localfolder %s %lu is different, skipping", fdisk->name, (unsigned long)fdisk->localid);
             fdisk->localid=0;
