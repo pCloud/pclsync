@@ -1516,7 +1516,7 @@ static void psync_del_all_except(void *ptr, psync_pstat_fast *st){
   const char **nmarr;
   char *fp;
   nmarr=(const char **)ptr;
-  if (!psync_filename_cmp(st->name, nmarr[1]) || st->isfolder)
+  if (!psync_filename_cmp(st->name, nmarr[1]) || psync_stat_fast_isfolder(st))
     return;
   fp=psync_strcat(nmarr[0], PSYNC_DIRECTORY_SEPARATOR, st->name, NULL);
   debug(D_NOTICE, "deleting old update file %s", fp);
@@ -2023,14 +2023,14 @@ int psync_get_promo(char **url)
   }
   result = psync_find_result(res, "result", PARAM_NUM)->num;
   if (result){
-  	debug(D_WARNING, "getpromourl returned %d", result);
-	psync_free(res);
-  	return result;
+    debug(D_WARNING, "getpromourl returned %d", (int)result);
+    psync_free(res);
+    return result;
   }
   if (!psync_find_result(res, "haspromo", PARAM_BOOL)->num){
   	psync_free(res);
   	return result;
-  }  
+  }
   *url=psync_strdup(psync_find_result(res, "url", PARAM_STR)->str);
   psync_free(res);
   return 0;
