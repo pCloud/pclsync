@@ -2574,7 +2574,9 @@ err1:
 }
 
 int psync_list_dir_fast(const char *path, psync_list_dir_callback_fast callback, void *ptr){
-#if defined(P_OS_POSIX)
+#if defined(P_OS_MACOSX)
+  return psync_list_dir(path, callback, ptr);
+#elif defined(P_OS_POSIX)
   psync_pstat_fast pst;
   struct stat st;
   DIR *dh;

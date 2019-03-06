@@ -365,10 +365,14 @@ typedef struct {
   psync_stat_t stat;
 } psync_pstat;
 
+#if defined(P_OS_MACOSX)
+typedef psync_pstat psync_pstat_fast;
+#else
 typedef struct {
   const char *name;
   uint8_t isfolder;
 } psync_pstat_fast;
+#endif
 
 typedef struct {
   struct sockaddr_storage address;
