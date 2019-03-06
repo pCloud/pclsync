@@ -2509,6 +2509,10 @@ int psync_list_dir(const char *path, psync_list_dir_callback callback, void *ptr
     if (de->d_name[0]!='.' || (de->d_name[1]!=0 && (de->d_name[1]!='.' || de->d_name[2]!=0))){
       psync_strlcpy(cpath+pl, de->d_name, namelen+1);
       if (likely_log(!lstat(cpath, &pst.stat)) && (S_ISREG(pst.stat.st_mode) || S_ISDIR(pst.stat.st_mode))){
+#if defined(P_OS_MACOSX)
+        if (pst.stat.st_flags&(UF_HIDDEN|UF_IMMUTABLE|SF_IMMUTABLE))
+          continue;
+#endif
         pst.name=de->d_name;
         callback(ptr, &pst);
       }
@@ -3398,7 +3402,7 @@ char *psync_device_string(){
 	char *ret = psync_strcat(osname, ", ", psync_software_name, NULL);
 	free(osname);
 	return ret;
-	
+
 #endif
   return psync_strcat(psync_deviceid(), ", ", psync_software_name, NULL);
 }
