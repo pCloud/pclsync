@@ -367,7 +367,7 @@ typedef struct {
 
 #if defined(P_OS_MACOSX)
 typedef psync_pstat psync_pstat_fast;
-#define psync_stat_fast_isfolder(a) psync_stat_isfolder((a)->stat)
+#define psync_stat_fast_isfolder(a) psync_stat_isfolder(&(a)->stat)
 #else
 typedef struct {
   const char *name;
