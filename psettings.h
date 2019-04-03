@@ -264,8 +264,7 @@ hiberfil.sys;\
 pagefile.sys;\
 $RECYCLE.BIN;\
 *.part;\
-.pcloud;\
-pCloud Drive"
+.pcloud;"
 
 #define _PS(s) PSYNC_SETTING_##s
 
