@@ -130,8 +130,8 @@ typedef struct MyPrivateData {
 static IONotificationPortRef    gNotifyPort;
 static io_iterator_t            gAddedIter;
 static CFRunLoopRef             gRunLoop;
-#define SYSPATHRPT 8
-#define USLEEPINT 500000
+#define SYSPATHRPT 10
+#define USLEEPINT 1000000
 
 
 static char * get_device_mountpoit (const char* device){
@@ -180,9 +180,8 @@ void DeviceNotification(void *refCon, io_service_t service, natural_t messageTyp
   MyPrivateData   *privateDataRef = (MyPrivateData *) refCon;
 
   if (messageType == kIOMessageServiceIsTerminated) {
-    //fprintf(stderr, "Device removed.\n");
-    //fprintf(stderr, "privateDataRef->deviceName: %s \n", privateDataRef->systempath);
     remove_device(privateDataRef->systempath);
+    debug(D_NOTICE, "Device removed. Mountpoint: %s\n", privateDataRef->systempath);
     free(privateDataRef->systempath);
     kr = IOObjectRelease(privateDataRef->notification);
     free(privateDataRef);
@@ -244,16 +243,16 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
 
     if (!deviceNameAsCFString) continue;
 
-    //fprintf(stderr, "Device added.\n");
-   // fprintf(stderr, "Serial number: "); CFShow(usbSerial);
-    //fprintf(stderr, "Vendor: "); CFShow(usbVendor);
-   // fprintf(stderr, "Product: "); CFShow(deviceNameAsCFString);
+    debug(D_NOTICE, "Device added.\n");
+    debug(D_NOTICE, "Serial number: %s", CFStringGetCStringPtr(usbSerial, kCFStringEncodingMacRoman)); //CFShow(usbSerial);
+    debug(D_NOTICE, "Vendor: %s", CFStringGetCStringPtr(usbVendor, kCFStringEncodingMacRoman)); //CFShow(usbVendor);
+    debug(D_NOTICE, "Product: %s", CFStringGetCStringPtr(deviceNameAsCFString, kCFStringEncodingMacRoman)); //CFShow(deviceNameAsCFString);
 
     systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
 
-    while  (!systemPath ) {
-      if (rpt < SYSPATHRPT) {
-        debug(D_NOTICE, "Giving up ... \n");
+    while (!systemPath) {
+      if (rpt >= SYSPATHRPT) {
+        //fprintf(stderr, "Giving up on systemPath detection ... \n");
         break;
       }
       //fprintf(stderr, "Sleeping ... \n");
@@ -261,9 +260,9 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
       systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
       rpt++;
     }
-
+    
     if (!systemPath) continue;
-
+    debug(D_NOTICE, "mountpoint=%s ... \n", systemPath);
     privateDataRef->systempath = systemPath;
 
     add_device (Dev_Types_UsbRemovableDisk, 1, systemPath,
@@ -282,7 +281,7 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
                                           );
 
     if (KERN_SUCCESS != kr) {
-      printf("IOServiceAddInterestNotification returned 0x%08x.\n", kr);
+      debug(D_NOTICE, "IOServiceAddInterestNotification returned 0x%08x.\n", kr);
     }
 
     // Done with this USB device; release the reference added by IOIteratorNext
