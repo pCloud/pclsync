@@ -294,6 +294,7 @@ static void psync_sync_newsyncedfolder(psync_syncid_t syncid){
         psync_wake_download();
       }
       psync_localnotify_add_sync(syncid);
+      psync_restat_sync_folders_add(syncid);
     }
   }
   else

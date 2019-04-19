@@ -38,6 +38,7 @@
 #include "pcallbacks.h"
 #include "ppathstatus.h"
 #include "prunratelimit.h"
+#include "pdevice_monitor.h"
 #include <string.h>
 
 typedef struct {
@@ -64,6 +65,15 @@ typedef struct {
   uint8_t isfolder;
   char name[1];
 } sync_folderlist;
+
+typedef struct {
+  psync_list list;
+  psync_deviceid_t deviceid;
+  psync_syncid_t syncid;
+  psync_inode_t inode;
+  char localpath[];
+} sync_restat_list;
+
 
 static pthread_mutex_t scan_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t scan_cond=PTHREAD_COND_INITIALIZER;
@@ -93,7 +103,7 @@ static uint64_t localsleepperfolder;
 static time_t starttime;
 static psync_uint_t changes;
 static int localnotify;
-
+psync_list scan_folders_list;
 
 static void scanner_set_syncs_to_list(psync_list *lst){
   psync_sql_res *res;
@@ -105,6 +115,7 @@ static void scanner_set_syncs_to_list(psync_list *lst){
   psync_stat_t st;
   psync_deviceid_t deviceid;
   psync_inode_t inodeid;
+  
   psync_list_init(lst);
   syncmp=psync_fs_getmountpoint();
   res=psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype, deviceid, inode FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
@@ -768,6 +779,23 @@ restart:
     }
     scanner_scan_folder(l->localpath, l->folderid, 0, l->syncid, l->synctype, psync_stat_device_full(&st));
   }
+  psync_list_for_each_element(l, &slist, sync_list, list){
+	psync_stat_t st;
+	psync_deviceid_t deviceid;
+	if(unlikely(psync_stat(l->localpath, &st))){
+	  debug(D_NOTICE, "Can't stat sync folder %s. Was it deleted/unmounted while scanning? Will restart the local scan.", l->localpath);
+	  psync_restart_localscan();
+	  break;
+	}
+	else{
+	  deviceid=psync_stat_device(&st);
+	}
+	if (l->deviceid!=deviceid){
+	  debug(D_NOTICE, "The deviceid of sync folder '%s' has changed from %llu to %llu while scanning. Will restart the local scan.", l->localpath, l->deviceid, deviceid);
+	  psync_restart_localscan();
+	  break;
+	}
+  }
   psync_list_for_each_element_call(&slist, sync_list, list, psync_free);
   w=0;
   do {
@@ -969,16 +997,99 @@ static void psync_wake_localscan_noscan(){
   pthread_mutex_unlock(&scan_mutex);
 }
 
+void psync_localscan_restat_folders_add_row(psync_variant_row row){
+  sync_restat_list *l;
+  const char *localpath;
+  size_t lplen;
+  psync_stat_t st;
+  localpath=psync_get_lstring(row[1], &lplen);
+  l=(sync_restat_list *)psync_malloc(offsetof(sync_restat_list, localpath) + lplen + 1);
+  l->syncid=psync_get_number(row[0]);
+  memcpy(l->localpath, localpath, lplen + 1);
+  if (unlikely(psync_stat(l->localpath, &st))){
+	debug(D_NOTICE, "Can't stat sync folder '%s'.", l->localpath);
+	l->inode=0;
+	l->deviceid=0;
+  }
+  else{
+	l->inode=psync_stat_inode(&st);
+	l->deviceid=psync_stat_device_full(&st);
+  }
+  pthread_mutex_lock(&scan_mutex);
+  psync_list_add_tail(&scan_folders_list, &l->list);
+  pthread_mutex_unlock(&scan_mutex);
+}
+
+void psync_restat_sync_folders_add(psync_syncid_t syncid){
+  psync_sql_res *res;
+  psync_variant_row row;
+  res=psync_sql_query_rdlock("SELECT id, localpath, inode, deviceid  FROM syncfolder WHERE id=?");
+  psync_sql_bind_int(res, 0, syncid);
+  if((row=psync_sql_fetch_row(res))){
+	psync_localscan_restat_folders_add_row(row);
+  }
+}
+
+void psync_restat_sync_folders_del(psync_syncid_t syncid){
+  sync_restat_list *l=NULL;
+  pthread_mutex_lock(&scan_mutex);
+  psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list)
+	if (l->syncid==syncid)
+	  break;
+  if (l){
+	psync_list_del(&l->list);
+	psync_free(l);
+  }
+  pthread_mutex_unlock(&scan_mutex);
+}
+
+void psync_restat_sync_folders(){
+  sync_restat_list *l;
+  int has_changes=0;
+  psync_stat_t st;
+  psync_deviceid_t deviceid;
+  psync_inode_t inode;
+  pthread_mutex_lock(&scan_mutex);
+  psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
+	if (unlikely(psync_stat(l->localpath, &st))){
+	  debug(D_NOTICE, "Can't stat sync folder '%s'.", l->localpath);
+	  deviceid=0;
+	  inode=0;
+	}
+	else{
+	  deviceid=psync_stat_device_full(&st);
+	  inode=psync_stat_inode(&st);
+	}
+	if (l->deviceid!=deviceid || l->inode!=inode){
+	  l->deviceid=deviceid;
+	  l->inode=inode;
+	  psync_localnotify_del_sync(l->syncid);
+	  if (l->deviceid)
+		psync_localnotify_add_sync(l->syncid);
+	  has_changes=1;
+	}
+  }
+  pthread_mutex_unlock(&scan_mutex);
+  if (has_changes)
+	  psync_wake_localscan();
+}
+
+void psync_do_restat_sync_folders(){
+  psync_run_ratelimited("restat sync folders", psync_restat_sync_folders, PSYNC_RESTAT_SYNCS_MIN_INTERVAL, 0);
+}
+
 void psync_localscan_init(){
   psync_sql_res *res;
-  psync_full_result_int *result;
-  uint32_t i;
+  psync_variant_row row;
+  psync_list_init(&scan_folders_list);
   psync_timer_exception_handler(psync_wake_localscan_noscan);
   psync_run_thread("localscan", scanner_thread);
   localnotify=psync_localnotify_init();
-  res=psync_sql_query_rdlock("SELECT id FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
-  result=psync_sql_fetchall_int(res);
-  for (i=0; i<result->rows; i++)
-    psync_localnotify_add_sync(psync_get_result_cell(result, i, 0));
-  psync_free(result);
+  res=psync_sql_query_rdlock("SELECT id, localpath, inode, deviceid  FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
+  while ((row=psync_sql_fetch_row(res))){
+	psync_localnotify_add_sync(psync_get_number(row[0]));
+	psync_localscan_restat_folders_add_row(row);
+  }
+  psync_sql_free_result(res);
+  psync_run_thread("Device monitor main thread", device_monitor_thread);
 }

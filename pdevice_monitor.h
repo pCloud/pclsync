@@ -30,9 +30,9 @@ struct _pdevice_extended_info {
 extern "C" {
 #endif
 
-  void pinit_device_monitor();
+  void device_monitor_thread();
   
-  void pnotify_device_callbacks(pdevice_extended_info *param, device_event event);
+  void psync_devmon_notify_device_callbacks(pdevice_extended_info *param, device_event event);
   
 #ifdef __cplusplus
 }
