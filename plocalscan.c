@@ -80,6 +80,7 @@ static pthread_cond_t scan_cond=PTHREAD_COND_INITIALIZER;
 static uint32_t scan_wakes=0;
 static uint32_t restart_scan=0;
 static uint32_t scan_stoppers=0;
+static pthread_mutex_t restat_mutex=PTHREAD_MUTEX_INITIALIZER;
 
 static const uint32_t requiredstatuses[]={
   PSTATUS_COMBINE(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED),
@@ -997,17 +998,15 @@ static void psync_wake_localscan_noscan(){
   pthread_mutex_unlock(&scan_mutex);
 }
 
-void psync_localscan_restat_folders_add_row(psync_variant_row row){
+void psync_restat_sync_folders_add(psync_syncid_t syncid, const char *localpath){
   sync_restat_list *l;
-  const char *localpath;
-  size_t lplen;
   psync_stat_t st;
-  localpath=psync_get_lstring(row[1], &lplen);
+  size_t lplen=strlen(localpath);
   l=(sync_restat_list *)psync_malloc(offsetof(sync_restat_list, localpath) + lplen + 1);
-  l->syncid=psync_get_number(row[0]);
+  l->syncid=syncid;
   memcpy(l->localpath, localpath, lplen + 1);
   if (unlikely(psync_stat(l->localpath, &st))){
-	debug(D_NOTICE, "Can't stat sync folder '%s'.", l->localpath);
+	debug(D_NOTICE, "Can't stat sync folder '%s'. Putting zeros for inode and deviceid", l->localpath);
 	l->inode=0;
 	l->deviceid=0;
   }
@@ -1015,32 +1014,26 @@ void psync_localscan_restat_folders_add_row(psync_variant_row row){
 	l->inode=psync_stat_inode(&st);
 	l->deviceid=psync_stat_device_full(&st);
   }
-  pthread_mutex_lock(&scan_mutex);
+  pthread_mutex_lock(&restat_mutex);
   psync_list_add_tail(&scan_folders_list, &l->list);
-  pthread_mutex_unlock(&scan_mutex);
+  pthread_mutex_unlock(&restat_mutex);
 }
 
-void psync_restat_sync_folders_add(psync_syncid_t syncid){
-  psync_sql_res *res;
-  psync_variant_row row;
-  res=psync_sql_query_rdlock("SELECT id, localpath, inode, deviceid  FROM syncfolder WHERE id=?");
-  psync_sql_bind_int(res, 0, syncid);
-  if((row=psync_sql_fetch_row(res))){
-	psync_localscan_restat_folders_add_row(row);
-  }
-}
 
 void psync_restat_sync_folders_del(psync_syncid_t syncid){
-  sync_restat_list *l=NULL;
-  pthread_mutex_lock(&scan_mutex);
-  psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list)
-	if (l->syncid==syncid)
-	  break;
-  if (l){
-	psync_list_del(&l->list);
-	psync_free(l);
+  sync_restat_list *l, *to_del=NULL;
+  pthread_mutex_lock(&restat_mutex);
+  psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
+	if (l->syncid==syncid){
+      to_del = l;
+      break;
+    }
   }
-  pthread_mutex_unlock(&scan_mutex);
+  if (to_del){
+	psync_list_del(&to_del->list);
+	psync_free(to_del);
+  }
+  pthread_mutex_unlock(&restat_mutex);
 }
 
 void psync_restat_sync_folders(){
@@ -1049,7 +1042,7 @@ void psync_restat_sync_folders(){
   psync_stat_t st;
   psync_deviceid_t deviceid;
   psync_inode_t inode;
-  pthread_mutex_lock(&scan_mutex);
+  pthread_mutex_lock(&restat_mutex);
   psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
 	if (unlikely(psync_stat(l->localpath, &st))){
 	  debug(D_NOTICE, "Can't stat sync folder '%s'.", l->localpath);
@@ -1069,7 +1062,7 @@ void psync_restat_sync_folders(){
 	  has_changes=1;
 	}
   }
-  pthread_mutex_unlock(&scan_mutex);
+  pthread_mutex_unlock(&restat_mutex);
   if (has_changes)
 	  psync_wake_localscan();
 }
@@ -1081,6 +1074,7 @@ void psync_do_restat_sync_folders(){
 void psync_localscan_init(){
   psync_sql_res *res;
   psync_variant_row row;
+  const char *localpath;
   psync_list_init(&scan_folders_list);
   psync_timer_exception_handler(psync_wake_localscan_noscan);
   psync_run_thread("localscan", scanner_thread);
@@ -1088,7 +1082,8 @@ void psync_localscan_init(){
   res=psync_sql_query_rdlock("SELECT id, localpath, inode, deviceid  FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
   while ((row=psync_sql_fetch_row(res))){
 	psync_localnotify_add_sync(psync_get_number(row[0]));
-	psync_localscan_restat_folders_add_row(row);
+    localpath=psync_get_string(row[1]);
+	psync_restat_sync_folders_add(psync_get_number(row[0]), localpath);
   }
   psync_sql_free_result(res);
   psync_run_thread("Device monitor main thread", device_monitor_thread);

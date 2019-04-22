@@ -259,8 +259,9 @@ static void psync_sync_newsyncedfolder(psync_syncid_t syncid){
   psync_uint_row row;
   uint64_t folderid;
   psync_synctype_t synctype;
+  int success=0;
   psync_sql_start_transaction();
-  res=psync_sql_query("SELECT folderid, synctype FROM syncfolder WHERE id=? AND flags=0");
+  res=psync_sql_query("SELECT folderid, synctype, localpath FROM syncfolder WHERE id=? AND flags=0");
   psync_sql_bind_uint(res, 1, syncid);
   row=psync_sql_fetch_rowint(res);
   if (unlikely_log(!row)){
@@ -294,7 +295,7 @@ static void psync_sync_newsyncedfolder(psync_syncid_t syncid){
         psync_wake_download();
       }
       psync_localnotify_add_sync(syncid);
-      psync_restat_sync_folders_add(syncid);
+      success=1;
     }
   }
   else

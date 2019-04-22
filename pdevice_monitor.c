@@ -7,6 +7,7 @@
 #include "pbusinessaccount.h"
 #include "pdevicemap.h"
 #include "plocalscan.h"
+#include "ptimer.h"
 
 
 #define P_DEVICE_VERBOSE
@@ -14,6 +15,21 @@
 #define _strdup strdup
 #endif //P_OS_POSIX
 #define MAX_LOADSTRING 100
+
+#define DEV_MONITOR_ACTIVITY_TIMER_INT 10
+static psync_timer_t udev_activity_timer=NULL;
+
+
+void psync_devmon_device_activity(){
+  psync_timer_stop(udev_activity_timer);
+  udev_activity_timer=NULL;
+  psync_do_restat_sync_folders();
+}
+
+void start_devmon_activity_timer(){
+  if (!udev_activity_timer)
+    udev_activity_timer = psync_timer_register(psync_devmon_device_activity, DEV_MONITOR_ACTIVITY_TIMER_INT, NULL);
+}
 
 //device_event_callback *device_callbacks;
 //int device_clbsize = 10;
@@ -342,10 +358,6 @@ void device_monitor_thread() {
 #include <stdlib.h>
 #include <locale.h>
 #include <unistd.h>
-#include "ptimer.h"
-
-#define DEV_MONITOR_ACTIVITY_TIMER_INT 10
-static psync_timer_t udev_activity_timer=NULL;
 
 //static char * get_device_mountpoit (const char* device){
 //  FILE *fp;
@@ -465,15 +477,6 @@ static void print_hidrow (struct udev *udevs,struct udev_device *dev) {
   debug(D_NOTICE, "   Devtype: %s\n", udev_device_get_devtype(dev1));
 }*/
 
-void psync_devmon_device_activity(){
-//  const char *name = udev_device_get_devnode(dev);
-//  const char *action = udev_device_get_action(dev);
-//  debug(D_NOTICE, "udev device: %s", name);
-  psync_timer_stop(udev_activity_timer);
-  udev_activity_timer=NULL;
-  psync_do_restat_sync_folders();
-}
-
 #define UDEV_SUBSYSTEMS_CNT 2
 const char *subsystems[UDEV_SUBSYSTEMS_CNT] = { "scsi_device", "hidraw" };
 void enumerate_devices (struct udev *udev,device_event event) {
@@ -510,8 +513,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
 				"usb_device");
 	  if (!usb)
 		continue;      
-	  if (!udev_activity_timer)
-		udev_activity_timer = psync_timer_register(psync_devmon_device_activity, DEV_MONITOR_ACTIVITY_TIMER_INT, NULL);
+      start_devmon_activity_timer();
       
 //      if (subsystem[0] == 's') {
 //        usb = udev_device_get_parent_with_subsystem_devtype(
@@ -759,13 +761,13 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
       //SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
       //pdevice_info *p = new_dev_info(szPath, Dev_Types_CDRomMedia, Dev_Event_arrival);
       //add_device(Dev_Types_CDRomMedia, 0, szPath, "","", "CDROM");
-	  psync_do_restat_sync_folders();
+      start_devmon_activity_timer();
       break;
     }
     case SHCNE_MEDIAREMOVED:        // media removed event
     {
       SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
-	  psync_do_restat_sync_folders();
+      start_devmon_activity_timer();
       break;
     }
     case SHCNE_DRIVEADD:        // media added event
@@ -807,7 +809,7 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
           //  "UnknownDevice");
         //}
 		if (drivetype != Dev_Types_Unknown)
-		  psync_do_restat_sync_folders();
+          start_devmon_activity_timer();
 		break;
       case DRIVE_RAMDISK:    // The drive is a RAM disk.
         break;
@@ -820,7 +822,7 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
       SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
 	  drivetype = GetDriveTypeA(szPath);
 	  if (drivetype != Dev_Types_Unknown)
-		psync_do_restat_sync_folders();
+        start_devmon_activity_timer();
       break;
     }
     }
