@@ -700,7 +700,7 @@ psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_
   psync_sql_sync();
   psync_path_status_reload_syncs();
   psync_syncer_new(ret);
-  psync_restat_sync_folders_add(folderid, localpath);
+  psync_restat_sync_folders_add(ret, localpath);
   return ret;
 }
 
