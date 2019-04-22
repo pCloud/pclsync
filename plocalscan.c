@@ -1044,27 +1044,27 @@ void psync_restat_sync_folders(){
   psync_inode_t inode;
   pthread_mutex_lock(&restat_mutex);
   psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
-	if (unlikely(psync_stat(l->localpath, &st))){
-	  debug(D_NOTICE, "Can't stat sync folder '%s'.", l->localpath);
-	  deviceid=0;
-	  inode=0;
-	}
-	else{
-	  deviceid=psync_stat_device_full(&st);
-	  inode=psync_stat_inode(&st);
-	}
-	if (l->deviceid!=deviceid || l->inode!=inode){
-	  l->deviceid=deviceid;
-	  l->inode=inode;
-	  psync_localnotify_del_sync(l->syncid);
-	  if (l->deviceid)
-		psync_localnotify_add_sync(l->syncid);
-	  has_changes=1;
-	}
+  if (unlikely(psync_stat(l->localpath, &st))){
+    debug(D_NOTICE, "Can't stat sync folder '%s'.", l->localpath);
+    deviceid=0;
+    inode=0;
+  }
+  else{
+    deviceid=psync_stat_device_full(&st);
+    inode=psync_stat_inode(&st);
+  }
+  if (l->deviceid!=deviceid || l->inode!=inode){
+    l->deviceid=deviceid;
+    l->inode=inode;
+    psync_localnotify_del_sync(l->syncid);
+    if (l->deviceid)
+      psync_localnotify_add_sync(l->syncid);
+      has_changes=1;
+    }
   }
   pthread_mutex_unlock(&restat_mutex);
   if (has_changes)
-	  psync_wake_localscan();
+    psync_wake_localscan();
 }
 
 void psync_do_restat_sync_folders(){
@@ -1075,15 +1075,17 @@ void psync_localscan_init(){
   psync_sql_res *res;
   psync_variant_row row;
   const char *localpath;
+  psync_syncid_t syncid;
   psync_list_init(&scan_folders_list);
   psync_timer_exception_handler(psync_wake_localscan_noscan);
   psync_run_thread("localscan", scanner_thread);
   localnotify=psync_localnotify_init();
-  res=psync_sql_query_rdlock("SELECT id, localpath, inode, deviceid  FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
+  res=psync_sql_query_rdlock("SELECT id, localpath FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
   while ((row=psync_sql_fetch_row(res))){
-	psync_localnotify_add_sync(psync_get_number(row[0]));
+    syncid=psync_get_number(row[0]);
     localpath=psync_get_string(row[1]);
-	psync_restat_sync_folders_add(psync_get_number(row[0]), localpath);
+    psync_localnotify_add_sync(syncid);
+	psync_restat_sync_folders_add(syncid, localpath);
   }
   psync_sql_free_result(res);
   psync_run_thread("Device monitor main thread", device_monitor_thread);
