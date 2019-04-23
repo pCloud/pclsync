@@ -259,7 +259,6 @@ static void psync_sync_newsyncedfolder(psync_syncid_t syncid){
   psync_uint_row row;
   uint64_t folderid;
   psync_synctype_t synctype;
-  int success=0;
   psync_sql_start_transaction();
   res=psync_sql_query("SELECT folderid, synctype, localpath FROM syncfolder WHERE id=? AND flags=0");
   psync_sql_bind_uint(res, 1, syncid);
@@ -295,7 +294,6 @@ static void psync_sync_newsyncedfolder(psync_syncid_t syncid){
         psync_wake_download();
       }
       psync_localnotify_add_sync(syncid);
-      success=1;
     }
   }
   else
