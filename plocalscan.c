@@ -80,7 +80,6 @@ static pthread_cond_t scan_cond=PTHREAD_COND_INITIALIZER;
 static uint32_t scan_wakes=0;
 static uint32_t restart_scan=0;
 static uint32_t scan_stoppers=0;
-static pthread_mutex_t restat_mutex=PTHREAD_MUTEX_INITIALIZER;
 
 static const uint32_t requiredstatuses[]={
   PSTATUS_COMBINE(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED),
@@ -1014,15 +1013,15 @@ void psync_restat_sync_folders_add(psync_syncid_t syncid, const char *localpath)
 	l->inode=psync_stat_inode(&st);
 	l->deviceid=psync_stat_device_full(&st);
   }
-  pthread_mutex_lock(&restat_mutex);
+  pthread_mutex_lock(&scan_mutex);
   psync_list_add_tail(&scan_folders_list, &l->list);
-  pthread_mutex_unlock(&restat_mutex);
+  pthread_mutex_unlock(&scan_mutex);
 }
 
 
 void psync_restat_sync_folders_del(psync_syncid_t syncid){
   sync_restat_list *l, *to_del=NULL;
-  pthread_mutex_lock(&restat_mutex);
+  pthread_mutex_lock(&scan_mutex);
   psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
 	if (l->syncid==syncid){
       to_del = l;
@@ -1033,7 +1032,7 @@ void psync_restat_sync_folders_del(psync_syncid_t syncid){
 	psync_list_del(&to_del->list);
 	psync_free(to_del);
   }
-  pthread_mutex_unlock(&restat_mutex);
+  pthread_mutex_unlock(&scan_mutex);
 }
 
 void psync_restat_sync_folders(){
@@ -1042,7 +1041,7 @@ void psync_restat_sync_folders(){
   psync_stat_t st;
   psync_deviceid_t deviceid;
   psync_inode_t inode;
-  pthread_mutex_lock(&restat_mutex);
+  pthread_mutex_lock(&scan_mutex);
   psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
   if (unlikely(psync_stat(l->localpath, &st))){
     debug(D_NOTICE, "Can't stat sync folder '%s'.", l->localpath);
@@ -1062,7 +1061,7 @@ void psync_restat_sync_folders(){
       has_changes=1;
     }
   }
-  pthread_mutex_unlock(&restat_mutex);
+  pthread_mutex_unlock(&scan_mutex);
   if (has_changes)
     psync_wake_localscan();
 }
