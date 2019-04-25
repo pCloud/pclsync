@@ -1,4 +1,4 @@
-#include "pcompat.h"
+#include <libusb-1.0/libusb.h>
 #include "plibs.h"
 #include "psynclib.h"
 #include "pdevice_monitor.h"
@@ -16,7 +16,7 @@
 #endif //P_OS_POSIX
 #define MAX_LOADSTRING 100
 
-#define DEV_MONITOR_ACTIVITY_TIMER_INT 15
+#define DEV_MONITOR_ACTIVITY_TIMER_INT 20
 static psync_timer_t udev_activity_timer=NULL;
 
 void psync_devmon_device_activity(){
@@ -348,7 +348,9 @@ void device_monitor_thread() {
     debug(D_NOTICE, "Unexpectedly back from CFRunLoopRun()!");
     return;
 }
-
+void psync_devmon_init(){
+  psync_run_thread("Device monitor main thread", device_monitor_thread);
+}
 #endif //P_OS_MACOSX
 
 #ifdef P_OS_LINUX
@@ -357,6 +359,10 @@ void device_monitor_thread() {
 #include <stdlib.h>
 #include <locale.h>
 #include <unistd.h>
+
+static libusb_hotplug_callback_handle libusb_callback_handle;
+static libusb_context *libusb_ctx;
+static int run_libusb_events_completed=1;
 
 //static char * get_device_mountpoit (const char* device){
 //  FILE *fp;
@@ -476,92 +482,93 @@ static void print_hidrow (struct udev *udevs,struct udev_device *dev) {
   debug(D_NOTICE, "   Devtype: %s\n", udev_device_get_devtype(dev1));
 }*/
 
-#define UDEV_SUBSYSTEMS_CNT 2
-const char *subsystems[UDEV_SUBSYSTEMS_CNT] = { "scsi_device", "hidraw" };
+//#define UDEV_SUBSYSTEMS_CNT 2
+//const char *subsystems[UDEV_SUBSYSTEMS_CNT] = { "scsi_device", "hidraw" };
 void enumerate_devices (struct udev *udev,device_event event) {
-  struct udev_enumerate *enumerate;
-  struct udev_list_entry *devices,*dev_list_entry;
-  struct udev_device *dev;
-  const char * subsystem;
-  struct udev_device *usb;
-  struct udev_device* scsi_disk;
-  struct udev_device* block;
-  int i;
+//  struct udev_enumerate *enumerate;
+//  struct udev_list_entry *devices,*dev_list_entry;
+//  struct udev_device *dev;
+//  const char * subsystem;
+//  struct udev_device *usb;
+//  struct udev_device* scsi_disk;
+//  struct udev_device* block;
+//  int i;
 
+  start_devmon_activity_timer();
 //  init_devices();
-  for (i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
-    enumerate = udev_enumerate_new(udev);
-    subsystem = subsystems[i];
-    if (subsystem[0] == 's') {
-      udev_enumerate_add_match_subsystem(enumerate, "scsi");
-      udev_enumerate_add_match_property(enumerate, "DEVTYPE", subsystem);
-    } else {
-      udev_enumerate_add_match_subsystem(enumerate, subsystem);
-    }
-    udev_enumerate_scan_devices(enumerate);
-    devices = udev_enumerate_get_list_entry(enumerate);
+//  for (i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
+//    enumerate = udev_enumerate_new(udev);
+//    subsystem = subsystems[i];
+//    if (subsystem[0] == 's') {
+//      udev_enumerate_add_match_subsystem(enumerate, "scsi");
+//      udev_enumerate_add_match_property(enumerate, "DEVTYPE", subsystem);
+//    } else {
+//      udev_enumerate_add_match_subsystem(enumerate, subsystem);
+//    }
+//    udev_enumerate_scan_devices(enumerate);
+//    devices = udev_enumerate_get_list_entry(enumerate);
 
-    udev_list_entry_foreach(dev_list_entry, devices){
-      const char *path;
+//    udev_list_entry_foreach(dev_list_entry, devices){
+//      const char *path;
 
-      path = udev_list_entry_get_name(dev_list_entry);
-      dev = udev_device_new_from_syspath(udev, path);
-	  usb = udev_device_get_parent_with_subsystem_devtype(
-				dev,
-				"usb",
-				"usb_device");
-	  if (!usb)
-		continue;      
-      start_devmon_activity_timer();
+//      path = udev_list_entry_get_name(dev_list_entry);
+//      dev = udev_device_new_from_syspath(udev, path);
+//	  usb = udev_device_get_parent_with_subsystem_devtype(
+//				dev,
+//				"usb",
+//				"usb_device");
+//	  if (!usb)
+//		continue;      
+//      start_devmon_activity_timer();
       
-//      if (subsystem[0] == 's') {
-//        usb = udev_device_get_parent_with_subsystem_devtype(
-//                  dev,
-//                  "usb",
-//                  "usb_device");
-//        if (!usb)
-//          continue;
-//		psync_devmon_device_activity(dev);
-//        block = get_child(udev, dev, "block");
-//        const char *device_path = udev_device_get_devnode(block);
-//        if (!device_path)
-//          continue;
-//        scsi_disk = get_child(udev, dev, "scsi_disk");
-//        if (block && scsi_disk) {
-//          char* fs_path = get_device_mountpoit(device_path);
-//          if (fs_path) {
-////            add_device (Dev_Types_UsbRemovableDisk, 1, fs_path, udev_device_get_sysattr_value(dev,"vendor"),
-////                       udev_device_get_sysattr_value(dev,"model"),udev_device_get_sysattr_value(usb, "serial"));
-//            udev_device_unref(block);
-//            udev_device_unref(scsi_disk);
-//       //     debug_execute(D_NOTICE, print_scsi (udev, dev));
-//          }
-//        }
-//      } else if (subsystem[0] == 'h') {
-//        struct udev_device *dev1;
+////      if (subsystem[0] == 's') {
+////        usb = udev_device_get_parent_with_subsystem_devtype(
+////                  dev,
+////                  "usb",
+////                  "usb_device");
+////        if (!usb)
+////          continue;
+////		psync_devmon_device_activity(dev);
+////        block = get_child(udev, dev, "block");
+////        const char *device_path = udev_device_get_devnode(block);
+////        if (!device_path)
+////          continue;
+////        scsi_disk = get_child(udev, dev, "scsi_disk");
+////        if (block && scsi_disk) {
+////          char* fs_path = get_device_mountpoit(device_path);
+////          if (fs_path) {
+//////            add_device (Dev_Types_UsbRemovableDisk, 1, fs_path, udev_device_get_sysattr_value(dev,"vendor"),
+//////                       udev_device_get_sysattr_value(dev,"model"),udev_device_get_sysattr_value(usb, "serial"));
+////            udev_device_unref(block);
+////            udev_device_unref(scsi_disk);
+////       //     debug_execute(D_NOTICE, print_scsi (udev, dev));
+////          }
+////        }
+////      } else if (subsystem[0] == 'h') {
+////        struct udev_device *dev1;
 
-//        dev1 = udev_device_get_parent_with_subsystem_devtype(
-//                dev,
-//                "usb",
-//                "usb_device");
-//        if (!dev1) {
-//          continue;
-//        }
+////        dev1 = udev_device_get_parent_with_subsystem_devtype(
+////                dev,
+////                "usb",
+////                "usb_device");
+////        if (!dev1) {
+////          continue;
+////        }
 
-//        const char *device_path = udev_device_get_devnode(dev);
-//        if (!device_path)
-//          continue;
-//        char* fs_path = get_device_mountpoit(device_path);
-//        if (fs_path) {
-////          add_device (Dev_Types_UsbRemovableDisk, 1, fs_path, udev_device_get_sysattr_value(dev1,"manufacturer"),
-////                        udev_device_get_sysattr_value(dev1,"product"), udev_device_get_sysattr_value(dev1, "serial"));
-//           // debug_execute(D_NOTICE, print_hidrow(udev, dev));
-//        }
-//      }
-      udev_device_unref(dev);
-    }
-    udev_enumerate_unref(enumerate);
-  } /* Free the enumerator object */
+////        const char *device_path = udev_device_get_devnode(dev);
+////        if (!device_path)
+////          continue;
+////        char* fs_path = get_device_mountpoit(device_path);
+////        if (fs_path) {
+//////          add_device (Dev_Types_UsbRemovableDisk, 1, fs_path, udev_device_get_sysattr_value(dev1,"manufacturer"),
+//////                        udev_device_get_sysattr_value(dev1,"product"), udev_device_get_sysattr_value(dev1, "serial"));
+////           // debug_execute(D_NOTICE, print_hidrow(udev, dev));
+////        }
+////      }
+//      udev_device_unref(dev);
+//    }
+//    udev_enumerate_unref(enumerate);
+//  } /* Free the enumerator object */
 //  filter_unconnected_device();
 
 }
@@ -578,20 +585,16 @@ void monitor_usb_dev(){
     debug(D_WARNING, "Can't create udev\n");
     return;
   }
-
-  // enumerate_devices(udev, Dev_Event_arrival);
-
-  //debug_execute(D_NOTICE, print_stree());
-
+//  // enumerate_devices(udev, Dev_Event_arrival);
+//  //debug_execute(D_NOTICE, print_stree());
   /* Set up a monitor to monitor hidraw devices */
   mon = udev_monitor_new_from_netlink(udev, "udev");
-  udev_monitor_filter_add_match_subsystem_devtype(mon, "scsi_disk", NULL);
-  udev_monitor_filter_add_match_subsystem_devtype(mon, "hidraw", NULL);
+  udev_monitor_filter_add_match_subsystem_devtype(mon, "usb", NULL);
+//  udev_monitor_filter_add_match_subsystem_devtype(mon, "hidraw", NULL);
   udev_monitor_enable_receiving(mon);
   /* Get the file descriptor (fd) for the monitor.
      This fd will get passed to select() */
   fd = udev_monitor_get_fd(mon);
-
   while (1) {
     /* Set up the call to select(). In this case, select() will
        only operate on a single file descriptor, the one
@@ -601,14 +604,11 @@ void monitor_usb_dev(){
     fd_set fds;
     struct timeval tv;
     int ret;
-
     FD_ZERO(&fds);
     FD_SET(fd, &fds);
     tv.tv_sec = 0;
     tv.tv_usec = 0;
-
     ret = select(fd+1, &fds, NULL, NULL, &tv);
-
     /* Check if our file descriptor has received data. */
     if (ret > 0 && FD_ISSET(fd, &fds)){
 
@@ -626,10 +626,7 @@ void monitor_usb_dev(){
     usleep(250*1000);
     fflush(stdout);
   }
-
-
   udev_unref(udev);
-
   return;
 }
 
@@ -639,6 +636,40 @@ void device_monitor_thread(){
   monitor_usb_dev();
 }
 
+void psync_devmon_destroy(){
+//  run_libusb_events_completed=0;
+//  libusb_hotplug_deregister_callback(libusb_ctx, libusb_callback_handle);
+//  libusb_exit(libusb_ctx);
+}
+
+void libusb_handle_events_completed_thread(){
+  int completed;
+  do{
+	libusb_handle_events_completed(libusb_ctx, &completed);
+	// debug(D_NOTICE, "completed=%d", completed);
+  } while (run_libusb_events_completed);
+}
+
+void psync_devmon_init(){
+//  libusb_init(&libusb_ctx);
+//  int rc_res = libusb_hotplug_register_callback(libusb_ctx,
+//								  LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED|LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
+//								  0,
+//								  LIBUSB_HOTPLUG_MATCH_ANY,
+//                                  LIBUSB_HOTPLUG_MATCH_ANY,
+//                                  LIBUSB_HOTPLUG_MATCH_ANY,
+//                                  psync_devmon_hotplug_callback,
+//                                  NULL,
+//                                  &libusb_callback_handle);
+//  if (LIBUSB_SUCCESS != rc_res) {
+//	  debug(D_NOTICE, "Error creating a USB hotplug callback");
+//	  libusb_exit(libusb_ctx);
+//	  return;
+//  }   
+//  psync_run_thread("libusb handle events completed thread", libusb_handle_events_completed_thread);
+  psync_run_thread("libusb handle events completed thread", device_monitor_thread);
+}
+  
 #endif //P_OS_LINUX
 
 #ifdef P_OS_WINDOWS
@@ -968,5 +999,8 @@ void device_monitor_thread() {
     DispatchMessage(&msg);
   }
   return 0;
+}
+void psync_devmon_init(){
+  psync_run_thread("Device monitor main thread", device_monitor_thread);
 }
 #endif  //P_OS_WINDOWS

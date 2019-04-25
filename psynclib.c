@@ -258,6 +258,7 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
   psync_p2p_init();
   if (psync_setting_get_bool(_PS(autostartfs)))
     psync_fs_start();
+  psync_devmon_init();    
 }
 
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize){
@@ -285,6 +286,7 @@ void psync_destroy(){
   psync_sql_lock();
   psync_cache_clean_all();
   psync_sql_close();
+  psync_devmon_destroy();
 }
 
 void psync_get_status(pstatus_t *status){
