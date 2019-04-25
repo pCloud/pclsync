@@ -16,9 +16,8 @@
 #endif //P_OS_POSIX
 #define MAX_LOADSTRING 100
 
-#define DEV_MONITOR_ACTIVITY_TIMER_INT 10
+#define DEV_MONITOR_ACTIVITY_TIMER_INT 15
 static psync_timer_t udev_activity_timer=NULL;
-
 
 void psync_devmon_device_activity(){
   psync_timer_stop(udev_activity_timer);
@@ -659,6 +658,9 @@ void device_monitor_thread(){
 #define WM_USER_MEDIACHANGED WM_USER+88
 #define MAX_LOADSTRING 100
 
+static HDEVNOTIFY hDeviceNotify;
+static HWND hWnd = NULL;
+
 static pdevice_types dev_decode_type(STORAGE_BUS_TYPE bustype, DWORD drivetype) {
   switch (bustype) {
   case BusTypeScsi:
@@ -679,6 +681,65 @@ static pdevice_types dev_decode_type(STORAGE_BUS_TYPE bustype, DWORD drivetype) 
     return Dev_Types_Unknown;
   }
 }
+
+// This GUID is for all USB serial host PnP drivers, but you can replace it 
+// with any valid device class guid.
+//GUID WceusbGUID = { 0x25dbce51, 0x6c8f, 0x4a72, 
+//                      0x8a,0x6d,0xb5,0x4c,0x2b,0x4f,0xc8,0x35 };
+
+GUID WusbGUID = { 0x88BAE032, 0x5A81, 0x49f0, 0xBC,0x3D,0xA4,0xFF,0x13,0x82,0x16,0xD6 };
+
+// DoRegisterDeviceInterfaceToHwnd
+//
+BOOL DoRegisterDeviceInterfaceToHwnd( 
+    IN GUID InterfaceClassGuid, 
+    IN HWND hWnd,
+    OUT HDEVNOTIFY *hDeviceNotify 
+)
+// Routine Description:
+//     Registers an HWND for notification of changes in the device interfaces
+//     for the specified interface class GUID. 
+
+// Parameters:
+//     InterfaceClassGuid - The interface class GUID for the device 
+//         interfaces. 
+
+//     hWnd - Window handle to receive notifications.
+
+//     hDeviceNotify - Receives the device notification handle. On failure, 
+//         this value is NULL.
+
+// Return Value:
+//     If the function succeeds, the return value is TRUE.
+//     If the function fails, the return value is FALSE.
+
+// Note:
+//     RegisterDeviceNotification also allows a service handle be used,
+//     so a similar wrapper function to this one supporting that scenario
+//     could be made from this template.
+{
+    DEV_BROADCAST_DEVICEINTERFACE NotificationFilter;
+
+    ZeroMemory( &NotificationFilter, sizeof(NotificationFilter) );
+    NotificationFilter.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
+    NotificationFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE; //DBT_DEVTYP_DEVICEINTERFACE, DBT_DEVTYP_DEVNODE, DBT_DEVTYP_OEM, DBT_DEVTYP_VOLUME;
+    NotificationFilter.dbcc_classguid = InterfaceClassGuid;
+
+    *hDeviceNotify = RegisterDeviceNotification( 
+        hWnd,                       // events recipient
+        &NotificationFilter,        // type of device
+        DEVICE_NOTIFY_WINDOW_HANDLE|DEVICE_NOTIFY_ALL_INTERFACE_CLASSES // type of recipient handle
+        );
+
+    if ( NULL == *hDeviceNotify ) 
+    {
+        debug(D_NOTICE, "RegisterDeviceNotification failed");
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 
 static DWORD GetPhysicalDriveParams(char *strdrivepath IN, DWORD drivetype, char *fspath)
 {
@@ -747,7 +808,22 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
     return 0;
     break;
   case WM_DEVICECHANGE:
-    return 0;
+    start_devmon_activity_timer();
+    //switch (wparam)
+    //{
+    //case DBT_DEVICEARRIVAL:
+    //  debug(D_NOTICE, "Message %d: DBT_DEVICEARRIVAL\n");
+    //  break;
+    //case DBT_DEVICEREMOVECOMPLETE:
+    //  debug(D_NOTICE, "Message %d: DBT_DEVICEREMOVECOMPLETE\n");
+    //  break;
+    //case DBT_DEVNODES_CHANGED:
+    //  debug(D_NOTICE, "Message %d: DBT_DEVNODES_CHANGED\n");
+    //  break;
+    //default:
+    //  debug(D_NOTICE, "Message %d: WM_DEVICECHANGE message received, value %d unhandled.\n");
+    //break;
+    //}
     break;
   case WM_USER_MEDIACHANGED:
   {
@@ -843,46 +919,47 @@ static void device_change(void *param) {
 }
 
 void device_monitor_thread() {
-  HWND hWnd = NULL;
   WNDCLASSEXA wx;
 //  debug_execute(D_NOTICE, psync_add_device_monitor_callback(psync_devmon_arivalmonitor));
+  HINSTANCE hExe = GetModuleHandleA(0);
   ZeroMemory(&wx, sizeof(wx));
   wx.cbSize = sizeof(WNDCLASSEXA);
   wx.lpfnWndProc = (WNDPROC) (message_handler);
-  wx.hInstance = (HINSTANCE) (GetModuleHandleA(0));
+  wx.hInstance = (HINSTANCE) (hExe);
   wx.style = CS_HREDRAW | CS_VREDRAW;
-  //wx.hInstance = GetModuleHandle(0);
   wx.hbrBackground = (HBRUSH)(COLOR_WINDOW);
   wx.lpszClassName = CLS_NAME;
   if (RegisterClassExA(&wx)) {
     hWnd = CreateWindowA(CLS_NAME, L"DevNotifWnd", WS_ICONIC,
       0, 0, CW_USEDEFAULT, 0, HWND_MESSAGE,
-      NULL, GetModuleHandleA(0), NULL);//(void*)&guid);
+      NULL, hExe, NULL);//(void*)&guid);
   }
+  if (!DoRegisterDeviceInterfaceToHwnd(WusbGUID, hWnd, &hDeviceNotify))
+    debug(D_NOTICE, "DoRegisterDeviceInterfaceToHwnd failed");
   if (hWnd == NULL) {
     debug(D_NOTICE, "Could not create message window! %d", GetLastError());
     return 1;
   }
   ULONG m_ulSHChangeNotifyRegister;
   LPITEMIDLIST ppidl;
-  if (SHGetSpecialFolderLocation(hWnd, CSIDL_DESKTOP, &ppidl) == NOERROR)
-  {
-    SHChangeNotifyEntry shCNE;
-    shCNE.pidl = ppidl;
-    shCNE.fRecursive = TRUE;
-    m_ulSHChangeNotifyRegister = SHChangeNotifyRegister(hWnd,
-      SHCNE_DISKEVENTS,
-      SHCNE_MEDIAINSERTED | SHCNE_MEDIAREMOVED | SHCNE_DRIVEREMOVED | SHCNE_DRIVEADD,
-      WM_USER_MEDIACHANGED,
-      1,
-      &shCNE);
-    if (m_ulSHChangeNotifyRegister == 0) {
-      debug(D_NOTICE, "Shell Device Notify registration CD failed with error %d", GetLastError());
-      return 2;
-    }
-  }
-  else
-    debug(D_NOTICE, "Shell Device Notify registration CD failed with error %d ", GetLastError());
+  //if (SHGetSpecialFolderLocation(hWnd, CSIDL_DESKTOP, &ppidl) == NOERROR)
+  //{
+  //  SHChangeNotifyEntry shCNE;
+  //  shCNE.pidl = ppidl;
+  //  shCNE.fRecursive = TRUE;
+  //  m_ulSHChangeNotifyRegister = SHChangeNotifyRegister(hWnd,
+  //    SHCNE_DISKEVENTS,
+  //    SHCNE_MEDIAINSERTED | SHCNE_MEDIAREMOVED | SHCNE_DRIVEREMOVED | SHCNE_DRIVEADD,
+  //    WM_USER_MEDIACHANGED,
+  //    1,
+  //    &shCNE);
+  //  if (m_ulSHChangeNotifyRegister == 0) {
+  //    debug(D_NOTICE, "Shell Device Notify registration CD failed with error %d", GetLastError());
+  //    return 2;
+  //  }
+  //}
+  //else
+  //  debug(D_NOTICE, "Shell Device Notify registration CD failed with error %d ", GetLastError());
   debug(D_NOTICE, "Device monitor - waiting for device arrival/removal");
   MSG msg;
   while (GetMessage(&msg, NULL, 0, 0))
