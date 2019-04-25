@@ -286,7 +286,6 @@ void psync_destroy(){
   psync_sql_lock();
   psync_cache_clean_all();
   psync_sql_close();
-  psync_devmon_destroy();
 }
 
 void psync_get_status(pstatus_t *status){

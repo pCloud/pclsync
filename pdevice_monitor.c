@@ -1,4 +1,3 @@
-#include <libusb-1.0/libusb.h>
 #include "plibs.h"
 #include "psynclib.h"
 #include "pdevice_monitor.h"
@@ -940,14 +939,14 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
 
 }
 
-static void device_change(void *param) {
-  pdevice_info * pd = (pdevice_info*)param;
-  debug(D_NOTICE, "type [%d] isex [%d] fspath [%s] \n", pd->type, pd->isextended, pd->filesystem_path);
-  if (pd->isextended) {
-    pdevice_extended_info* pde = (pdevice_extended_info*)param;
-    debug(D_NOTICE, "vendor [%s] product [%s] deviceid [%s] \n", pde->vendor, pde->product, pde->device_id);
-  }
-}
+//static void device_change(void *param) {
+//  pdevice_info * pd = (pdevice_info*)param;
+//  debug(D_NOTICE, "type [%d] isex [%d] fspath [%s] \n", pd->type, pd->isextended, pd->filesystem_path);
+//  if (pd->isextended) {
+//    pdevice_extended_info* pde = (pdevice_extended_info*)param;
+//    debug(D_NOTICE, "vendor [%s] product [%s] deviceid [%s] \n", pde->vendor, pde->product, pde->device_id);
+//  }
+//}
 
 void device_monitor_thread() {
   WNDCLASSEXA wx;

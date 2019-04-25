@@ -30,7 +30,6 @@
 extern "C" {
 #endif
   void psync_devmon_init();
-  void psync_devmon_destroy();
 //  void psync_devmon_notify_device_callbacks(pdevice_extended_info *param, device_event event);
 #ifdef __cplusplus
 }
