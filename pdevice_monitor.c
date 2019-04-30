@@ -147,7 +147,7 @@ static CFRunLoopRef             gRunLoop;
 #define SYSPATHRPT 10
 #define USLEEPINT 1000000
 
-
+/*
 static char * get_device_mountpoit (const char* device){
   FILE *fp;
   char path[1035];
@@ -157,14 +157,12 @@ static char * get_device_mountpoit (const char* device){
   //sprintf (command, "cat /proc/mounts |grep %s | awk '{print $2}'", device);
   sprintf (command, "system_profiler SPUSBDataType | grep '%s' -A 25 |grep -E 'Mount'", device);
 
-  /* Open the command for reading. */
   fp = popen(command, "r");
   if (fp == NULL) {
     fprintf(stderr, "Failed to run command\n" );
     return 0;
   }
 
-  /* Read the output a line at a time - output it. */
   while (fgets(path, sizeof(path)-1, fp) != NULL) {
     if (result) {
       int ressize = strlen(result);
@@ -181,12 +179,12 @@ static char * get_device_mountpoit (const char* device){
     result = strdup(strchr(result, '/'));
     free (resol);
   }
-  /* close */
   pclose(fp);
   free(command);
   return result;
 
 }
+*/
 
 void DeviceNotification(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
 {
@@ -207,18 +205,18 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
 {
   kern_return_t kr;
   io_service_t usbDevice;
-  IOCFPlugInInterface **plugInInterface = NULL;
-  SInt32 score;
-  HRESULT res;
-  int rpt = 0;
+//  IOCFPlugInInterface **plugInInterface = NULL;
+//  SInt32 score;
+//  HRESULT res;
+//  int rpt = 0;
   CFStringRef     deviceNameAsCFString;
 
   while ((usbDevice = IOIteratorNext(iterator))) {
     io_name_t deviceName;
     MyPrivateData *privateDataRef = NULL;
-    UInt32 locationID;
-    io_string_t pathName;
-    const char* systemPath;
+//    UInt32 locationID;
+//    io_string_t pathName;
+//    const char* systemPath;
 
     privateDataRef = malloc(sizeof(MyPrivateData));
     bzero(privateDataRef, sizeof(MyPrivateData));
@@ -308,7 +306,7 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
 void device_monitor_thread() {
     CFMutableDictionaryRef  matchingDict;
     CFRunLoopSourceRef      runLoopSource;
-    CFNumberRef             numberRef;
+//    CFNumberRef             numberRef;
     kern_return_t           kr;
 
 
