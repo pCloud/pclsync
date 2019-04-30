@@ -194,11 +194,12 @@ void DeviceNotification(void *refCon, io_service_t service, natural_t messageTyp
   MyPrivateData   *privateDataRef = (MyPrivateData *) refCon;
 
   if (messageType == kIOMessageServiceIsTerminated) {
-    remove_device(privateDataRef->systempath);
-    debug(D_NOTICE, "Device removed. Mountpoint: %s\n", privateDataRef->systempath);
+//    remove_device(privateDataRef->systempath);
+//    debug(D_NOTICE, "Device removed. Mountpoint: %s\n", privateDataRef->systempath);
     free(privateDataRef->systempath);
     kr = IOObjectRelease(privateDataRef->notification);
     free(privateDataRef);
+    start_devmon_activity_timer();
   }
 }
 
@@ -254,35 +255,36 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
 
     deviceNameAsCFString = CFStringCreateWithCString(kCFAllocatorDefault, deviceName,
                                                     kCFStringEncodingASCII);
-
     if (!deviceNameAsCFString) continue;
 
-    debug(D_NOTICE, "Device added.\n");
-    debug(D_NOTICE, "Serial number: %s", CFStringGetCStringPtr(usbSerial, kCFStringEncodingMacRoman)); //CFShow(usbSerial);
-    debug(D_NOTICE, "Vendor: %s", CFStringGetCStringPtr(usbVendor, kCFStringEncodingMacRoman)); //CFShow(usbVendor);
-    debug(D_NOTICE, "Product: %s", CFStringGetCStringPtr(deviceNameAsCFString, kCFStringEncodingMacRoman)); //CFShow(deviceNameAsCFString);
-
-    systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
-
-    while (!systemPath) {
-      if (rpt >= SYSPATHRPT) {
-        //fprintf(stderr, "Giving up on systemPath detection ... \n");
-        break;
-      }
-      //fprintf(stderr, "Sleeping ... \n");
-      usleep(USLEEPINT);
-      systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
-      rpt++;
-    }
+//    debug(D_NOTICE, "Device added.\n");
+//    debug(D_NOTICE, "Serial number: %s", CFStringGetCStringPtr(usbSerial, kCFStringEncodingMacRoman)); //CFShow(usbSerial);
+//    debug(D_NOTICE, "Vendor: %s", CFStringGetCStringPtr(usbVendor, kCFStringEncodingMacRoman)); //CFShow(usbVendor);
+//    debug(D_NOTICE, "Product: %s", CFStringGetCStringPtr(deviceNameAsCFString, kCFStringEncodingMacRoman)); //CFShow(deviceNameAsCFString);
     
-    if (!systemPath) continue;
-    debug(D_NOTICE, "mountpoint=%s ... \n", systemPath);
-    privateDataRef->systempath = systemPath;
+    start_devmon_activity_timer();
 
-    add_device (Dev_Types_UsbRemovableDisk, 1, systemPath,
-                CFStringGetCStringPtr( usbVendor, kCFStringEncodingMacRoman ),
-                CFStringGetCStringPtr( deviceNameAsCFString, kCFStringEncodingMacRoman ),
-                CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
+//    systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
+
+//    while (!systemPath) {
+//      if (rpt >= SYSPATHRPT) {
+//        //fprintf(stderr, "Giving up on systemPath detection ... \n");
+//        break;
+//      }
+      //fprintf(stderr, "Sleeping ... \n");
+//      usleep(USLEEPINT);
+//      systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
+//      rpt++;
+//    }
+    
+//    if (!systemPath) continue;
+//    debug(D_NOTICE, "mountpoint=%s ... \n", systemPath);
+//    privateDataRef->systempath = systemPath;
+
+//    add_device (Dev_Types_UsbRemovableDisk, 1, systemPath,
+//                CFStringGetCStringPtr( usbVendor, kCFStringEncodingMacRoman ),
+//                CFStringGetCStringPtr( deviceNameAsCFString, kCFStringEncodingMacRoman ),
+//                CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
 
     // Register for an interest notification of this device being removed. Use a reference to our
     // private data as the refCon which will be passed to the notification callback.
