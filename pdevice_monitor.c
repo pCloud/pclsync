@@ -1,9 +1,6 @@
 #include "plibs.h"
 #include "psynclib.h"
 #include "pdevice_monitor.h"
-#include "papi.h"
-#include "pnetlibs.h"
-#include "pbusinessaccount.h"
 #include "pdevicemap.h"
 #include "plocalscan.h"
 #include "ptimer.h"
@@ -359,10 +356,6 @@ void psync_devmon_init(){
 #include <locale.h>
 #include <unistd.h>
 
-static libusb_hotplug_callback_handle libusb_callback_handle;
-static libusb_context *libusb_ctx;
-static int run_libusb_events_completed=1;
-
 //static char * get_device_mountpoit (const char* device){
 //  FILE *fp;
 //  char path[1035];
@@ -494,6 +487,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
 //  int i;
 
   start_devmon_activity_timer();
+
 //  init_devices();
 //  for (i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
 //    enumerate = udev_enumerate_new(udev);
@@ -584,8 +578,8 @@ void monitor_usb_dev(){
     debug(D_WARNING, "Can't create udev\n");
     return;
   }
-//  // enumerate_devices(udev, Dev_Event_arrival);
-//  //debug_execute(D_NOTICE, print_stree());
+//  enumerate_devices(udev, Dev_Event_arrival);
+//  debug_execute(D_NOTICE, print_stree());
   /* Set up a monitor to monitor hidraw devices */
   mon = udev_monitor_new_from_netlink(udev, "udev");
   udev_monitor_filter_add_match_subsystem_devtype(mon, "usb", NULL);
@@ -635,40 +629,9 @@ void device_monitor_thread(){
   monitor_usb_dev();
 }
 
-void psync_devmon_destroy(){
-//  run_libusb_events_completed=0;
-//  libusb_hotplug_deregister_callback(libusb_ctx, libusb_callback_handle);
-//  libusb_exit(libusb_ctx);
-}
-
-void libusb_handle_events_completed_thread(){
-  int completed;
-  do{
-	libusb_handle_events_completed(libusb_ctx, &completed);
-	// debug(D_NOTICE, "completed=%d", completed);
-  } while (run_libusb_events_completed);
-}
-
 void psync_devmon_init(){
-//  libusb_init(&libusb_ctx);
-//  int rc_res = libusb_hotplug_register_callback(libusb_ctx,
-//								  LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED|LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
-//								  0,
-//								  LIBUSB_HOTPLUG_MATCH_ANY,
-//                                  LIBUSB_HOTPLUG_MATCH_ANY,
-//                                  LIBUSB_HOTPLUG_MATCH_ANY,
-//                                  psync_devmon_hotplug_callback,
-//                                  NULL,
-//                                  &libusb_callback_handle);
-//  if (LIBUSB_SUCCESS != rc_res) {
-//	  debug(D_NOTICE, "Error creating a USB hotplug callback");
-//	  libusb_exit(libusb_ctx);
-//	  return;
-//  }   
-//  psync_run_thread("libusb handle events completed thread", libusb_handle_events_completed_thread);
   psync_run_thread("libusb handle events completed thread", device_monitor_thread);
 }
-  
 #endif //P_OS_LINUX
 
 #ifdef P_OS_WINDOWS
