@@ -1075,10 +1075,6 @@ void psync_restat_sync_folders(){
     psync_wake_localscan();
 }
 
-void psync_do_restat_sync_folders(){
-  psync_run_ratelimited("restat sync folders", psync_restat_sync_folders, PSYNC_RESTAT_SYNCS_MIN_INTERVAL, 0);
-}
-
 void psync_localscan_init(){
   psync_sql_res *res;
   psync_variant_row row;

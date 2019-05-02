@@ -10,20 +10,26 @@
 #ifdef P_OS_POSIX
 #define _strdup strdup
 #endif //P_OS_POSIX
-#define MAX_LOADSTRING 100
+// #define MAX_LOADSTRING 100
 
 #define DEV_MONITOR_ACTIVITY_TIMER_INT 20
+
+static pthread_mutex_t devmon_mutex=PTHREAD_MUTEX_INITIALIZER;
 static psync_timer_t udev_activity_timer=NULL;
 
-void psync_devmon_device_activity(){
+void devmon_device_activity_timer(){
   psync_timer_stop(udev_activity_timer);
+  pthread_mutex_lock(&devmon_mutex);
   udev_activity_timer=NULL;
-  psync_do_restat_sync_folders();
+  pthread_mutex_unlock(&devmon_mutex);
+  psync_restat_sync_folders();
 }
 
-void start_devmon_activity_timer(){
+void devmon_activity_timer_start(){
+  pthread_mutex_lock(&devmon_mutex);
   if (!udev_activity_timer)
-    udev_activity_timer = psync_timer_register(psync_devmon_device_activity, DEV_MONITOR_ACTIVITY_TIMER_INT, NULL);
+    udev_activity_timer = psync_timer_register(devmon_device_activity_timer, DEV_MONITOR_ACTIVITY_TIMER_INT, NULL);
+  pthread_mutex_unlock(&devmon_mutex);
 }
 
 //device_event_callback *device_callbacks;
@@ -197,7 +203,7 @@ void DeviceNotification(void *refCon, io_service_t service, natural_t messageTyp
     free(privateDataRef->systempath);
     kr = IOObjectRelease(privateDataRef->notification);
     free(privateDataRef);
-    start_devmon_activity_timer();
+    devmon_activity_timer_start();
   }
 }
 
@@ -260,7 +266,7 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
 //    debug(D_NOTICE, "Vendor: %s", CFStringGetCStringPtr(usbVendor, kCFStringEncodingMacRoman)); //CFShow(usbVendor);
 //    debug(D_NOTICE, "Product: %s", CFStringGetCStringPtr(deviceNameAsCFString, kCFStringEncodingMacRoman)); //CFShow(deviceNameAsCFString);
     
-    start_devmon_activity_timer();
+    devmon_activity_timer_start();
 
 //    systemPath = get_device_mountpoit(CFStringGetCStringPtr( usbSerial, kCFStringEncodingMacRoman ));
 
@@ -486,7 +492,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
 //  struct udev_device* block;
 //  int i;
 
-  start_devmon_activity_timer();
+  devmon_activity_timer_start();
 
 //  init_devices();
 //  for (i = 0; i < UDEV_SUBSYSTEMS_CNT;++i ) {
@@ -512,7 +518,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
 //				"usb_device");
 //	  if (!usb)
 //		continue;      
-//      start_devmon_activity_timer();
+//      devmon_activity_timer_start();
       
 ////      if (subsystem[0] == 's') {
 ////        usb = udev_device_get_parent_with_subsystem_devtype(
@@ -521,7 +527,7 @@ void enumerate_devices (struct udev *udev,device_event event) {
 ////                  "usb_device");
 ////        if (!usb)
 ////          continue;
-////		psync_devmon_device_activity(dev);
+////		devmon_device_activity_timer(dev);
 ////        block = get_child(udev, dev, "block");
 ////        const char *device_path = udev_device_get_devnode(block);
 ////        if (!device_path)
@@ -801,7 +807,7 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
     return 0;
     break;
   case WM_DEVICECHANGE:
-    start_devmon_activity_timer();
+    devmon_activity_timer_start();
     //switch (wparam)
     //{
     //case DBT_DEVICEARRIVAL:
@@ -830,13 +836,13 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
       //SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
       //pdevice_info *p = new_dev_info(szPath, Dev_Types_CDRomMedia, Dev_Event_arrival);
       //add_device(Dev_Types_CDRomMedia, 0, szPath, "","", "CDROM");
-      start_devmon_activity_timer();
+      devmon_activity_timer_start();
       break;
     }
     case SHCNE_MEDIAREMOVED:        // media removed event
     {
       SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
-      start_devmon_activity_timer();
+      devmon_activity_timer_start();
       break;
     }
     case SHCNE_DRIVEADD:        // media added event
@@ -878,7 +884,7 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
           //  "UnknownDevice");
         //}
 		if (drivetype != Dev_Types_Unknown)
-          start_devmon_activity_timer();
+          devmon_activity_timer_start();
 		break;
       case DRIVE_RAMDISK:    // The drive is a RAM disk.
         break;
@@ -891,7 +897,7 @@ static LRESULT message_handler(HWND *hwnd, UINT uint, WPARAM wparam, LPARAM lpar
       SHGetPathFromIDListA((struct _ITEMIDLIST *)shns->dwItem1, szPath);
 	  drivetype = GetDriveTypeA(szPath);
 	  if (drivetype != Dev_Types_Unknown)
-        start_devmon_activity_timer();
+        devmon_activity_timer_start();
       break;
     }
     }
