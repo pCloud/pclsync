@@ -1033,7 +1033,7 @@ void psync_restat_sync_folders_del(psync_syncid_t syncid){
   pthread_mutex_lock(&scan_mutex);
   psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
 	if (l->syncid==syncid){
-      to_del = l;
+      to_del=l;
       break;
     }
   }
