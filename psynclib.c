@@ -701,7 +701,6 @@ psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_
   psync_sql_sync();
   psync_path_status_reload_syncs();
   psync_syncer_new(ret);
-  psync_restat_sync_folders_add(ret, localpath);
   return ret;
 }
 
@@ -813,7 +812,6 @@ int psync_change_synctype(psync_syncid_t syncid, psync_synctype_t synctype){
   psync_path_status_sync_delete(syncid);
   psync_sql_commit_transaction();
   psync_localnotify_del_sync(syncid);
-  psync_restat_sync_folders_del(syncid);
   psync_stop_sync_download(syncid);
   psync_stop_sync_upload(syncid);
   psync_sql_sync();

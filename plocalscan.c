@@ -1007,9 +1007,17 @@ static void psync_wake_localscan_noscan(){
 }
 
 void psync_restat_sync_folders_add(psync_syncid_t syncid, const char *localpath){
-  sync_restat_list *l;
+  sync_restat_list *l,*sl;
   psync_stat_t st;
   size_t lplen=strlen(localpath);
+  pthread_mutex_lock(&scan_mutex);
+  psync_list_for_each_element(sl, &scan_folders_list, sync_restat_list, list){
+	if (sl->syncid==syncid){
+	  debug(D_NOTICE, "Sync folder '%s' is already in the restat sync folders list. Skipping.", sl->localpath);
+	  pthread_mutex_unlock(&scan_mutex);
+	  return;
+    }
+  }
   l=(sync_restat_list *)psync_malloc(offsetof(sync_restat_list, localpath) + lplen + 1);
   l->syncid=syncid;
   memcpy(l->localpath, localpath, lplen + 1);
@@ -1022,7 +1030,6 @@ void psync_restat_sync_folders_add(psync_syncid_t syncid, const char *localpath)
 	l->inode=psync_stat_inode(&st);
 	l->deviceid=psync_stat_device_full(&st);
   }
-  pthread_mutex_lock(&scan_mutex);
   psync_list_add_tail(&scan_folders_list, &l->list);
   pthread_mutex_unlock(&scan_mutex);
 }
