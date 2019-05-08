@@ -259,7 +259,7 @@ static void psync_sync_newsyncedfolder(psync_syncid_t syncid){
   psync_variant_row row;
   uint64_t folderid;
   psync_synctype_t synctype;
-  const char *localpath;
+  char *localpath;
   psync_sql_start_transaction();
   res=psync_sql_query("SELECT folderid, synctype, localpath FROM syncfolder WHERE id=? AND flags=0");
   psync_sql_bind_uint(res, 1, syncid);
