@@ -11,20 +11,20 @@
 #define DEV_MONITOR_ACTIVITY_TIMER_INT 20
 
 static pthread_mutex_t devmon_mutex=PTHREAD_MUTEX_INITIALIZER;
-static psync_timer_t udev_activity_timer=NULL;
+static psync_timer_t devmon_activity_timer=NULL;
 
-void devmon_device_activity_timer(){
-  psync_timer_stop(udev_activity_timer);
+void devmon_activity_timer_action(){
+  psync_timer_stop(devmon_activity_timer);
   pthread_mutex_lock(&devmon_mutex);
-  udev_activity_timer=NULL;
+  devmon_activity_timer=NULL;
   pthread_mutex_unlock(&devmon_mutex);
   psync_restat_sync_folders();
 }
 
 void devmon_activity_timer_start(){
   pthread_mutex_lock(&devmon_mutex);
-  if (!udev_activity_timer)
-    udev_activity_timer = psync_timer_register(devmon_device_activity_timer, DEV_MONITOR_ACTIVITY_TIMER_INT, NULL);
+  if (!devmon_activity_timer)
+    devmon_activity_timer = psync_timer_register(devmon_activity_timer_action, DEV_MONITOR_ACTIVITY_TIMER_INT, NULL);
   pthread_mutex_unlock(&devmon_mutex);
 }
 
