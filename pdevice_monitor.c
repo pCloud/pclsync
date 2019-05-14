@@ -162,6 +162,8 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
   kern_return_t kr;
   io_service_t usbDevice;
   CFStringRef     deviceNameAsCFString;
+  static int first_call=1;
+
   while ((usbDevice = IOIteratorNext(iterator))) {
     io_name_t deviceName;
     MyPrivateData *privateDataRef = NULL;
@@ -193,7 +195,10 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
     deviceNameAsCFString = CFStringCreateWithCString(kCFAllocatorDefault, deviceName,
                                                     kCFStringEncodingASCII);
 //    if (!deviceNameAsCFString) continue;
-    devmon_activity_timer_start();
+    if (!first_call){
+      debug(D_NOTICE, "start deviceactivity timer");
+      devmon_activity_timer_start();
+    }
     // Register for an interest notification of this device being removed. Use a reference to our
     // private data as the refCon which will be passed to the notification callback.
     kr = IOServiceAddInterestNotification(gNotifyPort,                      // notifyPort
@@ -209,6 +214,7 @@ void DeviceAdded(void *refCon, io_iterator_t iterator)
     // Done with this USB device; release the reference added by IOIteratorNext
     kr = IOObjectRelease(usbDevice);
   }
+  first_call=0;
 }
 
 void device_monitor_thread() {
