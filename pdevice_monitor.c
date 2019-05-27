@@ -319,7 +319,7 @@ void monitor_usb_dev(){
 }
 
 void device_monitor_thread(){
-  debug(D_NOTICE, "Waiting for new/disconncted USB devices..");
+  debug(D_NOTICE, "Waiting for USB devices connect/disconnect events");
   monitor_usb_dev();
 }
 
