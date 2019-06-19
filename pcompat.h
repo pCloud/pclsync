@@ -178,6 +178,12 @@ typedef unsigned long psync_uint_t;
 #else
 #define psync_stat_device(s) ((s)->st_dev)
 #endif
+#define psync_stat_device_full(s) ((s)->st_dev)
+#if defined(P_OS_MACOSX)
+#define psync_deviceid_short(deviceid) (deviceid>>24)
+#else
+#define psync_deviceid_short(deviceid) (deviceid)
+#endif
 
 typedef struct stat psync_stat_t;
 
@@ -282,6 +288,8 @@ int psync_stat(const char *path, psync_stat_t *st);
 #define psync_mtime_native_to_mtime(n) psync_filetime64_to_timet(n)
 #define psync_stat_inode(s) psync_32to64((s)->nFileIndexHigh, (s)->nFileIndexLow)
 #define psync_stat_device(s) ((s)->dwVolumeSerialNumber)
+#define psync_stat_device_full(s) psync_stat_device(s)
+#define psync_deviceid_short(deviceid) (deviceid)
 
 #define psync_sock_err() WSAGetLastError()
 #define psync_sock_set_err(e) WSASetLastError(e)

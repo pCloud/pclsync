@@ -61,7 +61,7 @@
 #include "poverlay.h"
 #include "pasyncnet.h"
 #include "ppathstatus.h"
-//#include "pdevice_monitor.h"
+#include "pdevice_monitor.h"
 
 #include <string.h>
 #include <ctype.h>
@@ -223,7 +223,6 @@ int psync_init(){
 
   psync_run_thread("Overlay main thread", overlay_main_loop);
   init_overlay_callbacks();
-  //psync_run_thread("Device monitor main thread", pinit_device_monitor);
 
   return 0;
 }
@@ -259,6 +258,7 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
   psync_p2p_init();
   if (psync_setting_get_bool(_PS(autostartfs)))
     psync_fs_start();
+  psync_devmon_init();    
 }
 
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize){
@@ -812,6 +812,7 @@ int psync_change_synctype(psync_syncid_t syncid, psync_synctype_t synctype){
   psync_path_status_sync_delete(syncid);
   psync_sql_commit_transaction();
   psync_localnotify_del_sync(syncid);
+  psync_restat_sync_folders_del(syncid);
   psync_stop_sync_download(syncid);
   psync_stop_sync_upload(syncid);
   psync_sql_sync();
@@ -868,6 +869,7 @@ int psync_delete_sync(psync_syncid_t syncid){
     psync_stop_sync_download(syncid);
     psync_stop_sync_upload(syncid);
     psync_localnotify_del_sync(syncid);
+    psync_restat_sync_folders_del(syncid);
     psync_restart_localscan();
     psync_sql_sync();
     psync_path_status_sync_delete(syncid);

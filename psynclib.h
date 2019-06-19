@@ -1322,15 +1322,15 @@ char * psync_get_token();
  */
 
 //Adds device monitoring callback which is invoked every time a new not disabled device arrives.
-void padd_device_monitor_callback(device_event_callback callback);
+// void psync_add_device_monitor_callback(device_event_callback callback);
 //Lists all stored devices
-pdevice_item_list_t * psync_list_devices(char **err /*OUT*/);
+// pdevice_item_list_t * psync_list_devices(char **err /*OUT*/);
 //Enables device. This info is stored in the database so will be present after restart.
-void penable_device(const char* device_id);
+// void penable_device(const char* device_id);
 //Disable device
-void pdisable_device(const char* device_id);
+// void pdisable_device(const char* device_id);
 //Remove db information about device
-void premove_device(const char* device_id);
+// void premove_device(const char* device_id);
 
 /* Checks for promotions. 
  * If url is empty there is no ptomotion.
