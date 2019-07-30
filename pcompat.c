@@ -2303,7 +2303,7 @@ psync_interface_list_t *psync_list_ip_adapters(){
   int isz;
   sz=16*1024;
   adapters=(IP_ADAPTER_ADDRESSES *)psync_malloc(sz);
-  fl=GAA_FLAG_SKIP_DNS_SERVER|GAA_FLAG_SKIP_FRIENDLY_NAME|GAA_FLAG_SKIP_ANYCAST|GAA_FLAG_SKIP_MULTICAST;
+  fl=GAA_FLAG_SKIP_DNS_SERVER|GAA_FLAG_SKIP_FRIENDLY_NAME|GAA_FLAG_SKIP_ANYCAST|GAA_FLAG_SKIP_MULTICAST|0x0800;//GAA_FLAG_SKIP_DNS_INFO;
   rt=GetAdaptersAddresses(AF_UNSPEC, fl, NULL, adapters, &sz);
   if (rt==ERROR_BUFFER_OVERFLOW){
     adapters=(IP_ADAPTER_ADDRESSES *)psync_realloc(adapters, sz);
