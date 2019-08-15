@@ -62,6 +62,7 @@ typedef struct {
 
 typedef psync_encrypted_data_t psync_encrypted_symmetric_key_t;
 typedef psync_encrypted_data_t psync_binary_rsa_key_t;
+typedef psync_encrypted_data_t psync_rsa_signature_t;
 
 #define PSYNC_INVALID_ENC_SYM_KEY NULL
 #define PSYNC_INVALID_ENCODER NULL
@@ -111,5 +112,6 @@ psync_aes256_encoder psync_ssl_aes256_create_encoder(psync_symmetric_key_t key);
 void psync_ssl_aes256_free_encoder(psync_aes256_encoder aes);
 psync_aes256_encoder psync_ssl_aes256_create_decoder(psync_symmetric_key_t key);
 void psync_ssl_aes256_free_decoder(psync_aes256_encoder aes);
+psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa, const unsigned char *data);
 
 #endif

@@ -208,6 +208,8 @@ typedef struct pstatus_struct_ {
 #define PERROR_INVALID_SYNCID          12
 #define PERROR_PARENT_OR_SUBFOLDER_ALREADY_SYNCING 13
 #define PERROR_LOCAL_IS_ON_PDRIVE      14
+#define PERROR_NO_MEMORY               15
+#define PERROR_NET_ERROR               16
 
 #define PERROR_CACHE_MOVE_NOT_EMPTY       1
 #define PERROR_CACHE_MOVE_NO_WRITE_ACCESS 2
@@ -272,14 +274,18 @@ typedef struct pstatus_struct_ {
 #define PSYNC_CRYPTO_CANT_CONNECT          -6
 #define PSYNC_CRYPTO_FOLDER_NOT_ENCRYPTED  -7
 #define PSYNC_CRYPTO_INTERNAL_ERROR        -8
+#define PSYNC_CRYPTO_BAD_PASSPHRASE        -9
+#define PSYNC_CRYPTO_BAD_KEY               -10
 
-#define PSYNC_CRYPTO_STATUS_NEW 1
-#define PSYNC_CRYPTO_STATUS_TRIAL 2
-#define PSYNC_CRYPTO_STATUS_EXPIRED 3
-#define PSYNC_CRYPTO_STATUS_ACTIVE 4
-#define PSYNC_CRYPTO_STATUS_SETUP 5
+#define PSYNC_CRYPTO_STATUS_NEW 			1
+#define PSYNC_CRYPTO_STATUS_TRIAL 			2
+#define PSYNC_CRYPTO_STATUS_EXPIRED 		3
+#define PSYNC_CRYPTO_STATUS_ACTIVE 			4
+#define PSYNC_CRYPTO_STATUS_SETUP 			5
 
 #define PSYNC_CRYPTO_INVALID_FOLDERID      ((psync_folderid_t)-1)
+
+#define PSYNC_CRYPTO_FLAG_TEMP_PASS			1
 
 #ifndef DEFAULT_FUSE_VOLUME_NAME
 #define DEFAULT_FUSE_VOLUME_NAME "pCloud Drive"
@@ -1147,7 +1153,14 @@ char *psync_derive_password_from_passphrase(const char *username, const char *pa
  *                        PSYNC_CRYPTO_INVALID_FOLDERID.
  * psync_crypto_folderids() - returns array of the ids of all encrypted folders (but not their subfolders). Last element of the array is
  *                        always PSYNC_CRYPTO_INVALID_FOLDERID. You need to free the memory returned by this function.
- *
+ * psync_crypto_change_passphrase() - returns private key re-encrypted with new passphrase and a signature of the encrypted key. On success returns PSYNC_CRYPTO_SUCCESS and
+ * sets privenc and sign to point to memory that will contain re-encrypted private key and signature that can be passed to change passphrase API methods, these need to
+ * be freed by the caller. Possible errors are PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY and PSYNC_CRYPTO_BAD_KEY.
+ * This function does not care whether the crypto is locked or unlocked.
+ * Note: This function doesn't care if we are authenticated. It looks for the keys in the DB and if the keys are not present in the DB, this function will try to download
+ * them and if we are not authenticated yet PERROR_NET_ERROR will be returned. Can be used to detect if the call will block.
+ * pmobile_crypto_flags() - returns flags of the private key, safe to use only after successful unlock.
+ * IMPORTANT: flags are not stored encrypted.
  *
  */
 
@@ -1164,7 +1177,8 @@ time_t psync_crypto_expires();
 int psync_crypto_reset();
 psync_folderid_t psync_crypto_folderid();
 psync_folderid_t *psync_crypto_folderids();
-
+uint32_t psync_crypto_flags();
+int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass);
 /*
  * Status functions.
  *

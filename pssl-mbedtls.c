@@ -622,6 +622,24 @@ void psync_ssl_aes256_free_decoder(psync_aes256_encoder aes){
   psync_free(aes);
 }
 
+psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa, const unsigned char *data){
+  psync_rsa_signature_t ret;
+  int padding, hash_id;
+  ret=(psync_rsa_signature_t)psync_malloc(offsetof(psync_symmetric_key_struct_t, key)+rsa->len);
+  if (!ret)
+    return (psync_rsa_signature_t)(void *)PERROR_NO_MEMORY;
+  ret->datalen=rsa->len;
+  padding=rsa->padding;
+  hash_id=rsa->hash_id;
+  rsa_set_padding(rsa, RSA_PKCS_V21, POLARSSL_MD_SHA256);
+  if (rsa_rsassa_pss_sign(rsa, ctr_drbg_random_locked, &psync_mbed_rng, RSA_PRIVATE, POLARSSL_MD_SHA256, PSYNC_SHA256_DIGEST_LEN, data, ret->data)){
+    free(ret);
+    rsa_set_padding(rsa, padding, hash_id);
+    return (psync_rsa_signature_t)(void *)PSYNC_CRYPTO_NOT_STARTED;
+  }
+  rsa_set_padding(rsa, padding, hash_id);
+  return ret;
+}
 
 #if defined(PSYNC_AES_HW_GCC)
 

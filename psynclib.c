@@ -1890,7 +1890,11 @@ psync_folderid_t *psync_crypto_folderids(){
   return ret;
 }
 
-external_status psync_filesystem_status(const char *path) {
+int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass){
+  return psync_crypto_do_change_crypto_pass(oldpass, newpass);
+}
+
+external_status psync_filesystem_status(const char *path){
   switch (psync_path_status_get_status(psync_path_status_get(path))) {
     case PSYNC_PATH_STATUS_IN_SYNC:
       return INSYNC;

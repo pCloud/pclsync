@@ -303,7 +303,7 @@ unsigned char *psync_base64_decode(const unsigned char *str, size_t length, size
     if (ch==-1)
      continue;
     else if (ch==-2) {
-      psync_free(result);
+       psync_free(result);
       return NULL;
     }
     switch(i%4) {

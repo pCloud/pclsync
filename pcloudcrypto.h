@@ -77,5 +77,6 @@ static inline int psync_crypto_to_error(const void *ptr){
   return -((int)(uintptr_t)ptr);
 }
 
+int psync_crypto_do_change_crypto_pass(const char *oldpass, const char *newpass);
 
 #endif
