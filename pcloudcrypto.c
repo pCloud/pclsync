@@ -38,7 +38,6 @@
 #include "pmemlock.h"
 #include "pstatus.h"
 #include <string.h>
-
 #define PSYNC_CRYPTO_API_ERR_INTERNAL -511
 
 static PSYNC_THREAD int crypto_api_errno;
@@ -281,7 +280,6 @@ int psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpas
   char publicsha1[PSYNC_SHA1_DIGEST_HEXLEN+2], privatesha1[PSYNC_SHA1_DIGEST_HEXLEN+2];
   unsigned char *pubkey=NULL;
   unsigned char *privkey=NULL;
-//  unsigned char *salt=NULL;
   size_t pubkeylen=0, privkeylen=0, iterations=0, saltlen=0;
   int cres, ret;
   psync_sql_res *res;
@@ -291,6 +289,9 @@ int psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpas
   binresult *bres;
   uint64_t result;
   const binresult *data;
+  priv_key_ver1 *privatekey_struct=NULL;
+  pub_key_ver1 *pubkey_struct=NULL;
+
 retry:
   if (psync_sql_trylock()){
     psync_milisleep(1);
@@ -302,18 +303,28 @@ retry:
     while ((row=psync_sql_fetch_row(res))){
         id=psync_get_string(row[0]);
         rowcnt++;
-        if (!strcmp(id, "crypto_private_key"))
+        if (!strcmp(id, "crypto_private_key")){
             load_str_to(&row[1], &privkey, &privkeylen);
-        else if (!strcmp(id, "crypto_public_key"))
+            privatekey_struct = (priv_key_ver1*)psync_malloc(offsetof(priv_key_ver1, key)+privkeylen);
+            memset(privatekey_struct, 0, offsetof(priv_key_ver1, key)+privkeylen);
+            memcpy(privatekey_struct->key, privkey, privkeylen);
+            privatekey_struct->type=PSYNC_CRYPTO_TYPE_RSA4096_64BYTESALT_20000IT;
+            psync_free(privkey);
+        }else if (!strcmp(id, "crypto_public_key")){
             load_str_to(&row[1], &pubkey, &pubkeylen);
+            pubkey_struct = (pub_key_ver1*)psync_malloc(offsetof(pub_key_ver1, key)+pubkeylen);
+            memset(pubkey_struct, 0, offsetof(pub_key_ver1, key)+pubkeylen);
+            memcpy(pubkey_struct->key, pubkey, pubkeylen);
+            pubkey_struct->type=PSYNC_CRYPTO_PUB_TYPE_RSA4096;
+            psync_free(pubkey);
+        }
     }
     psync_sql_free_result(res);
   }
   psync_sql_unlock();
-  rowcnt=0;
   if (rowcnt<2){
-    free(pubkey);
-    free(privkey);
+    psync_free(privatekey_struct);
+    psync_free(pubkey_struct);
     if (!psync_my_auth)
       return PERROR_NET_ERROR;
     debug(D_NOTICE, "downloading keys");
@@ -341,21 +352,27 @@ retry:
       cres=PERROR_NO_MEMORY;
       goto ex;
     }
+    debug(D_NOTICE, "privkey=%s", privkey);
+    debug(D_NOTICE, "pubkey=%s", pubkey);
+    cres=psync_pcloud_crypto_reencode_key(pubkey, pubkeylen, privkey, privkeylen, oldpassphrase, newpassphrase, flags, privenc, sign);
+    psync_free(pubkey);
+    psync_free(privkey);
   }
   else{
-    debug(D_NOTICE, "got keys from the database");
-    assert(rowcnt==2);
+      debug(D_NOTICE, "got keys from the database");
+      assert(rowcnt==2);
+      debug(D_NOTICE, "privkey->key=%s", privatekey_struct->key);
+      debug(D_NOTICE, "pubkey->key=%s", pubkey_struct->key);
+      cres=psync_pcloud_crypto_reencode_key((unsigned char *)pubkey_struct, pubkeylen+offsetof(pub_key_ver1, key), (unsigned char *)privatekey_struct, privkeylen+offsetof(priv_key_ver1, key), oldpassphrase, newpassphrase, flags, privenc, sign);
+      psync_free(privatekey_struct);
+      psync_free(pubkey_struct);
   }
-  debug(D_NOTICE, "privkey=%s", privkey);
-  debug(D_NOTICE, "pubkey=%s", pubkey);
-  cres=psync_pcloud_crypto_reencode_key(pubkey, pubkeylen, privkey, privkeylen, oldpassphrase, newpassphrase, flags, privenc, sign);
+
 //  if (rowcnt<2){
 //    psync_cloud_crypto_setup_save_to_db(privkey, privkeylen, pubkey, pubkeylen, salt, saltlen, iterations, 0, publicsha1, privatesha1);
 //  }
 //  if (salt)
 //    psync_free(salt);
-  psync_free(pubkey);
-  psync_free(privkey);
 ex:
   return cres;
 }
