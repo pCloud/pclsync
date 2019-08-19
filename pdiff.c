@@ -111,6 +111,10 @@ static void delete_cached_crypto_keys(){
   psync_sql_statement("DELETE FROM cryptofilekey");
 }
 
+void psync_diff_delete_cached_crypto_keys(){
+	void delete_cached_crypto_keys();
+}
+
 static binresult *get_userinfo_user_digest(psync_socket *sock, const char *username, size_t userlen, const char *pwddig, const char *digest, uint32_t diglen,
                                            const char *osversion, const char *appversion, const char *deviceid, const char *devicestring){
   binparam params[]={P_STR("timeformat", "timestamp"),

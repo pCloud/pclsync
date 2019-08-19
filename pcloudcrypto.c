@@ -416,7 +416,7 @@ int psync_crypto_do_change_crypto_pass(const char *oldpass, const char *newpass)
 	if (result!=0)
 		debug(D_WARNING, "crypto_changeuserprivate returned %u", (unsigned)result);
 	if (result==0){
-	  delete_cached_crypto_keys();
+	  psync_diff_delete_cached_crypto_keys();
 		return PSYNC_CRYPTO_SETUP_SUCCESS;
 	}
 	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
