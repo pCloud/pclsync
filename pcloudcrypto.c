@@ -363,23 +363,21 @@ retry:
       cres=PERROR_NO_MEMORY;
       goto ex;
     }
-    debug(D_NOTICE, "privkey=%s", privkey);
-    debug(D_NOTICE, "pubkey=%s", pubkey);
-    debug(D_NOTICE, "salt=%s", pubkey);
     memcpy(((priv_key_ver1*)privkey)->salt, salt, saltlen);
     cres=psync_pcloud_crypto_reencode_key(pubkey, pubkeylen, privkey, privkeylen, oldpassphrase, newpassphrase, flags, privenc, sign);
     psync_free(pubkey);
     psync_free(privkey);
     psync_free(salt);
+    if (cres)
+			goto ex;
   }
   else{
-      debug(D_NOTICE, "got keys from the database");
       assert(rowcnt==3);
-      debug(D_NOTICE, "privkey->key=%s", privatekey_struct->key);
-      debug(D_NOTICE, "pubkey->key=%s", pubkey_struct->key);
       cres=psync_pcloud_crypto_reencode_key((unsigned char *)pubkey_struct, pubkeylen+offsetof(pub_key_ver1, key), (unsigned char *)privatekey_struct, privkeylen+offsetof(priv_key_ver1, key), oldpassphrase, newpassphrase, flags, privenc, sign);
       psync_free(privatekey_struct);
       psync_free(pubkey_struct);
+    if (cres)
+			goto ex;
   }
 
 //  if (rowcnt<2){
