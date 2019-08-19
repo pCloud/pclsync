@@ -38,6 +38,7 @@
 #include "pmemlock.h"
 #include "pstatus.h"
 #include <string.h>
+#include "pdiff.h"
 #define PSYNC_CRYPTO_API_ERR_INTERNAL -511
 
 static PSYNC_THREAD int crypto_api_errno;
@@ -380,11 +381,6 @@ retry:
 			goto ex;
   }
 
-//  if (rowcnt<2){
-//    psync_cloud_crypto_setup_save_to_db(privkey, privkeylen, pubkey, pubkeylen, salt, saltlen, iterations, 0, publicsha1, privatesha1);
-//  }
-//  if (salt)
-//    psync_free(salt);
 ex:
   return cres;
 }
@@ -419,13 +415,9 @@ int psync_crypto_do_change_crypto_pass(const char *oldpass, const char *newpass)
 	psync_free(res);
 	if (result!=0)
 		debug(D_WARNING, "crypto_changeuserprivate returned %u", (unsigned)result);
-	if (result==0)
+	if (result==0){
+	  delete_cached_crypto_keys();
 		return PSYNC_CRYPTO_SETUP_SUCCESS;
-	psync_process_api_error(result);
-	switch (result){
-		case 1000: return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_NOT_LOGGED_IN);
-		case 2000: return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
-		case 2110: return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_ALREADY_SETUP);
 	}
 	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
 }
