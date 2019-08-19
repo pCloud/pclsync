@@ -1817,7 +1817,6 @@ int psync_pcloud_crypto_reencode_key(const unsigned char *rsapub, size_t rsapubl
                                                      rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, 20000);
       if (unlikely(aeskey==PSYNC_INVALID_SYM_KEY))
         goto err_nm_1;
-      //rsaprivlen-=offsetof(priv_key_ver1, key);
       enc=psync_crypto_aes256_ctr_encoder_decoder_create(aeskey);
       psync_ssl_free_symmetric_key(aeskey);
       if (unlikely(enc==PSYNC_CRYPTO_INVALID_ENCODER))
