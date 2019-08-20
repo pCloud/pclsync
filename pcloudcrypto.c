@@ -1713,66 +1713,66 @@ err_ph_1:
   return PSYNC_CRYPTO_BAD_PASSPHRASE;
 }
 
-//int psync_pcloud_crypto_encode_key(const char *newpassphrase, uint32_t flags, char **privenc, char **sign){
-//  unsigned char *newpriv;
-//  priv_key_ver1 *rsapriv_struct;
-//  psync_binary_rsa_key_t rsapriv;
-//  psync_crypto_aes256_ctr_encoder_decoder_t enc;
-//  psync_symmetric_key_t aeskey;
-//  size_t rsaprivlen, dummy;
-//  unsigned char newprivsha[PSYNC_SHA256_DIGEST_LEN];
-//  psync_rsa_signature_t rsasign;
-//  rsapriv=psync_ssl_rsa_private_to_binary(m->rsapriv);
-//  if (rsapriv==PSYNC_INVALID_RSA)
-//    goto err_nm_0;
-//  rsaprivlen=rsapriv->datalen;
-//  newpriv=(unsigned char *)psync_malloc(offsetof(priv_key_ver1, key)+rsaprivlen);
-//  if (unlikely(!newpriv))
-//    goto err_nm_1;
-//  rsapriv_struct=(priv_key_ver1 *)newpriv;
-//  rsapriv_struct->type=PSYNC_CRYPTO_TYPE_RSA4096_64BYTESALT_20000IT;
-//  rsapriv_struct->flags=flags;
-//  psync_ssl_rand_weak(rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN);
-//  aeskey=psync_ssl_gen_symmetric_key_from_pass(newpassphrase, PSYNC_AES256_KEY_SIZE+PSYNC_AES256_BLOCK_SIZE,
-//                                                 rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, 20000);
-//  if (unlikely(aeskey==PSYNC_INVALID_SYM_KEY))
-//    goto err_nm_1;
-//  enc=psync_crypto_aes256_ctr_encoder_decoder_create(aeskey);
-//  psync_ssl_free_symmetric_key(aeskey);
-//  if (unlikely(enc==PSYNC_CRYPTO_INVALID_ENCODER))
-//    goto err_nm_1;
-//  memcpy(rsapriv_struct->key, rsapriv->data, rsaprivlen);
-//  psync_crypto_aes256_ctr_encode_decode_inplace(enc, rsapriv_struct->key, rsaprivlen, 0);
-//  psync_crypto_aes256_ctr_encoder_decoder_free(enc);
-//  rsaprivlen+=offsetof(priv_key_ver1, key);
+int psync_pcloud_crypto_encode_key(const char *newpassphrase, uint32_t flags, char **privenc, char **sign){
+  unsigned char *newpriv;
+  priv_key_ver1 *rsapriv_struct;
+  psync_binary_rsa_key_t rsapriv;
+  psync_crypto_aes256_ctr_encoder_decoder_t enc;
+  psync_symmetric_key_t aeskey;
+  size_t rsaprivlen, dummy;
+  unsigned char newprivsha[PSYNC_SHA256_DIGEST_LEN];
+  psync_rsa_signature_t rsasign;
+  rsapriv=psync_ssl_rsa_private_to_binary(crypto_privkey);
+  if (rsapriv==PSYNC_INVALID_RSA)
+    goto err_nm_0;
+  rsaprivlen=rsapriv->datalen;
+  newpriv=(unsigned char *)psync_malloc(offsetof(priv_key_ver1, key)+rsaprivlen);
+  if (unlikely(!newpriv))
+    goto err_nm_1;
+  rsapriv_struct=(priv_key_ver1 *)newpriv;
+  rsapriv_struct->type=PSYNC_CRYPTO_TYPE_RSA4096_64BYTESALT_20000IT;
+  rsapriv_struct->flags=flags;
+  psync_ssl_rand_weak(rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN);
+  aeskey=psync_ssl_gen_symmetric_key_from_pass(newpassphrase, PSYNC_AES256_KEY_SIZE+PSYNC_AES256_BLOCK_SIZE,
+                                                 rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, 20000);
+  if (unlikely(aeskey==PSYNC_INVALID_SYM_KEY))
+    goto err_nm_1;
+  enc=psync_crypto_aes256_ctr_encoder_decoder_create(aeskey);
+  psync_ssl_free_symmetric_key(aeskey);
+  if (unlikely(enc==PSYNC_CRYPTO_INVALID_ENCODER))
+    goto err_nm_1;
+  memcpy(rsapriv_struct->key, rsapriv->data, rsaprivlen);
+  psync_crypto_aes256_ctr_encode_decode_inplace(enc, rsapriv_struct->key, rsaprivlen, 0);
+  psync_crypto_aes256_ctr_encoder_decoder_free(enc);
+  rsaprivlen+=offsetof(priv_key_ver1, key);
 
-//  psync_sha256(newpriv, rsaprivlen, newprivsha);
-//  rsasign=psync_ssl_rsa_sign_sha256_hash(m->rsapriv, newprivsha);
-//  if (psync_crypto_is_error(rsasign)){
-//    psync_free(newpriv);
-//    psync_ssl_rsa_free_binary(rsapriv);
-//    return psync_crypto_to_error(rsasign);
-//  }
-//  *privenc=(char *)psync_base64_encode(newpriv, rsaprivlen, &dummy);
-//  *sign=(char *)psync_base64_encode(rsasign->data, rsasign->datalen, &dummy);
-//  psync_free(rsasign);
-//  psync_free(newpriv);
-//  psync_ssl_rsa_free_binary(rsapriv);
+  psync_sha256(newpriv, rsaprivlen, newprivsha);
+  rsasign=psync_ssl_rsa_sign_sha256_hash(crypto_privkey, newprivsha);
+  if (psync_crypto_is_error(rsasign)){
+    psync_free(newpriv);
+    psync_ssl_rsa_free_binary(rsapriv);
+    return psync_crypto_to_error(rsasign);
+  }
+  *privenc=(char *)psync_base64_encode(newpriv, rsaprivlen, &dummy);
+  *sign=(char *)psync_base64_encode(rsasign->data, rsasign->datalen, &dummy);
+  psync_free(rsasign);
+  psync_free(newpriv);
+  psync_ssl_rsa_free_binary(rsapriv);
 
-//  if (!*privenc || !*sign){
-//    psync_free(*privenc);
-//    psync_free(*sign);
-//    return PERROR_NO_MEMORY;
-//  }
+  if (!*privenc || !*sign){
+    psync_free(*privenc);
+    psync_free(*sign);
+    return PERROR_NO_MEMORY;
+  }
 
-//  return PSYNC_CRYPTO_SUCCESS;
+  return PSYNC_CRYPTO_SUCCESS;
 
-//err_nm_1:
-//  psync_free(newpriv);
-//  psync_ssl_rsa_free_binary(rsapriv);
-//err_nm_0:
-//  return PERROR_NO_MEMORY;
-//}
+err_nm_1:
+  psync_free(newpriv);
+  psync_ssl_rsa_free_binary(rsapriv);
+err_nm_0:
+  return PERROR_NO_MEMORY;
+}
 
 int psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpassphrase, uint32_t flags, char** privenc, char** sign){
   unsigned char *pubkey=NULL;
@@ -1881,9 +1881,22 @@ ex:
   return cres;
 }
 
+int psync_crypto_change_passphrase_unlocked(const char *newpassphrase, uint32_t flags, char **privenc, char **sign){
+  int cres;
+  if (unlikely(!psync_cloud_crypto_isstarted())){
+    return PSYNC_CRYPTO_NOT_STARTED;
+  }
+  cres=psync_pcloud_crypto_encode_key(newpassphrase, flags, privenc, sign);
+  return cres;
+}
+
 void sha1_hex_null_term(const void *data, size_t len, char *out){
   unsigned char sha1bin[PSYNC_SHA1_DIGEST_LEN];
   psync_sha1((const unsigned char *)data, len, (unsigned char *)sha1bin);
   psync_binhex(out, sha1bin, PSYNC_SHA1_DIGEST_LEN);
   out[PSYNC_SHA1_DIGEST_HEXLEN]=0;
+}
+
+uint32_t psync_crypto_flags(){
+	
 }

@@ -1890,7 +1890,7 @@ psync_folderid_t *psync_crypto_folderids(){
   return ret;
 }
 
-int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass){
+int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint){
   psync_socket *api;
   binresult *res;
   uint64_t result;
@@ -1899,7 +1899,7 @@ int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass){
 	char *signature=NULL;
 	if ((err=psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature)))
 		return err;
-	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature) };
+	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint) };
 	debug(D_NOTICE, "uploading re-encoded private key");
 	while (1){
 		api=psync_apipool_get();
@@ -1921,7 +1921,44 @@ int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass){
 	if (result!=0)
 		debug(D_WARNING, "crypto_changeuserprivate returned %u", (unsigned)result);
 	if (result==0){
-	  psync_diff_delete_cached_crypto_keys();
+	  psync_delete_cached_crypto_keys();
+		return PSYNC_CRYPTO_SETUP_SUCCESS;
+	}
+	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
+}
+
+int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hint){
+  psync_socket *api;
+  binresult *res;
+  uint64_t result;
+  int tries=0, err;
+	char *priv_key=NULL;
+	char *signature=NULL;
+	if ((err=psync_crypto_change_passphrase_unlocked(newpass, 0, &priv_key, &signature)))
+		return err;
+	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint) };
+	debug(D_NOTICE, "uploading re-encoded private key");
+	while (1){
+		api=psync_apipool_get();
+		if (!api)
+			return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+		res=send_command(api, "crypto_changeuserprivate", params);
+		if (unlikely_log(!res)){
+			psync_apipool_release_bad(api);
+			if (++tries>5)
+				return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+		}
+		else{
+			psync_apipool_release(api);
+			break;
+		}
+	}
+	result=psync_find_result(res, "result", PARAM_NUM)->num;
+	psync_free(res);
+	if (result!=0)
+		debug(D_WARNING, "crypto_changeuserprivate returned %u", (unsigned)result);
+	if (result==0){
+	  psync_delete_cached_crypto_keys();
 		return PSYNC_CRYPTO_SETUP_SUCCESS;
 	}
 	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);

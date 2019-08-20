@@ -86,4 +86,11 @@ int psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpas
  * them and if we are not authenticated yet PERROR_NET_ERROR will be returned. Can be used to detect if the call will block.
  *
  */
+ int psync_crypto_change_passphrase_unlocked(const char *newpassphrase, uint32_t flags, char **privenc, char **sign);
+ /* psync_crypto_flags() - returns flags of the private key, safe to use only after successful unlock.
+ *
+ * IMPORTANT: flags are not stored encrypted.
+ */
+uint32_t psync_crypto_flags();
+
 #endif

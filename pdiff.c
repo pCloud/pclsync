@@ -111,7 +111,7 @@ static void delete_cached_crypto_keys(){
   psync_sql_statement("DELETE FROM cryptofilekey");
 }
 
-void psync_diff_delete_cached_crypto_keys(){
+void psync_delete_cached_crypto_keys(){
 	void delete_cached_crypto_keys();
 }
 

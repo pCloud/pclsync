@@ -1157,7 +1157,9 @@ char *psync_derive_password_from_passphrase(const char *username, const char *pa
  * Possible errors are PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY, PSYNC_CRYPTO_SETUP_CANT_CONNECT and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
  * This function does not care whether the crypto is locked or unlocked.
  * Note: This function doesn't care if we are authenticated.
- *
+ * psync_crypto_change_crypto_pass_unlocked() - Re-encodes the private key with the new pasword provided and makes an API call to upload it. On success returns PSYNC_CRYPTO_SETUP_SUCCESS. 
+ * Possible errors are PSYNC_CRYPTO_NOT_STARTED, PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
+ * In order to work, this function requires the crypto to be unlocked.
  */
 
 int psync_crypto_setup(const char *password, const char *hint);
@@ -1174,7 +1176,8 @@ int psync_crypto_reset();
 psync_folderid_t psync_crypto_folderid();
 psync_folderid_t *psync_crypto_folderids();
 uint32_t psync_crypto_flags();
-int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass);
+int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint);
+int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hint);
 /*
  * Status functions.
  *
