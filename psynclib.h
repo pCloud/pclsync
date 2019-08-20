@@ -1153,14 +1153,10 @@ char *psync_derive_password_from_passphrase(const char *username, const char *pa
  *                        PSYNC_CRYPTO_INVALID_FOLDERID.
  * psync_crypto_folderids() - returns array of the ids of all encrypted folders (but not their subfolders). Last element of the array is
  *                        always PSYNC_CRYPTO_INVALID_FOLDERID. You need to free the memory returned by this function.
- * psync_crypto_change_passphrase() - returns private key re-encrypted with new passphrase and a signature of the encrypted key. On success returns PSYNC_CRYPTO_SUCCESS and
- * sets privenc and sign to point to memory that will contain re-encrypted private key and signature that can be passed to change passphrase API methods, these need to
- * be freed by the caller. Possible errors are PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY and PSYNC_CRYPTO_BAD_KEY.
+ * psync_crypto_change_crypto_pass() - Re-encodes the private key with the new pasword provided and makes an API call to upload it. On success returns PSYNC_CRYPTO_SETUP_SUCCESS. 
+ * Possible errors are PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY, PSYNC_CRYPTO_SETUP_CANT_CONNECT and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
  * This function does not care whether the crypto is locked or unlocked.
- * Note: This function doesn't care if we are authenticated. It looks for the keys in the DB and if the keys are not present in the DB, this function will try to download
- * them and if we are not authenticated yet PERROR_NET_ERROR will be returned. Can be used to detect if the call will block.
- * pmobile_crypto_flags() - returns flags of the private key, safe to use only after successful unlock.
- * IMPORTANT: flags are not stored encrypted.
+ * Note: This function doesn't care if we are authenticated.
  *
  */
 
