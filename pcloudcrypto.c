@@ -278,12 +278,13 @@ static binresult *psync_get_keys_bin_auth(const char *auth){
 }
 
 int psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpassphrase, uint32_t flags, char** privenc, char** sign){
-  char publicsha1[PSYNC_SHA1_DIGEST_HEXLEN+2], privatesha1[PSYNC_SHA1_DIGEST_HEXLEN+2];
   unsigned char *pubkey=NULL;
   unsigned char *privkey=NULL;
   unsigned char *salt=NULL;
-  size_t pubkeylen=0, privkeylen=0, iterations=0, saltlen=0;
-  int cres, ret;
+  priv_key_ver1 *privatekey_struct=NULL;
+  pub_key_ver1 *pubkey_struct=NULL;  
+  size_t pubkeylen=0, privkeylen=0, saltlen=0;
+  int cres;
   psync_sql_res *res;
   psync_variant_row row;
   const char *id;
@@ -291,8 +292,6 @@ int psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpas
   binresult *bres;
   uint64_t result;
   const binresult *data;
-  priv_key_ver1 *privatekey_struct=NULL;
-  pub_key_ver1 *pubkey_struct=NULL;
 
 retry:
   if (psync_sql_trylock()){
@@ -335,7 +334,7 @@ retry:
   if (rowcnt<3){
     psync_free(privatekey_struct);
     psync_free(pubkey_struct);
-    if (!psync_my_auth)
+    if (!psync_my_auth[0])
       return PERROR_NET_ERROR;
     debug(D_NOTICE, "downloading keys");
     bres=psync_get_keys_bin_auth(psync_my_auth);
