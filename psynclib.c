@@ -1340,10 +1340,44 @@ int psync_share_folder(psync_folderid_t folderid, const char *name, const char *
   return psync_run_command("sharefolder", params, err);
 }
 
+int psync_crypto_share_folder(psync_folderid_t folderid, const char *name, const char *mail, const char *message, uint32_t permissions, char *hint, char *temppass,  char **err){
+	char *priv_key=NULL;
+	char *signature=NULL;
+	int change_err; 
+  if (!temppass){
+		binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
+                     P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint)};
+		return psync_run_command("sharefolder", params, err);                     
+  }
+	if ((change_err=psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature)))
+		return change_err;
+	binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
+										 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_STR("privatekey", priv_key),
+										 P_STR("signature", signature)};
+	return psync_run_command("sharefolder", params, err);
+}
+
 int psync_account_teamshare(psync_folderid_t folderid, const char *name, psync_teamid_t teamid, const char *message, uint32_t permissions, char **err){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
                      P_STR("message", message), P_NUM("permissions", convert_perms(permissions))};
   return psync_run_command("account_teamshare", params, err);
+}
+
+int psync_crypto_account_teamshare(psync_folderid_t folderid, const char *name, psync_teamid_t teamid, const char *message, uint32_t permissions, char* hint, char *temppass, char **err){
+	char *priv_key=NULL;
+	char *signature=NULL;
+	int change_err;
+	if (!temppass){
+		binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
+											 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint)};
+		return psync_run_command("account_teamshare", params, err);
+  }
+	if ((change_err=psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature)))
+		return change_err;
+	binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
+										 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint),
+										 P_STR("privatekey", priv_key), P_STR("signature", signature)};
+	return psync_run_command("account_teamshare", params, err);
 }
 
 int psync_cancel_share_request(psync_sharerequestid_t requestid, char **err){

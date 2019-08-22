@@ -78,19 +78,7 @@ static inline int psync_crypto_to_error(const void *ptr){
 }
 
 int psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpassphrase, uint32_t flags, char** privenc, char** sign);
-/* psync_crypto_change_passphrase() - returns private key re-encrypted with new passphrase and a signature of the encrypted key. On success returns PSYNC_CRYPTO_SUCCESS and
- * sets privenc and sign to point to memory that will contain re-encrypted private key and signature that can be passed to change passphrase API methods, these need to
- * be freed by the caller. Possible errors are PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY and PSYNC_CRYPTO_BAD_KEY.
- * This function does not care whether the crypto is locked or unlocked.
- * Note: This function doesn't care if we are authenticated. It looks for the keys in the DB and if the keys are not present in the DB, this function will try to download
- * them and if we are not authenticated yet PERROR_NET_ERROR will be returned. Can be used to detect if the call will block.
- *
- */
- int psync_crypto_change_passphrase_unlocked(const char *newpassphrase, uint32_t flags, char **privenc, char **sign);
- /* psync_crypto_flags() - returns flags of the private key, safe to use only after successful unlock.
- *
- * IMPORTANT: flags are not stored encrypted.
- */
+int psync_crypto_change_passphrase_unlocked(const char *newpassphrase, uint32_t flags, char **privenc, char **sign);
 uint32_t psync_crypto_flags();
 
 #endif

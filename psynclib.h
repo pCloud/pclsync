@@ -971,6 +971,21 @@ psync_share_list_t *psync_list_shares(int incoming);
 
 int psync_share_folder(psync_folderid_t folderid, const char *name, const char *mail, const char *message, uint32_t permissions, char **err);
 
+/* psync_crypto_share_folder shares a crypto folder with the user "mail". The "permissions" parameter is bitwise or of
+ * PSYNC_PERM_READ, PSYNC_PERM_CREATE, PSYNC_PERM_MODIFY and PSYNC_PERM_DELETE (PSYNC_PERM_READ is actually
+ * ignored and always set). The "temppass" parameter is used to create a temporary crypto pass for the provided user if the user doesn't 
+ * have activated crypto an if left empty no attempt to create a temporary pass is made by the function.
+ *
+ * On success returns 0, otherwise returns API error number (or -1 on network error) and sets err to a string
+ * error message if it is not NULL. This string should be freed if the return value is not 0 and err is not NULL.
+ * The function can also return PSYNC_CRYPTO_NOT_STARTED or PERROR_NO_MEMORY errors.
+ *
+ * It is NOT guaranteed that upon successful return psync_list_sharerequests(0) will return the newly created
+ * share request. Windows showing list of sharerequests/shares are supposed to requery shares/request upon receiving of
+ * PEVENT_SHARE_* event. That is true for all share management functions.
+ *
+ */
+int psync_crypto_share_folder(psync_folderid_t folderid, const char *name, const char *mail, const char *message, uint32_t permissions, char *hint, char *temppass,  char **err);
 
 /* Cancels a share request (this is to be called for outgoing requests).
  *
@@ -1153,13 +1168,15 @@ char *psync_derive_password_from_passphrase(const char *username, const char *pa
  *                        PSYNC_CRYPTO_INVALID_FOLDERID.
  * psync_crypto_folderids() - returns array of the ids of all encrypted folders (but not their subfolders). Last element of the array is
  *                        always PSYNC_CRYPTO_INVALID_FOLDERID. You need to free the memory returned by this function.
- * psync_crypto_change_crypto_pass() - Re-encodes the private key with the new pasword provided and makes an API call to upload it. On success returns PSYNC_CRYPTO_SETUP_SUCCESS. 
- * Possible errors are PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY, PSYNC_CRYPTO_SETUP_CANT_CONNECT and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
- * This function does not care whether the crypto is locked or unlocked.
- * Note: This function doesn't care if we are authenticated.
- * psync_crypto_change_crypto_pass_unlocked() - Re-encodes the private key with the new pasword provided and makes an API call to upload it. On success returns PSYNC_CRYPTO_SETUP_SUCCESS. 
- * Possible errors are PSYNC_CRYPTO_NOT_STARTED, PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
- * In order to work, this function requires the crypto to be unlocked.
+ * psync_crypto_change_crypto_pass() - Re-encodes the private key with the new pasword provided and makes an API call to upload it.
+ *                        On success returns PSYNC_CRYPTO_SETUP_SUCCESS. Possible errors are PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR,
+ *                        PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY, PSYNC_CRYPTO_SETUP_CANT_CONNECT and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
+ *                        This function does not care whether the crypto is locked or unlocked.
+ *                        Note: This function doesn't care if we are authenticated.
+ * psync_crypto_change_crypto_pass_unlocked() - Re-encodes the private key loaded in the memory with the new pasword provided and makes an
+ *                        API call to upload it. On success returns PSYNC_CRYPTO_SETUP_SUCCESS. Possible errors are PSYNC_CRYPTO_NOT_STARTED,
+ *                        PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
+ *                        In order to work, this function requires the crypto to be unlocked.
  */
 
 int psync_crypto_setup(const char *password, const char *hint);
@@ -1257,7 +1274,7 @@ int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/);
 int psync_delete_all_links_folder(psync_folderid_t folderid, char**err);
 int psync_delete_all_links_file(psync_fileid_t fileid, char**err);
 /*
- * Creates download link for newly uploaded screenshot and the sets expiration to current date plus delay seconds. If hasdelay
+ * Creates download link for newly uploaded screenshot and sets the expiration to current date plus delay seconds. If hasdelay
  * equals 0 no expiration is set. If hasdelay and delay is 0 expiration is for one mount
  */
 int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t delay, char **code /*OUT*/, char **err /*OUT*/);
@@ -1291,7 +1308,20 @@ pcontacts_list_t *psync_list_myteams();
 
 int psync_account_teamshare(psync_folderid_t folderid, const char *name, psync_teamid_t teamid, const char *message, uint32_t permissions, char **err);
 
-
+/* account_teamshare shares a folder with business account team a. The "permissions" parameter is bitwise or of
+ * PSYNC_PERM_READ, PSYNC_PERM_CREATE, PSYNC_PERM_MODIFY and PSYNC_PERM_DELETE (PSYNC_PERM_READ is actually
+ * ignored and always set) and PSYNC_PERM_MANAGE. The "temppass" parameter is used to create a temporary crypto pass for the users
+ * in team without activated crypto if left empty no attempt to create a temporary pass is made by the function.
+ *
+ * On success returns 0, otherwise returns API error number (or -1 on network error) and sets err to a string
+ * error message if it is not NULL. This string should be freed if the return value is not 0 and err is not NULL.
+ *
+ * It is NOT guaranteed that upon successful return psync_list_sharerequests(0) will return the newly created
+ * share request. Windows showing list of sharerequests/shares are supposed to requery shares/request upon receiving of
+ * PEVENT_SHARE_* event. That is true for all share management functions.
+ *
+ */
+int psync_crypto_account_teamshare(psync_folderid_t folderid, const char *name, psync_teamid_t teamid, const char *message, uint32_t permissions, char* hint, char *temppass, char **err);
 
 /* psync_register_account_events_callback Registers a callback to be notified upon invalidation of the account cache information.
  * Different notifications are:
