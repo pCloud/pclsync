@@ -62,7 +62,7 @@
 #include "pasyncnet.h"
 #include "ppathstatus.h"
 #include "pdevice_monitor.h"
-
+#include "pfsfolder.h"
 #include <string.h>
 #include <ctype.h>
 #include <stddef.h>
@@ -2144,4 +2144,8 @@ int psync_get_promo(char **url)
   *url=psync_strdup(psync_find_result(res, "url", PARAM_STR)->str);
   psync_free(res);
   return 0;
+}
+
+psync_folderid_t psync_get_fsfolderid_by_path(const char *path, uint32_t *pflags){
+	return psync_fsfolderid_by_path(path, pflags);
 }
