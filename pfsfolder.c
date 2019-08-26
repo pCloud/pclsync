@@ -307,6 +307,7 @@ psync_fsfolderid_t psync_fsfolderidperm_by_path(const char *path, uint32_t *pfla
     return PSYNC_INVALID_FSFOLDERID;
   cfolderid=0;
   flags=0;
+  *pPermissions=0;
   while (1){
     while (*path=='/')
       path++;
@@ -341,7 +342,6 @@ psync_fsfolderid_t psync_fsfolderidperm_by_path(const char *path, uint32_t *pfla
     }
     row=psync_sql_fetch_rowint(res);
     folder=psync_fstask_get_folder_tasks_rdlocked(cfolderid);
-    pPermissions=row[2];
     if (folder){
       char *name=psync_strndup(ename, elen);
       if ((mk=psync_fstask_find_mkdir(folder, name, 0))){
@@ -352,6 +352,7 @@ psync_fsfolderid_t psync_fsfolderidperm_by_path(const char *path, uint32_t *pfla
       else if (row && !psync_fstask_find_rmdir(folder, name, 0)){
         cfolderid=row[0];
         flags=row[1];
+				*pPermissions=row[2];
         hasit=1;
       }
       else
@@ -362,6 +363,7 @@ psync_fsfolderid_t psync_fsfolderidperm_by_path(const char *path, uint32_t *pfla
       if (row){
         cfolderid=row[0];
         flags=row[1];
+        *pPermissions=row[2];
         hasit=1;
       }
       else
