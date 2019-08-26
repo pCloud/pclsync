@@ -1981,6 +1981,10 @@ static void process_removebshareout(const binresult *entry){
   delete_bsshared_folder(share);
 }
 
+static void process_cryptopasschange(const binresult *entry){
+	delete_cached_crypto_keys();
+}
+
 static void modify_shared_folder(const binresult *perms, uint64_t shareid){
   psync_sql_res *q;
   q=psync_sql_prep_statement("UPDATE sharedfolder SET permissions=? WHERE id=?");
@@ -2067,7 +2071,8 @@ static struct {
   FN(modifybsharein),
   FN(modifybshareout),
   FN(removebsharein),
-  FN(removebshareout)
+  FN(removebshareout),
+  FN(cryptopasschange)
 };
 
 #define event_list_size ARRAY_SIZE(event_list)
@@ -2623,7 +2628,7 @@ restart:
           cache_account_emails();
           psync_notify_cache_change(PACCOUNT_CHANGE_EMAILS);
         }
-         else if (entries->length==8 && !strcmp(entries->str, "contacts")){
+        else if (entries->length==8 && !strcmp(entries->str, "contacts")){
           cache_contacts();
           psync_notify_cache_change(PACCOUNT_CHANGE_CONTACTS);
         }
