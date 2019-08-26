@@ -46,6 +46,7 @@ typedef struct {
 
 psync_fspath_t *psync_fsfolder_resolve_path(const char *path);
 psync_fsfolderid_t psync_fsfolderid_by_path(const char *path, uint32_t *pflags);
+psync_fsfolderid_t psync_fsfolderidperm_by_path(const char *path, uint32_t *pflags, uint32_t *pPermissions);
 int psync_fsfolder_crypto_error();
 
 

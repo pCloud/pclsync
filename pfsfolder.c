@@ -236,7 +236,7 @@ psync_fsfolderid_t psync_fsfolderid_by_path(const char *path, uint32_t *pflags){
     else
       len=strlen(path);
     if (!res)
-      res=psync_sql_query_rdlock("SELECT id, flags FROM folder WHERE parentfolderid=? AND name=?");
+      res=psync_sql_query_rdlock("SELECT id, flags, permissions FROM folder WHERE parentfolderid=? AND name=?");
     else
       psync_sql_reset(res);
     psync_sql_bind_int(res, 1, cfolderid);
@@ -254,6 +254,94 @@ psync_fsfolderid_t psync_fsfolderid_by_path(const char *path, uint32_t *pflags){
     }
     row=psync_sql_fetch_rowint(res);
     folder=psync_fstask_get_folder_tasks_rdlocked(cfolderid);
+    if (folder){
+      char *name=psync_strndup(ename, elen);
+      if ((mk=psync_fstask_find_mkdir(folder, name, 0))){
+        cfolderid=mk->folderid;
+        flags=mk->flags;
+        hasit=1;
+      }
+      else if (row && !psync_fstask_find_rmdir(folder, name, 0)){
+        cfolderid=row[0];
+        flags=row[1];
+        hasit=1;
+      }
+      else
+        hasit=0;
+      psync_free(name);
+    }
+    else{
+      if (row){
+        cfolderid=row[0];
+        flags=row[1];
+        hasit=1;
+      }
+      else
+        hasit=0;
+    }
+    if (ename!=path)
+      psync_free(ename);
+    if (!hasit)
+      break;
+    path+=len;
+  }
+  if (res)
+    psync_sql_free_result(res);
+  return PSYNC_INVALID_FSFOLDERID;
+}
+
+psync_fsfolderid_t psync_fsfolderidperm_by_path(const char *path, uint32_t *pflags, uint32_t *pPermissions){
+  psync_fsfolderid_t cfolderid;
+  const char *sl;
+  psync_fstask_folder_t *folder;
+  psync_fstask_mkdir_t *mk;
+  psync_sql_res *res;
+  psync_uint_row row;
+  char *ename;
+  size_t len, elen;
+  uint32_t flags;
+  int hasit;
+  res=NULL;
+  cryptoerr=0;
+  if (*path!='/')
+    return PSYNC_INVALID_FSFOLDERID;
+  cfolderid=0;
+  flags=0;
+  while (1){
+    while (*path=='/')
+      path++;
+    if (*path==0){
+      if (res)
+        psync_sql_free_result(res);
+      if (pflags)
+        *pflags=flags;
+      return cfolderid;
+    }
+    sl=strchr(path, '/');
+    if (sl)
+      len=sl-path;
+    else
+      len=strlen(path);
+    if (!res)
+      res=psync_sql_query_rdlock("SELECT id, flags, permissions FROM folder WHERE parentfolderid=? AND name=?");
+    else
+      psync_sql_reset(res);
+    psync_sql_bind_int(res, 1, cfolderid);
+    if (flags&PSYNC_FOLDER_FLAG_ENCRYPTED){
+      ename=get_encname_for_folder(cfolderid, path, len);
+      if (!ename)
+        break;
+      elen=strlen(ename);
+      psync_sql_bind_lstring(res, 2, ename, elen);
+    }
+    else{
+      psync_sql_bind_lstring(res, 2, path, len);
+      ename=(char *)path;
+      elen=len;
+    }
+    row=psync_sql_fetch_rowint(res);
+    folder=psync_fstask_get_folder_tasks_rdlocked(cfolderid);
+    pPermissions=row[2];
     if (folder){
       char *name=psync_strndup(ename, elen);
       if ((mk=psync_fstask_find_mkdir(folder, name, 0))){
