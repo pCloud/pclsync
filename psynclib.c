@@ -1299,7 +1299,7 @@ psync_share_list_t *psync_list_shares(int incoming){
   builder=psync_list_builder_create(sizeof(psync_share_t), offsetof(psync_share_list_t, shares));
   incoming=!!incoming;
   if (incoming) {
-    res=psync_sql_query_rdlock("SELECT sf.id, sf.folderid, sf.ctime, sf.permissions, sf.userid, ifnull(sf.mail, ''), ifnull(sf.mail, '') as frommail, sf.name, ifnull(sf.bsharedfolderid, 0), 0, f.flags FROM sf.sharedfolder sf, folder f WHERE isincoming=1 AND id >= 0 "
+    res=psync_sql_query_rdlock("SELECT id, folderid, ctime, permissions, userid, ifnull(mail, ''), ifnull(mail, '') as frommail, name, ifnull(bsharedfolderid, 0), 0 FROM sharedfolder WHERE isincoming=1 AND id >= 0 "
                                 " UNION ALL "
                                 " select id, folderid, ctime, permissions, fromuserid as userid , "
                                 " case when isteam = 1 then (select name from baccountteam where id = toteamid) "
