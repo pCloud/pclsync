@@ -1898,5 +1898,5 @@ void sha1_hex_null_term(const void *data, size_t len, char *out){
 }
 
 uint32_t psync_crypto_flags(){
-	
+	return 0;
 }

@@ -1821,7 +1821,10 @@ static void process_establishbshareout(const binresult *entry) {
   char *email = 0;
   int isincomming =  0;
   uint64_t folderowneruserid, owneruserid;
-
+  unsigned char isencrypted=0;
+  psync_sql_res *res;
+  psync_variant_row row;
+  
   if (!entry)
     return;
 
@@ -1832,9 +1835,16 @@ static void process_establishbshareout(const binresult *entry) {
     psync_get_current_userid(&owneruserid);
     isincomming = (folderowneruserid == owneruserid) ? 0 : 1;
   }
-
   send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share);
 
+  res=psync_sql_query_rdlock("SELECT flags FROM folder WHERE id=?");
+  psync_sql_bind_uint(res, 1, psync_find_result(share, "folderid", PARAM_NUM)->num);
+  if ((row=psync_sql_fetch_row(res)))
+		isencrypted=psync_get_number(row[0]);
+	else
+		debug(D_NOTICE, "Error reading flags of shared folder with id: %d", psync_find_result(share, "folderid", PARAM_NUM)->num);
+	psync_sql_free_result(res);
+  
   q=psync_sql_prep_statement("REPLACE INTO bsharedfolder (id, folderid, ctime, permissions, message, name, isuser, "
                                                           "touserid, isteam, toteamid, fromuserid, folderownerid, isincoming)"
                                                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -1847,7 +1857,7 @@ static void process_establishbshareout(const binresult *entry) {
   psync_sql_bind_uint(q, 4, psync_get_permissions(psync_find_result(share, "permissions", PARAM_HASH)));
   br=psync_find_result(share, "message", PARAM_STR);
   psync_sql_bind_lstring(q, 5, br->str, br->length);
-  if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
+  if(!(br=psync_check_result(share, "foldername", PARAM_STR))||isencrypted)
       br=psync_check_result(share, "sharename", PARAM_STR);
   psync_sql_bind_lstring(q, 6, br->str, br->length);
   br = psync_check_result(share, "user", PARAM_BOOL);
@@ -2005,8 +2015,8 @@ static void process_modifiedsharein(const binresult *entry){
   const binresult *share;
   if (!entry)
     return;
-  share=psync_find_result(entry, "share", PARAM_HASH);
   send_share_notify(PEVENT_SHARE_MODIFYIN, share);
+  share=psync_find_result(entry, "share", PARAM_HASH);
   modify_shared_folder(share, psync_find_result(share, "shareid", PARAM_NUM)->num);
 }
 
