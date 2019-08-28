@@ -1297,7 +1297,7 @@ psync_share_list_t *psync_list_shares(int incoming){
   psync_list_builder_t *builder;
   psync_sql_res *res;
   builder=psync_list_builder_create(sizeof(psync_share_t), offsetof(psync_share_list_t, shares));
-  incoming=!!incoming;
+  incoming=!!incoming;  
   if (incoming) {
     res=psync_sql_query_rdlock("SELECT id, folderid, ctime, permissions, userid, ifnull(mail, ''), ifnull(mail, '') as frommail,name, ifnull(bsharedfolderid, 0), 0 FROM sharedfolder WHERE isincoming=1 AND id >= 0 "
                                 " UNION ALL "
@@ -1308,7 +1308,6 @@ psync_share_list_t *psync_list_shares(int incoming){
                                 " name, id as bsharedfolderid, 0 from bsharedfolder where isincoming = 1 "
                                 " ORDER BY name;");
   psync_list_bulder_add_sql(builder, res, create_share);
-
   } else {
     res=psync_sql_query_rdlock("SELECT sf.id, sf.folderid, sf.ctime, sf.permissions, sf.userid, ifnull(sf.mail, ''), ifnull(sf.mail, '') as frommail, f.name as fname, ifnull(sf.bsharedfolderid, 0), 0 "
                                 " FROM sharedfolder sf, folder f WHERE sf.isincoming=0 AND sf.id >= 0 and sf.folderid = f.id "
@@ -1318,7 +1317,7 @@ psync_share_list_t *psync_list_shares(int incoming){
                                 " case when bsf.isincoming = 0 and bsf.isteam = 1 then (select name from baccountteam where id = bsf.toteamid) "
                                 " else (select mail from baccountemail where id = bsf.touserid) end as mail, "
                                 " (select mail from baccountemail where id = bsf.fromuserid) as frommail, "
-                                " f.name as fname, bsf.id, bsf.isteam from bsharedfolder bsf, folder f where bsf.isincoming = 0 "
+                                " bsf.name as fname, bsf.id, bsf.isteam from bsharedfolder bsf, folder f where bsf.isincoming = 0 "
                                 " and bsf.folderid = f.id ORDER BY fname ");
     psync_list_bulder_add_sql(builder, res, create_share);
   }
