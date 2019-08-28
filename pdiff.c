@@ -2004,7 +2004,7 @@ static void process_modifiedsharein(const binresult *entry){
   const binresult *share;
   if (!entry)
     return;
-  share=psync_find_result(entry, "share", PARAM_HASH);
+  share=psync_find_result(entry, "share", PARAM_HASH);    
   send_share_notify(PEVENT_SHARE_MODIFYIN, share);
   modify_shared_folder(share, psync_find_result(share, "shareid", PARAM_NUM)->num);
 }
