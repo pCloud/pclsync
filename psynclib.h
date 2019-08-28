@@ -762,7 +762,7 @@ pfolder_list_t *psync_list_remote_folder_by_path(const char *remotepath, psync_l
 pfolder_list_t *psync_list_remote_folder_by_folderid(psync_folderid_t folderid, psync_listtype_t listtype);
 pentry_t *psync_stat_path(const char *remotepath);
 psync_folderid_t psync_get_fsfolderid_by_path(const char *path, uint32_t *pflags, uint32_t *pPerm);
-uint32_t psync_get_fsfolderflags_by_id(psync_folderid_t folderid);
+uint32_t psync_get_fsfolderflags_by_id(psync_folderid_t folderid, uint32_t *pPerm);
 int psync_is_lname_to_ignore(const char *name, size_t namelen);
 int psync_is_name_to_ignore(const char *name);
 

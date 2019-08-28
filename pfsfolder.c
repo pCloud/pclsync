@@ -384,10 +384,10 @@ int psync_fsfolder_crypto_error(){
   return cryptoerr;
 }
 
-uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid){
+uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid, uint32_t *pPerm){
   psync_sql_res *res;
   psync_uint_row row;
-  res=psync_sql_query_rdlock("SELECT flags FROM folder WHERE id=?");
+  res=psync_sql_query_rdlock("SELECT flags, permissions FROM folder WHERE id=?");
   psync_sql_bind_int(res, 1, folderid);
   row=psync_sql_fetch_rowint(res);
   if(!row){
@@ -395,5 +395,6 @@ uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid){
 		return 0;
   }
   else
+		*pPerm=row[1];
 		return row[0];
 }
