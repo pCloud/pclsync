@@ -90,7 +90,7 @@ void psync_cloud_crypto_clean_cache(){
 
 static void psync_cloud_crypto_setup_save_to_db(const unsigned char *rsapriv, size_t rsaprivlen, const unsigned char *rsapub, size_t rsapublen,
                                                 const unsigned char *salt, size_t saltlen, size_t iterations, time_t expires,
-                                                const char *publicsha1, const char *privatesha1){
+                                                const char *publicsha1, const char *privatesha1, uint32_t flags){
   psync_sql_res *res;
   res=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
   psync_sql_start_transaction();
@@ -119,6 +119,9 @@ static void psync_cloud_crypto_setup_save_to_db(const unsigned char *rsapriv, si
   psync_sql_run(res);
   psync_sql_bind_string(res, 1, "crypto_private_sha1");
   psync_sql_bind_string(res, 2, privatesha1);
+  psync_sql_run(res);
+  psync_sql_bind_string(res, 1, "crypto_private_flags");
+  psync_sql_bind_uint(res, 2, flags);
   psync_sql_run_free(res);
   psync_sql_commit_transaction();
 }
@@ -175,7 +178,7 @@ static void load_str_to(const psync_variant *v, unsigned char **ptr, size_t *len
 }
 
 static int psync_cloud_crypto_download_keys(unsigned char **rsapriv, size_t *rsaprivlen, unsigned char **rsapub, size_t *rsapublen,
-                                            unsigned char **salt, size_t *saltlen, size_t *iterations, char *publicsha1, char *privatesha1){
+                                            unsigned char **salt, size_t *saltlen, size_t *iterations, char *publicsha1, char *privatesha1, uint32_t *flags){
   binparam params[]={P_STR("auth", psync_my_auth)};
   psync_socket *api;
   binresult *res;
@@ -245,6 +248,7 @@ static int psync_cloud_crypto_download_keys(unsigned char **rsapriv, size_t *rsa
       *salt=(unsigned char *)psync_malloc(PSYNC_CRYPTO_PBKDF2_SALT_LEN);
       memcpy(*salt, rsaprivstruct+offsetof(priv_key_ver1, salt), PSYNC_CRYPTO_PBKDF2_SALT_LEN);
       *iterations=PSYNC_CRYPTO_PASS_TO_KEY_ITERATIONS;
+      *flags=((priv_key_ver1*)rsaprivstruct)->flags;
       break;
     default:
       def2:
@@ -382,7 +386,7 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
   }
   debug(D_NOTICE, "keys uploaded");
   psync_cloud_crypto_setup_save_to_db(rsaprivatebin->data, rsaprivatebin->datalen, rsapublicbin->data, rsapublicbin->datalen,
-                                      salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, PSYNC_CRYPTO_PASS_TO_KEY_ITERATIONS, cryptoexpires, publicsha1, privatesha1);
+                                      salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, PSYNC_CRYPTO_PASS_TO_KEY_ITERATIONS, cryptoexpires, publicsha1, privatesha1, 0);
   psync_ssl_rsa_free_binary(rsaprivatebin);
   psync_ssl_rsa_free_binary(rsapublicbin);
   return PSYNC_CRYPTO_SETUP_SUCCESS;
@@ -463,7 +467,7 @@ int psync_cloud_crypto_start(const char *password){
   size_t iterations, rsaprivlen, rsapublen, saltlen;
   psync_symmetric_key_t aeskey;
   psync_crypto_aes256_ctr_encoder_decoder_t enc;
-  uint32_t rowcnt;
+  uint32_t rowcnt, flags;
   int ret;
   /*
    * Read locks of crypto_lock are taken both before and after taking sql_lock. While read locks are concurrent and can not lead
@@ -509,7 +513,7 @@ retry:
       psync_free(rsapub);
       psync_free(salt);
     }
-    ret=psync_cloud_crypto_download_keys(&rsapriv, &rsaprivlen, &rsapub, &rsapublen, &salt, &saltlen, &iterations, publicsha1, privatesha1);
+    ret=psync_cloud_crypto_download_keys(&rsapriv, &rsaprivlen, &rsapub, &rsapublen, &salt, &saltlen, &iterations, publicsha1, privatesha1, &flags);
     if (ret!=PSYNC_CRYPTO_START_SUCCESS){
       pthread_rwlock_unlock(&crypto_lock);
       debug(D_WARNING, "downloading key failed, error %d", ret);
@@ -567,7 +571,7 @@ retry:
   crypto_started_un=1;
   pthread_rwlock_unlock(&crypto_lock);
   if (rowcnt<4)
-    psync_cloud_crypto_setup_save_to_db(rsapriv, rsaprivlen, rsapub, rsapublen, salt, saltlen, iterations, 0, publicsha1, privatesha1);
+    psync_cloud_crypto_setup_save_to_db(rsapriv, rsaprivlen, rsapub, rsapublen, salt, saltlen, iterations, 0, publicsha1, privatesha1, flags);
   psync_free(rsapriv);
   psync_free(rsapub);
   psync_free(salt);
@@ -1895,8 +1899,4 @@ void sha1_hex_null_term(const void *data, size_t len, char *out){
   psync_sha1((const unsigned char *)data, len, (unsigned char *)sha1bin);
   psync_binhex(out, sha1bin, PSYNC_SHA1_DIGEST_LEN);
   out[PSYNC_SHA1_DIGEST_HEXLEN]=0;
-}
-
-uint32_t psync_crypto_flags(){
-	return 0;
 }
