@@ -383,3 +383,17 @@ psync_fsfolderid_t psync_fsfolderidperm_by_path(const char *path, uint32_t *pfla
 int psync_fsfolder_crypto_error(){
   return cryptoerr;
 }
+
+uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid){
+  psync_sql_res *res;
+  psync_uint_row row;
+  res=psync_sql_query_rdlock("SELECT flags FROM folder WHERE id=?");
+  psync_sql_bind_int(res, 1, folderid);
+  row=psync_sql_fetch_rowint(res);
+  if(!row){
+		debug(D_NOTICE, "Error reading flags by file id!");
+		return 0;
+  }
+  else
+		return row[0];
+}

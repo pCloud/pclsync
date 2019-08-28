@@ -2148,3 +2148,7 @@ int psync_get_promo(char **url)
 psync_folderid_t psync_get_fsfolderid_by_path(const char *path, uint32_t *pflags, uint32_t *pPerm){
 	return psync_fsfolderidperm_by_path(path, pflags, pPerm);
 }
+
+uint32_t psync_get_fsfolderflags_by_id(psync_folderid_t folderid){
+	return psync_fsfolderflags_by_id(folderid);
+}
