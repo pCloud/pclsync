@@ -469,6 +469,7 @@ int psync_cloud_crypto_start(const char *password){
   psync_crypto_aes256_ctr_encoder_decoder_t enc;
   uint32_t rowcnt, flags;
   int ret;
+  flags=0;
   /*
    * Read locks of crypto_lock are taken both before and after taking sql_lock. While read locks are concurrent and can not lead
    * to deadlock it is possible to have some thread to hold sql_lock and wait for read lock. This will normally deadlock with
