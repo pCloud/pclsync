@@ -350,7 +350,7 @@ static psync_socket *get_connected_socket(){
     }
     psync_my_userid=userid=psync_find_result(res, "userid", PARAM_NUM)->num;
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
-	free_quota = psync_find_result(res, "freequota", PARAM_NUM)->num;
+	  free_quota = psync_find_result(res, "freequota", PARAM_NUM)->num;
     luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
     psync_is_business=psync_find_result(res, "business", PARAM_BOOL)->num;
     psync_sql_start_transaction();
@@ -423,16 +423,16 @@ static psync_socket *get_connected_socket(){
 	  psync_sql_run(q);
 	  cres = psync_check_result(res, "family", PARAM_HASH);
 	  if (cres){
-		psync_sql_bind_string(q, 1, "owner");
-		psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
-		psync_sql_run(q);
+			psync_sql_bind_string(q, 1, "owner");
+			psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
+			psync_sql_run(q);
 	  }
-      if (saveauth){
-        psync_sql_bind_string(q, 1, "auth");
-        psync_sql_bind_string(q, 2, psync_my_auth);
-        psync_sql_run(q);
-      }
-      psync_sql_free_result(q);
+		if (saveauth){
+			psync_sql_bind_string(q, 1, "auth");
+			psync_sql_bind_string(q, 2, psync_my_auth);
+			psync_sql_run(q);
+		}
+    psync_sql_free_result(q);
     }
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
       psync_sql_rollback_transaction();
@@ -462,6 +462,10 @@ static psync_socket *get_connected_socket(){
       psync_sql_run(q);
       isbusiness=0;
     }
+    cres=psync_check_result(res, "cryptov2isactive", PARAM_BOOL);
+		psync_sql_bind_string(q, 1, "cryptov2isactive");
+		psync_sql_bind_uint(q, 2, cres?cres->num:0);
+		psync_sql_run(q);
     cryptosetup=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
     psync_sql_bind_string(q, 1, "cryptosetup");
     psync_sql_bind_uint(q, 2, cryptosetup);
@@ -1378,13 +1382,14 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_run(q);
   cres = psync_check_result(res, "family", PARAM_HASH);
   if (cres){
-	psync_sql_bind_string(q, 1, "owner");
-	psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
-	psync_sql_run(q);
-	psync_sql_bind_string(q, 1, "cryptov2isactive");
-	psync_sql_bind_uint(q, 2, psync_find_result(res, "cryptov2isactive", PARAM_BOOL)->num);
-	psync_sql_run(q);
+		psync_sql_bind_string(q, 1, "owner");
+		psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
+		psync_sql_run(q);
   }
+  cres=psync_check_result(res, "cryptov2isactive", PARAM_BOOL);
+	psync_sql_bind_string(q, 1, "cryptov2isactive");
+	psync_sql_bind_uint(q, 2, cres?cres->num:0);
+	psync_sql_run(q);
   u=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
   psync_sql_bind_string(q, 1, "cryptosetup");
   psync_sql_bind_uint(q, 2, u);
@@ -2042,12 +2047,12 @@ static void process_cryptopasschange(const binresult *entry){
 }
 
 static void process_modifyaccountinfo(const binresult *entry){
-	psync_setting_set_string("companyname", psync_find_result(entry, "companyname", PARAM_STR));	
-	psync_setting_set_uint("owneruserid", psync_find_result(entry, "owneruserid", PARAM_NUM));
-  psync_setting_set_string("ownerfirstname", psync_find_result(entry, "ownerfirstname", PARAM_STR));
-	psync_setting_set_string("ownerlastname", psync_find_result(entry, "ownerlastname", PARAM_STR));
-	psync_setting_set_string("owneremail", psync_find_result(entry, "owneremail", PARAM_STR));
-	psync_setting_set_uint("cryptosetup", psync_find_result(entry, "cryptosetup", PARAM_NUM));	
+	psync_set_string_setting("companyname", psync_find_result(entry, "companyname", PARAM_STR)->str);
+	psync_set_uint_setting("owneruserid", psync_find_result(entry, "owneruserid", PARAM_NUM)->num);
+  psync_set_string_setting("ownerfirstname", psync_find_result(entry, "ownerfirstname", PARAM_STR)->str);
+	psync_set_string_setting("ownerlastname", psync_find_result(entry, "ownerlastname", PARAM_STR)->str);
+	psync_set_string_setting("owneremail", psync_find_result(entry, "owneremail", PARAM_STR)->str);
+	psync_set_bool_setting("cryptosetup", psync_find_result(entry, "cryptosetup", PARAM_BOOL)->num);
 }
 
 #define FN(n) {process_##n, #n, sizeof(#n)-1, 0}

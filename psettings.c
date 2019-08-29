@@ -72,13 +72,13 @@ static psync_setting_t settings[]={
   {"fscachesize", psync_pagecache_resize_cache, NULL, {PSYNC_FS_DEFAULT_CACHE_SIZE}, PSYNC_TNUMBER},
   {"fscachepath", NULL, NULL, {0}, PSYNC_TSTRING},
   {"sleepstopcrypto", NULL, NULL, {PSYNC_CRYPTO_DEFAULT_STOP_ON_SLEEP}, PSYNC_TBOOL},
-  {"companyname", NULL, NULL, {PSYNC_BACC_COMPANYNAME}, PSYNC_TSTRING},
+  {"companyname", NULL, NULL, {0}, PSYNC_TSTRING},
   {"owneruserid", NULL, NULL, {PSYNC_BACC_OWNERUSERID}, PSYNC_TNUMBER},
-  {"ownerfirstname", NULL, NULL, {PSYNC_BACC_OWNERFIRSTNAME}, PSYNC_TSTRING},
-  {"ownerlastname", NULL, NULL, {PSYNC_BACC_OWNERLASTNAME}, PSYNC_TSTRING},
-  {"owneremail", NULL, NULL, {PSYNC_BACC_OWNEREMAIL}, PSYNC_TSTRING},
-  {"cryptosetup", NULL, NULL, {PSYNC_BACC_CRYPTOSETUP}, PSYNC_TNUMBER},
-  {"cryptov2isactive", NULL, NULL, {PSYNC_BACC_V2}, PSYNC_TNUMBER},
+  {"ownerfirstname", NULL, NULL, {0}, PSYNC_TSTRING},
+  {"ownerlastname", NULL, NULL, {0}, PSYNC_TSTRING},
+  {"owneremail", NULL, NULL, {0}, PSYNC_TSTRING},
+  {"cryptosetup", NULL, NULL, {PSYNC_BACC_CRYPTOSETUP}, PSYNC_TBOOL},
+  {"cryptov2isactive", NULL, NULL, {PSYNC_BACC_V2}, PSYNC_TBOOL},
 };
 
 void psync_settings_reset(){
@@ -143,6 +143,13 @@ void psync_settings_init(){
   settings[_PS(ignorepatterns)].str=PSYNC_IGNORE_PATTERNS_DEFAULT;
   settings[_PS(fsroot)].str=defaultfs;
   settings[_PS(fscachepath)].str=defaultcache;
+  settings[_PS(companyname)].str=PSYNC_BACC_COMPANYNAME;
+  settings[_PS(owneruserid)].num=PSYNC_BACC_OWNERUSERID;
+  settings[_PS(ownerfirstname)].str=PSYNC_BACC_OWNERFIRSTNAME;
+  settings[_PS(ownerlastname)].str=PSYNC_BACC_OWNERLASTNAME;
+  settings[_PS(owneremail)].str=PSYNC_BACC_OWNEREMAIL;
+  settings[_PS(cryptosetup)].num=PSYNC_BACC_CRYPTOSETUP;
+  settings[_PS(cryptov2isactive)].num=PSYNC_BACC_V2;
   for (i=0; i<ARRAY_SIZE(settings); i++){
     if (settings[i].type==PSYNC_TSTRING){
       settings[i].str=psync_strdup(settings[i].str);
