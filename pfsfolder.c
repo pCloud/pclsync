@@ -387,14 +387,25 @@ int psync_fsfolder_crypto_error(){
 uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid, uint32_t *pPerm){
   psync_sql_res *res;
   psync_uint_row row;
-  res=psync_sql_query_rdlock("SELECT flags, permissions FROM folder WHERE id=?");
+  uint32_t ret=0;
+retry:
+  if (psync_sql_trylock()){
+    psync_milisleep(1);
+    goto retry;
+  }
+  res=psync_sql_query_nolock("SELECT flags, permissions FROM folder WHERE id=?");
   psync_sql_bind_int(res, 1, folderid);
   row=psync_sql_fetch_rowint(res);
   if(!row){
 		debug(D_NOTICE, "Error reading flags by file id!");
+		psync_sql_free_result(res);
+		psync_sql_unlock();
 		return 0;
   }
   else
 		*pPerm=row[1];
-		return row[0];
+		ret=row[0];
+		psync_sql_free_result(res);		
+		psync_sql_unlock();
+		return ret;
 }

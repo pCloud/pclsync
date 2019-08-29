@@ -2156,9 +2156,13 @@ uint32_t psync_get_fsfolderflags_by_id(psync_folderid_t folderid, uint32_t *pPer
 uint32_t psync_crypto_priv_key_flags(){
 	psync_sql_res *res;
 	psync_uint_row *row;
+	uint32_t ret=0;
 	res=psync_sql_query_rdlock_nocache("SELECT value FROM setting WHERE id='crypto_private_flags'");
-	if((row=psync_sql_fetch_rowint(res)))
-		return row[0];				
+	if((row=psync_sql_fetch_rowint(res))){
+		ret=row[0];
+		psync_sql_free_result(res);		
+		return ret;
+  }
 	else
 		debug(D_NOTICE, "Can't read private key flags from DB!");
 	psync_sql_free_result(res);

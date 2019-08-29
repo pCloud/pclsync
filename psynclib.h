@@ -1195,7 +1195,6 @@ time_t psync_crypto_expires();
 int psync_crypto_reset();
 psync_folderid_t psync_crypto_folderid();
 psync_folderid_t *psync_crypto_folderids();
-uint32_t psync_crypto_flags();
 int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint);
 int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hint);
 uint32_t psync_crypto_priv_key_flags();
