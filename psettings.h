@@ -270,6 +270,14 @@ $RECYCLE.BIN;\
 *.part;\
 .pcloud;"
 
+/* Defaults for business account settings */
+#define PSYNC_BACC_COMPANYNAME      "Not set"
+#define PSYNC_BACC_OWNERUSERID      0
+#define PSYNC_BACC_OWNERFIRSTNAME   "Not set"
+#define PSYNC_BACC_OWNERLASTNAME    "Not set"
+#define PSYNC_BACC_OWNEREMAIL       "Not set"
+#define PSYNC_BACC_CRYPTOSETUP      0
+
 #define _PS(s) PSYNC_SETTING_##s
 
 #define PSYNC_SETTING_usessl            0
@@ -284,6 +292,12 @@ $RECYCLE.BIN;\
 #define PSYNC_SETTING_fscachesize       9
 #define PSYNC_SETTING_fscachepath      10
 #define PSYNC_SETTING_sleepstopcrypto  11
+#define PSYNC_SETTING_companyname      12
+#define PSYNC_SETTING_owneruserid      13
+#define PSYNC_SETTING_ownerfirstname   14
+#define PSYNC_SETTING_ownerlastname    15
+#define PSYNC_SETTING_owneremail       16
+#define PSYNC_SETTING_cryptosetup      17
 
 typedef int psync_settingid_t;
 

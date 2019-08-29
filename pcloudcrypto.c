@@ -1779,7 +1779,7 @@ err_nm_0:
   return PERROR_NO_MEMORY;
 }
 
-int psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpassphrase, uint32_t flags, char** privenc, char** sign){
+int  psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpassphrase, uint32_t flags, char** privenc, char** sign){
   unsigned char *pubkey=NULL;
   unsigned char *privkey=NULL;
   unsigned char *salt=NULL;
@@ -1804,31 +1804,31 @@ retry:
   res=psync_sql_query_nolock("SELECT id, value FROM setting WHERE id IN ('crypto_private_key', 'crypto_public_key', 'crypto_private_salt') ORDER BY id");
   if (res){
     while ((row=psync_sql_fetch_row(res))){
-        id=psync_get_string(row[0]);
-        rowcnt++;
-        if (!strcmp(id, "crypto_private_key")){
-            load_str_to(&row[1], &privkey, &privkeylen);
-            privatekey_struct = (priv_key_ver1*)psync_malloc(offsetof(priv_key_ver1, key)+privkeylen);
-            memset(privatekey_struct, 0, offsetof(priv_key_ver1, key)+privkeylen);
-            memcpy(privatekey_struct->key, privkey, privkeylen);
-            privatekey_struct->type=PSYNC_CRYPTO_TYPE_RSA4096_64BYTESALT_20000IT;
-            psync_free(privkey);
-        }else if (!strcmp(id, "crypto_public_key")){
-            load_str_to(&row[1], &pubkey, &pubkeylen);
-            pubkey_struct = (pub_key_ver1*)psync_malloc(offsetof(pub_key_ver1, key)+pubkeylen);
-            memset(pubkey_struct, 0, offsetof(pub_key_ver1, key)+pubkeylen);
-            memcpy(pubkey_struct->key, pubkey, pubkeylen);
-            pubkey_struct->type=PSYNC_CRYPTO_PUB_TYPE_RSA4096;
-            psync_free(pubkey);
-        }else if (!strcmp(id, "crypto_private_salt")){
-            load_str_to(&row[1], &salt, &saltlen);
-            if (!privatekey_struct){
-							debug(D_ERROR, "Private key struct is not initialized yet and the salt can't be copied to it");
-							continue;
-						}
-            memcpy(privatekey_struct->salt, salt, saltlen);
-            psync_free(salt);
-        }
+			id=psync_get_string(row[0]);
+			rowcnt++;
+			if (!strcmp(id, "crypto_private_key")){
+				load_str_to(&row[1], &privkey, &privkeylen);
+				privatekey_struct=(priv_key_ver1*)psync_malloc(offsetof(priv_key_ver1, key)+privkeylen);
+				memset(privatekey_struct, 0, offsetof(priv_key_ver1, key)+privkeylen);
+				memcpy(privatekey_struct->key, privkey, privkeylen);
+				privatekey_struct->type=PSYNC_CRYPTO_TYPE_RSA4096_64BYTESALT_20000IT;
+				psync_free(privkey);
+			}else if (!strcmp(id, "crypto_public_key")){
+				load_str_to(&row[1], &pubkey, &pubkeylen);
+				pubkey_struct=(pub_key_ver1*)psync_malloc(offsetof(pub_key_ver1, key)+pubkeylen);
+				memset(pubkey_struct, 0, offsetof(pub_key_ver1, key)+pubkeylen);
+				memcpy(pubkey_struct->key, pubkey, pubkeylen);
+				pubkey_struct->type=PSYNC_CRYPTO_PUB_TYPE_RSA4096;
+				psync_free(pubkey);
+			}else if (!strcmp(id, "crypto_private_salt")){
+				load_str_to(&row[1], &salt, &saltlen);
+				if (!privatekey_struct){
+					debug(D_ERROR, "Private key struct is not initialized yet and the salt can't be copied to it");
+					continue;
+				}
+				memcpy(privatekey_struct->salt, salt, saltlen);
+				psync_free(salt);
+			}
     }
     psync_sql_free_result(res);
   }
@@ -1874,10 +1874,10 @@ retry:
 			goto ex;
   }
   else{
-      assert(rowcnt==3);
-      cres=psync_pcloud_crypto_reencode_key((unsigned char *)pubkey_struct, pubkeylen+offsetof(pub_key_ver1, key), (unsigned char *)privatekey_struct, privkeylen+offsetof(priv_key_ver1, key), oldpassphrase, newpassphrase, flags, privenc, sign);
-      psync_free(privatekey_struct);
-      psync_free(pubkey_struct);
+		assert(rowcnt==3);
+		cres=psync_pcloud_crypto_reencode_key((unsigned char *)pubkey_struct, pubkeylen+offsetof(pub_key_ver1, key), (unsigned char *)privatekey_struct, privkeylen+offsetof(priv_key_ver1, key), oldpassphrase, newpassphrase, flags, privenc, sign);
+		psync_free(privatekey_struct);
+		psync_free(pubkey_struct);
     if (cres)
 			goto ex;
   }

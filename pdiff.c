@@ -1980,10 +1980,6 @@ static void process_removebshareout(const binresult *entry){
   delete_bsshared_folder(share);
 }
 
-static void process_cryptopasschange(const binresult *entry){
-	delete_cached_crypto_keys();
-}
-
 static void modify_shared_folder(const binresult *perms, uint64_t shareid){
   psync_sql_res *q;
   q=psync_sql_prep_statement("UPDATE sharedfolder SET permissions=? WHERE id=?");
@@ -2038,6 +2034,19 @@ static void process_modifybshareout(const binresult *entry){
                         psync_find_result(share, "shareid", PARAM_NUM)->num);
 }
 
+static void process_cryptopasschange(const binresult *entry){
+	delete_cached_crypto_keys();
+}
+
+static void process_modifyaccountinfo(const binresult *entry){
+	psync_setting_set_string("companyname", psync_find_result(entry, "companyname", PARAM_STR));	
+	psync_setting_set_uint("owneruserid", psync_find_result(entry, "owneruserid", PARAM_NUM));
+  psync_setting_set_string("ownerfirstname", psync_find_result(entry, "ownerfirstname", PARAM_STR));
+	psync_setting_set_string("ownerlastname", psync_find_result(entry, "ownerlastname", PARAM_STR));
+	psync_setting_set_string("owneremail", psync_find_result(entry, "owneremail", PARAM_STR));
+	psync_setting_set_uint("cryptosetup", psync_find_result(entry, "cryptosetup", PARAM_NUM));	
+}
+
 #define FN(n) {process_##n, #n, sizeof(#n)-1, 0}
 
 static struct {
@@ -2071,7 +2080,8 @@ static struct {
   FN(modifybshareout),
   FN(removebsharein),
   FN(removebshareout),
-  FN(cryptopasschange)
+  FN(cryptopasschange),
+  FN(modifyaccountinfo)
 };
 
 #define event_list_size ARRAY_SIZE(event_list)

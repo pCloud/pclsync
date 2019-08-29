@@ -56,6 +56,9 @@ static void fsroot_change(){
   psync_fs_remount();
 }
 
+#define PSYNC_SETTING_owneremail       16
+#define PSYNC_SETTING_cryptosetup      17
+
 static psync_setting_t settings[]={
   {"usessl", psync_timer_do_notify_exception, NULL, {PSYNC_USE_SSL_DEFAULT}, PSYNC_TBOOL},
   {"saveauth", NULL, NULL, {1}, PSYNC_TBOOL},
@@ -68,7 +71,13 @@ static psync_setting_t settings[]={
   {"autostartfs", NULL, NULL, {PSYNC_AUTOSTARTFS_DEFAULT}, PSYNC_TBOOL},
   {"fscachesize", psync_pagecache_resize_cache, NULL, {PSYNC_FS_DEFAULT_CACHE_SIZE}, PSYNC_TNUMBER},
   {"fscachepath", NULL, NULL, {0}, PSYNC_TSTRING},
-  {"sleepstopcrypto", NULL, NULL, {PSYNC_CRYPTO_DEFAULT_STOP_ON_SLEEP}, PSYNC_TBOOL}
+  {"sleepstopcrypto", NULL, NULL, {PSYNC_CRYPTO_DEFAULT_STOP_ON_SLEEP}, PSYNC_TBOOL},
+  {"companyname", NULL, NULL, {PSYNC_BACC_COMPANYNAME}, PSYNC_TSTRING},
+  {"owneruserid", NULL, NULL, {PSYNC_BACC_OWNERUSERID}, PSYNC_TNUMBER},
+  {"ownerfirstname", NULL, NULL, {PSYNC_BACC_OWNERFIRSTNAME}, PSYNC_TSTRING},
+  {"ownerlastname", NULL, NULL, {PSYNC_BACC_OWNERLASTNAME}, PSYNC_TSTRING},
+  {"owneremail", NULL, NULL, {PSYNC_BACC_OWNEREMAIL}, PSYNC_TSTRING},
+  {"cryptosetup", NULL, NULL, {PSYNC_BACC_CRYPTOSETUP}, PSYNC_TNUMBER},
 };
 
 void psync_settings_reset(){
@@ -94,6 +103,12 @@ void psync_settings_reset(){
   settings[_PS(fscachesize)].num=PSYNC_FS_DEFAULT_CACHE_SIZE;
   settings[_PS(fscachepath)].str=defaultcache;
   settings[_PS(sleepstopcrypto)].num=PSYNC_CRYPTO_DEFAULT_STOP_ON_SLEEP;
+  settings[_PS(companyname)].str=PSYNC_BACC_COMPANYNAME;
+  settings[_PS(owneruserid)].num=PSYNC_BACC_OWNERUSERID;
+  settings[_PS(ownerfirstname)].str=PSYNC_BACC_OWNERFIRSTNAME;
+  settings[_PS(ownerlastname)].str=PSYNC_BACC_OWNERLASTNAME;
+  settings[_PS(owneremail)].str=PSYNC_BACC_OWNEREMAIL;
+  settings[_PS(cryptosetup)].num=PSYNC_BACC_CRYPTOSETUP;
   for (i=0; i<ARRAY_SIZE(settings); i++){
     if (settings[i].type==PSYNC_TSTRING){
       settings[i].str=psync_strdup(settings[i].str);
