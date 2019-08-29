@@ -1381,6 +1381,9 @@ static void process_modifyuserinfo(const binresult *entry){
 	psync_sql_bind_string(q, 1, "owner");
 	psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
 	psync_sql_run(q);
+	psync_sql_bind_string(q, 1, "cryptov2isactive");
+	psync_sql_bind_uint(q, 2, psync_find_result(res, "cryptov2isactive", PARAM_BOOL)->num);
+	psync_sql_run(q);
   }
   u=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
   psync_sql_bind_string(q, 1, "cryptosetup");

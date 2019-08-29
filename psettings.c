@@ -78,6 +78,7 @@ static psync_setting_t settings[]={
   {"ownerlastname", NULL, NULL, {PSYNC_BACC_OWNERLASTNAME}, PSYNC_TSTRING},
   {"owneremail", NULL, NULL, {PSYNC_BACC_OWNEREMAIL}, PSYNC_TSTRING},
   {"cryptosetup", NULL, NULL, {PSYNC_BACC_CRYPTOSETUP}, PSYNC_TNUMBER},
+  {"cryptov2isactive", NULL, NULL, {PSYNC_BACC_V2}, PSYNC_TNUMBER},
 };
 
 void psync_settings_reset(){
@@ -109,6 +110,7 @@ void psync_settings_reset(){
   settings[_PS(ownerlastname)].str=PSYNC_BACC_OWNERLASTNAME;
   settings[_PS(owneremail)].str=PSYNC_BACC_OWNEREMAIL;
   settings[_PS(cryptosetup)].num=PSYNC_BACC_CRYPTOSETUP;
+  settings[_PS(cryptov2isactive)].num=PSYNC_BACC_V2;
   for (i=0; i<ARRAY_SIZE(settings); i++){
     if (settings[i].type==PSYNC_TSTRING){
       settings[i].str=psync_strdup(settings[i].str);
