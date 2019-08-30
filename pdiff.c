@@ -462,10 +462,7 @@ static psync_socket *get_connected_socket(){
       psync_sql_run(q);
       isbusiness=0;
     }
-    cres=psync_check_result(res, "cryptov2isactive", PARAM_BOOL);
-		psync_sql_bind_string(q, 1, "cryptov2isactive");
-		psync_sql_bind_uint(q, 2, cres?cres->num:0);
-		psync_sql_run(q);
+		psync_set_bool_setting("cryptov2isactive", cres?cres->num:0);
     cryptosetup=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
     psync_sql_bind_string(q, 1, "cryptosetup");
     psync_sql_bind_uint(q, 2, cryptosetup);
@@ -1387,9 +1384,7 @@ static void process_modifyuserinfo(const binresult *entry){
 		psync_sql_run(q);
   }
   cres=psync_check_result(res, "cryptov2isactive", PARAM_BOOL);
-	psync_sql_bind_string(q, 1, "cryptov2isactive");
-	psync_sql_bind_uint(q, 2, cres?cres->num:0);
-	psync_sql_run(q);
+	psync_set_bool_setting("cryptov2isactive", cres?cres->num:0);
   u=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
   psync_sql_bind_string(q, 1, "cryptosetup");
   psync_sql_bind_uint(q, 2, u);
@@ -1429,8 +1424,6 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_run(q);
   psync_sql_free_result(q);
   psync_send_eventid(PEVENT_USERINFO_CHANGED);
-
-
 }
 
 #define fill_str(f, s, sl)\
