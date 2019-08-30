@@ -519,6 +519,8 @@ static psync_socket *get_connected_socket(){
         q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
         psync_sql_bind_string(q, 1, "company");
         psync_sql_bind_string(q, 2, psync_find_result(cres, "company", PARAM_STR)->str);
+        psync_sql_bind_string(q, 1, "owner");
+        psync_sql_bind_string(q, 2, psync_find_result(cres, "owner", PARAM_STR)->str);
         psync_sql_run_free(q);
       }
       else

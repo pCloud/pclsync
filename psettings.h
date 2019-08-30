@@ -278,6 +278,7 @@ $RECYCLE.BIN;\
 #define PSYNC_BACC_OWNEREMAIL       "Not set"
 #define PSYNC_BACC_CRYPTOSETUP      0
 #define PSYNC_BACC_V2               0
+#define PSYNC_BACC_OWNER            0
 
 #define _PS(s) PSYNC_SETTING_##s
 
@@ -300,6 +301,7 @@ $RECYCLE.BIN;\
 #define PSYNC_SETTING_owneremail       16
 #define PSYNC_SETTING_cryptosetup      17
 #define PSYNC_SETTING_cryptov2isactive 18
+#define PSYNC_SETTING_owner            19
 
 typedef int psync_settingid_t;
 
