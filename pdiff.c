@@ -380,9 +380,9 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "quota");
       psync_sql_bind_uint(q, 2, current_quota);
       psync_sql_run(q);
-	  psync_sql_bind_string(q, 1, "freequota");
-	  psync_sql_bind_uint(q, 2, free_quota);
-	  psync_sql_run(q);
+			psync_sql_bind_string(q, 1, "freequota");
+			psync_sql_bind_uint(q, 2, free_quota);
+			psync_sql_run(q);
       psync_sql_bind_string(q, 1, "usedquota");
       psync_sql_bind_uint(q, 2, 0);
       psync_sql_run(q);
@@ -409,30 +409,30 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "language");
       psync_sql_bind_string(q, 2, psync_find_result(res, "language", PARAM_STR)->str);
       psync_sql_run(q);
-	  psync_sql_bind_string(q, 1, "plan");
-	  psync_sql_bind_uint(q, 2, psync_find_result(res, "plan", PARAM_NUM)->num);
-	  psync_sql_run(q);
-	  psync_sql_bind_string(q, 1, "business");
-	  psync_sql_bind_uint(q, 2, psync_find_result(res, "business", PARAM_BOOL)->num);
-	  psync_sql_run(q);
-	  psync_sql_bind_string(q, 1, "premiumlifetime");
-	  psync_sql_bind_uint(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
-	  psync_sql_run(q);
-	  psync_sql_bind_string(q, 1, "vivapcloud");
-	  psync_sql_bind_uint(q, 2, psync_find_result(res, "vivapcloud", PARAM_BOOL)->num);
-	  psync_sql_run(q);
-	  cres = psync_check_result(res, "family", PARAM_HASH);
-	  if (cres){
-			psync_sql_bind_string(q, 1, "owner");
-			psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
+			psync_sql_bind_string(q, 1, "plan");
+			psync_sql_bind_uint(q, 2, psync_find_result(res, "plan", PARAM_NUM)->num);
 			psync_sql_run(q);
-	  }
-		if (saveauth){
-			psync_sql_bind_string(q, 1, "auth");
-			psync_sql_bind_string(q, 2, psync_my_auth);
+			psync_sql_bind_string(q, 1, "business");
+			psync_sql_bind_uint(q, 2, psync_find_result(res, "business", PARAM_BOOL)->num);
 			psync_sql_run(q);
-		}
-    psync_sql_free_result(q);
+			psync_sql_bind_string(q, 1, "premiumlifetime");
+			psync_sql_bind_uint(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
+			psync_sql_run(q);
+			psync_sql_bind_string(q, 1, "vivapcloud");
+			psync_sql_bind_uint(q, 2, psync_find_result(res, "vivapcloud", PARAM_BOOL)->num);
+			psync_sql_run(q);
+			cres = psync_check_result(res, "family", PARAM_HASH);
+			if (cres){
+				psync_sql_bind_string(q, 1, "owner");
+				psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
+				psync_sql_run(q);
+			}
+			if (saveauth){
+				psync_sql_bind_string(q, 1, "auth");
+				psync_sql_bind_string(q, 2, psync_my_auth);
+				psync_sql_run(q);
+			}
+			psync_sql_free_result(q);
     }
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
       psync_sql_rollback_transaction();

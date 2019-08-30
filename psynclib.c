@@ -2160,7 +2160,7 @@ uint32_t psync_crypto_priv_key_flags(){
 	res=psync_sql_query_rdlock_nocache("SELECT value FROM setting WHERE id='crypto_private_flags'");
 	if((row=psync_sql_fetch_rowint(res))){
 		ret=row[0];
-		psync_sql_free_result(res);		
+		psync_sql_free_result(res);
 		return ret;
   }
 	else
