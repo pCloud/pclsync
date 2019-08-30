@@ -1170,6 +1170,8 @@ char *psync_derive_password_from_passphrase(const char *username, const char *pa
  *                        PSYNC_CRYPTO_INVALID_FOLDERID.
  * psync_crypto_folderids() - returns array of the ids of all encrypted folders (but not their subfolders). Last element of the array is
  *                        always PSYNC_CRYPTO_INVALID_FOLDERID. You need to free the memory returned by this function.
+ * int psync_crypto_crypto_send_change_user_private() - Request sending of code for changing the private key password. Possible erroe codes are:
+ *                        PSYNC_CRYPTO_SETUP_CANT_CONNECT, PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
  * psync_crypto_change_crypto_pass() - Re-encodes the private key with the new pasword provided and makes an API call to upload it.
  *                        On success returns PSYNC_CRYPTO_SETUP_SUCCESS. Possible errors are PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR,
  *                        PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY, PSYNC_CRYPTO_SETUP_CANT_CONNECT and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
@@ -1180,6 +1182,7 @@ char *psync_derive_password_from_passphrase(const char *username, const char *pa
  *                        PSYNC_CRYPTO_BAD_PASSPHRASE, PERROR_NET_ERROR, PERROR_NO_MEMORY, PSYNC_CRYPTO_BAD_KEY and PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR.
  *                        In order to work, this function requires the crypto to be unlocked.
  * psync_crypto_priv_key_flags() - Read private key flags from the DB. The only possible flag for the moment is PSYNC_CRYPTO_FLAG_TEMP_PASS
+
  */
 
 int psync_crypto_setup(const char *password, const char *hint);
@@ -1195,9 +1198,10 @@ time_t psync_crypto_expires();
 int psync_crypto_reset();
 psync_folderid_t psync_crypto_folderid();
 psync_folderid_t *psync_crypto_folderids();
-int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint);
-int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hint);
-uint32_t psync_crypto_priv_key_flags();
+int psync_crypto_crypto_send_change_user_private();
+int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint, const char *code);
+int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hint, const char *code);
+uint64_t psync_crypto_priv_key_flags();
 /*
  * Status functions.
  *

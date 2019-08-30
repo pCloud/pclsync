@@ -388,6 +388,7 @@ uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid, uint32_t *pPerm)
   psync_sql_res *res;
   psync_uint_row row;
   uint32_t ret=0;
+  *pPerm=0;
 retry:
   if (psync_sql_trylock()){
     psync_milisleep(1);

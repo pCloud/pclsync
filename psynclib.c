@@ -1923,7 +1923,7 @@ psync_folderid_t *psync_crypto_folderids(){
   return ret;
 }
 
-int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint){
+int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint, const char *code){
   psync_socket *api;
   binresult *res;
   uint64_t result;
@@ -1932,7 +1932,7 @@ int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, co
 	char *signature=NULL;
 	if ((err=psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature)))
 		return err;
-	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint) };
+	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
 	debug(D_NOTICE, "uploading re-encoded private key");
 	while (1){
 		api=psync_apipool_get();
@@ -1960,7 +1960,7 @@ int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, co
 	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
 }
 
-int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hint){
+int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hint, const char *code){
   psync_socket *api;
   binresult *res;
   uint64_t result;
@@ -1969,7 +1969,7 @@ int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hi
 	char *signature=NULL;
 	if ((err=psync_crypto_change_passphrase_unlocked(newpass, 0, &priv_key, &signature)))
 		return err;
-	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint) };
+	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
 	debug(D_NOTICE, "uploading re-encoded private key");
 	while (1){
 		api=psync_apipool_get();
@@ -1994,6 +1994,32 @@ int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hi
 	  psync_delete_cached_crypto_keys();
 		return PSYNC_CRYPTO_SETUP_SUCCESS;
 	}
+	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
+}
+
+int psync_crypto_crypto_send_change_user_private(){
+  psync_socket *api;
+  binresult *res;
+  uint64_t result;
+	binparam params[] = { P_STR("auth", psync_my_auth) };
+	debug(D_NOTICE, "Requesting code for changing the private key password");
+	api=psync_apipool_get();
+	if (!api)
+		return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+	res=send_command(api, "crypto_sendchangeuserprivate", params);
+	if (unlikely_log(!res)){
+		psync_apipool_release_bad(api);
+		return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+	}
+	else{
+		psync_apipool_release(api);
+	}
+	result=psync_find_result(res, "result", PARAM_NUM)->num;
+	psync_free(res);
+	if (result!=0)
+		debug(D_WARNING, "crypto_sendchangeuserprivate returned %u", (unsigned)result);
+	if (result==0)
+		return PSYNC_CRYPTO_SETUP_SUCCESS;
 	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
 }
 
@@ -2153,10 +2179,10 @@ uint32_t psync_get_fsfolderflags_by_id(psync_folderid_t folderid, uint32_t *pPer
 	return psync_fsfolderflags_by_id(folderid, pPerm);
 }
 
-uint32_t psync_crypto_priv_key_flags(){
+uint64_t psync_crypto_priv_key_flags(){
 	psync_sql_res *res;
-	psync_uint_row *row;
-	uint32_t ret=0;
+	psync_uint_row row;
+	uint64_t ret=0;
 	res=psync_sql_query_rdlock_nocache("SELECT value FROM setting WHERE id='crypto_private_flags'");
 	if((row=psync_sql_fetch_rowint(res))){
 		ret=row[0];
