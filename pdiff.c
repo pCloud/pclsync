@@ -463,6 +463,8 @@ static psync_socket *get_connected_socket(){
       isbusiness=0;
     }
 		psync_set_bool_setting("cryptov2isactive", cres?cres->num:0);
+		psync_set_bool_setting("owner", psync_find_result(cres, "owner", PARAM_BOOL)->num);
+		debug(D_NOTICE, "owner: %d", psync_find_result(cres, "owner", PARAM_BOOL)->num);
     cryptosetup=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
     psync_sql_bind_string(q, 1, "cryptosetup");
     psync_sql_bind_uint(q, 2, cryptosetup);
@@ -519,10 +521,8 @@ static psync_socket *get_connected_socket(){
         q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
         psync_sql_bind_string(q, 1, "company");
         psync_sql_bind_string(q, 2, psync_find_result(cres, "company", PARAM_STR)->str);
-        psync_sql_bind_string(q, 1, "owner");
-        psync_sql_bind_string(q, 2, psync_find_result(cres, "owner", PARAM_STR)->str);
-        psync_sql_run_free(q);
-      }
+				psync_sql_run_free(q);
+     }
       else
         debug(D_WARNING, "account_info returned %lu, continuing without business info", (unsigned long)result);
       psync_free(res);
