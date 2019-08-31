@@ -464,7 +464,6 @@ static psync_socket *get_connected_socket(){
     }
 		psync_set_bool_setting("cryptov2isactive", cres?cres->num:0);
 		psync_set_bool_setting("owner", psync_find_result(cres, "owner", PARAM_BOOL)->num);
-		debug(D_NOTICE, "owner: %d", psync_find_result(cres, "owner", PARAM_BOOL)->num);
     cryptosetup=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
     psync_sql_bind_string(q, 1, "cryptosetup");
     psync_sql_bind_uint(q, 2, cryptosetup);
