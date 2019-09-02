@@ -2194,3 +2194,16 @@ uint64_t psync_crypto_priv_key_flags(){
 	psync_sql_free_result(res);
 	return 0;
 }
+
+int psync_has_crypto_folders(){
+	psync_sql_res *res;
+	res=psync_sql_query_rdlock_nocache("SELECT DISTINCT flags FROM folder WHERE flags&"NTO_STR(PSYNC_FOLDER_FLAG_ENCRYPTED));
+	if(psync_sql_affected_rows()){
+		psync_sql_free_result(res);
+		return 1;
+  }
+	else
+		debug(D_NOTICE, "Can't read private key flags from DB!");
+	psync_sql_free_result(res);
+	return 0;
+}

@@ -1388,7 +1388,9 @@ char * psync_get_token();
  * one of the positive error codes
 */
 int psync_get_promo(char **url);
-
+/* Checks if the user has any crypto folders.
+  */
+int psync_has_crypto_folders();
 #ifdef __cplusplus
 }
 #endif
