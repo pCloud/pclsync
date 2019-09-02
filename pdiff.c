@@ -462,8 +462,8 @@ static psync_socket *get_connected_socket(){
       psync_sql_run(q);
       isbusiness=0;
     }
-		psync_set_bool_setting("cryptov2isactive", cres?cres->num:0);
-		psync_set_bool_setting("owner", psync_find_result(cres, "owner", PARAM_BOOL)->num);
+    psync_set_bool_setting("cryptov2isactive", cres?cres->num:0);
+    psync_set_bool_setting("owner", psync_find_result(cres, "owner", PARAM_BOOL)->num);
     cryptosetup=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
     psync_sql_bind_string(q, 1, "cryptosetup");
     psync_sql_bind_uint(q, 2, cryptosetup);
@@ -505,9 +505,6 @@ static psync_socket *get_connected_socket(){
     cres=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
     if (cres->length)
       psync_apipool_set_server(cres->array[0]->str);
-		cres=psync_check_result(res, "account", PARAM_HASH);
-		psync_set_bool_setting("owner_cryptosetup", psync_find_result(cres, "cryptosetup", PARAM_BOOL)->num);
-		debug(D_NOTICE, "owner_cryptosetup: %d\n", psync_get_bool_setting("owner_cryptosetup"));
     psync_free(res);
     if (isbusiness){
       binparam params[]={P_STR("timeformat", "timestamp"),
@@ -524,6 +521,9 @@ static psync_socket *get_connected_socket(){
         psync_sql_bind_string(q, 1, "company");
         psync_sql_bind_string(q, 2, psync_find_result(cres, "company", PARAM_STR)->str);
 				psync_sql_run_free(q);
+				cres=psync_check_result(cres, "owner", PARAM_HASH);
+        psync_set_bool_setting("owner_cryptosetup", psync_find_result(cres, "cryptosetup", PARAM_BOOL)->num);
+        debug(D_NOTICE, "owner_cryptosetup: %d\n", psync_get_bool_setting("owner_cryptosetup"));
      }
       else
         debug(D_WARNING, "account_info returned %lu, continuing without business info", (unsigned long)result);
