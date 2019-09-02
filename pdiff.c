@@ -2053,7 +2053,8 @@ static void process_modifyaccountinfo(const binresult *entry){
   psync_set_string_setting("ownerfirstname", psync_find_result(entry, "ownerfirstname", PARAM_STR)->str);
 	psync_set_string_setting("ownerlastname", psync_find_result(entry, "ownerlastname", PARAM_STR)->str);
 	psync_set_string_setting("owneremail", psync_find_result(entry, "owneremail", PARAM_STR)->str);
-	psync_set_bool_setting("owner_cryptosetup", psync_find_result(entry, "cryptosetup", PARAM_BOOL)->num);
+	debug(D_NOTICE, "owner_cryptosettup :%d", psync_find_result(entry, "cryptosetup", PARAM_BOOL)->num);
+//	psync_set_bool_setting("owner_cryptosetup", psync_find_result(entry, "cryptosetup", PARAM_BOOL)->num);
 }
 
 #define FN(n) {process_##n, #n, sizeof(#n)-1, 0}
