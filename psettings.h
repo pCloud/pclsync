@@ -276,7 +276,7 @@ $RECYCLE.BIN;\
 #define PSYNC_BACC_OWNERFIRSTNAME   "Not set"
 #define PSYNC_BACC_OWNERLASTNAME    "Not set"
 #define PSYNC_BACC_OWNEREMAIL       "Not set"
-#define PSYNC_BACC_CRYPTOSETUP      0
+#define PSYNC_BACC_OWNER_CRYPTOSETUP 0
 #define PSYNC_BACC_V2               0
 #define PSYNC_BACC_OWNER            0
 
@@ -299,7 +299,7 @@ $RECYCLE.BIN;\
 #define PSYNC_SETTING_ownerfirstname   14
 #define PSYNC_SETTING_ownerlastname    15
 #define PSYNC_SETTING_owneremail       16
-#define PSYNC_SETTING_cryptosetup      17
+#define PSYNC_SETTING_owner_cryptosetup 17
 #define PSYNC_SETTING_cryptov2isactive 18
 #define PSYNC_SETTING_owner            19
 

@@ -505,6 +505,9 @@ static psync_socket *get_connected_socket(){
     cres=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
     if (cres->length)
       psync_apipool_set_server(cres->array[0]->str);
+		cres=psync_check_result(res, "account", PARAM_HASH);
+		psync_set_bool_setting("owner_cryptosetup", psync_find_result(cres, "cryptosetup", PARAM_BOOL)->num);
+		debug(D_NOTICE, "owner_cryptosetup: %d\n", psync_get_bool_setting("owner_cryptosetup"));
     psync_free(res);
     if (isbusiness){
       binparam params[]={P_STR("timeformat", "timestamp"),
@@ -2046,7 +2049,7 @@ static void process_modifyaccountinfo(const binresult *entry){
   psync_set_string_setting("ownerfirstname", psync_find_result(entry, "ownerfirstname", PARAM_STR)->str);
 	psync_set_string_setting("ownerlastname", psync_find_result(entry, "ownerlastname", PARAM_STR)->str);
 	psync_set_string_setting("owneremail", psync_find_result(entry, "owneremail", PARAM_STR)->str);
-	psync_set_bool_setting("cryptosetup", psync_find_result(entry, "cryptosetup", PARAM_BOOL)->num);
+	psync_set_bool_setting("owner_cryptosetup", psync_find_result(entry, "cryptosetup", PARAM_BOOL)->num);
 }
 
 #define FN(n) {process_##n, #n, sizeof(#n)-1, 0}

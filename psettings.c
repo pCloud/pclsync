@@ -77,7 +77,7 @@ static psync_setting_t settings[]={
   {"ownerfirstname", NULL, NULL, {0}, PSYNC_TSTRING},
   {"ownerlastname", NULL, NULL, {0}, PSYNC_TSTRING},
   {"owneremail", NULL, NULL, {0}, PSYNC_TSTRING},
-  {"cryptosetup", NULL, NULL, {PSYNC_BACC_CRYPTOSETUP}, PSYNC_TBOOL},
+  {"owner_cryptosetup", NULL, NULL, {PSYNC_BACC_OWNER_CRYPTOSETUP}, PSYNC_TBOOL},
   {"cryptov2isactive", NULL, NULL, {PSYNC_BACC_V2}, PSYNC_TBOOL},
   {"owner", NULL, NULL, {PSYNC_BACC_OWNER}, PSYNC_TBOOL},
 };
@@ -110,7 +110,7 @@ void psync_settings_reset(){
   settings[_PS(ownerfirstname)].str=PSYNC_BACC_OWNERFIRSTNAME;
   settings[_PS(ownerlastname)].str=PSYNC_BACC_OWNERLASTNAME;
   settings[_PS(owneremail)].str=PSYNC_BACC_OWNEREMAIL;
-  settings[_PS(cryptosetup)].num=PSYNC_BACC_CRYPTOSETUP;
+  settings[_PS(owner_cryptosetup)].num=PSYNC_BACC_OWNER_CRYPTOSETUP;
   settings[_PS(cryptov2isactive)].num=PSYNC_BACC_V2;
   settings[_PS(owner)].num=PSYNC_BACC_OWNER;
   for (i=0; i<ARRAY_SIZE(settings); i++){
@@ -150,7 +150,7 @@ void psync_settings_init(){
   settings[_PS(ownerfirstname)].str=PSYNC_BACC_OWNERFIRSTNAME;
   settings[_PS(ownerlastname)].str=PSYNC_BACC_OWNERLASTNAME;
   settings[_PS(owneremail)].str=PSYNC_BACC_OWNEREMAIL;
-  settings[_PS(cryptosetup)].num=PSYNC_BACC_CRYPTOSETUP;
+  settings[_PS(owner_cryptosetup)].num=PSYNC_BACC_OWNER_CRYPTOSETUP;
   settings[_PS(cryptov2isactive)].num=PSYNC_BACC_V2;
   settings[_PS(owner)].num=PSYNC_BACC_OWNER;
   for (i=0; i<ARRAY_SIZE(settings); i++){
