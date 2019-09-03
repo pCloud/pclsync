@@ -2047,6 +2047,8 @@ static void process_cryptopasschange(const binresult *entry){
 }
 
 static void process_modifyaccountinfo(const binresult *entry){
+  if (!entry)
+    return;
   binresult *res=psync_find_result(entry, "metadata", PARAM_HASH);
 	psync_userid_t ret;
 	psync_set_string_setting("companyname", psync_find_result(res, "companyname", PARAM_STR)->str);
