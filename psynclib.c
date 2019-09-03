@@ -2200,7 +2200,7 @@ int psync_has_crypto_folders(){
 	psync_uint_row row;
 	uint64_t ret=0;
 	res=psync_sql_query_rdlock_nocache("SELECT count(*) FROM folder WHERE (flags&"NTO_STR(PSYNC_FOLDER_FLAG_ENCRYPTED)")=1");
-	if((row=psync_sql_fetch_row(res))){
+	if((row=psync_sql_fetch_rowint(res))){
 		ret=row[0];
 		psync_sql_free_result(res);
 		return (ret>0);
