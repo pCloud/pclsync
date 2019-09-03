@@ -463,7 +463,6 @@ static psync_socket *get_connected_socket(){
       isbusiness=0;
     }
     
-    psync_set_bool_setting("owner", psync_find_result(cres, "owner", PARAM_BOOL)->num);
     cres=psync_check_result(res, "cryptov2isactive", PARAM_BOOL);
     if (cres)
       psync_set_bool_setting("cryptov2isactive", cres->num);
@@ -2048,12 +2047,19 @@ static void process_cryptopasschange(const binresult *entry){
 }
 
 static void process_modifyaccountinfo(const binresult *entry){
-	psync_set_string_setting("companyname", psync_find_result(entry, "companyname", PARAM_STR)->str);
-	psync_set_uint_setting("owneruserid", psync_find_result(entry, "owneruserid", PARAM_NUM)->num);
-  psync_set_string_setting("ownerfirstname", psync_find_result(entry, "ownerfirstname", PARAM_STR)->str);
-	psync_set_string_setting("ownerlastname", psync_find_result(entry, "ownerlastname", PARAM_STR)->str);
-	psync_set_string_setting("owneremail", psync_find_result(entry, "owneremail", PARAM_STR)->str);
-	psync_set_bool_setting("owner_cryptosetup", psync_find_result(entry, "cryptosetup", PARAM_BOOL)->num);
+  binresult *res=psync_find_result(entry, "metadata", PARAM_HASH);
+	psync_userid_t ret;
+	psync_set_string_setting("companyname", psync_find_result(res, "companyname", PARAM_STR)->str);
+	psync_set_uint_setting("owneruserid", psync_find_result(res, "owneruserid", PARAM_NUM)->num);
+	psync_get_current_userid(&ret);
+  if (psync_get_uint_setting("owneruserid")==ret){
+    psync_set_bool_value("owner", 1);
+	}
+  psync_set_string_setting("ownerfirstname", psync_find_result(res, "ownerfirstname", PARAM_STR)->str);
+	psync_set_string_setting("ownerlastname", psync_find_result(res, "ownerlastname", PARAM_STR)->str);
+	psync_set_string_setting("owneremail", psync_find_result(res, "owneremail", PARAM_STR)->str);
+	psync_set_bool_setting("owner_cryptosetup", psync_find_result(res, "cryptosetup", PARAM_BOOL)->num);
+	//psync_free(res);
 }
 
 #define FN(n) {process_##n, #n, sizeof(#n)-1, 0}

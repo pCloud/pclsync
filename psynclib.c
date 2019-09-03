@@ -2206,7 +2206,7 @@ int psync_has_crypto_folders(){
 		return (ret>0);
   }
 	else
-		debug(D_NOTICE, "No crypto folders in DB!");
+		debug(D_NOTICE, "Can't check the number of crypto folders in DB!");
 	psync_sql_free_result(res);
 	return ret;
 }
