@@ -1459,18 +1459,36 @@ static void send_share_notify(psync_eventtype_t eventid, const binresult *share)
   uint64_t teamid = 0;
   uint64_t touserid = 0;
   uint64_t fromuserid = 0;
-
+  psync_sql_res *q;
+  psync_uint_row row;
+  uint64_t shareid;
+  
   if (initialdownload)
     return;
   stringslen=0;
   ctime=0;
+  br=psync_find_result(share, "shareid", PARAM_NUM);
+  shareid=br->num;
+  q=psync_sql_query_rdlock_nocache("SELECT count(*) FROM bsharedfolder WHERE id=?");
+  psync_sql_bind_int(q, 1, shareid);
+  row=psync_sql_fetch_rowint(q);
+  if (!row){
+    debug(D_CRITICAL, "Can't query the bsharedfolder in the DB!");
+#if IS_DEBUG
+    abort();
+#else
+    return;
+#endif     
+  }
+  if (row[0])
+    isba=1;
   if (!(br=psync_check_result(share, "frommail", PARAM_STR)) && !(br=psync_check_result(share, "tomail", PARAM_STR))){
     if(!(br=psync_check_result(share, "touserid", PARAM_NUM)) &&
        !(br=psync_check_result(share, "fromuserid", PARAM_NUM)) &&
        !(br=psync_check_result(share, "toteamid", PARAM_NUM)) ) {
       debug(D_WARNING, "Neigher frommail or tomail nor buissines share found for eventtype %u", (unsigned)eventid);
       return;
-    } else isba = 1;
+    }
   }
   if (isba) {
     if((br=psync_check_result(share, "user", PARAM_BOOL)) && br->num)

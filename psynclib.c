@@ -2192,7 +2192,7 @@ uint64_t psync_crypto_priv_key_flags(){
 	else
 		debug(D_NOTICE, "Can't read private key flags from DB!");
 	psync_sql_free_result(res);
-	return 0;
+	return ret;
 }
 
 int psync_has_crypto_folders(){
