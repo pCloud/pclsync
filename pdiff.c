@@ -1477,11 +1477,13 @@ static void send_share_notify(psync_eventtype_t eventid, const binresult *share)
 #if IS_DEBUG
     abort();
 #else
+		psync_sql_free_result(q);
     return;
 #endif     
   }
   if (row[0])
     isba=1;
+	psync_sql_free_result(q);    
   if (!(br=psync_check_result(share, "frommail", PARAM_STR)) && !(br=psync_check_result(share, "tomail", PARAM_STR))){
     if(!(br=psync_check_result(share, "touserid", PARAM_NUM)) &&
        !(br=psync_check_result(share, "fromuserid", PARAM_NUM)) &&
