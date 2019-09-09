@@ -1444,7 +1444,7 @@ static void process_modifyuserinfo(const binresult *entry){
       f="";\
   } while (0);
 
-static void send_share_notify(psync_eventtype_t eventid, const binresult *share){
+static void send_share_notify(psync_eventtype_t eventid, const binresult *share, int isba){
   psync_share_event_t *e;
   char *str, *sharename;
   const char *message;
@@ -1454,36 +1454,15 @@ static void send_share_notify(psync_eventtype_t eventid, const binresult *share)
   size_t stringslen, sharenamelen, messagelen;
   size_t emaillen = 254;
   int freesharename;
-  int isba = 0;
   const binresult *permissions;
   uint64_t teamid = 0;
   uint64_t touserid = 0;
   uint64_t fromuserid = 0;
-  psync_sql_res *q;
-  psync_uint_row row;
-  uint64_t shareid;
   
   if (initialdownload)
     return;
   stringslen=0;
   ctime=0;
-  br=psync_find_result(share, "shareid", PARAM_NUM);
-  shareid=br->num;
-  q=psync_sql_query_rdlock_nocache("SELECT count(*) FROM bsharedfolder WHERE id=?");
-  psync_sql_bind_int(q, 1, shareid);
-  row=psync_sql_fetch_rowint(q);
-  if (!row){
-    debug(D_CRITICAL, "Can't query the bsharedfolder in the DB!");
-#if IS_DEBUG
-    abort();
-#else
-		psync_sql_free_result(q);
-    return;
-#endif     
-  }
-  if (row[0])
-    isba=1;
-	psync_sql_free_result(q);    
   if (!(br=psync_check_result(share, "frommail", PARAM_STR)) && !(br=psync_check_result(share, "tomail", PARAM_STR))){
     if(!(br=psync_check_result(share, "touserid", PARAM_NUM)) &&
        !(br=psync_check_result(share, "fromuserid", PARAM_NUM)) &&
@@ -1657,7 +1636,7 @@ static void process_requestsharein(const binresult *entry){
   isincomming = (folderowneruserid == owneruserid) ? 0 : 1;
 
 
-  send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share);
+  send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share, 0);
   q=psync_sql_prep_statement("REPLACE INTO sharerequest (id, folderid, ctime, etime, permissions, userid, mail, name, message, isincoming, isba) "
                                                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
   psync_sql_bind_uint(q, 1, psync_find_result(share, "sharerequestid", PARAM_NUM)->num);
@@ -1696,7 +1675,7 @@ static void process_requestshareout(const binresult *entry){
   psync_get_current_userid(&owneruserid);
   isincomming = (folderowneruserid == owneruserid) ? 0 : 1;
 
-  send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share);
+  send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share, 0);
   q=psync_sql_prep_statement("REPLACE INTO sharerequest (id, folderid, ctime, etime, permissions, userid, mail, name, message, isincoming, isba) "
                                                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
   psync_sql_bind_uint(q, 1, psync_find_result(share, "sharerequestid", PARAM_NUM)->num);
@@ -1726,7 +1705,7 @@ static void process_acceptedsharein(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_ACCEPTIN, share);
+  send_share_notify(PEVENT_SHARE_ACCEPTIN, share, 0);
   q=psync_sql_prep_statement("DELETE FROM sharerequest WHERE id=?");
   psync_sql_bind_uint(q, 1, psync_find_result(share, "sharerequestid", PARAM_NUM)->num);
   psync_sql_run_free(q);
@@ -1753,7 +1732,7 @@ static void process_establishbsharein(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_ACCEPTIN, share);
+  send_share_notify(PEVENT_SHARE_ACCEPTIN, share, 1);
 
   q=psync_sql_prep_statement("REPLACE INTO bsharedfolder (id, isincoming, folderid, ctime, permissions, message, name, isuser, "
                                                           "touserid, isteam, toteamid, fromuserid, folderownerid)"
@@ -1823,7 +1802,7 @@ static void process_acceptedshareout(const binresult *entry){
     psync_get_current_userid(&owneruserid);
     isincomming = (folderowneruserid == owneruserid) ? 0 : 1;
 
-    send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share);
+    send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share, 0);
 
     q=psync_sql_prep_statement("REPLACE INTO sharedfolder (id, folderid, ctime, permissions, userid, mail, name, isincoming) "
                                                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -1860,7 +1839,7 @@ static void process_establishbshareout(const binresult *entry) {
     psync_get_current_userid(&owneruserid);
     isincomming = (folderowneruserid == owneruserid) ? 0 : 1;
   }
-  send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share);
+  send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share, 1);
   
   q=psync_sql_prep_statement("REPLACE INTO bsharedfolder (id, folderid, ctime, permissions, message, name, isuser, "
                                                           "touserid, isteam, toteamid, fromuserid, folderownerid, isincoming)"
@@ -1919,7 +1898,7 @@ static void process_declinedsharein(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_DECLINEIN, share);
+  send_share_notify(PEVENT_SHARE_DECLINEIN, share, 0);
   delete_share_request(share);
 }
 
@@ -1928,7 +1907,7 @@ static void process_declinedshareout(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_DECLINEOUT, share);
+  send_share_notify(PEVENT_SHARE_DECLINEOUT, share, 0);
   delete_share_request(share);
 }
 
@@ -1937,7 +1916,7 @@ static void process_cancelledsharein(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_CANCELIN, share);
+  send_share_notify(PEVENT_SHARE_CANCELIN, share, 0);
   delete_share_request(share);
 }
 
@@ -1946,7 +1925,7 @@ static void process_cancelledshareout(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_CANCELOUT, share);
+  send_share_notify(PEVENT_SHARE_CANCELOUT, share, 0);
   delete_share_request(share);
 }
 
@@ -1977,7 +1956,7 @@ static void process_removedsharein(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_REMOVEIN, share);
+  send_share_notify(PEVENT_SHARE_REMOVEIN, share, 0);
   delete_shared_folder(share);
 }
 
@@ -1986,7 +1965,7 @@ static void process_removebsharein(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_REMOVEIN, share);
+  send_share_notify(PEVENT_SHARE_REMOVEIN, share, 1);
   delete_bsshared_folder(share);
 }
 
@@ -1995,7 +1974,7 @@ static void process_removedshareout(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_REMOVEOUT, share);
+  send_share_notify(PEVENT_SHARE_REMOVEOUT, share, 0);
   delete_shared_folder(share);
 }
 
@@ -2004,7 +1983,7 @@ static void process_removebshareout(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_REMOVEOUT, share);
+  send_share_notify(PEVENT_SHARE_REMOVEOUT, share, 1);
   delete_bsshared_folder(share);
 }
 
@@ -2029,7 +2008,7 @@ static void process_modifiedsharein(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);    
-  send_share_notify(PEVENT_SHARE_MODIFYIN, share);
+  send_share_notify(PEVENT_SHARE_MODIFYIN, share, 0);
   modify_shared_folder(share, psync_find_result(share, "shareid", PARAM_NUM)->num);
 }
 
@@ -2038,7 +2017,7 @@ static void process_modifiedshareout(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_MODIFYOUT, share);
+  send_share_notify(PEVENT_SHARE_MODIFYOUT, share, 0);
   modify_shared_folder(share, psync_find_result(share, "shareid", PARAM_NUM)->num);
 }
 
@@ -2047,7 +2026,7 @@ static void process_modifybsharein(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_MODIFYIN, share);
+  send_share_notify(PEVENT_SHARE_MODIFYIN, share, 1);
   modify_bshared_folder(psync_find_result(share, "permissions", PARAM_HASH),
                         psync_find_result(share, "shareid", PARAM_NUM)->num);
 }
@@ -2057,7 +2036,7 @@ static void process_modifybshareout(const binresult *entry){
   if (!entry)
     return;
   share=psync_find_result(entry, "share", PARAM_HASH);
-  send_share_notify(PEVENT_SHARE_MODIFYOUT, share);
+  send_share_notify(PEVENT_SHARE_MODIFYOUT, share, 1);
   modify_bshared_folder(psync_find_result(share, "permissions", PARAM_HASH),
                         psync_find_result(share, "shareid", PARAM_NUM)->num);
 }
@@ -2067,7 +2046,7 @@ static void process_cryptopasschange(const binresult *entry){
 }
 
 static void process_modifyaccountinfo(const binresult *entry){
-  binresult *res;
+  const binresult *res;
   psync_userid_t ret;
   if (!entry)
     return;
