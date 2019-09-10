@@ -698,7 +698,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
   pentry_t entry;
   uint64_t perms;
   list=folder_list_init();
-  const char *tmp;
+  char *tmp;
   int parentencrypted=0;
   if (listtype&PLIST_FOLDERS){
     res=psync_sql_query_rdlock("SELECT flags FROM folder WHERE id=?");
@@ -721,7 +721,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
       entry.folder.cansyncdown=((perms&PSYNC_PERM_READ)==PSYNC_PERM_READ);
       entry.folder.canshare=(psync_my_userid==psync_get_number(row[3]));
       entry.folder.isencrypted=(psync_get_number(row[4])&PSYNC_FOLDER_FLAG_ENCRYPTED)?1:0;
-      if (parentencrypted){
+      if (parentencrypted&&psync_crypto_isstarted()){
         tmp=psync_get_lstring(row[2], &namelen);
         entry.name=get_decname_for_folder(folderid, tmp, namelen);
         entry.namelen=strlen(entry.name);
