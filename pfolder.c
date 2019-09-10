@@ -35,6 +35,7 @@
 #include "papi.h"
 #include "pcloudcrypto.h"
 #include "pdiff.h"
+#include "pfsfolder.h"
 
 #define INITIAL_NAME_BUFF 2000
 #define INITIAL_ENTRY_CNT 128
@@ -697,6 +698,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
   pentry_t entry;
   uint64_t perms;
   list=folder_list_init();
+  const char *tmp;
   if (listtype&PLIST_FOLDERS){
     res=psync_sql_query_rdlock("SELECT id, permissions, name, userid, flags FROM folder WHERE parentfolderid=? ORDER BY name");
     psync_sql_bind_uint(res, 1, folderid);
@@ -707,8 +709,16 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
       entry.folder.cansyncdown=((perms&PSYNC_PERM_READ)==PSYNC_PERM_READ);
       entry.folder.canshare=(psync_my_userid==psync_get_number(row[3]));
       entry.folder.isencrypted=(psync_get_number(row[4])&PSYNC_FOLDER_FLAG_ENCRYPTED)?1:0;
-      entry.name=psync_get_lstring(row[2], &namelen);
-      entry.namelen=namelen;
+      if (entry.folder.isencrypted){
+        tmp=psync_get_lstring(row[2], &namelen);
+        entry.name=get_decname_for_folder(folderid, tmp, namelen);
+        entry.namelen=strlen(entry.name);
+        //psync_free((void *)tmp);        
+      }
+      else{
+        entry.name=psync_get_lstring(row[2], &namelen);
+        entry.namelen=namelen;
+      }      
       entry.isfolder=1;
       folder_list_add(list, &entry);
     }

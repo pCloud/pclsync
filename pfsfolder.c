@@ -85,6 +85,21 @@ static psync_fspath_t *ret_folder_data(psync_fsfolderid_t folderid, const char *
   return ret;
 }
 
+char *get_decname_for_folder(psync_fsfolderid_t folderid, const char *path, size_t len){
+  char *name, *decname;
+  psync_crypto_aes256_text_decoder_t dec;
+  dec=psync_cloud_crypto_get_folder_decoder(folderid);
+  if (psync_crypto_is_error(dec)){
+    cryptoerr=psync_crypto_to_error(dec);
+    return NULL;
+  }
+  name=psync_strndup(path, len);
+  decname=psync_cloud_crypto_decode_filename(dec, name);
+  psync_cloud_crypto_release_folder_decoder(folderid, dec);
+  psync_free(name);
+  return decname;
+}
+
 PSYNC_NOINLINE void do_check_userid(uint64_t userid, uint64_t folderid, uint32_t *shareid){
   psync_sql_res *res;
   psync_uint_row row;
