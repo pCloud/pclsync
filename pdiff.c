@@ -1824,7 +1824,7 @@ static void process_acceptedshareout(const binresult *entry){
 
 static void process_establishbshareout(const binresult *entry) {
   psync_sql_res *q;
-  const binresult *share, *br, *ownid;
+  const binresult *share, *br, *ownid, *fromuserid;
   char *email = 0;
   int isincomming =  0;
   uint64_t folderowneruserid, owneruserid;
@@ -1833,11 +1833,18 @@ static void process_establishbshareout(const binresult *entry) {
     return;
 
   share=psync_find_result(entry, "share", PARAM_HASH);
-  ownid =  psync_check_result(share, "folderownerid", PARAM_NUM);
-  if(ownid) {
+  ownid=psync_check_result(share, "folderownerid", PARAM_NUM);
+  if(ownid){
     folderowneruserid = ownid->num;
     psync_get_current_userid(&owneruserid);
-    isincomming = (folderowneruserid == owneruserid) ? 0 : 1;
+    fromuserid=psync_check_result(share, "fromuserid", PARAM_NUM);
+    if (fromuserid&&fromuserid->num==owneruserid){
+      isincomming=0;
+    }
+    else
+    {
+      isincomming=(folderowneruserid==owneruserid)?0:1;
+    }
   }
   send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share, 1);
   
