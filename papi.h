@@ -103,6 +103,7 @@ typedef struct {
 #define psync_find_result(res, name, type) psync_do_find_result(res, name, type, __FILE__, __FUNCTION__, __LINE__)
 #define psync_check_result(res, name, type) psync_do_check_result(res, name, type, __FILE__, __FUNCTION__, __LINE__)
 #define psync_get_result(res, name) psync_do_get_result(res, name, __FILE__, __FUNCTION__, __LINE__)
+#define psync_dump_result(res) psync_do_dump_binresult(res, __FILE__, __FUNCTION__, __LINE__)
 
 psync_socket *psync_api_connect(const char *hostname, int usessl);
 void psync_api_conn_fail_inc();
@@ -118,5 +119,5 @@ binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdle
 const binresult *psync_do_find_result(const binresult *res, const char *name, uint32_t type, const char *file, const char *function, int unsigned line) PSYNC_NONNULL(2) PSYNC_PURE;
 const binresult *psync_do_check_result(const binresult *res, const char *name, uint32_t type, const char *file, const char *function, int unsigned line)  PSYNC_NONNULL(2) PSYNC_PURE;
 const binresult *psync_do_get_result(const binresult *res, const char *name, const char *file, const char *function, int unsigned line) PSYNC_NONNULL(2) PSYNC_PURE;
-
+void psync_do_dump_binresult(const binresult *res, const char *file, const char *function, int unsigned line);
 #endif

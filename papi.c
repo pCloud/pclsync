@@ -533,30 +533,8 @@ binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdle
     return PTR_OK;
 }
 
-const binresult *psync_do_find_result(const binresult *res, const char *name, uint32_t type, const char *file, const char *function, int unsigned line){
+void psync_do_dump_binresult(const binresult *res, const char *file, const char *function, int unsigned line){
   uint32_t i;
-  if (unlikely(!res || res->type!=PARAM_HASH)){
-    if (D_CRITICAL<=DEBUG_LEVEL){
-      const char *nm="NULL";
-      if (res)
-        nm=type_names[res->type];
-      psync_debug(file, function, line, D_CRITICAL, "expecting hash as first parameter, got %s", nm);
-    }
-    return empty_types[type];
-  }
-  for (i=0; i<res->length; i++)
-    if (!strcmp(res->hash[i].key, name)){
-      if (likely(res->hash[i].value->type==type))
-        return res->hash[i].value;
-      else{
-        if (D_CRITICAL<=DEBUG_LEVEL)
-          psync_debug(file, function, line, D_CRITICAL, "type error for key %s, expected %s got %s", name, type_names[type], type_names[res->hash[i].value->type]);
-        return empty_types[type];
-      }
-    }
-  if (D_CRITICAL<=DEBUG_LEVEL)
-    psync_debug(file, function, line, D_CRITICAL, "could not find key %s", name);
-#if IS_DEBUG
   psync_debug(file, function, line, D_NOTICE, "dumping existing fields of the hash");
   for (i=0; i<res->length; i++)
     switch (res->hash[i].value->type){
@@ -582,6 +560,33 @@ const binresult *psync_do_find_result(const binresult *res, const char *name, ui
         psync_debug(file, function, line, D_NOTICE, "  %s=!unknown type %u", res->hash[i].key, (unsigned)res->hash[i].value->type);
         break;
     }
+}
+
+const binresult *psync_do_find_result(const binresult *res, const char *name, uint32_t type, const char *file, const char *function, int unsigned line){
+  uint32_t i;
+  if (unlikely(!res || res->type!=PARAM_HASH)){
+    if (D_CRITICAL<=DEBUG_LEVEL){
+      const char *nm="NULL";
+      if (res)
+        nm=type_names[res->type];
+      psync_debug(file, function, line, D_CRITICAL, "expecting hash as first parameter, got %s", nm);
+    }
+    return empty_types[type];
+  }
+  for (i=0; i<res->length; i++)
+    if (!strcmp(res->hash[i].key, name)){
+      if (likely(res->hash[i].value->type==type))
+        return res->hash[i].value;
+      else{
+        if (D_CRITICAL<=DEBUG_LEVEL)
+          psync_debug(file, function, line, D_CRITICAL, "type error for key %s, expected %s got %s", name, type_names[type], type_names[res->hash[i].value->type]);
+        return empty_types[type];
+      }
+    }
+  if (D_CRITICAL<=DEBUG_LEVEL)
+    psync_debug(file, function, line, D_CRITICAL, "could not find key %s", name);
+#if IS_DEBUG
+  psync_do_dump_binresult(res, file, function, line);
 #endif
   return empty_types[type];
 }
