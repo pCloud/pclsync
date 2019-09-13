@@ -1822,7 +1822,7 @@ static void process_acceptedshareout(const binresult *entry){
   }
 }
 
-static void process_establishbshareout(const binresult *entry) {
+static void process_establishbshareout(const binresult *entry){
   psync_sql_res *q;
   const binresult *share, *br, *ownid, *fromuserid;
   char *email = 0;
@@ -1831,13 +1831,12 @@ static void process_establishbshareout(const binresult *entry) {
 
   if (!entry)
     return;
-
   share=psync_find_result(entry, "share", PARAM_HASH);
   ownid=psync_check_result(share, "folderownerid", PARAM_NUM);
   if(ownid){
     folderowneruserid = ownid->num;
     psync_get_current_userid(&owneruserid);
-    fromuserid=psync_check_result(share, "fromuserid", PARAM_NUM);
+    fromuserid=psync_check_result(share, "fromuserid", PARAM_NUM)->num;
     if (fromuserid&&fromuserid->num==owneruserid){
       isincomming=0;
     }
