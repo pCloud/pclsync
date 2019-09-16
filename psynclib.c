@@ -81,6 +81,8 @@ const char *psync_database=NULL;
 static int psync_libstate=0;
 static pthread_mutex_t psync_libstate_mutex=PTHREAD_MUTEX_INITIALIZER;
 
+extern int unlinked;
+
 #define return_error(err) do {psync_error=err; return -1;} while (0)
 #define return_isyncid(err) do {psync_error=err; return PSYNC_INVALID_SYNCID;} while (0)
 
@@ -389,6 +391,7 @@ void psync_unlink(){
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
   debug(D_NOTICE, "unlink");
   psync_diff_lock();
+  unlinked=1;
   psync_stop_all_download();
   psync_stop_all_upload();
   psync_status_recalc_to_download();

@@ -80,6 +80,7 @@ static int initialdownload=0;
 static paccount_cache_callback_t psync_cache_callback=NULL;
 static uint32_t psync_is_business=0;
 static unsigned char adapter_hash[PSYNC_FAST_HASH256_LEN];
+int unlinked=0;
 
 void do_register_account_events_callback(paccount_cache_callback_t callback){
   psync_cache_callback=callback;
@@ -2515,8 +2516,10 @@ restart:
   debug(D_NOTICE, "connected");
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
   ids.diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
-  if (ids.diffid==0)
-    initialdownload=1;
+  debug(D_CRITICAL, "ids.diffid=%I64u", ids.diffid);
+  if (ids.diffid == 0) {
+	  initialdownload=1;
+  }
   used_quota=psync_sql_cellint("SELECT value FROM setting WHERE id='usedquota'", 0);
   do{
     binparam diffparams[]={P_STR("timeformat", "timestamp"), P_NUM("limit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids.diffid)};
@@ -2572,9 +2575,13 @@ restart:
   psync_milisleep(50);
   last_event=0;
   while (psync_do_run){
+    if (unlinked){
+      unlinked=0;
+      initialdownload=1;
+    }
     if(psync_recache_contacts) {
       psync_cache_contacts();
-      psync_recache_contacts = 0;
+      psync_recache_contacts=0;
     }
     if (psync_socket_pendingdata(sock))
       sel=1;
