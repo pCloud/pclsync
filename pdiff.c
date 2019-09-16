@@ -2516,7 +2516,6 @@ restart:
   debug(D_NOTICE, "connected");
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
   ids.diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
-  debug(D_CRITICAL, "ids.diffid=%I64u", ids.diffid);
   if (ids.diffid == 0) {
 	  initialdownload=1;
   }
