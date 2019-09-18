@@ -175,6 +175,21 @@ static void psync_stop_crypto_on_sleep(){
   }
 }
 
+static void ssl_debug_cb(void *ctx, int level, const char *msg){
+  debug(D_NOTICE, "%s", msg);
+}
+
+void psync_set_ssl_debug_callback(psync_ssl_debug_callback_t cb){
+  if (cb){
+    psync_ssl_set_log_threshold(PSYNC_SSL_DEBUG_LEVEL);
+    psync_ssl_set_debug_callback(cb, NULL);
+  }
+  else{
+    psync_ssl_set_log_threshold(0);
+    psync_ssl_set_debug_callback(NULL, NULL);
+  }
+}
+
 int psync_init(){
   psync_thread_name="main app thread";
   debug(D_NOTICE, "initializing library version "PSYNC_LIB_VERSION);
@@ -225,6 +240,8 @@ int psync_init(){
 
   psync_run_thread("Overlay main thread", overlay_main_loop);
   init_overlay_callbacks();
+  if (PSYNC_SSL_DEBUG_LEVEL)
+    psync_set_ssl_debug_callback(ssl_debug_cb);
 
   return 0;
 }

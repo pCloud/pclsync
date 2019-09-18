@@ -62,6 +62,8 @@
 #undef assert
 #endif
 
+#define PSYNC_SSL_DEBUG_LEVEL 0 /* Please make sure this is always set to 0 for release builds!!! */
+
 #define debug(level, ...) do {if (level<=DEBUG_LEVEL) psync_debug(__FILE__, __FUNCTION__, __LINE__, level, __VA_ARGS__);} while (0)
 #define assert(cond) do {if (D_WARNING<=DEBUG_LEVEL && unlikely(!(cond))) { debug(D_WARNING, "assertion %s failed, aborting", TO_STR(cond)); abort();}} while (0)
 #define assertw(cond) do {if (D_WARNING<=DEBUG_LEVEL && unlikely(!(cond))) { debug(D_WARNING, "assertion %s failed", TO_STR(cond));}} while (0)
@@ -386,5 +388,4 @@ static inline size_t psync_strlcpy(char *dst, const char *src, size_t size){
   else
     return 0;
 }
-
 #endif

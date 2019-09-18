@@ -126,7 +126,6 @@ static int in_transaction=0;
 static int transaction_failed=0;
 static psync_list tran_callbacks;
 
-
 char *psync_strdup(const char *str){
   size_t len;
   len=strlen(str)+1;
