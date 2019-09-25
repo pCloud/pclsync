@@ -1795,6 +1795,8 @@ int  psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpa
   uint64_t result;
   const binresult *data;
 
+  if (!newpassphrase||!newpassphrase[0])
+    return PSYNC_CRYPTO_BAD_PASSPHRASE;  
 retry:
   if (psync_sql_trylock()){
     psync_milisleep(1);
@@ -1891,6 +1893,8 @@ int psync_crypto_change_passphrase_unlocked(const char *newpassphrase, uint32_t 
   if (unlikely(!psync_cloud_crypto_isstarted())){
     return PSYNC_CRYPTO_NOT_STARTED;
   }
+  if (!newpassphrase||!newpassphrase[0])
+    return PSYNC_CRYPTO_BAD_PASSPHRASE;
   cres=psync_pcloud_crypto_encode_key(newpassphrase, flags, privenc, sign);
   return cres;
 }
