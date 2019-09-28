@@ -399,11 +399,12 @@ int psync_fsfolder_crypto_error(){
   return cryptoerr;
 }
 
-uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid, uint32_t *pPerm){
+uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid, uint32_t *pperm){
   psync_sql_res *res;
   psync_uint_row row;
   uint32_t ret=0;
-  *pPerm=0;
+  if (pperm)
+    *pperm=0;
 retry:
   if (psync_sql_trylock()){
     psync_milisleep(1);
@@ -413,15 +414,15 @@ retry:
   psync_sql_bind_int(res, 1, folderid);
   row=psync_sql_fetch_rowint(res);
   if(!row){
-		debug(D_NOTICE, "Error reading flags by file id!");
-		psync_sql_free_result(res);
-		psync_sql_unlock();
-		return 0;
+    debug(D_NOTICE, "Error reading flags by file id!");
+    psync_sql_free_result(res);
+    psync_sql_unlock();
+    return 0;
   }
-  else
-		*pPerm=row[1];
-		ret=row[0];
-		psync_sql_free_result(res);		
-		psync_sql_unlock();
-		return ret;
+  if (pperm)
+    *pperm=row[1];
+  ret=row[0];
+  psync_sql_free_result(res);
+  psync_sql_unlock();
+  return ret;
 }

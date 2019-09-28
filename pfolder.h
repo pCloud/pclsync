@@ -50,7 +50,8 @@ char *psync_local_path_for_local_file(psync_fileid_t localfileid, size_t *retlen
 pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listtype_t listtype);
 pfolder_list_t *psync_list_local_folder(const char *path, psync_listtype_t listtype) PSYNC_NONNULL(1);
 pentry_t *psync_folder_stat_path(const char *remotepath);
-
 psync_folder_list_t *psync_list_get_list();
-
+#ifdef P_OS_WINDOWS
+void psync_fsfolder_refresh_path(char *path);
+#endif
 #endif
