@@ -39,6 +39,9 @@
 #include "pstatus.h"
 #include <string.h>
 #include "pdiff.h"
+#ifdef P_OS_WINDOWS
+#include "Shlobj.h"
+#endif
 #define PSYNC_CRYPTO_API_ERR_INTERNAL -511
 
 static PSYNC_THREAD int crypto_api_errno;
@@ -592,6 +595,19 @@ static void psync_fs_refresh_crypto_folders(){
 }
 
 int psync_cloud_crypto_stop(){
+#ifdef P_OS_WINDOWS
+	LPITEMIDLIST pidl;
+	LPSHELLFOLDER pdesktopfolder;
+	OLECHAR olepath[MAX_PATH];
+	ULONG cheaten;
+	ULONG attributes;
+	HRESULT hr;
+	DWORD lasterror;
+	const char* cfname = "\\Crypto Folder\\";
+	char *cfolderpath = psync_fs_getmountpoint();
+	cfolderpath = (char*)realloc(cfolderpath, strlen(cfolderpath)+strlen(cfname)+1);
+	strcat(cfolderpath, cfname);
+#endif
   crypto_started_un=0;
   pthread_rwlock_wrlock(&crypto_lock);
   if (!crypto_started_l){
@@ -607,6 +623,29 @@ int psync_cloud_crypto_stop(){
   debug(D_NOTICE, "stopped crypto");
   psync_cloud_crypto_clean_cache();
   psync_fs_refresh_crypto_folders();
+#ifdef P_OS_WINDOWS
+   if (likely(SUCCEEDED(SHGetDesktopFolder(&pdesktopfolder)))){
+	  MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, cfolderpath, -1, olepath, MAX_PATH);
+	  SetLastError(0);
+	  hr = pdesktopfolder->lpVtbl->ParseDisplayName(pdesktopfolder, NULL, NULL, olepath, &cheaten, &pidl, &attributes); 
+	  lasterror=GetLastError();
+	  if (unlikely(FAILED(hr))) {
+		  debug(D_NOTICE, "Failed to get directory ITEMIDLIST for %s. LastError: %d", cfolderpath, lasterror);
+	  }
+	  else{
+		  // pidl now contains a pointer to an ITEMIDLIST. This ITEMIDLIST needs to be freed using the IMalloc allocator returned from SHGetMalloc()
+		  SetLastError(0);
+		  SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_IDLIST|SHCNF_FLUSHNOWAIT, pidl, NULL);	// Refresh all Windows Explorer windows with open Crypto Folder
+		  if ((lasterror= GetLastError()))
+			  debug(D_NOTICE, "LastError: %d", lasterror);
+		  IMalloc *pMalloc;
+		  SHGetMalloc(&pMalloc);
+		  pMalloc->lpVtbl->Free(pMalloc, pidl);
+	  }
+	  pdesktopfolder->lpVtbl->Release(pdesktopfolder);
+  }
+  psync_free(cfolderpath);
+#endif
   return PSYNC_CRYPTO_STOP_SUCCESS;
 }
 
