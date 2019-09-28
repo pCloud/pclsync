@@ -965,16 +965,16 @@ void psync_fsfolder_refresh_path(char *folderpath) {
       debug(D_NOTICE, "Failed to get directory ITEMIDLIST for path: %s, LastError: %d", folderpath, lasterror);
     }
     else {
-      // pidl now contains a pointer to an ITEMIDLIST. This ITEMIDLIST needs to be freed using the IMalloc allocator returned from SHGetMalloc()
+      // pidl now contains a pointer to an ITEMIDLIST.
+      // This ITEMIDLIST needs to be freed using the IMalloc allocator
+      // returned from SHGetMalloc() or by calling the CoTaskMemFree() function
       SetLastError(0);
       SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_IDLIST | SHCNF_FLUSHNOWAIT, pidl, NULL);	// Refresh all Windows Explorer windows with open Crypto Folder
       if ((lasterror = GetLastError()))
        debug(D_NOTICE, "Failed to send SHCNE_UPDATEDIR event, last error: %d", lasterror);
       else
        debug(D_NOTICE, "Successufly sent SHCNE_UPDATEDIR event for %s", folderpath);
-      IMalloc *pMalloc;
-      SHGetMalloc(&pMalloc);
-      pMalloc->lpVtbl->Free(pMalloc, pidl);
+      CoTaskMemFree(pidl);
     }
     pdesktopfolder->lpVtbl->Release(pdesktopfolder);
   }
