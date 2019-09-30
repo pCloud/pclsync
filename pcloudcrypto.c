@@ -595,7 +595,7 @@ int psync_cloud_crypto_stop(){
 #ifdef P_OS_WINDOWS
   const char* cfname = "\\Crypto Folder\\";
   char *cfolderpath = psync_fs_getmountpoint();
-  if (psync_crypto_isstarted()){
+  if (cfolderpath){
     cfolderpath = (char*)realloc(cfolderpath, strlen(cfolderpath) + strlen(cfname) + 1);
     strcat(cfolderpath, cfname);
   }
@@ -616,7 +616,7 @@ int psync_cloud_crypto_stop(){
   psync_cloud_crypto_clean_cache();
   psync_fs_refresh_crypto_folders();
 #ifdef P_OS_WINDOWS
-  if (psync_crypto_isstarted()){
+  if (cfolderpath){
     psync_fsfolder_refresh_path(cfolderpath);
     psync_free(cfolderpath);
   }
