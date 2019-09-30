@@ -51,7 +51,6 @@
 #include "ppathstatus.h"
 #include <ctype.h>
 
-
 #define PSYNC_SQL_DOWNLOAD "synctype&"NTO_STR(PSYNC_DOWNLOAD_ONLY)"="NTO_STR(PSYNC_DOWNLOAD_ONLY)
 
 typedef struct {
@@ -2630,6 +2629,8 @@ restart:
             psync_diff_refresh_fs(entries);
             psync_diff_check_quota(sock);
             check_overquota();
+            if (initialdownload)
+              initialdownload = 0;
           }
           else
             debug(D_NOTICE, "diff with 0 entries, did we send a nop recently?");
