@@ -294,6 +294,7 @@ uint32_t psync_download_state(){
 
 void psync_destroy(){
   psync_do_run=0;
+  psync_crypto_stop();
   psync_fs_stop();
   psync_terminate_status_waiters();
   psync_send_status_update();
