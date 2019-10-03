@@ -592,23 +592,12 @@ static void psync_fs_refresh_crypto_folders(){
 }
 
 int psync_cloud_crypto_stop(){
-#ifdef P_OS_WINDOWS
-  const char* cfname="\\Crypto Folder\\";
-  char *cfolderpath=NULL;
-#endif
   crypto_started_un=0;
   pthread_rwlock_wrlock(&crypto_lock);
   if (!crypto_started_l){
     pthread_rwlock_unlock(&crypto_lock);
     return PRINT_RETURN_CONST(PSYNC_CRYPTO_STOP_NOT_STARTED);
   }
-#ifdef P_OS_WINDOWS
-  cfolderpath=psync_fs_getmountpoint();
-  if (cfolderpath){
-    cfolderpath=(char*)realloc(cfolderpath, strlen(cfolderpath)+strlen(cfname)+1);
-    strcat(cfolderpath, cfname);
-  }
-#endif
   crypto_started_l=0;
   psync_ssl_rsa_free_public(crypto_pubkey);
   crypto_pubkey=PSYNC_INVALID_RSA;
@@ -619,10 +608,7 @@ int psync_cloud_crypto_stop(){
   psync_cloud_crypto_clean_cache();
   psync_fs_refresh_crypto_folders();
 #ifdef P_OS_WINDOWS
-  if (cfolderpath){
-    psync_fsfolder_refresh_path(cfolderpath);
-    psync_free(cfolderpath);
-  }
+  psync_fsfolder_refresh_explor_crypto_path();
 #endif
   return PSYNC_CRYPTO_STOP_SUCCESS;
 }

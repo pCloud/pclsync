@@ -52,6 +52,6 @@ pfolder_list_t *psync_list_local_folder(const char *path, psync_listtype_t listt
 pentry_t *psync_folder_stat_path(const char *remotepath);
 psync_folder_list_t *psync_list_get_list();
 #ifdef P_OS_WINDOWS
-void psync_fsfolder_refresh_path(char *path);
+void psync_fsfolder_refresh_explor_crypto_path();
 #endif
 #endif

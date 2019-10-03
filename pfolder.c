@@ -979,4 +979,16 @@ void psync_fsfolder_refresh_path(char *folderpath) {
     pdesktopfolder->lpVtbl->Release(pdesktopfolder);
   }
 }
+
+void psync_fsfolder_refresh_explor_crypto_path() {
+  const char* cfname = "\\Crypto Folder\\";
+  char *cfolderpath = NULL;
+  cfolderpath = psync_fs_getmountpoint();
+  if (cfolderpath) {
+    cfolderpath = (char*)realloc(cfolderpath, strlen(cfolderpath) + strlen(cfname) + 1);
+    strcat(cfolderpath, cfname);
+    psync_fsfolder_refresh_path(cfolderpath);
+    psync_free(cfolderpath);
+  }
+}
 #endif
