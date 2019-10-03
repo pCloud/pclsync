@@ -969,7 +969,7 @@ void psync_fsfolder_refresh_path(char *folderpath){
       // This ITEMIDLIST needs to be freed using the IMalloc allocator
       // returned from SHGetMalloc() or by calling the CoTaskMemFree() function
       SetLastError(0);
-      SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_IDLIST|SHCNF_FLUSHNOWAIT, pidl, NULL);	// Refresh all Windows Explorer windows with open Crypto Folder
+      SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_IDLIST|SHCNF_FLUSHNOWAIT, pidl, NULL);  // Refresh all Windows Explorer windows with open folderpath
       if ((lasterror=GetLastError()))
        debug(D_NOTICE, "Failed to send SHCNE_UPDATEDIR event, last error: %d", lasterror);
       else

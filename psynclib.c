@@ -293,9 +293,6 @@ uint32_t psync_download_state(){
 }
 
 void psync_destroy(){
-#ifdef P_OS_WINDOWS
-  int iscryptostarted=psync_crypto_isstarted();
-#endif
   psync_do_run=0;
   psync_fs_stop();
   psync_terminate_status_waiters();
@@ -308,10 +305,6 @@ void psync_destroy(){
   psync_sql_lock();
   psync_cache_clean_all();
   psync_sql_close();
-#ifdef P_OS_WINDOWS
-  if (iscryptostarted)
-    psync_refresh_explorer_crypto_folder();
-#endif
 }
 
 void psync_get_status(pstatus_t *status){
