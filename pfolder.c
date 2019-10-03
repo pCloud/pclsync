@@ -980,7 +980,7 @@ void psync_fsfolder_refresh_path(char *folderpath) {
   }
 }
 
-void psync_fsfolder_refresh_explor_crypto_path() {
+void psync_refresh_explorer_crypto_folder() {
   const char* cfname = "\\Crypto Folder\\";
   char *cfolderpath = NULL;
   cfolderpath = psync_fs_getmountpoint();
