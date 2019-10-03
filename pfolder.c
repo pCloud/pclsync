@@ -947,7 +947,7 @@ psync_folder_list_t *psync_list_get_list(){
 }
 
 #ifdef P_OS_WINDOWS
-void psync_fsfolder_refresh_path(char *folderpath) {
+void psync_fsfolder_refresh_path(char *folderpath){
   LPITEMIDLIST pidl;
   LPSHELLFOLDER pdesktopfolder;
   OLECHAR olepath[MAX_PATH];
@@ -969,7 +969,7 @@ void psync_fsfolder_refresh_path(char *folderpath) {
       // This ITEMIDLIST needs to be freed using the IMalloc allocator
       // returned from SHGetMalloc() or by calling the CoTaskMemFree() function
       SetLastError(0);
-      SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_IDLIST | SHCNF_FLUSHNOWAIT, pidl, NULL);	// Refresh all Windows Explorer windows with open Crypto Folder
+      SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_IDLIST|SHCNF_FLUSHNOWAIT, pidl, NULL);	// Refresh all Windows Explorer windows with open Crypto Folder
       if ((lasterror=GetLastError()))
        debug(D_NOTICE, "Failed to send SHCNE_UPDATEDIR event, last error: %d", lasterror);
       else
@@ -980,12 +980,12 @@ void psync_fsfolder_refresh_path(char *folderpath) {
   }
 }
 
-void psync_refresh_explorer_crypto_folder() {
-  const char* cfname = "\\Crypto Folder\\";
-  char *cfolderpath = NULL;
-  cfolderpath = psync_fs_getmountpoint();
-  if (cfolderpath) {
-    cfolderpath = (char*)realloc(cfolderpath, strlen(cfolderpath) + strlen(cfname) + 1);
+void psync_refresh_explorer_crypto_folder(){
+  const char* cfname="\\Crypto Folder\\";
+  char *cfolderpath=NULL;
+  cfolderpath=psync_fs_getmountpoint();
+  if (cfolderpath){
+    cfolderpath=(char*)realloc(cfolderpath, strlen(cfolderpath)+strlen(cfname)+1);
     strcat(cfolderpath, cfname);
     psync_fsfolder_refresh_path(cfolderpath);
     psync_free(cfolderpath);
