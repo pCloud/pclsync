@@ -956,21 +956,21 @@ void psync_fsfolder_refresh_path(char *folderpath) {
   HRESULT hr;
   DWORD lasterror;
   debug(D_NOTICE, "Trying to refresh the Windows Explorer windows with open path: %s", folderpath);
-  if (likely(SUCCEEDED(SHGetDesktopFolder(&pdesktopfolder)))) {
+  if (likely(SUCCEEDED(SHGetDesktopFolder(&pdesktopfolder)))){
     MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, folderpath, -1, olepath, MAX_PATH);
     SetLastError(0);
-    hr = pdesktopfolder->lpVtbl->ParseDisplayName(pdesktopfolder, NULL, NULL, olepath, &cheaten, &pidl, &attributes);
-    lasterror = GetLastError();
-    if (unlikely(FAILED(hr))) {
+    hr=pdesktopfolder->lpVtbl->ParseDisplayName(pdesktopfolder, NULL, NULL, olepath, &cheaten, &pidl, &attributes);
+    lasterror=GetLastError();
+    if (unlikely(FAILED(hr))){
       debug(D_NOTICE, "Failed to get directory ITEMIDLIST for path: %s, LastError: %d", folderpath, lasterror);
     }
-    else {
+    else{
       // pidl now contains a pointer to an ITEMIDLIST.
       // This ITEMIDLIST needs to be freed using the IMalloc allocator
       // returned from SHGetMalloc() or by calling the CoTaskMemFree() function
       SetLastError(0);
       SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_IDLIST | SHCNF_FLUSHNOWAIT, pidl, NULL);	// Refresh all Windows Explorer windows with open Crypto Folder
-      if ((lasterror = GetLastError()))
+      if ((lasterror=GetLastError()))
        debug(D_NOTICE, "Failed to send SHCNE_UPDATEDIR event, last error: %d", lasterror);
       else
        debug(D_NOTICE, "Successufly sent SHCNE_UPDATEDIR event for %s", folderpath);

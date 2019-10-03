@@ -593,7 +593,7 @@ static void psync_fs_refresh_crypto_folders(){
 
 int psync_cloud_crypto_stop(){
 #ifdef P_OS_WINDOWS
-  const char* cfname = "\\Crypto Folder\\";
+  const char* cfname="\\Crypto Folder\\";
   char *cfolderpath=NULL;
 #endif
   crypto_started_un=0;
