@@ -1011,36 +1011,35 @@ void psync_restat_sync_folders_add(psync_syncid_t syncid, const char *localpath)
   sync_restat_list *l;
   psync_stat_t st;
   size_t lplen=strlen(localpath);
-  l=(sync_restat_list *)psync_malloc(offsetof(sync_restat_list, localpath) + lplen + 1);
+  l=(sync_restat_list *)psync_malloc(offsetof(sync_restat_list, localpath)+lplen+1);
   l->syncid=syncid;
-  memcpy(l->localpath, localpath, lplen + 1);
+  memcpy(l->localpath, localpath, lplen+1);
   if (psync_stat(l->localpath, &st)){
-	debug(D_NOTICE, "Can't stat sync folder '%s'. Putting zeros for inode and deviceid", l->localpath);
-	l->inode=0;
-	l->deviceid=0;
+    debug(D_NOTICE, "Can't stat sync folder '%s'. Putting zeros for inode and deviceid", l->localpath);
+    l->inode=0;
+    l->deviceid=0;
   }
   else{
-	l->inode=psync_stat_inode(&st);
-	l->deviceid=psync_stat_device_full(&st);
+    l->inode=psync_stat_inode(&st);
+    l->deviceid=psync_stat_device_full(&st);
   }
   pthread_mutex_lock(&restat_mutex);
   psync_list_add_tail(&scan_folders_list, &l->list);
   pthread_mutex_unlock(&restat_mutex);
 }
 
-
 void psync_restat_sync_folders_del(psync_syncid_t syncid){
   sync_restat_list *l, *to_del=NULL;
   pthread_mutex_lock(&restat_mutex);
   psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
-	if (l->syncid==syncid){
+    if (l->syncid==syncid){
       to_del=l;
       break;
     }
   }
   if (to_del){
-	psync_list_del(&to_del->list);
-	psync_free(to_del);
+    psync_list_del(&to_del->list);
+    psync_free(to_del);
   }
   pthread_mutex_unlock(&restat_mutex);
 }
@@ -1053,23 +1052,23 @@ void psync_restat_sync_folders(){
   psync_inode_t inode;
   pthread_mutex_lock(&restat_mutex);
   psync_list_for_each_element(l, &scan_folders_list, sync_restat_list, list){
-	if (psync_stat(l->localpath, &st)){
-	  debug(D_NOTICE, "Can't stat sync folder '%s'. Setting deviceid and inode to zero.", l->localpath);
-	  deviceid=0;
-	  inode=0;
-	}
-	else{
-	  deviceid=psync_stat_device_full(&st);
-	  inode=psync_stat_inode(&st);
-	}
-	if (l->deviceid!=deviceid || l->inode!=inode){
-	  l->deviceid=deviceid;
-	  l->inode=inode;
-	  psync_localnotify_del_sync(l->syncid);
-	  if (l->deviceid)
-		psync_localnotify_add_sync(l->syncid);
-	  has_changes=1;      
-	}
+    if (psync_stat(l->localpath, &st)){
+      debug(D_NOTICE, "Can't stat sync folder '%s'. Setting deviceid and inode to zero.", l->localpath);
+      deviceid=0;
+      inode=0;
+    }
+    else{
+      deviceid=psync_stat_device_full(&st);
+      inode=psync_stat_inode(&st);
+    }
+    if (l->deviceid!=deviceid || l->inode!=inode){
+      l->deviceid=deviceid;
+      l->inode=inode;
+      psync_localnotify_del_sync(l->syncid);
+      if (l->deviceid)
+        psync_localnotify_add_sync(l->syncid);
+      has_changes=1;      
+    }
   }
   pthread_mutex_unlock(&restat_mutex);
   if (has_changes)
@@ -1090,7 +1089,7 @@ void psync_localscan_init(){
     syncid=psync_get_number(row[0]);
     localpath=psync_get_string(row[1]);
     psync_localnotify_add_sync(syncid);
-	psync_restat_sync_folders_add(syncid, localpath);
+    psync_restat_sync_folders_add(syncid, localpath);
   }
   psync_sql_free_result(res);
 }
