@@ -2577,7 +2577,7 @@ restart:
       unlinked=0;
       initialdownload=1;
     }
-    if(psync_recache_contacts) {
+    if(psync_recache_contacts){
       psync_cache_contacts();
       psync_recache_contacts=0;
     }
@@ -2630,7 +2630,7 @@ restart:
             psync_diff_check_quota(sock);
             check_overquota();
             if (initialdownload)
-              initialdownload = 0;
+              initialdownload=0;
           }
           else
             debug(D_NOTICE, "diff with 0 entries, did we send a nop recently?");

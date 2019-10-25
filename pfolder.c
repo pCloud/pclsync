@@ -727,7 +727,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
         tmp=psync_get_lstring(row[2], &namelen);
         entry.name=get_decname_for_folder(folderid, tmp, namelen);
         if (!entry.name){
-          debug(D_BUG, "Can't decrypt folder name for folderid: %d, parent folfderid: %d, cryptoerr: %d, encrypted name: %s. Skippping ...", entry.folder.folderid, folderid, psync_fsfolder_crypto_error(), tmp);
+          debug(D_BUG, "Can't decrypt folder name for folderid: %I64u, parent folfderid: %I64u, cryptoerr: %d, encrypted name: %s. Skippping ...", entry.folder.folderid, folderid, psync_fsfolder_crypto_error(), tmp);
           continue;
         }
         entry.namelen=strlen(entry.name);

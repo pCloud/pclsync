@@ -2210,7 +2210,7 @@ uint64_t psync_crypto_priv_key_flags(){
 		return ret;
   }
 	else
-		debug(D_NOTICE, "Can't read private key flags from DB!");
+		debug(D_NOTICE, "Can't read private key flags from the DB");
 	psync_sql_free_result(res);
 	return ret;
 }
@@ -2224,7 +2224,7 @@ int psync_has_crypto_folders(){
 		cnt=row[0];
   }
 	else
-		debug(D_CRITICAL, "Can't check the number of crypto folders in DB!");
+		debug(D_NOTICE, "There are no crypto folders in the DB");
 	psync_sql_free_result(res);
-	return (cnt>0);
+	return cnt>0;
 }
