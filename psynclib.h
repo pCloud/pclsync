@@ -433,6 +433,7 @@ typedef struct {
   const char *name;
   const char *code;
   const char *comment;
+  const char *fulllink;
   uint64_t traffic;
   uint64_t maxspace;
   uint64_t downloads;
@@ -1223,27 +1224,24 @@ external_status psync_status_folder(const char *path);
  *
  * psync_file_public_link() creates public link for a file. Returns link id or negative error number.
  *  The path parameter is pcloud drive path.
- *  The code is pointer where generated code is returned.
+ *  The link is pointer where generated link is returned.
  *  The err is parameter where printable text of api error if any is returned.
  *
- *  The code you obtained that way have to be concatenated to "https://my.pcloud.com/#page=publink&code=" constant string to acquire the full link.
  *
  *
  * psync_folder_public_link() creates public link for a folder. Returns link id or negative error number.
  *  The path parameter is pcloud drive path.
- *  The code is pointer where generated code is returned.
+ *  The link is pointer where generated link is returned.
  *  The err is parameter where printable text of api error if any is returned.
  *
- *  The code you obtained that way have to be concatenated to "https://my.pcloud.com/#page=publink&code=" constant string to acquire the full link.
  *
  * psync_tree_public_link() creates public link for a tree. Tree is define by root folder and arrays of folders and file paths. Each entry in the arrays
  *  describes a path to file or folder. Number of entries in the arrays is passed separately. The API constructs a virtual folder of this files and folders
  *  and if root is passed it will serve as root folder for this virtual folder so name is mandatory. you can omit any of the other parameters.
  *  Returns link id or negative error number.
- *  The code is pointer where generated code is returned.
+ *  The link is pointer where generated link is returned.
  *  The err is parameter where printable text of api error if any is returned.
  *
- *  The code you obtained that way have to be concatenated to "https://my.pcloud.com/#page=publink&code=" constant string to acquire the full link.
  *
  * psync_delete_link() Deletes a public link by linkid or returns negative number and upon API failure a string representation of the error.
  *
@@ -1268,14 +1266,14 @@ external_status psync_status_folder(const char *path);
  *
  */
 
-int64_t psync_file_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/);
-int64_t psync_folder_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/);
-int64_t psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **code /*OUT*/, char **err /*OUT*/);
+int64_t psync_file_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/);
+int64_t psync_folder_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/);
+int64_t psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **link /*OUT*/, char **err /*OUT*/);
 plink_info_list_t *psync_list_links(char **err /*OUT*/);
-plink_contents_t *psync_show_link(const char *code, char **err /*OUT*/);
+plink_contents_t *psync_show_link(const char *link, char **err /*OUT*/);
 int psync_delete_link(int64_t linkid, char **err /*OUT*/);
 
-int64_t psync_upload_link(const char *path, const char *comment, char **code /*OUT*/, char **err /*OUT*/);
+int64_t psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/);
 int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/);
 
 int psync_delete_all_links_folder(psync_folderid_t folderid, char**err);
@@ -1284,7 +1282,7 @@ int psync_delete_all_links_file(psync_fileid_t fileid, char**err);
  * Creates download link for newly uploaded screenshot and sets the expiration to current date plus delay seconds. If hasdelay
  * equals 0 no expiration is set. If hasdelay and delay is 0 expiration is for one mount
  */
-int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t delay, char **code /*OUT*/, char **err /*OUT*/);
+int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t delay, char **link /*OUT*/, char **err /*OUT*/);
 
 /*
  * Publik contacts API functions.

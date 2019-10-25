@@ -2066,22 +2066,22 @@ external_status psync_status_folder(const char *path) {
   return psync_filesystem_status(path);
 }
 
-int64_t psync_file_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/) {
+int64_t psync_file_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/) {
   int64_t ret = 0;
-  do_psync_file_public_link(path, &ret, code, err, 0, 0, 0);
+  do_psync_file_public_link(path, &ret, link, err, 0, 0, 0);
   return ret;
 }
 
-int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t delay, char **code /*OUT*/, char **err /*OUT*/) {
-  return do_psync_screenshot_public_link(path, hasdelay, delay, code, err);
+int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t delay, char **link /*OUT*/, char **err /*OUT*/) {
+  return do_psync_screenshot_public_link(path, hasdelay, delay, link, err);
 }
 
-int64_t psync_folder_public_link(const char *path, char **code /*OUT*/, char **err /*OUT*/) {
-  return do_psync_folder_public_link(path, code, err, 0, 0, 0);
+int64_t psync_folder_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/) {
+  return do_psync_folder_public_link(path, link, err, 0, 0, 0);
 }
 
-int64_t psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **code /*OUT*/, char **err /*OUT*/) {
-  return do_psync_tree_public_link(linkname, root, folders, numfolders, files, numfiles, code, err,  0, 0, 0);
+int64_t psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **link /*OUT*/, char **err /*OUT*/) {
+  return do_psync_tree_public_link(linkname, root, folders, numfolders, files, numfiles, link, err,  0, 0, 0);
 }
 
 plink_info_list_t *psync_list_links(char **err /*OUT*/) {
@@ -2096,8 +2096,8 @@ int psync_delete_link(int64_t linkid, char **err /*OUT*/) {
   return do_psync_delete_link(linkid, err);
 }
 
-int64_t psync_upload_link(const char *path, const char *comment, char **code /*OUT*/, char **err /*OUT*/) {
-  return do_psync_upload_link(path, comment, code, err, 0, 0, 0);
+int64_t psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/) {
+  return do_psync_upload_link(path, comment, link, err, 0, 0, 0);
 }
 
 int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
