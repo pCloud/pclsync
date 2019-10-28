@@ -607,7 +607,7 @@ int64_t do_psync_upload_link(const char *path, const char *comment, char **link 
   if (unlikely(result)) {
     errorret = psync_find_result(bres, "error", PARAM_STR)->str;
     *err = psync_strndup(errorret, strlen(errorret));
-    debug(D_WARNING, "command getfilepublink returned error code %u", (unsigned)result);
+    debug(D_WARNING, "command createuploadlink returned error code %u", (unsigned)result);
     psync_process_api_error(result);
     if (psync_handle_api_result(result)==PSYNC_NET_TEMPFAIL)
       return -result;
