@@ -168,6 +168,14 @@ void psync_apipool_set_server(const char *binapi) {
   }
 }
 
+void psync_apiserver_init() {
+  const char *str = psync_setting_get_string("apiserver");
+  if (str)
+  {
+	psync_apipool_set_server(str);
+  }
+}
+
 psync_socket *psync_apipool_get(){
   psync_socket *ret;
   while (1){

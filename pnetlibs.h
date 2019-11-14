@@ -100,6 +100,7 @@ extern char apiserver[64];
 void psync_netlibs_init();
 
 void psync_apipool_set_server(const char *binapi);
+void psync_apiserver_init();
 
 psync_socket *psync_apipool_get();
 psync_socket *psync_apipool_get_from_cache();

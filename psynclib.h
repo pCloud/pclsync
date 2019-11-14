@@ -89,6 +89,17 @@ typedef struct {
   psuggested_folder_t entries[];
 } psuggested_folders_t;
 
+typedef struct {
+	const char *label;
+	const char *api;
+	const char *binapi;
+}apiserver_info_t;
+
+typedef struct {
+	uint32_t serverscnt;
+	apiserver_info_t entries[];
+}apiservers_list_t;
+
 #define PSTATUS_READY                   0
 #define PSTATUS_DOWNLOADING             1
 #define PSTATUS_UPLOADING               2
@@ -1390,6 +1401,11 @@ int psync_get_promo(char **url);
  * Checks if the user has any crypto folders.
  */
 int psync_has_crypto_folders();
+/*
+* 
+*/
+apiservers_list_t *psync_get_apiservers(char **err /*OUT*/);
+void psync_set_apiserver(const char* binapi);
 #ifdef __cplusplus
 }
 #endif

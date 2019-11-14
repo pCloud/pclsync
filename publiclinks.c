@@ -183,7 +183,6 @@ free_ret:
   return (int64_t)result;
 }
 
-
 int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic) {
   psync_socket *api;
   binresult *bres;

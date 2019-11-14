@@ -264,6 +264,7 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
       psync_libstate=2;
     pthread_mutex_unlock(&psync_libstate_mutex);
   }
+  //psync_apiserver_init();
   if (status_callback)
     psync_set_status_callback(status_callback);
   if (event_callback)
@@ -361,7 +362,6 @@ void psync_set_auth(const char *auth, int save){
     psync_strlcpy(psync_my_auth, auth, sizeof(psync_my_auth));
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 }
-
 
 int psync_mark_notificaitons_read(uint32_t notificationid){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("notificationid", notificationid)};
@@ -1819,7 +1819,6 @@ int psync_upload_file_as(const char *remote_path, const char *remote_filename, c
   return ret;
 }
 
-
 int psync_password_quality(const char *password){
   uint64_t score=psync_password_score(password);
   if (score<(uint64_t)1<<30)
@@ -2107,10 +2106,10 @@ int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
 int psync_delete_all_links_folder(psync_folderid_t folderid, char**err) {
   return do_delete_all_folder_links(folderid, err);
 }
+
 int psync_delete_all_links_file(psync_fileid_t fileid, char**err){
   return do_delete_all_file_links(fileid, err);
 }
-
 
 pcontacts_list_t *psync_list_contacts() {
   return do_psync_list_contacts();
@@ -2120,8 +2119,7 @@ pcontacts_list_t *psync_list_myteams() {
   return do_psync_list_myteams();
 }
 
-void psync_register_account_events_callback(paccount_cache_callback_t callback)
-{
+void psync_register_account_events_callback(paccount_cache_callback_t callback){
   do_register_account_events_callback(callback);
 }
 
@@ -2159,15 +2157,13 @@ int psync_fs_move_cache(const char *path){
   return  psync_pagecache_move_cache(path);
 }
 
-char * psync_get_token()
-{
+char * psync_get_token(){
   if (psync_my_auth[0])
     return psync_strdup(psync_my_auth);
   else return NULL;
 }
 
-int psync_get_promo(char **url)
-{
+int psync_get_promo(char **url) {
   uint64_t result;
   binresult *res;
   binparam params[]={ P_STR("auth", psync_my_auth), P_NUM("os", P_OS_ID) };
@@ -2200,31 +2196,101 @@ uint32_t psync_get_fsfolderflags_by_id(psync_folderid_t folderid, uint32_t *pPer
 }
 
 uint64_t psync_crypto_priv_key_flags(){
-	psync_sql_res *res;
-	psync_uint_row row;
-	uint64_t ret=0;
-	res=psync_sql_query_rdlock_nocache("SELECT value FROM setting WHERE id='crypto_private_flags'");
-	if((row=psync_sql_fetch_rowint(res))){
-		ret=row[0];
-		psync_sql_free_result(res);
-		return ret;
+  psync_sql_res *res;
+  psync_uint_row row;
+  uint64_t ret=0;
+  res=psync_sql_query_rdlock_nocache("SELECT value FROM setting WHERE id='crypto_private_flags'");
+  if((row=psync_sql_fetch_rowint(res))){
+  	ret=row[0];
+  	psync_sql_free_result(res);
+  	return ret;
   }
-	else
-		debug(D_NOTICE, "Can't read private key flags from the DB");
-	psync_sql_free_result(res);
-	return ret;
+  else
+  	debug(D_NOTICE, "Can't read private key flags from the DB");
+  psync_sql_free_result(res);
+  return ret;
 }
 
 int psync_has_crypto_folders(){
-	psync_sql_res *res;
-	psync_uint_row row;
-	uint64_t cnt=0;
-	res=psync_sql_query_rdlock_nocache("SELECT count(*) FROM folder WHERE flags&"NTO_STR(PSYNC_FOLDER_FLAG_ENCRYPTED)"");
-	if((row=psync_sql_fetch_rowint(res))){
-		cnt=row[0];
+  psync_sql_res *res;
+  psync_uint_row row;
+  uint64_t cnt=0;
+  res=psync_sql_query_rdlock_nocache("SELECT count(*) FROM folder WHERE flags&"NTO_STR(PSYNC_FOLDER_FLAG_ENCRYPTED)"");
+  if((row=psync_sql_fetch_rowint(res))){
+  	cnt=row[0];
   }
-	else
-		debug(D_NOTICE, "There are no crypto folders in the DB");
-	psync_sql_free_result(res);
-	return cnt>0;
+  else
+  	debug(D_NOTICE, "There are no crypto folders in the DB");
+  psync_sql_free_result(res);
+  return cnt>0;
+}
+
+apiservers_list_t *psync_get_apiservers(char **err)
+{
+	psync_socket *api;
+	binresult *bres;
+	psync_list_builder_t *builder;
+	const binresult *locations = 0,*location,*br;
+	const char *errorret;
+	apiservers_list_t *ret;
+	apiserver_info_t *plocation;
+	uint64_t result;
+	int i,locationscnt, usessl;
+	binparam params[] = { P_STR("timeformat", "timestamp") };
+	//api = psync_apipool_get();
+	usessl = psync_setting_get_bool(_PS(usessl));
+	api = psync_socket_connect(PSYNC_API_HOST, usessl ? PSYNC_API_PORT_SSL : PSYNC_API_PORT, usessl);//psync_api_connect(apiserver, psync_setting_get_bool(_PS(usessl)));
+
+	if (unlikely(!api)) {
+		debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
+		*err = psync_strndup("Can't get api from the pool.", 29);
+		return NULL;
+	}
+	bres = send_command(api, "getlocationapi", params);
+	if (likely(bres))
+		psync_apipool_release(api);
+	else {
+		psync_apipool_release_bad(api);
+		debug(D_WARNING, "Send command returned invalid result.\n");
+		*err = psync_strndup("Connection error.", 17);
+		return NULL;
+	}
+	result = psync_find_result(bres, "result", PARAM_NUM)->num;
+	if (unlikely(result)) {
+		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+		*err = psync_strndup(errorret, strlen(errorret));
+		debug(D_WARNING, "command getlocationapi returned error code %u", (unsigned)result);
+		return NULL;
+	}
+
+	locations = psync_find_result(bres, "locations", PARAM_ARRAY);
+	locationscnt = locations->length;
+	if (!locationscnt){
+		psync_free(bres);
+		return NULL;
+	}
+	builder = psync_list_builder_create(sizeof(apiserver_info_t), offsetof(apiservers_list_t, entries));
+
+	for (i = 0; i < locationscnt; ++i) {
+		location = locations->array[i];
+		plocation = (apiserver_info_t *)psync_list_bulder_add_element(builder);
+		br = psync_find_result(location, "label", PARAM_STR);
+		plocation->label = br->str;
+		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, label), br->length);
+		br = psync_find_result(location, "api", PARAM_STR);
+		plocation->api = br->str;
+		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, api), br->length);
+		br = psync_find_result(location, "binapi", PARAM_STR);
+		plocation->binapi = br->str;
+		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, binapi), br->length);
+	}
+	ret = (apiservers_list_t *)psync_list_builder_finalize(builder);
+	ret->serverscnt = locationscnt;
+	return ret;
+}
+
+void psync_set_apiserver(const char* binapi)
+{
+	psync_apipool_set_server(binapi);
+	psync_set_string_setting("api_server", binapi);
 }
