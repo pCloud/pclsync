@@ -350,7 +350,11 @@ static psync_socket *get_connected_socket(){
     }
     psync_my_userid=userid=psync_find_result(res, "userid", PARAM_NUM)->num;
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
-	  free_quota = psync_find_result(res, "freequota", PARAM_NUM)->num;
+	cres = psync_check_result(res, "freequota", PARAM_NUM);
+	if (cres){
+	  free_quota=cres->num;
+	}
+	  
     luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
     psync_is_business=psync_find_result(res, "business", PARAM_BOOL)->num;
     psync_sql_start_transaction();
@@ -380,9 +384,9 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "quota");
       psync_sql_bind_uint(q, 2, current_quota);
       psync_sql_run(q);
-			psync_sql_bind_string(q, 1, "freequota");
-			psync_sql_bind_uint(q, 2, free_quota);
-			psync_sql_run(q);
+	  psync_sql_bind_string(q, 1, "freequota");
+	  psync_sql_bind_uint(q, 2, free_quota);
+	  psync_sql_run(q);
       psync_sql_bind_string(q, 1, "usedquota");
       psync_sql_bind_uint(q, 2, 0);
       psync_sql_run(q);
@@ -418,9 +422,12 @@ static psync_socket *get_connected_socket(){
 			psync_sql_bind_string(q, 1, "premiumlifetime");
 			psync_sql_bind_uint(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
 			psync_sql_run(q);
-			psync_sql_bind_string(q, 1, "vivapcloud");
-			psync_sql_bind_uint(q, 2, psync_find_result(res, "vivapcloud", PARAM_BOOL)->num);
-			psync_sql_run(q);
+			cres = psync_check_result(res, "vivapcloud", PARAM_BOOL);
+			if (cres){
+				psync_sql_bind_string(q, 1, "vivapcloud");
+				psync_sql_bind_uint(q, 2, cres->num);
+				psync_sql_run(q);
+			}
 			cres = psync_check_result(res, "family", PARAM_HASH);
 			if (cres){
 				psync_sql_bind_string(q, 1, "owner");
@@ -1348,8 +1355,11 @@ static void process_modifyuserinfo(const binresult *entry){
   current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
   psync_sql_bind_uint(q, 2, current_quota);
   psync_sql_run(q);
+  cres = psync_check_result(res, "freequota", PARAM_NUM);
+  if (cres){
+	free_quota = cres->num;
+  }
   psync_sql_bind_string(q, 1, "freequota");
-  free_quota = psync_find_result(res, "freequota", PARAM_NUM)->num;
   psync_sql_bind_uint(q, 2, free_quota);
   psync_sql_run(q);
   u=psync_find_result(res, "premium", PARAM_BOOL)->num;
@@ -1381,9 +1391,14 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_string(q, 1, "premiumlifetime");
   psync_sql_bind_uint(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
   psync_sql_run(q);
-  psync_sql_bind_string(q, 1, "vivapcloud");
-  psync_sql_bind_uint(q, 2, psync_find_result(res, "vivapcloud", PARAM_BOOL)->num);
-  psync_sql_run(q);
+  
+  cres = psync_check_result(res, "vivapcloud", PARAM_BOOL);
+  if (cres){
+	  psync_sql_bind_string(q, 1, "vivapcloud");
+	  psync_sql_bind_uint(q, 2, cres->num);
+	  psync_sql_run(q);
+  }
+  
   cres = psync_check_result(res, "family", PARAM_HASH);
   if (cres){
 		psync_sql_bind_string(q, 1, "owner");
