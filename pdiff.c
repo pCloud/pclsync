@@ -183,7 +183,7 @@ char *generate_device_id(){
 }
 
 static psync_socket *get_connected_socket(){
-  char *auth, *user, *pass, *deviceid, *osversion, *devicestring;
+  char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi;
   const char *appversion;
   psync_socket *sock;
   binresult *res;
@@ -303,14 +303,24 @@ static psync_socket *get_connected_socket(){
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
         continue;
       }
-	  if (result == 2306){
-		  psync_socket_close(sock);
-		  psync_free(psync_my_verify_token);
-		  psync_my_verify_token = psync_strdup(psync_find_result(res, "verifytoken", PARAM_STR)->str);
-		  psync_free(res);
-		  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_VERIFYREQ);
-		  psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-		  continue;
+	  if (result==2306){
+		psync_socket_close(sock);
+		psync_free(psync_my_verify_token);
+		psync_my_verify_token = psync_strdup(psync_find_result(res, "verifytoken", PARAM_STR)->str);
+		psync_free(res);
+		psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_VERIFYREQ);
+		psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+		continue;
+	  }
+	  if (result==2321){
+		psync_socket_close(sock);
+		cres=psync_check_result(res, "location", PARAM_HASH);
+		if (cres){
+		  binapi=psync_strdup(psync_find_result(cres, "binapi", PARAM_STR)->str);
+		  psync_set_apiserver(binapi);
+		}
+		psync_free(res);
+		continue;
 	  }
       psync_socket_close(sock);
       psync_free(res);
