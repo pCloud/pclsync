@@ -189,7 +189,7 @@ static psync_socket *get_connected_socket(){
   binresult *res;
   const binresult *cres;
   psync_sql_res *q;
-  uint64_t result, userid, luserid;
+  uint64_t result, userid, luserid, locationid;
   int saveauth, isbusiness, cryptosetup, digest;
   digest=1;
   psync_free(psync_my_2fa_token);
@@ -317,7 +317,8 @@ static psync_socket *get_connected_socket(){
 		cres=psync_check_result(res, "location", PARAM_HASH);
 		if (cres){
 		  binapi=psync_strdup(psync_find_result(cres, "binapi", PARAM_STR)->str);
-		  psync_set_apiserver(binapi);
+      locationid=psync_strdup(psync_find_result(cres, "id", PARAM_NUM)->num);
+		  psync_set_apiserver(binapi,locationid);
 		}
 		psync_free(res);
 		continue;
