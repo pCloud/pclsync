@@ -93,10 +93,11 @@ typedef struct {
 	const char *label;
 	const char *api;
 	const char *binapi;
+	uint32_t locationid;
 }apiserver_info_t;
 
 typedef struct {
-	uint32_t serverscnt;
+	size_t serverscnt;
 	apiserver_info_t entries[];
 }apiservers_list_t;
 
@@ -1405,7 +1406,7 @@ int psync_has_crypto_folders();
 * 
 */
 apiservers_list_t *psync_get_apiservers(char **err /*OUT*/);
-void psync_set_apiserver(const char* binapi);
+void psync_set_apiserver(const char* binapi, uint32_t locationid);
 #ifdef __cplusplus
 }
 #endif

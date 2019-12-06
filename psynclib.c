@@ -2283,14 +2283,16 @@ apiservers_list_t *psync_get_apiservers(char **err)
 		br = psync_find_result(location, "binapi", PARAM_STR);
 		plocation->binapi = br->str;
 		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, binapi), br->length);
+		plocation->locationid = psync_find_result(location, "id", PARAM_NUM)->num;
 	}
 	ret = (apiservers_list_t *)psync_list_builder_finalize(builder);
 	ret->serverscnt = locationscnt;
 	return ret;
 }
 
-void psync_set_apiserver(const char* binapi)
+void psync_set_apiserver(const char* binapi, uint32_t locationid)
 {
 	psync_apipool_set_server(binapi);
 	psync_set_string_setting("api_server", binapi);
+	psync_set_string_setting("location_id", locationid);
 }
