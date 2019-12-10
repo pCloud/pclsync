@@ -2979,7 +2979,9 @@ static void *psync_fs_init(struct fuse_conn_info *conn){
   conn->want|=FUSE_CAP_BIG_WRITES;
 #endif
   conn->max_readahead=1024*1024;
+#if !defined(P_OS_LINUX)
   conn->max_write=FS_MAX_WRITE;
+#endif
   if (psync_start_callback)
     psync_timer_register(psync_fs_start_callback_timer, 1, NULL);
   return 0;
@@ -3307,6 +3309,29 @@ static void psync_fuse_thread(){
   pthread_mutex_unlock(&start_mutex);
 }
 
+// Returns true if FUSE 3 is installed on the user's machine.
+// Returns false if FUSE version is less than 3.
+static char is_fuse3_installed_on_system()
+{
+  // Assuming that fusermount3 is only available on FUSE 3.
+  FILE* pipe = popen("which fusermount3", "r");
+
+  if (!pipe) {
+    return 0;
+  }
+
+  char output[1024];
+  memset(output, 0, sizeof(output));
+
+  char* o = fgets(output, sizeof(output), pipe);
+
+  pclose(pipe);
+  size_t outlen = strlen(output);
+
+  return outlen > 0;
+}
+
+
 static int psync_fs_do_start(){
   char *mp;
   struct fuse_operations psync_oper;
@@ -3320,7 +3345,9 @@ static int psync_fs_do_start(){
   fuse_opt_add_arg(&args, "-oauto_unmount");
 //  fuse_opt_add_arg(&args, "-ouse_ino");
   fuse_opt_add_arg(&args, "-ofsname="DEFAULT_FUSE_MOUNT_POINT".fs");
-  fuse_opt_add_arg(&args, "-ononempty");
+  if (!is_fuse3_intalled_on_system()) {
+    fuse_opt_add_arg(&args, "-ononempty");
+  }
   fuse_opt_add_arg(&args, "-ohard_remove");
 //  fuse_opt_add_arg(&args, "-d");
 #endif
