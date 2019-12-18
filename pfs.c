@@ -70,6 +70,10 @@ typedef off_t fuse_off_t;
 #include <sys/mount.h>
 #endif
 
+#if defined(P_OS_LINUX)
+#include <sys/mount.h>
+#endif
+
 #if IS_DEBUG
 #define psync_fs_set_thread_name() do {psync_thread_name=__FUNCTION__;} while (0)
 #else
@@ -3200,6 +3204,13 @@ static void psync_fs_do_stop(void){
     unmount(psync_current_mountpoint, MNT_FORCE);
     debug(D_NOTICE, "unmount exited");
 #endif
+
+#if defined(P_OS_LINUX)
+	char *mp;
+	mp = psync_fuse_get_mountpoint();
+	fuse_unmount(mp, psync_fuse_channel);
+#endif
+
     debug(D_NOTICE, "running fuse_exit");
     fuse_exit(psync_fuse);
     started=2;
