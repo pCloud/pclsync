@@ -2292,7 +2292,7 @@ apiservers_list_t *psync_get_apiservers(char **err)
 
 void psync_set_apiserver(const char* binapi, uint32_t locationid)
 {
-	psync_apipool_set_server(binapi);
-	psync_set_string_setting("api_server", binapi);
+  psync_apipool_set_server(binapi);
+  psync_set_string_setting("api_server", binapi);
   psync_set_int_setting("location_id", locationid);
 }
