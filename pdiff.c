@@ -128,6 +128,7 @@ static binresult *get_userinfo_user_digest(psync_socket *sock, const char *usern
                       P_BOOL("getauth", 1),
                       P_BOOL("getapiserver", 1),
                       P_BOOL("cryptokeyssign", 1),
+					  P_BOOL("getlastsubscription", 1),
                       P_NUM("os", P_OS_ID)};
   return send_command(sock, "login", params);
 }
@@ -180,6 +181,21 @@ char *generate_device_id(){
   psync_sql_bind_string(q, 1, deviceidhex);
   psync_sql_run_free(q);
   return psync_strdup(deviceidhex);
+}
+
+int check_active_subscribtion(const binresult *res)
+{
+  const binresult *sub;
+  char *status;
+  int subscnt,i;
+  sub = psync_find_result(res, "lastsubscription", PARAM_HASH);
+  status = psync_strdup(psync_find_result(sub, "status", PARAM_STR)->str);
+  if (!strcmp(status, "active")){
+    psync_free(status);
+    return 1;
+  }
+  psync_free(status);
+  return 0;
 }
 
 static psync_socket *get_connected_socket(){
@@ -243,6 +259,7 @@ static psync_socket *get_connected_socket(){
                         P_BOOL("getauth", 1),
                         P_BOOL("cryptokeyssign", 1),
                         P_BOOL("getapiserver", 1),
+						P_BOOL("getlastsubscription", 1),
                         P_NUM("os", P_OS_ID)};
       res=send_command(sock, method, params);
     }
@@ -260,6 +277,7 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getauth", 1),
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
+						 P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
         res=send_command(sock, "login", params);
       }
@@ -274,6 +292,7 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getauth", 1),
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
+						 P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
       res=send_command(sock, "userinfo", params);
     }
@@ -497,6 +516,10 @@ static psync_socket *get_connected_socket(){
     psync_sql_bind_string(q, 1, "cryptoexpires");
     psync_sql_bind_uint(q, 2, cres?cres->num:0);
     psync_sql_run(q);
+	int sub = check_active_subscribtion(res);
+	psync_sql_bind_string(q, 1, "hasactivesubscription");
+	psync_sql_bind_uint(q, 2, sub);
+	psync_sql_run(q);
     psync_sql_free_result(q);
     psync_sql_commit_transaction();
     pthread_mutex_lock(&psync_my_auth_mutex);

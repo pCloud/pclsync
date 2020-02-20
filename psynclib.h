@@ -926,6 +926,7 @@ int psync_set_string_setting(const char *settingname, const char *value);
  * vivapcloud (bool) - If it's Viva pCloud user it will be true otherwise the parameter won't be provided
  * premiumlifetime (bool) - If true user's premium is life time. Always provided
  * owner (bool) - True if the user is owner of a family plan. Presented only for user with family plan.
+ * hasactivesubscription (bool) - True if the user has active subscription.
  */
 
 int psync_has_value(const char *valuename);
