@@ -1391,6 +1391,7 @@ int psync_get_promo(char **url);
  * Checks if the user has any crypto folders.
  */
 int psync_has_crypto_folders();
+void set_tfa_flag(int value);
 #ifdef __cplusplus
 }
 #endif

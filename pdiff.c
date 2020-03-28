@@ -80,6 +80,7 @@ static paccount_cache_callback_t psync_cache_callback=NULL;
 static uint32_t psync_is_business=0;
 static unsigned char adapter_hash[PSYNC_FAST_HASH256_LEN];
 int unlinked=0;
+int tfa = 0;
 
 void do_register_account_events_callback(paccount_cache_callback_t callback){
   psync_cache_callback=callback;
@@ -232,6 +233,14 @@ static psync_socket *get_connected_socket(){
     if (!pass && psync_my_pass)
       pass=psync_strdup(psync_my_pass);
     if (!auth && (!pass || !user)){
+#if defined(P_OS_LINUX)
+      if(tfa){
+        tfa=0;
+        psync_milisleep(1000);
+        debug(D_WARNING, "tfa sleep");
+		continue;
+      }
+#endif
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_REQUIRED);
       psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
       continue;
