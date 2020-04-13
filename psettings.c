@@ -79,6 +79,7 @@ static psync_setting_t settings[]={
   {"owneremail", NULL, NULL, {0}, PSYNC_TSTRING},
   {"owner_cryptosetup", NULL, NULL, {PSYNC_BACC_OWNER_CRYPTOSETUP}, PSYNC_TBOOL},
   {"cryptov2isactive", NULL, NULL, {PSYNC_BACC_V2}, PSYNC_TBOOL},
+  {"hasactivesubscription", NULL, NULL, {0}, PSYNC_TBOOL },
   {"api_server", NULL, NULL, {0}, PSYNC_TSTRING},
   {"location_id", NULL, NULL, {0}, PSYNC_TNUMBER}
 };
@@ -113,6 +114,7 @@ void psync_settings_reset(){
   settings[_PS(owneremail)].str=PSYNC_BACC_OWNEREMAIL;
   settings[_PS(owner_cryptosetup)].num=PSYNC_BACC_OWNER_CRYPTOSETUP;
   settings[_PS(cryptov2isactive)].num=PSYNC_BACC_V2;
+  settings[_PS(hasactivesubscription)].boolean=0;
   settings[_PS(api_server)].str = PSYNC_API_HOST;
   settings[_PS(location_id)].num=0;
   for (i=0; i<ARRAY_SIZE(settings); i++){
@@ -154,6 +156,7 @@ void psync_settings_init(){
   settings[_PS(owneremail)].str=PSYNC_BACC_OWNEREMAIL;
   settings[_PS(owner_cryptosetup)].num=PSYNC_BACC_OWNER_CRYPTOSETUP;
   settings[_PS(cryptov2isactive)].num=PSYNC_BACC_V2;
+  settings[_PS(hasactivesubscription)].boolean=0;
   settings[_PS(api_server)].str = PSYNC_API_HOST;
   settings[_PS(location_id)].num=0;
   for (i=0; i<ARRAY_SIZE(settings); i++){

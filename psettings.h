@@ -300,8 +300,9 @@ $RECYCLE.BIN;\
 #define PSYNC_SETTING_owneremail       16
 #define PSYNC_SETTING_owner_cryptosetup 17
 #define PSYNC_SETTING_cryptov2isactive 18
-#define PSYNC_SETTING_api_server        19
-#define PSYNC_SETTING_location_id        20
+#define PSYNC_SETTING_hasactivesubscription 19
+#define PSYNC_SETTING_api_server        20
+#define PSYNC_SETTING_location_id        21
 
 typedef int psync_settingid_t;
 

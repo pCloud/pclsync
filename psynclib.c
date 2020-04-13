@@ -82,6 +82,7 @@ static int psync_libstate=0;
 static pthread_mutex_t psync_libstate_mutex=PTHREAD_MUTEX_INITIALIZER;
 
 extern int unlinked;
+extern int tfa;
 
 #define return_error(err) do {psync_error=err; return -1;} while (0)
 #define return_isyncid(err) do {psync_error=err; return PSYNC_INVALID_SYNCID;} while (0)
@@ -374,6 +375,7 @@ static void psync_invalidate_auth(const char *auth){
 }
 
 void psync_logout2(uint32_t auth_status, int doinvauth){
+  tfa=0;
   debug(D_NOTICE, "logout");
   psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth', 'saveauth')");
   if (doinvauth)
@@ -409,6 +411,7 @@ void psync_unlink(){
   debug(D_NOTICE, "unlink");
   psync_diff_lock();
   unlinked=1;
+  tfa=0;
   psync_stop_all_download();
   psync_stop_all_upload();
   psync_status_recalc_to_download();
@@ -2295,4 +2298,9 @@ void psync_set_apiserver(const char* binapi, uint32_t locationid)
   psync_apipool_set_server(binapi);
   psync_set_string_setting("api_server", binapi);
   psync_set_int_setting("location_id", locationid);
+}
+
+void set_tfa_flag(int value){
+  debug(D_NOTICE, "set tfa %u", value);
+  tfa=value;
 }

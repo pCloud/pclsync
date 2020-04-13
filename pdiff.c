@@ -80,6 +80,7 @@ static paccount_cache_callback_t psync_cache_callback=NULL;
 static uint32_t psync_is_business=0;
 static unsigned char adapter_hash[PSYNC_FAST_HASH256_LEN];
 int unlinked=0;
+int tfa = 0;
 
 void do_register_account_events_callback(paccount_cache_callback_t callback){
   psync_cache_callback=callback;
@@ -128,6 +129,7 @@ static binresult *get_userinfo_user_digest(psync_socket *sock, const char *usern
                       P_BOOL("getauth", 1),
                       P_BOOL("getapiserver", 1),
                       P_BOOL("cryptokeyssign", 1),
+					  P_BOOL("getlastsubscription", 1),
                       P_NUM("os", P_OS_ID)};
   return send_command(sock, "login", params);
 }
@@ -182,6 +184,21 @@ char *generate_device_id(){
   return psync_strdup(deviceidhex);
 }
 
+int check_active_subscribtion(const binresult *res)
+{
+  const binresult *sub;
+  char *status;
+  int subscnt,i;
+  sub = psync_find_result(res, "lastsubscription", PARAM_HASH);
+  status = psync_strdup(psync_find_result(sub, "status", PARAM_STR)->str);
+  if (!strcmp(status, "active")){
+    psync_free(status);
+    return 1;
+  }
+  psync_free(status);
+  return 0;
+}
+
 static psync_socket *get_connected_socket(){
   char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi;
   const char *appversion;
@@ -216,6 +233,14 @@ static psync_socket *get_connected_socket(){
     if (!pass && psync_my_pass)
       pass=psync_strdup(psync_my_pass);
     if (!auth && (!pass || !user)){
+#if defined(P_OS_LINUX)
+      if(tfa){
+        tfa=0;
+        psync_milisleep(1000);
+        debug(D_WARNING, "tfa sleep");
+		continue;
+      }
+#endif
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_REQUIRED);
       psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
       continue;
@@ -243,6 +268,7 @@ static psync_socket *get_connected_socket(){
                         P_BOOL("getauth", 1),
                         P_BOOL("cryptokeyssign", 1),
                         P_BOOL("getapiserver", 1),
+						P_BOOL("getlastsubscription", 1),
                         P_NUM("os", P_OS_ID)};
       res=send_command(sock, method, params);
     }
@@ -260,6 +286,7 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getauth", 1),
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
+						 P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
         res=send_command(sock, "login", params);
       }
@@ -274,6 +301,7 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getauth", 1),
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
+						 P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
       res=send_command(sock, "userinfo", params);
     }
@@ -508,6 +536,10 @@ static psync_socket *get_connected_socket(){
     psync_sql_bind_string(q, 1, "cryptoexpires");
     psync_sql_bind_uint(q, 2, cres?cres->num:0);
     psync_sql_run(q);
+	int sub = check_active_subscribtion(res);
+	psync_sql_bind_string(q, 1, "hasactivesubscription");
+	psync_sql_bind_uint(q, 2, sub);
+	psync_sql_run(q);
     psync_sql_free_result(q);
     psync_sql_commit_transaction();
     pthread_mutex_lock(&psync_my_auth_mutex);
