@@ -199,61 +199,6 @@ int check_active_subscribtion(const binresult *res)
   return 0;
 }
 
-int trylogin(const char* user, const char* pass, const char* deviceid, const char* devicestring, const char* appversion){
-	apiservers_list_t *servers;
-	char* error=NULL;
-	char* osversion;
-	psync_socket *sock;
-	binresult *res;
-	const binresult *cres;
-	int ret = 0;
-	uint64_t result;
-	servers = psync_get_apiservers(&error);
-	if (!servers||!servers->entries)
-	{
-		return 0;
-	}
-
-	sock = psync_api_connect(servers->entries[0].binapi, psync_setting_get_bool(_PS(usessl)));
-	if (unlikely_log(!sock)){
-		goto err1;
-	}
-	appversion = psync_appname();
-	devicestring = psync_device_string();
-	osversion = psync_deviceos();
-	binparam params[] = { P_STR("timeformat", "timestamp"),
-		P_STR("username", user),
-		P_STR("password", pass),
-		P_STR("osversion", osversion),
-		P_STR("appversion", appversion),
-		P_STR("deviceid", deviceid),
-		P_STR("device", devicestring),
-		P_BOOL("getapiserver", 1),
-		P_NUM("os", P_OS_ID) };
-	res = send_command(sock, "login", params);
-	if (unlikely_log(!res)){
-		goto err0;
-	}
-	result = psync_find_result(res, "result", PARAM_NUM)->num;
-	if (result == 2321){
-		ret = 1;
-		psync_socket_close(sock);
-		cres = psync_check_result(res, "location", PARAM_HASH);
-		if (cres){
-			psync_set_apiserver(psync_find_result(cres, "binapi", PARAM_STR)->str, psync_find_result(cres, "id", PARAM_NUM)->num);
-		}
-	}
-	
-	psync_free(res);
-err0:
-	psync_free(osversion);
-	psync_socket_close(sock);
-err1:
-	psync_free(servers);
-	
-	return ret;
-}
-
 static psync_socket *get_connected_socket(){
   char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi;
   const char *appversion;
@@ -422,7 +367,6 @@ static psync_socket *get_connected_socket(){
 			  continue;
 			}
 			else {
-				if (trylogin(user, pass, deviceid, devicestring, appversion)) continue;
 				psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
 			}
 		}
