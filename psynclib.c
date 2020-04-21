@@ -403,6 +403,88 @@ void psync_logout(){
   psync_logout2(PSTATUS_AUTH_REQUIRED, 1);
 }
 
+apiservers_list_t *psync_get_apiservers(char **err)
+{
+	psync_socket *api;
+	binresult *bres;
+	psync_list_builder_t *builder;
+	const binresult *locations = 0, *location, *br;
+	const char *errorret;
+	apiservers_list_t *ret;
+	apiserver_info_t *plocation;
+	uint64_t result;
+	int i, locationscnt, usessl;
+	binparam params[] = { P_STR("timeformat", "timestamp") };
+	//api = psync_apipool_get();
+	usessl = psync_setting_get_bool(_PS(usessl));
+	api = psync_socket_connect(PSYNC_API_HOST, usessl ? PSYNC_API_PORT_SSL : PSYNC_API_PORT, usessl);
+
+	if (unlikely(!api)) {
+		debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
+		*err = psync_strndup("Can't get api from the pool.", 29);
+		return NULL;
+	}
+	bres = send_command(api, "getlocationapi", params);
+	if (likely(bres))
+		psync_apipool_release(api);
+	else {
+		psync_apipool_release_bad(api);
+		debug(D_WARNING, "Send command returned invalid result.\n");
+		*err = psync_strndup("Connection error.", 17);
+		return NULL;
+	}
+	result = psync_find_result(bres, "result", PARAM_NUM)->num;
+	if (unlikely(result)) {
+		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+		*err = psync_strndup(errorret, strlen(errorret));
+		debug(D_WARNING, "command getlocationapi returned error code %u", (unsigned)result);
+		return NULL;
+	}
+
+	locations = psync_find_result(bres, "locations", PARAM_ARRAY);
+	locationscnt = locations->length;
+	if (!locationscnt){
+		psync_free(bres);
+		return NULL;
+	}
+	builder = psync_list_builder_create(sizeof(apiserver_info_t), offsetof(apiservers_list_t, entries));
+
+	for (i = 0; i < locationscnt; ++i) {
+		location = locations->array[i];
+		plocation = (apiserver_info_t *)psync_list_bulder_add_element(builder);
+		br = psync_find_result(location, "label", PARAM_STR);
+		plocation->label = br->str;
+		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, label), br->length);
+		br = psync_find_result(location, "api", PARAM_STR);
+		plocation->api = br->str;
+		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, api), br->length);
+		br = psync_find_result(location, "binapi", PARAM_STR);
+		plocation->binapi = br->str;
+		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, binapi), br->length);
+		plocation->locationid = psync_find_result(location, "id", PARAM_NUM)->num;
+	}
+	ret = (apiservers_list_t *)psync_list_builder_finalize(builder);
+	ret->serverscnt = locationscnt;
+	return ret;
+}
+
+void psync_set_apiserver(const char* binapi, uint32_t locationid)
+{
+	psync_apipool_set_server(binapi);
+	psync_set_string_setting("api_server", binapi);
+	psync_set_int_setting("location_id", locationid);
+}
+
+void psync_reset_apiserver()
+{
+	apiservers_list_t *ret;
+	char* err = (char *)psync_malloc(2048);
+	ret=psync_get_apiservers(&err);
+	if (ret&&ret->serverscnt > 0)
+	  psync_set_apiserver(ret->entries[0].binapi, ret->entries[0].locationid);
+	else psync_set_apiserver(PSYNC_API_HOST, 0);
+}
+
 void psync_unlink(){
   psync_sql_res *res;
   char *deviceid;
@@ -505,6 +587,7 @@ void psync_unlink(){
   psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_QUOTAOK);
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_REQUIRED);
   psync_set_status(PSTATUS_TYPE_RUN, PSTATUS_RUN_RUN);
+  psync_reset_apiserver();
   psync_resume_localscan();
   if (psync_fs_need_per_folder_refresh())
     psync_fs_refresh_folder(0);
@@ -1050,9 +1133,34 @@ neterr:
   return -1;
 }
 
-int psync_register(const char *email, const char *password, int termsaccepted, char **err){
+int psync_register(const char *email, const char *password, int termsaccepted, const char* binapi, unsigned int locationid, char **err){
+  binresult *res;
+  psync_socket *sock;
+  uint64_t result;
   binparam params[]={P_STR("mail", email), P_STR("password", password), P_STR("termsaccepted", termsaccepted?"yes":"0"), P_NUM("os", P_OS_ID)};
-  return psync_run_command("register", params, err);
+  psync_set_apiserver(binapi, locationid);
+  sock = psync_api_connect(binapi, psync_setting_get_bool(_PS(usessl)));
+  if (unlikely_log(!sock)){
+	  if (err)
+		  *err = psync_strdup("Could not connect to the server.");
+	  return -1;
+  }
+  res = send_command(sock, "register", params);
+  if (unlikely_log(!res)){
+	psync_socket_close(sock);
+	if (err)
+	  *err = psync_strdup("Could not connect to the server.");
+	return -1;
+  }
+  result = psync_find_result(res, "result", PARAM_NUM)->num;
+  if (result){
+	debug(D_WARNING, "command register returned code %u", (unsigned)result);
+    if (err)
+	  *err = psync_strdup(psync_find_result(res, "error", PARAM_STR)->str);
+  }
+  psync_socket_close(sock);
+  psync_free(res);
+  return result;
 }
 
 int psync_verify_email(char **err){
@@ -2228,77 +2336,7 @@ int psync_has_crypto_folders(){
   return cnt>0;
 }
 
-apiservers_list_t *psync_get_apiservers(char **err)
-{
-	psync_socket *api;
-	binresult *bres;
-	psync_list_builder_t *builder;
-	const binresult *locations = 0,*location,*br;
-	const char *errorret;
-	apiservers_list_t *ret;
-	apiserver_info_t *plocation;
-	uint64_t result;
-	int i,locationscnt, usessl;
-	binparam params[] = { P_STR("timeformat", "timestamp") };
-	//api = psync_apipool_get();
-	usessl = psync_setting_get_bool(_PS(usessl));
-	api = psync_socket_connect(PSYNC_API_HOST, usessl ? PSYNC_API_PORT_SSL : PSYNC_API_PORT, usessl);//psync_api_connect(apiserver, psync_setting_get_bool(_PS(usessl)));
 
-	if (unlikely(!api)) {
-		debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
-		*err = psync_strndup("Can't get api from the pool.", 29);
-		return NULL;
-	}
-	bres = send_command(api, "getlocationapi", params);
-	if (likely(bres))
-		psync_apipool_release(api);
-	else {
-		psync_apipool_release_bad(api);
-		debug(D_WARNING, "Send command returned invalid result.\n");
-		*err = psync_strndup("Connection error.", 17);
-		return NULL;
-	}
-	result = psync_find_result(bres, "result", PARAM_NUM)->num;
-	if (unlikely(result)) {
-		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
-		*err = psync_strndup(errorret, strlen(errorret));
-		debug(D_WARNING, "command getlocationapi returned error code %u", (unsigned)result);
-		return NULL;
-	}
-
-	locations = psync_find_result(bres, "locations", PARAM_ARRAY);
-	locationscnt = locations->length;
-	if (!locationscnt){
-		psync_free(bres);
-		return NULL;
-	}
-	builder = psync_list_builder_create(sizeof(apiserver_info_t), offsetof(apiservers_list_t, entries));
-
-	for (i = 0; i < locationscnt; ++i) {
-		location = locations->array[i];
-		plocation = (apiserver_info_t *)psync_list_bulder_add_element(builder);
-		br = psync_find_result(location, "label", PARAM_STR);
-		plocation->label = br->str;
-		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, label), br->length);
-		br = psync_find_result(location, "api", PARAM_STR);
-		plocation->api = br->str;
-		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, api), br->length);
-		br = psync_find_result(location, "binapi", PARAM_STR);
-		plocation->binapi = br->str;
-		psync_list_add_lstring_offset(builder, offsetof(apiserver_info_t, binapi), br->length);
-		plocation->locationid = psync_find_result(location, "id", PARAM_NUM)->num;
-	}
-	ret = (apiservers_list_t *)psync_list_builder_finalize(builder);
-	ret->serverscnt = locationscnt;
-	return ret;
-}
-
-void psync_set_apiserver(const char* binapi, uint32_t locationid)
-{
-  psync_apipool_set_server(binapi);
-  psync_set_string_setting("api_server", binapi);
-  psync_set_int_setting("location_id", locationid);
-}
 
 void set_tfa_flag(int value){
   debug(D_NOTICE, "set tfa %u", value);

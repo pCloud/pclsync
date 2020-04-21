@@ -812,6 +812,9 @@ void psync_run_localscan();
  * twice. The termsaccepted field should only be set to true if the user actually
  * indicated acceptance of pCloud terms and conditions.
  *
+ * binapi is the binapi selected in the registration and locationid is the one coresponding
+ * to that binapi.
+ *
  * Returns zero on success, -1 if network error occurs or a positive error code from
  * this list:
  * https://docs.pcloud.com/methods/auth/register.html
@@ -823,7 +826,7 @@ void psync_run_localscan();
  *
  */
 
-int psync_register(const char *email, const char *password, int termsaccepted, char **err);
+int psync_register(const char *email, const char *password, int termsaccepted, const char* binapi, unsigned int locationid, char **err);
 
 /* Sends email verification mail to the user, return value and err are the same as with registering.
  */
