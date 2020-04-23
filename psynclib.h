@@ -812,8 +812,8 @@ void psync_run_localscan();
  * twice. The termsaccepted field should only be set to true if the user actually
  * indicated acceptance of pCloud terms and conditions.
  *
- * binapi is the binapi selected in the registration and locationid is the one coresponding
- * to that binapi.
+ * binapi is the binapi selected in the registration form and locationid is the one 
+ * coresponding to that binapi.
  *
  * Returns zero on success, -1 if network error occurs or a positive error code from
  * this list:
