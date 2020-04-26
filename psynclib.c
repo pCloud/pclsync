@@ -1138,7 +1138,8 @@ int psync_register(const char *email, const char *password, int termsaccepted, c
   psync_socket *sock;
   uint64_t result;
   binparam params[]={P_STR("mail", email), P_STR("password", password), P_STR("termsaccepted", termsaccepted?"yes":"0"), P_NUM("os", P_OS_ID)};
-  psync_set_apiserver(binapi, locationid);
+  if (binapi)
+    psync_set_apiserver(binapi, locationid);
   sock = psync_api_connect(binapi, psync_setting_get_bool(_PS(usessl)));
   if (unlikely_log(!sock)){
 	  if (err)
