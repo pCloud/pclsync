@@ -500,6 +500,7 @@ void psync_unlink(){
   psync_status_recalc_to_upload();
   psync_invalidate_auth(psync_my_auth);
   psync_cloud_crypto_stop();
+  psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   psync_milisleep(20);
   psync_stop_localscan();
   psync_sql_checkpoint_lock();
