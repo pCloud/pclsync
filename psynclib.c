@@ -476,12 +476,13 @@ void psync_set_apiserver(const char* binapi, uint32_t locationid)
 
 void psync_reset_apiserver()
 {
-	apiservers_list_t *ret;
-	char* err = (char *)psync_malloc(2048);
-	ret=psync_get_apiservers(&err);
-	if (ret&&ret->serverscnt > 0)
-	  psync_set_apiserver(ret->entries[0].binapi, ret->entries[0].locationid);
-	else psync_set_apiserver(PSYNC_API_HOST, 0);
+  //apiservers_list_t *ret;
+  //char* err = (char *)psync_malloc(2048);
+  //ret=psync_get_apiservers(&err);
+  //if (ret&&ret->serverscnt > 0)
+  //  psync_set_apiserver(ret->entries[0].binapi, ret->entries[0].locationid);
+  //else psync_set_apiserver(PSYNC_API_HOST, 0);
+  psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
 }
 
 void psync_unlink(){
