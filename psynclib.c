@@ -588,7 +588,6 @@ void psync_unlink(){
   psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_QUOTAOK);
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_REQUIRED);
   psync_set_status(PSTATUS_TYPE_RUN, PSTATUS_RUN_RUN);
-  psync_reset_apiserver();
   psync_resume_localscan();
   if (psync_fs_need_per_folder_refresh())
     psync_fs_refresh_folder(0);
@@ -1141,6 +1140,11 @@ int psync_register(const char *email, const char *password, int termsaccepted, c
   binparam params[]={P_STR("mail", email), P_STR("password", password), P_STR("termsaccepted", termsaccepted?"yes":"0"), P_NUM("os", P_OS_ID)};
   if (binapi)
     psync_set_apiserver(binapi, locationid);
+  else {
+    if (err)
+      *err = psync_strdup("Could not connect to the server.");
+    return -1;
+  }
   sock = psync_api_connect(binapi, psync_setting_get_bool(_PS(usessl)));
   if (unlikely_log(!sock)){
 	  if (err)
