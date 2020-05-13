@@ -415,7 +415,6 @@ apiservers_list_t *psync_get_apiservers(char **err)
 	uint64_t result;
 	int i, locationscnt, usessl;
 	binparam params[] = { P_STR("timeformat", "timestamp") };
-	//api = psync_apipool_get();
 	usessl = psync_setting_get_bool(_PS(usessl));
 	api = psync_socket_connect(PSYNC_API_HOST, usessl ? PSYNC_API_PORT_SSL : PSYNC_API_PORT, usessl);
 
@@ -1661,12 +1660,42 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
   return ver;
 }
 
+int check_new_version_on_us_socket(binresult **pres, const binparam *params){
+	psync_socket *api;
+	binresult *res;
+	int usessl;
+	uint64_t result;
+
+	usessl = psync_setting_get_bool(_PS(usessl));
+	api = psync_socket_connect("binapi.pcloud.com", usessl ? PSYNC_API_PORT_SSL : PSYNC_API_PORT, usessl);
+	if (unlikely(!api)) {
+		return -1;
+	}
+	res = send_command(api, "getlastversion", params);
+	if (likely(res))
+		psync_apipool_release(api);
+	else {
+		psync_apipool_release_bad(api);
+		return -1;
+	}
+	result = psync_find_result(res, "result", PARAM_NUM)->num;
+	if (result){
+		debug(D_WARNING, "command %s returned code %u", "getlastversion", (unsigned)result);
+		psync_process_api_error(result);
+	}
+	if (result)
+		psync_free(res);
+	else
+		*pres = res;
+	return (int)result;
+}
+
 psync_new_version_t *psync_check_new_version(const char *os, unsigned long currentversion){
   binparam params[]={P_STR("os", os), P_NUM("version", currentversion)};
   psync_new_version_t *ver;
   binresult *res;
   int ret;
-  ret=run_command_get_res("getlastversion", params, NULL, &res);
+  ret = check_new_version_on_us_socket(&res,params);//run_command_get_res("getlastversion", params, NULL, &res);
   if (ret){
     debug(D_WARNING, "getlastversion returned %d", ret);
     return NULL;
@@ -1773,17 +1802,18 @@ psync_new_version_t *psync_check_new_version_download_str(const char *os, const 
 }
 
 psync_new_version_t *psync_check_new_version_download(const char *os, unsigned long currentversion){
-  binparam params[]={P_STR("os", os), P_NUM("version", currentversion)};
+  binparam params[] = { P_STR("os", os), P_NUM("version", currentversion) };
   psync_new_version_t *ver;
   binresult *res;
   char *lfilename;
   int ret;
-  ret=run_command_get_res("getlastversion", params, NULL, &res);
+  
+  ret=check_new_version_on_us_socket(params, &res);
   if (unlikely(ret==-1))
     do{
       debug(D_WARNING, "could not connect to server, sleeping");
       psync_milisleep(10000);
-      ret=run_command_get_res("getlastversion", params, NULL, &res);
+	  ret=check_new_version_on_us_socket(&res,params);
     } while (ret==-1);
   if (ret){
     debug(D_WARNING, "getlastversion returned %d", ret);
