@@ -191,6 +191,23 @@ void psync_set_ssl_debug_callback(psync_ssl_debug_callback_t cb){
   }
 }
 
+void psync_set_apiserver(const char* binapi, uint32_t locationid)
+{
+  if (binapi)
+  {
+  	psync_apipool_set_server(binapi);
+  	psync_set_string_setting("api_server", binapi);
+  	psync_set_int_setting("location_id", locationid);
+  }
+}
+
+void psync_apiserver_init(){
+  if (psync_setting_get_bool(_PS(saveauth)))
+  {
+    psync_set_apiserver(psync_setting_get_string(_PS(api_server)), psync_setting_get_uint(_PS(location_id)));
+  }
+}
+
 int psync_init(){
   psync_thread_name="main app thread";
   debug(D_NOTICE, "initializing library version "PSYNC_LIB_VERSION);
@@ -265,7 +282,7 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
       psync_libstate=2;
     pthread_mutex_unlock(&psync_libstate_mutex);
   }
-  //psync_apiserver_init();
+  psync_apiserver_init();
   if (status_callback)
     psync_set_status_callback(status_callback);
   if (event_callback)
@@ -392,7 +409,8 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
   psync_stop_all_download();
   psync_stop_all_upload();
   psync_async_stop();
-  psync_cache_clean_all();
+  psync_cache_clean_all(); 
+  psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   psync_restart_localscan();
   psync_timer_notify_exception();
   if (psync_fs_need_per_folder_refresh())
@@ -467,21 +485,10 @@ apiservers_list_t *psync_get_apiservers(char **err)
 	return ret;
 }
 
-void psync_set_apiserver(const char* binapi, uint32_t locationid)
-{
-	psync_apipool_set_server(binapi);
-	psync_set_string_setting("api_server", binapi);
-	psync_set_int_setting("location_id", locationid);
-}
+
 
 void psync_reset_apiserver()
 {
-  //apiservers_list_t *ret;
-  //char* err = (char *)psync_malloc(2048);
-  //ret=psync_get_apiservers(&err);
-  //if (ret&&ret->serverscnt > 0)
-  //  psync_set_apiserver(ret->entries[0].binapi, ret->entries[0].locationid);
-  //else psync_set_apiserver(PSYNC_API_HOST, 0);
   psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
 }
 
@@ -1700,7 +1707,7 @@ psync_new_version_t *psync_check_new_version(const char *os, unsigned long curre
   psync_new_version_t *ver;
   binresult *res;
   int ret;
-  ret = check_new_version_on_us_socket(&res,params);//run_command_get_res("getlastversion", params, NULL, &res);
+  ret = check_new_version_on_us_socket(&res,params);
   if (ret){
     debug(D_WARNING, "getlastversion returned %d", ret);
     return NULL;
