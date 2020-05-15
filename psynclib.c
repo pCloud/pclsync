@@ -1672,7 +1672,8 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
   return ver;
 }
 
-int check_new_version_on_us_socket(binresult **pres, const binparam *params){
+int check_new_version_on_us_socket(binresult **pres, const char *os, unsigned long currentversion){
+	binparam params[] = { P_STR("os", os), P_NUM("version", currentversion) };
 	psync_socket *api;
 	binresult *res;
 	int usessl;
@@ -1707,7 +1708,7 @@ psync_new_version_t *psync_check_new_version(const char *os, unsigned long curre
   psync_new_version_t *ver;
   binresult *res;
   int ret;
-  ret = check_new_version_on_us_socket(&res,params);
+  ret = check_new_version_on_us_socket(&res,os,currentversion);
   if (ret){
     debug(D_WARNING, "getlastversion returned %d", ret);
     return NULL;
@@ -1814,18 +1815,16 @@ psync_new_version_t *psync_check_new_version_download_str(const char *os, const 
 }
 
 psync_new_version_t *psync_check_new_version_download(const char *os, unsigned long currentversion){
-  binparam params[] = { P_STR("os", os), P_NUM("version", currentversion) };
   psync_new_version_t *ver;
   binresult *res;
   char *lfilename;
   int ret;
-  
-  ret=check_new_version_on_us_socket(params, &res);
+  ret = check_new_version_on_us_socket(&res, os, currentversion);
   if (unlikely(ret==-1))
     do{
       debug(D_WARNING, "could not connect to server, sleeping");
       psync_milisleep(10000);
-	  ret=check_new_version_on_us_socket(&res,params);
+	  ret = check_new_version_on_us_socket(&res, os, currentversion);
     } while (ret==-1);
   if (ret){
     debug(D_WARNING, "getlastversion returned %d", ret);
