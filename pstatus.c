@@ -156,8 +156,8 @@ void psync_status_recalc_to_download(){
   psync_sql_free_result(res);
   if (!psync_status.filestodownload){
     psync_status.downloadspeed=0;
-    psync_status.status=psync_calc_status();
   }
+  psync_status.status = psync_calc_status();
 }
 
 void psync_status_recalc_to_upload(){
