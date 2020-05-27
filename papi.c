@@ -105,20 +105,21 @@ static uint32_t connfailures=0;
 psync_socket *psync_api_connect(const char *hostname, int usessl){
   static time_t notuntil=0;
   psync_socket *ret;
-  if (psync_timer_time()>notuntil){
-    ret=psync_socket_connect(hostname, usessl?PSYNC_API_PORT_SSL:PSYNC_API_PORT, usessl);
+  const char *userapi = psync_setting_get_string(_PS(api_server));
+  if (psync_timer_time()>notuntil || !userapi){
+    ret = psync_socket_connect(hostname, usessl ? PSYNC_API_PORT_SSL : PSYNC_API_PORT, usessl);
     if (ret)
       return ret;
-    if (!strcmp(hostname, PSYNC_API_HOST))
+    if (!userapi || !strcmp(hostname, userapi))
       return NULL;
-    ret=psync_socket_connect(PSYNC_API_HOST, usessl?PSYNC_API_PORT_SSL:PSYNC_API_PORT, usessl);
+    ret=psync_socket_connect(userapi, usessl ? PSYNC_API_PORT_SSL : PSYNC_API_PORT, usessl);
     if (ret) {
-      debug(D_NOTICE, "failed to connect to %s, but was able to connect to %s", hostname, PSYNC_API_HOST);
-      notuntil=psync_timer_time()+1800;
+      debug(D_NOTICE, "failed to connect to %s, but was able to connect to %s", hostname, userapi);
+      notuntil = psync_timer_time() + 1800;
     }
     return ret;
   }
-  return psync_socket_connect(PSYNC_API_HOST, usessl?PSYNC_API_PORT_SSL:PSYNC_API_PORT, usessl);
+  return psync_socket_connect(userapi, usessl ? PSYNC_API_PORT_SSL : PSYNC_API_PORT, usessl);
 }
 
 void psync_api_conn_fail_inc(){
