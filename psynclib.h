@@ -1412,6 +1412,14 @@ void set_tfa_flag(int value);
 */
 apiservers_list_t *psync_get_apiservers(char **err /*OUT*/);
 void psync_set_apiserver(const char* binapi, uint32_t locationid);
+
+/*send_publink send a download link via email
+* code - code of the downloadlink to be send
+* mail - email of the recipient of the download link
+* message - optional message for the recipient
+* err - out parameter. Returns the error message if any.
+*/
+int psync_send_publink(const char *code, const char *mail, const char *message, char **err /*OUT*/);
 #ifdef __cplusplus
 }
 #endif

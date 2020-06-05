@@ -2379,9 +2379,12 @@ int psync_has_crypto_folders(){
   return cnt>0;
 }
 
-
-
 void set_tfa_flag(int value){
   debug(D_NOTICE, "set tfa %u", value);
   tfa=value;
+}
+
+int psync_send_publink(const char *code, const char *mail, const char *message, char **err){
+	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("code", code), P_STR("mails", mail), P_STR("message", message), P_NUM("source", 1) };
+	return psync_run_command("sendpublink", params, err);
 }
