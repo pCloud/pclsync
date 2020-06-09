@@ -224,7 +224,7 @@ int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char 
       *err = psync_strndup("Connection error.", 17);
       return -2;
     }
-    bres =  do_send_command(api, "getfolderpublink", sizeof("getfolderpublink") - 1, t, pind, -1, 1);
+    bres = do_send_command(api, "getfolderpublink", sizeof("getfolderpublink") - 1, t, pind, -1, 1);
     psync_free(t);
   }
 
@@ -259,6 +259,85 @@ int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char 
   psync_free(bres);
 
   return result;
+
+}
+
+int64_t do_psync_folder_updownlink_link(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic) {
+	psync_socket *api;
+	binresult *bres;
+	uint64_t result;
+	const char *rescode;
+	const char *errorret;
+
+	*err = 0;
+	*link = 0;
+
+	if (!expire && !maxdownloads && !maxtraffic) {
+		binparam params[] = { P_STR("auth", psync_my_auth), P_STR("path", path) };
+		api = psync_apipool_get();
+		if (unlikely(!api)) {
+			debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
+			*err = psync_strndup("Connection error.", 17);
+			return -2;
+		}
+
+		bres = send_command(api, "getfoldercollaborationlink", params);
+	}
+	else {
+		binparam* t;
+		int numparam = 2 + !!expire + !!maxdownloads + !!maxtraffic;
+		int pind = 1;
+
+		t = (binparam *)psync_malloc(numparam*sizeof(binparam));
+		init_param_str(t, "auth", psync_my_auth);
+		init_param_str(t + pind++, "path", path);
+		if (expire)
+			init_param_num(t + pind++, "expire", expire);
+		if (maxdownloads)
+			init_param_num(t + pind++, "maxdownloads", maxdownloads);
+		if (maxtraffic)
+			init_param_num(t + pind++, "maxtraffic", maxtraffic);
+		api = psync_apipool_get();
+		if (unlikely(!api)) {
+			debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
+			*err = psync_strndup("Connection error.", 17);
+			return -2;
+		}
+		bres = do_send_command(api, "getfoldercollaborationlink", sizeof("getfolderpublink") - 1, t, pind, -1, 1);
+		psync_free(t);
+	}
+
+	if (likely(bres))
+		psync_apipool_release(api);
+	else {
+		psync_apipool_release_bad(api);
+		debug(D_WARNING, "Send command returned invalid result.\n");
+		return -2;
+	}
+	result = psync_find_result(bres, "result", PARAM_NUM)->num;
+	if (unlikely(result)) {
+		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+		*err = psync_strndup(errorret, strlen(errorret));
+		debug(D_WARNING, "command getfoldercollaborationlink returned error code %u", (unsigned)result);
+		psync_process_api_error(result);
+		if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+			return -result;
+		else {
+			*err = psync_strndup("Connection error.", 17);
+			return -1;
+		}
+	}
+
+	rescode = psync_find_result(bres, "link", PARAM_STR)->str;
+	*link = psync_strndup(rescode, strlen(rescode));
+
+
+	result = 0;
+	result = psync_find_result(bres, "linkid", PARAM_NUM)->num;
+
+	psync_free(bres);
+
+	return result;
 
 }
 

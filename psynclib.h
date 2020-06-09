@@ -1245,7 +1245,7 @@ external_status psync_status_folder(const char *path);
  *
  *
  *
- * psync_folder_public_link() creates public link for a folder. Returns link id or negative error number.
+ * psync_folder_updownlink_link() creates upload and download public link for a folder. Returns link id or negative error number.
  *  The path parameter is pcloud drive path.
  *  The link is pointer where generated link is returned.
  *  The err is parameter where printable text of api error if any is returned.
@@ -1284,6 +1284,7 @@ external_status psync_status_folder(const char *path);
 
 int64_t psync_file_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/);
 int64_t psync_folder_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/);
+int64_t psync_folder_updownlink_link(const char *path, char **link /*OUT*/, char **err /*OUT*/);
 int64_t psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **link /*OUT*/, char **err /*OUT*/);
 plink_info_list_t *psync_list_links(char **err /*OUT*/);
 plink_contents_t *psync_show_link(const char *link, char **err /*OUT*/);
