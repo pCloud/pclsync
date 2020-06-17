@@ -107,7 +107,6 @@ int64_t do_psync_screenshot_public_link(const char *path, int hasdelay, uint64_t
   return ret;
 }
 
-
 int64_t do_psync_file_public_link(const char *path, int64_t* plinkid, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic) {
   psync_socket *api;
   binresult *bres;
@@ -153,7 +152,6 @@ int64_t do_psync_file_public_link(const char *path, int64_t* plinkid, char **lin
     psync_free(t);
   }
 
-
   if (likely(bres))
     psync_apipool_release(api);
   else {
@@ -184,6 +182,86 @@ free_ret:
 }
 
 int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic) {
+	psync_socket *api;
+	binresult *bres;
+	uint64_t result;
+	const char *rescode;
+	const char *errorret;
+
+	*err = 0;
+	*link = 0;
+
+	if (!expire && !maxdownloads && !maxtraffic) {
+		binparam params[] = { P_STR("auth", psync_my_auth), P_STR("path", path) };
+		api = psync_apipool_get();
+		if (unlikely(!api)) {
+			debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+			*err = psync_strndup("Connection error.", 17);
+			return -2;
+		}
+
+		bres = send_command(api, "getfolderpublink", params);
+
+	}
+	else {
+		binparam* t;
+		int numparam = 2 + !!expire + !!maxdownloads + !!maxtraffic;
+		int pind = 1;
+
+		t = (binparam *)psync_malloc(numparam*sizeof(binparam));
+		init_param_str(t, "auth", psync_my_auth);
+		init_param_str(t + pind++, "path", path);
+		if (expire)
+			init_param_num(t + pind++, "expire", expire);
+		if (maxdownloads)
+			init_param_num(t + pind++, "maxdownloads", maxdownloads);
+		if (maxtraffic)
+			init_param_num(t + pind++, "maxtraffic", maxtraffic);
+		api = psync_apipool_get();
+		if (unlikely(!api)) {
+			debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+			*err = psync_strndup("Connection error.", 17);
+			return -2;
+		}
+		bres = do_send_command(api, "getfolderpublink", sizeof("getfolderpublink") - 1, t, pind, -1, 1);
+		psync_free(t);
+	}
+
+	if (likely(bres))
+		psync_apipool_release(api);
+	else {
+		psync_apipool_release_bad(api);
+		debug(D_WARNING, "Send command returned in valid result.\n");
+		return -2;
+	}
+	result = psync_find_result(bres, "result", PARAM_NUM)->num;
+	if (unlikely(result)) {
+		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+		*err = psync_strndup(errorret, strlen(errorret));
+		debug(D_WARNING, "command getfilepublink returned error code %u", (unsigned)result);
+		psync_process_api_error(result);
+		if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+			return -result;
+		else {
+			*err = psync_strndup("Connection error.", 17);
+			return -1;
+		}
+	}
+
+	rescode = psync_find_result(bres, "link", PARAM_STR)->str;
+	*link = psync_strndup(rescode, strlen(rescode));
+
+
+	result = 0;
+	result = psync_find_result(bres, "linkid", PARAM_NUM)->num;
+
+	psync_free(bres);
+
+	return result;
+
+}
+
+int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic, const char* password) {
   psync_socket *api;
   binresult *bres;
   uint64_t result;
@@ -206,12 +284,14 @@ int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char 
 
   } else {
     binparam* t;
-    int numparam = 2 + !!expire + !!maxdownloads + !!maxtraffic;
+    int numparam = 2 + !!expire + !!maxdownloads + !!maxtraffic + !!password;
     int pind = 1;
 
     t = (binparam *) psync_malloc(numparam*sizeof(binparam));
     init_param_str(t, "auth", psync_my_auth);
     init_param_str(t + pind++, "path", path);
+	if (password)
+		init_param_str(t + pind++, "linkpassword", password);
     if (expire)
       init_param_num(t + pind++, "expire", expire);
     if (maxdownloads)
@@ -262,50 +342,25 @@ int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char 
 
 }
 
-int64_t do_psync_folder_updownlink_link(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic) {
+int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char **link /*OUT*/, char **err /*OUT*/) {
 	psync_socket *api;
 	binresult *bres;
 	uint64_t result;
 	const char *rescode;
 	const char *errorret;
-
+  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("mail", mail) };
 	*err = 0;
 	*link = 0;
-
-	if (!expire && !maxdownloads && !maxtraffic) {
-		binparam params[] = { P_STR("auth", psync_my_auth), P_STR("path", path) };
-		api = psync_apipool_get();
-		if (unlikely(!api)) {
-			debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
-			*err = psync_strndup("Connection error.", 17);
-			return -2;
-		}
-
-		bres = send_command(api, "getfoldercollaborationlink", params);
+		
+	api = psync_apipool_get();
+	if (unlikely(!api)) {
+		debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
+		*err = psync_strndup("Connection error.", 17);
+		return -2;
 	}
-	else {
-		binparam* t;
-		int numparam = 2 + !!expire + !!maxdownloads + !!maxtraffic;
-		int pind = 1;
 
-		t = (binparam *)psync_malloc(numparam*sizeof(binparam));
-		init_param_str(t, "auth", psync_my_auth);
-		init_param_str(t + pind++, "path", path);
-		if (expire)
-			init_param_num(t + pind++, "expire", expire);
-		if (maxdownloads)
-			init_param_num(t + pind++, "maxdownloads", maxdownloads);
-		if (maxtraffic)
-			init_param_num(t + pind++, "maxtraffic", maxtraffic);
-		api = psync_apipool_get();
-		if (unlikely(!api)) {
-			debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
-			*err = psync_strndup("Connection error.", 17);
-			return -2;
-		}
-		bres = do_send_command(api, "getfoldercollaborationlink", sizeof("getfolderpublink") - 1, t, pind, -1, 1);
-		psync_free(t);
-	}
+	//bres = send_command(api, "getfoldercollaborationlink", params);
+  bres = send_command(api, "publink/createfolderlinkwithuploadandsend", params);
 
 	if (likely(bres))
 		psync_apipool_release(api);
@@ -318,7 +373,7 @@ int64_t do_psync_folder_updownlink_link(const char *path, char **link /*OUT*/, c
 	if (unlikely(result)) {
 		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
 		*err = psync_strndup(errorret, strlen(errorret));
-		debug(D_WARNING, "command getfoldercollaborationlink returned error code %u", (unsigned)result);
+		debug(D_WARNING, "command createfolderlinkwithuploadandsend returned error code %u", (unsigned)result);
 		psync_process_api_error(result);
 		if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
 			return -result;
@@ -338,7 +393,6 @@ int64_t do_psync_folder_updownlink_link(const char *path, char **link /*OUT*/, c
 	psync_free(bres);
 
 	return result;
-
 }
 
 int64_t do_psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles,
@@ -625,6 +679,74 @@ int do_psync_delete_link(int64_t linkid, char **err /*OUT*/) {
   psync_free(bres);
 
   return 0;
+}
+
+int do_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
+  const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
+  int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload,char** err)
+{
+	psync_socket *api;
+	binresult *bres;
+	uint64_t result;
+	const char *rescode;
+	const char *errorret;
+	*err = 0;
+		binparam* t;
+		int numparam = 5;// +!!expire + !!maxdownloads + !!maxtraffic + !!password;
+		int pind = 1;
+
+		t = (binparam *)psync_malloc(numparam*sizeof(binparam));
+		init_param_str(t, "auth", psync_my_auth);
+		init_param_num(t + pind++, "linkid", linkid);
+		if (linkpassword)
+			init_param_str(t + pind++, "linkpassword", linkpassword);
+		else
+			init_param_num(t + pind++, "deletepassword", delete_password);
+		if (expire)
+			init_param_num(t + pind++, "expire", expire);
+		else
+			init_param_num(t + pind++, "deleteexpire", delete_expire);
+		
+		init_param_num(t + pind++, "maxdownloads", maxdownloads);
+		init_param_num(t + pind++, "maxtraffic", maxtraffic);
+
+    if (enableuploadforeveryone)
+      init_param_num(t + pind++, "enableuploadforeveryone", enableuploadforeveryone);
+    else if(enableuploadforchosenusers)
+      init_param_num(t + pind++, "disableupload", enableuploadforchosenusers);
+    else
+      init_param_num(t + pind++, "disableupload", disableupload);
+
+		api = psync_apipool_get();
+		if (unlikely(!api)) {
+			debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
+			*err = psync_strndup("Connection error.", 17);
+			return -2;
+		}
+		bres = do_send_command(api, "changepublink", sizeof("changepublink") - 1, t, pind, -1, 1);
+		psync_free(t);
+	//}
+
+	if (likely(bres))
+		psync_apipool_release(api);
+	else {
+		psync_apipool_release_bad(api);
+		debug(D_WARNING, "Send command returned in valid result.\n");
+		return -2;
+	}
+	result = psync_find_result(bres, "result", PARAM_NUM)->num;
+	if (unlikely(result)) {
+		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+		*err = psync_strndup(errorret, strlen(errorret));
+		debug(D_WARNING, "command getfilepublink returned error code %u", (unsigned)result);
+		psync_process_api_error(result);
+		if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+			return -result;
+		else {
+			*err = psync_strndup("Connection error.", 17);
+			return -1;
+		}
+	}
 }
 
 int64_t do_psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxspace, int maxfiles) {

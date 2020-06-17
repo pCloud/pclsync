@@ -2233,8 +2233,21 @@ int64_t psync_folder_public_link(const char *path, char **link /*OUT*/, char **e
   return do_psync_folder_public_link(path, link, err, 0, 0, 0);
 }
 
-int64_t psync_folder_updownlink_link(const char *path, char **link /*OUT*/, char **err /*OUT*/) {
-	return do_psync_folder_updownlink_link(path, link, err, 0, 0, 0);
+int64_t psync_folder_public_link_full(const char *path, char **link /*OUT*/, char **err /*OUT*/,unsigned long long expire, int maxdownloads, int maxtraffic, const char* password) {
+	return do_psync_folder_public_link_full(path, link, err, expire, maxdownloads, maxtraffic, password);
+}
+
+int psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
+  const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
+  int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err)
+{
+	return do_psync_change_link(linkid,expire,delete_expire,
+    linkpassword,delete_password,maxtraffic,maxdownloads,
+    enableuploadforeveryone,enableuploadforchosenusers,disableupload,err);
+}
+
+int64_t psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char **link /*OUT*/, char **err /*OUT*/) {
+	return do_psync_folder_updownlink_link(folderid, mail, link, err);
 }
 
 int64_t psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **link /*OUT*/, char **err /*OUT*/) {

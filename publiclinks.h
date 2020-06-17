@@ -32,12 +32,12 @@
 int64_t do_psync_file_public_link(const char *path, int64_t* plinkid /*OUT*/, char **link /*OUT*/, char **err /*OUT*/,  /*OUT*/uint64_t expire, int maxdownloads, int maxtraffic);
 int64_t do_psync_screenshot_public_link(const char *path, int hasdelay, uint64_t delay, char **link /*OUT*/, char **err /*OUT*/);
 int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic);
-int64_t do_psync_folder_updownlink_link(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic);
+int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char** link /*OUT*/, char** err /*OUT*/);
+int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic, const char* password);
 int64_t do_psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **link /*OUT*/, char **err /*OUT*/, 
                                   uint64_t expire, int maxdownloads, int maxtraffic);
 plink_info_list_t *do_psync_list_links(char **err /*OUT*/);
 int do_psync_delete_link(int64_t linkid, char **err /*OUT*/);
-
 int64_t do_psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxspace, int maxfiles);
 int do_psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/);
 
@@ -50,4 +50,7 @@ int cache_links(char **err /*OUT*/);
 int do_delete_all_folder_links(psync_folderid_t folderid, char**err);
 int do_delete_all_file_links(psync_fileid_t fileid, char**err);
 
+int do_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
+  const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
+  int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err);
 #endif //_PUBLIC_LINKS_H
