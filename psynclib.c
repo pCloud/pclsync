@@ -2246,8 +2246,8 @@ int psync_change_link(unsigned long long linkid, unsigned long long expire, int 
     enableuploadforeveryone,enableuploadforchosenusers,disableupload,err);
 }
 
-int64_t psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char **link /*OUT*/, char **err /*OUT*/) {
-	return do_psync_folder_updownlink_link(folderid, mail, link, err);
+int64_t psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char **err /*OUT*/) {
+	return do_psync_folder_updownlink_link(folderid, mail, err);
 }
 
 int64_t psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **link /*OUT*/, char **err /*OUT*/) {

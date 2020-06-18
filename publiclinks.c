@@ -342,15 +342,13 @@ int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, 
 
 }
 
-int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char **link /*OUT*/, char **err /*OUT*/) {
+int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char **err /*OUT*/) {
 	psync_socket *api;
 	binresult *bres;
 	uint64_t result;
-	const char *rescode;
 	const char *errorret;
   binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("mail", mail) };
 	*err = 0;
-	*link = 0;
 		
 	api = psync_apipool_get();
 	if (unlikely(!api)) {
@@ -359,7 +357,6 @@ int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char*
 		return -2;
 	}
 
-	//bres = send_command(api, "getfoldercollaborationlink", params);
   bres = send_command(api, "publink/createfolderlinkwithuploadandsend", params);
 
 	if (likely(bres))
@@ -383,13 +380,7 @@ int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char*
 		}
 	}
 
-	rescode = psync_find_result(bres, "link", PARAM_STR)->str;
-	*link = psync_strndup(rescode, strlen(rescode));
-
-
 	result = 0;
-	result = psync_find_result(bres, "linkid", PARAM_NUM)->num;
-
 	psync_free(bres);
 
 	return result;
