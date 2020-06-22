@@ -342,12 +342,12 @@ int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, 
 
 }
 
-int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char **err /*OUT*/) {
+int64_t do_psync_folder_updownlink_link(int canupload, unsigned long long folderid, const char* mail, char **err /*OUT*/) {
 	psync_socket *api;
 	binresult *bres;
 	uint64_t result;
 	const char *errorret;
-  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("mail", mail) };
+	binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("mail", mail), P_NUM("canupload", canupload) };
 	*err = 0;
 		
 	api = psync_apipool_get();
@@ -357,7 +357,7 @@ int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char*
 		return -2;
 	}
 
-  bres = send_command(api, "publink/createfolderlinkwithuploadandsend", params);
+  bres = send_command(api, "publink/createfolderlinkandsend", params);
 
 	if (likely(bres))
 		psync_apipool_release(api);

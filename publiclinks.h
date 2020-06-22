@@ -32,7 +32,7 @@
 int64_t do_psync_file_public_link(const char *path, int64_t* plinkid /*OUT*/, char **link /*OUT*/, char **err /*OUT*/,  /*OUT*/uint64_t expire, int maxdownloads, int maxtraffic);
 int64_t do_psync_screenshot_public_link(const char *path, int hasdelay, uint64_t delay, char **link /*OUT*/, char **err /*OUT*/);
 int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic);
-int64_t do_psync_folder_updownlink_link(unsigned long long folderid, const char* mail, char** err /*OUT*/);
+int64_t do_psync_folder_updownlink_link(int canupload, unsigned long long folderid, const char* mail, char** err /*OUT*/);
 int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic, const char* password);
 int64_t do_psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **link /*OUT*/, char **err /*OUT*/, 
                                   uint64_t expire, int maxdownloads, int maxtraffic);
