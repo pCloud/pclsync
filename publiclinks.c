@@ -597,8 +597,9 @@ int cache_links(char **err /*OUT*/) {
     link = publinks->array[i];
 
     q=psync_sql_prep_statement("REPLACE INTO links  (id, code, comment, traffic, maxspace, downloads, created,"
-                                 " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink)"
-                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)");
+                                 " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink,"
+                                 " parentfolderid, haspassword,  type)"
+                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)");
     psync_sql_bind_uint(q, 1, psync_find_result(link, "linkid", PARAM_NUM)->num);
     psync_sql_bind_string(q, 2, psync_find_result(link, "code", PARAM_STR)->str);
     psync_sql_bind_uint(q, 3, 0);
@@ -619,7 +620,10 @@ int cache_links(char **err /*OUT*/) {
       psync_sql_bind_uint(q, 12, psync_find_result(meta, "fileid", PARAM_NUM)->num);
     }
     psync_sql_bind_uint(q, 13, psync_find_result(meta, "icon", PARAM_NUM)->num);
-	psync_sql_bind_string(q, 14, psync_find_result(link, "link", PARAM_STR)->str);
+    psync_sql_bind_string(q, 14, psync_find_result(link, "link", PARAM_STR)->str);
+    psync_sql_bind_uint(q, 15, psync_find_result(meta, "parentfolderid", PARAM_NUM)->num);
+    psync_sql_bind_uint(q, 16, psync_find_result(link, "haspassword", PARAM_BOOL)->num);
+    psync_sql_bind_uint(q, 17, psync_find_result(link, "type", PARAM_NUM)->num);
     psync_sql_run_free(q);
   }
   return linkscnt;
@@ -900,6 +904,10 @@ static int create_link(psync_list_builder_t *builder, void *element, psync_varia
   link->icon =  psync_get_number(row[13]);
   str = psync_get_lstring(row[14], &len);
   link->fulllink = str;
+  link->parentfolderid= psync_get_number(row[15]);
+  link->haspassword = psync_get_number(row[16]);
+  link->views = psync_get_number(row[17]);
+  link->type = psync_get_number(row[18]);
   psync_list_add_lstring_offset(builder, offsetof(link_info_t, fulllink), len);
   return 0;
 }
@@ -913,7 +921,8 @@ plink_info_list_t * do_psync_list_links(char **err /*OUT*/) {
   builder=psync_list_builder_create(sizeof(link_info_t), offsetof(plink_info_list_t, entries));
 
   res=psync_sql_query_rdlock("SELECT id, code, comment, traffic, maxspace, downloads, created,"
-                        " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink FROM links");
+                        " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink,"
+                        " parentfolderid, haspassword, type, views FROM links");
 
   psync_list_bulder_add_sql(builder, res, create_link);
 

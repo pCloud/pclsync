@@ -455,6 +455,12 @@ typedef struct {
   uint8_t isfolder;
   uint8_t isupload;
   uint8_t icon;
+  uint64_t parentfolderid;
+  uint8_t haspassword;
+  uint8_t type;
+  uint64_t views;
+  uint8_t enableuploadforeveryone;
+  uint8_t enableuploadforchosenusers;
 } link_info_t;
 
 typedef struct {
