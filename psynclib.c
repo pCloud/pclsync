@@ -80,6 +80,7 @@ const char *psync_database=NULL;
 
 static int psync_libstate=0;
 static pthread_mutex_t psync_libstate_mutex=PTHREAD_MUTEX_INITIALIZER;
+static time_t links_last_refresh_time;
 
 extern int unlinked;
 extern int tfa;
@@ -2280,6 +2281,16 @@ int psync_delete_all_links_folder(psync_folderid_t folderid, char**err) {
 
 int psync_delete_all_links_file(psync_fileid_t fileid, char**err){
   return do_delete_all_file_links(fileid, err);
+}
+
+void psync_cache_links_all()
+{
+	if (psync_current_time - links_last_refresh_time >= PSYNC_LINKS_REFRESH_INTERVAL){
+	  links_last_refresh_time=psync_current_time;
+	  cache_links_all();
+	}
+	else
+		debug(D_WARNING, "refreshing link too early %u", (unsigned)psync_current_time - links_last_refresh_time);
 }
 
 pcontacts_list_t *psync_list_contacts() {

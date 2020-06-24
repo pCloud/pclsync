@@ -1303,6 +1303,8 @@ int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/);
 
 int psync_delete_all_links_folder(psync_folderid_t folderid, char**err);
 int psync_delete_all_links_file(psync_fileid_t fileid, char**err);
+
+void psync_cache_links_all();
 /*
  * Creates download link for newly uploaded screenshot and sets the expiration to current date plus delay seconds. If hasdelay
  * equals 0 no expiration is set. If hasdelay and delay is 0 expiration is for one mount
