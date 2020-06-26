@@ -43,7 +43,7 @@
 #define PSYNC_TEXT_COL "COLLATE NOCASE"
 #endif
 
-#define PSYNC_DATABASE_VERSION 21
+#define PSYNC_DATABASE_VERSION 22
 
 #define PSYNC_DATABASE_CONFIG \
 "\
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS baccountteam (id INTEGER PRIMARY KEY, name TEXT); \
 CREATE TABLE IF NOT EXISTS links ( \
 id INTEGER PRIMARY KEY, code VARCHAR(2048), comment TEXT, traffic INTEGER, maxspace INTEGER, \
 downloads INTEGER, created INTEGER, modified INTEGER, name VARCHAR(2048),  isfolder INTEGER, folderid INTEGER, fileid INTEGER, isincomming INTEGER, icon INTEGER, fulllink VARCHAR(2048), \
-parentfolderid INTEGER, haspassword INTEGER, type INTEGER, views INTEGER); \
+parentfolderid INTEGER, haspassword INTEGER, type INTEGER, views INTEGER, expire INTEGER, enableduploadforchosenusers INTEGER, enableuploadforeveryone INTEGER); \
 CREATE TABLE IF NOT EXISTS contacts (id INTEGER PRIMARY KEY, mail varchar(2048), name TEXT); \
 INSERT OR IGNORE INTO folder (id, name) VALUES (0, '');\
 INSERT OR IGNORE INTO localfolder (id) VALUES (0);\
@@ -289,6 +289,10 @@ ALTER TABLE links ADD views INTEGER; \
 ALTER TABLE links ADD enableuploadforeveryone INTEGER; \
 ALTER TABLE links ADD enableuploadforchosenusers INTEGER; \
 UPDATE setting SET value=21 WHERE id='dbversion'; \
+COMMIT;"
+"BEGIN;\
+ALTER TABLE links ADD expire INTEGER; \
+UPDATE setting SET value=22 WHERE id='dbversion'; \
 COMMIT;"
 };
 

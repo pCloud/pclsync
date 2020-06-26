@@ -598,8 +598,8 @@ int cache_links(char **err /*OUT*/) {
 
     q=psync_sql_prep_statement("REPLACE INTO links  (id, code, comment, traffic, maxspace, downloads, created,"
                                  " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink,"
-                                 " parentfolderid, haspassword, views, type)"
-                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)");
+                                 " parentfolderid, haspassword, views, type, expire,enableduploadforchosenusers,enableuploadforeveryone)"
+                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)");
     psync_sql_bind_uint(q, 1, psync_find_result(link, "linkid", PARAM_NUM)->num);
     psync_sql_bind_string(q, 2, psync_find_result(link, "code", PARAM_STR)->str);
     psync_sql_bind_uint(q, 3, 0);
@@ -614,6 +614,17 @@ int cache_links(char **err /*OUT*/) {
       psync_sql_bind_uint(q, 10, 1);
       psync_sql_bind_uint(q, 11, psync_find_result(meta, "folderid", PARAM_NUM)->num);
       psync_sql_bind_uint(q, 12, 0);
+      if (psync_check_result(link, "enableduploadforchosenusers", PARAM_BOOL)->num){
+        psync_sql_bind_uint(q, 20, psync_find_result(link, "enableduploadforchosenusers", PARAM_BOOL)->num);
+      } else {
+        psync_sql_bind_uint(q, 20, 0);
+      }
+      if (psync_check_result(link, "enableuploadforeveryone", PARAM_BOOL)->num) {
+        psync_sql_bind_uint(q, 21, psync_find_result(link, "enableuploadforeveryone", PARAM_BOOL)->num);
+      }
+      else {
+        psync_sql_bind_uint(q, 21, 0);
+      }
     } else {
       psync_sql_bind_uint(q, 10, 0);
       psync_sql_bind_uint(q, 11, 0);
@@ -624,7 +635,9 @@ int cache_links(char **err /*OUT*/) {
     psync_sql_bind_uint(q, 15, psync_find_result(meta, "parentfolderid", PARAM_NUM)->num);
     psync_sql_bind_uint(q, 16, psync_find_result(link, "haspassword", PARAM_BOOL)->num);
     psync_sql_bind_uint(q, 17, psync_find_result(link, "views", PARAM_NUM)->num);
-	psync_sql_bind_uint(q, 18, psync_find_result(link, "type", PARAM_NUM)->num);
+	  psync_sql_bind_uint(q, 18, psync_find_result(link, "type", PARAM_NUM)->num);
+    psync_sql_bind_uint(q, 19, psync_find_result(link, "expire", PARAM_NUM)->num);
+    
     psync_sql_run_free(q);
   }
   return linkscnt;
@@ -681,69 +694,65 @@ int do_psync_change_link(unsigned long long linkid, unsigned long long expire, i
   const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
   int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload,char** err)
 {
-	psync_socket *api;
-	binresult *bres;
-	uint64_t result;
-	const char *rescode;
-	const char *errorret;
-	*err = 0;
-		binparam* t;
-		int numparam = 5;// +!!expire + !!maxdownloads + !!maxtraffic + !!password;
-		int pind = 1;
-
-		t = (binparam *)psync_malloc(numparam*sizeof(binparam));
-		init_param_str(t, "auth", psync_my_auth);
-		init_param_num(t + pind++, "linkid", linkid);
-		if (linkpassword)
-			init_param_str(t + pind++, "linkpassword", linkpassword);
-		else
-			init_param_num(t + pind++, "deletepassword", delete_password);
-		if (expire)
-			init_param_num(t + pind++, "expire", expire);
-		else
-			init_param_num(t + pind++, "deleteexpire", delete_expire);
-		
-		init_param_num(t + pind++, "maxdownloads", maxdownloads);
-		init_param_num(t + pind++, "maxtraffic", maxtraffic);
-
-    if (enableuploadforeveryone)
-      init_param_num(t + pind++, "enableuploadforeveryone", enableuploadforeveryone);
-    else if(enableuploadforchosenusers)
-      init_param_num(t + pind++, "disableupload", enableuploadforchosenusers);
-    else
-      init_param_num(t + pind++, "disableupload", disableupload);
-
-		api = psync_apipool_get();
-		if (unlikely(!api)) {
-			debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
-			*err = psync_strndup("Connection error.", 17);
-			return -2;
-		}
-		bres = do_send_command(api, "changepublink", sizeof("changepublink") - 1, t, pind, -1, 1);
-		psync_free(t);
-	//}
-
-	if (likely(bres))
-		psync_apipool_release(api);
-	else {
-		psync_apipool_release_bad(api);
-		debug(D_WARNING, "Send command returned in valid result.\n");
-		return -2;
-	}
-	result = psync_find_result(bres, "result", PARAM_NUM)->num;
-	if (unlikely(result)) {
-		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
-		*err = psync_strndup(errorret, strlen(errorret));
-		debug(D_WARNING, "command getfilepublink returned error code %u", (unsigned)result);
-		psync_process_api_error(result);
-		if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
-			return -result;
-		else {
-			*err = psync_strndup("Connection error.", 17);
-			return -1;
-		}
-	}
+  psync_socket *api;
+  binresult *bres;
+  uint64_t result;
+  const char *rescode;
+  const char *errorret;
+  *err = 0;
+  binparam* t;
+  int numparam = 5;// +!!expire + !!maxdownloads + !!maxtraffic + !!password;
+  int pind = 1;
+  
+  t = (binparam *)psync_malloc(numparam*sizeof(binparam));
+  init_param_str(t, "auth", psync_my_auth);
+  init_param_num(t + pind++, "linkid", linkid);
+  if (linkpassword)
+  	init_param_str(t + pind++, "linkpassword", linkpassword);
+  else
+  	init_param_num(t + pind++, "deletepassword", delete_password);
+  if (expire)
+  	init_param_num(t + pind++, "expire", expire);
+  else
+  	init_param_num(t + pind++, "deleteexpire", delete_expire);
+  
+  init_param_num(t + pind++, "maxdownloads", maxdownloads);
+  init_param_num(t + pind++, "maxtraffic", maxtraffic);
+  
+  if (enableuploadforeveryone)
+    init_param_num(t + pind++, "enableuploadforeveryone", enableuploadforeveryone);
+  else if(enableuploadforchosenusers)
+    init_param_num(t + pind++, "disableupload", enableuploadforchosenusers);
+  else
+    init_param_num(t + pind++, "disableupload", disableupload);
+  
+  api = psync_apipool_get();
+  if (unlikely(!api)) {
+  	debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
+  	*err = psync_strndup("Connection error.", 17);
+  	return -2;
+  }
+  bres = do_send_command(api, "changepublink", sizeof("changepublink") - 1, t, pind, -1, 1);
+  psync_free(t);
+  result = process_bres("deletepublink", bres, api, err);
+  return result;
 }
+
+int do_change_link_expire(unsigned long long linkid, unsigned long long expire)
+{
+
+}
+
+int do_change_link_password(unsigned long long linkid, const char* password)
+{
+
+}
+
+int do_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers)
+{
+
+}
+
 
 int64_t do_psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxspace, int maxfiles) {
   psync_socket *api;
@@ -842,34 +851,10 @@ int do_psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
   }
 
   bres = send_command(api, "deleteuploadlink", params);
-
-
-  if (likely(bres))
-    psync_apipool_release(api);
-  else {
-    psync_apipool_release_bad(api);
-    debug(D_WARNING, "Send command returned in valid result.\n");
-    *err = psync_strndup("Connection error.", 17);
-    return -2;
-  }
-  result=psync_find_result(bres, "result", PARAM_NUM)->num;
-  if (unlikely(result)) {
-    errorret = psync_find_result(bres, "error", PARAM_STR)->str;
-    *err = psync_strndup(errorret, strlen(errorret));
-    debug(D_WARNING, "command deletepublink returned error code %u", (unsigned)result);
-    psync_process_api_error(result);
-    if (psync_handle_api_result(result)==PSYNC_NET_TEMPFAIL)
-      return -result;
-    else {
-      *err = psync_strndup("Connection error.", 17);
-      return -1;
-    }
-  }
-
-
+  result = process_bres("deletepublink", bres, api, err);
   psync_free(bres);
 
-  return 0;
+  return result;
 }
 
 static int create_link(psync_list_builder_t *builder, void *element, psync_variant_row row){
@@ -1177,4 +1162,146 @@ int do_delete_all_file_links(psync_fileid_t fileid, char**err) {
     }
   }
   return 0;
+}
+
+preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **err)
+{
+	psync_socket *api;
+	binresult *bres;
+	uint64_t result;
+	const char *errorret;
+	psync_list_builder_t *builder;
+  reciever_info_t* pcont;
+  const binresult* list = 0, *reciever=0, *br=0;
+  preciever_list_t* ret = 0;
+  int i = 0, lcnt;
+	*err = 0;
+	//publink/listemailwithaccess
+	binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid) };
+	api = psync_apipool_get();
+	if (unlikely(!api)) {
+		debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+		*err = psync_strndup("Connection error.", 17);
+		return NULL;
+	}
+
+	bres = send_command(api, "publink/listemailwithaccess", params);
+
+	if (likely(bres))
+		psync_apipool_release(api);
+	else {
+		psync_apipool_release_bad(api);
+		debug(D_WARNING, "Send command returned in valid result.\n");
+		*err = psync_strndup("Connection error.", 17);
+		return NULL;
+	}
+	result = psync_find_result(bres, "result", PARAM_NUM)->num;
+	if (unlikely(result)) {
+		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+		*err = psync_strndup(errorret, strlen(errorret));
+		debug(D_WARNING, "command deletepublink returned error code %u", (unsigned)result);
+		psync_process_api_error(result);
+		if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+			return NULL;
+		else {
+			*err = psync_strndup("Connection error.", 17);
+			return NULL;
+		}
+	}
+
+  list = psync_find_result(bres, "list", PARAM_ARRAY);
+  lcnt = list->length;
+  if (!lcnt) {
+    psync_free(bres);
+    return NULL;
+  }
+  builder = psync_list_builder_create(sizeof(reciever_info_t), offsetof(preciever_list_t, entries));
+  for (i = 0; i < lcnt; ++i) {
+    reciever = list->array[i];
+    pcont = (link_cont_t*)psync_list_bulder_add_element(builder);
+    br = psync_find_result(reciever, "email", PARAM_STR);
+    pcont->mail = br->str;
+    psync_list_add_lstring_offset(builder, offsetof(link_cont_t, name), br->length);
+    pcont->recieverid = psync_find_result(reciever, "receiverid", PARAM_NUM)->num;
+  }
+  ret = (link_cont_t*)psync_list_builder_finalize(builder);
+
+	psync_free(bres);
+
+	return ret;
+}
+
+int do_link_add_access(unsigned long long linkid, const char *mail,char **err)
+{
+	psync_socket *api;
+	binresult *bres;
+	uint64_t result;
+	const char *errorret;
+
+	*err = 0;
+	//publink/addaccess
+	binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_STR("mail", mail) };
+	api = psync_apipool_get();
+	if (unlikely(!api)) {
+		debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+		*err = psync_strndup("Connection error.", 17);
+		return -2;
+	}
+
+	bres = send_command(api, "publink/addaccess", params);
+	result = process_bres("publink/addaccess", bres, api, err);
+	psync_free(bres);
+
+	return result;
+}
+
+int do_link_remove_access(unsigned long long linkid, unsigned long long receiverid, char **err)
+{
+	psync_socket *api;
+	binresult *bres;
+	uint64_t result;
+	*err = 0;
+	binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("receiverid", receiverid) };
+
+	api = psync_apipool_get();
+	if (unlikely(!api)) {
+		debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+		*err = psync_strndup("Connection error.", 17);
+		return -2;
+	}
+
+	bres = send_command(api, "publink/removeaccess", params);
+	result = process_bres("publink/removeaccess", bres, api, err);
+	psync_free(bres);
+
+	return result;
+}
+
+int process_bres(const char* cmd, binresult *bres, psync_socket *api, char **err)
+{
+	const char *errorret;
+	int result;
+	if (likely(bres))
+		psync_apipool_release(api);
+	else {
+		psync_apipool_release_bad(api);
+		debug(D_WARNING, "Send command returned in valid result.\n");
+		*err = psync_strndup("Connection error.", 17);
+		return -2;
+	}
+	result = psync_find_result(bres, "result", PARAM_NUM)->num;
+	if (unlikely(result)) {
+		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+		*err = psync_strndup(errorret, strlen(errorret));
+		debug(D_WARNING, "command %s returned error code %u", cmd, (unsigned)result);
+		psync_process_api_error(result);
+		if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+			return -result;
+		else {
+			*err = psync_strndup("Connection error.", 17);
+			return -1;
+		}
+	}
+
+	return 0;
 }

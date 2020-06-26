@@ -2293,6 +2293,43 @@ void psync_cache_links_all()
 		debug(D_WARNING, "refreshing link too early %u", (unsigned)psync_current_time - links_last_refresh_time);
 }
 
+preciever_list_t* psync_list_email_with_access(unsigned long long linkid, char** err)
+{
+  return do_list_email_with_access(linkid, err);
+}
+
+int psync_link_add_access(unsigned long long linkid, const char* mail, char** err)
+{
+  return do_link_add_access(linkid, mail, err);
+}
+
+int psync_link_remove_access(unsigned long long linkid, unsigned long long receiverid, char** err)
+{
+  return do_link_remove_access(linkid, receiverid, err);
+}
+
+int psync_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
+  const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
+  int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err)
+{
+  return do_psync_change_link(linkid, expire, delete_expire, linkpassword, delete_password,
+    maxtraffic, maxdownloads, enableuploadforeveryone, enableuploadforchosenusers, disableupload, err);
+}
+int psync_change_link_expire(unsigned long long linkid, unsigned long long expire)
+{
+  return do_change_link_expire(linkid, expire);
+}
+
+int psync_change_link_password(unsigned long long linkid, const char* password)
+{
+  return do_change_link_password(linkid,password);
+}
+
+int psync_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers)
+{
+  return do_change_link_enable_upload(linkid, enableuploadforeveryone, enableuploadforchosenusers);
+}
+
 pcontacts_list_t *psync_list_contacts() {
   return do_psync_list_contacts();
 }

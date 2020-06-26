@@ -510,7 +510,6 @@ typedef struct {
   plogged_device_t devices[];
 } plogged_device_list_t;
 
-
 typedef struct {
   const char *name;
   uint64_t created;
@@ -532,11 +531,20 @@ typedef struct {
   uint32_t type;
 } contact_info_t;
 
-
 typedef struct {
   size_t entrycnt;
   contact_info_t entries[];
 } pcontacts_list_t;
+
+typedef struct {
+  uint64_t recieverid;
+  const char *mail;
+} reciever_info_t;
+
+typedef struct {
+  size_t entrycnt;
+  reciever_info_t entries[];
+} preciever_list_t;
 
 #define PSYNC_INVALID_SYNCID (psync_syncid_t)-1
 
@@ -1312,6 +1320,35 @@ void psync_cache_links_all();
 int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t delay, char **link /*OUT*/, char **err /*OUT*/);
 
 /*
+ * psync_list_email_with_access List email and recieverid for each user who can upload to the speciefied link.
+ * linkid the id of the link for which the users with upload rights are listed.
+ *
+ * psync_link_add_access Add upload access to link specified by linkid
+ * psync_link_remove_access Remove upload access of user specified by recieverid to link specified by linkid
+ * psync_psync_change_link Changes settings of download link
+ *
+ * psync_change_link_expire Change expire date of link. Delete expire date if expire equals 0.
+ * psync_change_link_password Change password of link. Delete password date if password equals NULL.
+ * psync_change_link_enable_upload Allows upload to a download link. If enableuploadforchosenusers is
+ *   more than 0 upload is allowed for specified mails. If enableuploadforchosenusers is 0 and enableuploadforeveryone
+ *   is more than 0 upload is allowed for everyone. If enableuploadforchosenusers and enableuploadforeveryone are 0
+ *   upload for the link is disabled.
+ */
+preciever_list_t* psync_list_email_with_access(unsigned long long linkid, char** err);
+
+int psync_link_add_access(unsigned long long linkid, const char* mail, char** err);
+
+int psync_link_remove_access(unsigned long long linkid, unsigned long long receiverid, char** err);
+
+int psync_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
+  const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
+  int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err);
+
+int psync_change_link_expire(unsigned long long linkid, unsigned long long expire);
+int psync_change_link_password(unsigned long long linkid, const char* password);
+int psync_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers);
+
+/*
  * Publik contacts API functions.
  *
  * psync_list_contacts() Lists cached contacts emails from the buissiness account and team names.
@@ -1319,7 +1356,6 @@ int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t del
  * psync_list_myteams() Lists cached teams that you are member of. Returns same structure like psync_list_contacts
  * only type 3 records filled.
  * */
-
 
 pcontacts_list_t *psync_list_contacts();
 
