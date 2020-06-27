@@ -44,11 +44,11 @@ int do_psync_change_link(unsigned long long linkid, unsigned long long expire, i
   const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
   int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err);
 
-int do_change_link_expire(unsigned long long linkid, unsigned long long expire);
+int do_change_link_expire(unsigned long long linkid, unsigned long long expire, char** err);
 
-int do_change_link_password(unsigned long long linkid, const char* password);
+int do_change_link_password(unsigned long long linkid, const char* password, char** err);
 
-int do_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers);
+int do_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers, char** err);
 
 plink_contents_t *do_show_link(const char *code, char **err /*OUT*/);
 

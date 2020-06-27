@@ -1344,9 +1344,9 @@ int psync_psync_change_link(unsigned long long linkid, unsigned long long expire
   const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
   int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err);
 
-int psync_change_link_expire(unsigned long long linkid, unsigned long long expire);
-int psync_change_link_password(unsigned long long linkid, const char* password);
-int psync_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers);
+int psync_change_link_expire(unsigned long long linkid, unsigned long long expire, char** err);
+int psync_change_link_password(unsigned long long linkid, const char* password, char** err);
+int psync_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers, char** err);
 
 /*
  * Publik contacts API functions.

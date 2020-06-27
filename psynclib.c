@@ -2315,19 +2315,19 @@ int psync_psync_change_link(unsigned long long linkid, unsigned long long expire
   return do_psync_change_link(linkid, expire, delete_expire, linkpassword, delete_password,
     maxtraffic, maxdownloads, enableuploadforeveryone, enableuploadforchosenusers, disableupload, err);
 }
-int psync_change_link_expire(unsigned long long linkid, unsigned long long expire)
+int psync_change_link_expire(unsigned long long linkid, unsigned long long expire, char** err)
 {
-  return do_change_link_expire(linkid, expire);
+  return do_change_link_expire(linkid, expire, err);
 }
 
-int psync_change_link_password(unsigned long long linkid, const char* password)
+int psync_change_link_password(unsigned long long linkid, const char* password, char** err)
 {
-  return do_change_link_password(linkid,password);
+  return do_change_link_password(linkid, password, err);
 }
 
-int psync_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers)
+int psync_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers, char** err)
 {
-  return do_change_link_enable_upload(linkid, enableuploadforeveryone, enableuploadforchosenusers);
+  return do_change_link_enable_upload(linkid, enableuploadforeveryone, enableuploadforchosenusers, err);
 }
 
 pcontacts_list_t *psync_list_contacts() {

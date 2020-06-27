@@ -738,19 +738,79 @@ int do_psync_change_link(unsigned long long linkid, unsigned long long expire, i
   return result;
 }
 
-int do_change_link_expire(unsigned long long linkid, unsigned long long expire)
+int do_change_link_expire(unsigned long long linkid, unsigned long long expire, char** err)
 {
+  psync_socket* api;
+  binresult* bres;
+  uint64_t result;
+  *err = 0;
+  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("expire", expire) };
+  binparam paramsd[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("deleteexpire", 1) };
+  api = psync_apipool_get();
+  if (unlikely(!api)) {
+    debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+    *err = psync_strndup("Connection error.", 17);
+    return -2;
+  }
 
+  if (expire)
+    bres = send_command(api, "changepublink", params);
+  else
+    bres = send_command(api, "changepublink", paramsd);
+
+  result = process_bres("changepublink", bres, api, err);
+  psync_free(bres);
+
+  return result;
 }
 
-int do_change_link_password(unsigned long long linkid, const char* password)
+int do_change_link_password(unsigned long long linkid, const char* password, char** err)
 {
+  psync_socket* api;
+  binresult* bres;
+  uint64_t result;
+  *err = 0;
+  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_STR("linkpassword", password) };
+  binparam paramsd[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_STR("deletepassword", 1) };
+  api = psync_apipool_get();
+  if (unlikely(!api)) {
+    debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+    *err = psync_strndup("Connection error.", 17);
+    return -2;
+  }
 
+  if (password)
+    bres = send_command(api, "changepublink", params);
+  else
+    bres = send_command(api, "changepublink", paramsd);
+
+  result = process_bres("changepublink", bres, api, err);
+  psync_free(bres);
+
+  return result;
 }
 
-int do_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers)
+int do_change_link_enable_upload(unsigned long long linkid, int enableuploadforeveryone, int enableuploadforchosenusers, char** err)
 {
+  psync_socket* api;
+  binresult* bres;
+  uint64_t result;
+  *err = 0;
+  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), 
+    P_NUM("enableuploadforeveryone", enableuploadforeveryone),P_NUM("enableuploadforchosenusers", enableuploadforchosenusers) };
+  api = psync_apipool_get();
+  if (unlikely(!api)) {
+    debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+    *err = psync_strndup("Connection error.", 17);
+    return -2;
+  }
 
+  bres = send_command(api, "changepublink", params);
+
+  result = process_bres("changepublink", bres, api, err);
+  psync_free(bres);
+
+  return result;
 }
 
 
