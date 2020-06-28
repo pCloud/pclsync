@@ -598,8 +598,8 @@ int cache_links(char **err /*OUT*/) {
 
     q=psync_sql_prep_statement("REPLACE INTO links  (id, code, comment, traffic, maxspace, downloads, created,"
                                  " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink,"
-                                 " parentfolderid, haspassword, views, type, expire,enableduploadforchosenusers,enableuploadforeveryone)"
-                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)");
+                                 " parentfolderid, haspassword, views, type, expire, enableduploadforchosenusers, enableuploadforeveryone)"
+                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     psync_sql_bind_uint(q, 1, psync_find_result(link, "linkid", PARAM_NUM)->num);
     psync_sql_bind_string(q, 2, psync_find_result(link, "code", PARAM_STR)->str);
     psync_sql_bind_uint(q, 3, 0);
@@ -614,12 +614,12 @@ int cache_links(char **err /*OUT*/) {
       psync_sql_bind_uint(q, 10, 1);
       psync_sql_bind_uint(q, 11, psync_find_result(meta, "folderid", PARAM_NUM)->num);
       psync_sql_bind_uint(q, 12, 0);
-      if (psync_check_result(link, "enableduploadforchosenusers", PARAM_BOOL)->num){
+      if (psync_check_result(link, "enableduploadforchosenusers", PARAM_BOOL)){
         psync_sql_bind_uint(q, 20, psync_find_result(link, "enableduploadforchosenusers", PARAM_BOOL)->num);
       } else {
         psync_sql_bind_uint(q, 20, 0);
       }
-      if (psync_check_result(link, "enableuploadforeveryone", PARAM_BOOL)->num) {
+      if (psync_check_result(link, "enableuploadforeveryone", PARAM_BOOL)) {
         psync_sql_bind_uint(q, 21, psync_find_result(link, "enableuploadforeveryone", PARAM_BOOL)->num);
       }
       else {
