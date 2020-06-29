@@ -771,7 +771,7 @@ int do_change_link_password(unsigned long long linkid, const char* password, cha
   uint64_t result;
   *err = 0;
   binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_STR("linkpassword", password) };
-  binparam paramsd[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_STR("deletepassword", 1) };
+  binparam paramsd[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("deletepassword", 1) };
   api = psync_apipool_get();
   if (unlikely(!api)) {
     debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
