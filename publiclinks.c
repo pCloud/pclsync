@@ -954,6 +954,9 @@ static int create_link(psync_list_builder_t *builder, void *element, psync_varia
   link->haspassword = psync_get_number(row[16]);
   link->views = psync_get_number(row[17]);
   link->type = psync_get_number(row[18]);
+  link->expire = psync_get_number(row[19]);
+  link->enableuploadforeveryone = psync_get_number(row[20]);
+  link->enableuploadforchosenusers = psync_get_number(row[21]);
   psync_list_add_lstring_offset(builder, offsetof(link_info_t, fulllink), len);
   return 0;
 }
@@ -968,7 +971,8 @@ plink_info_list_t * do_psync_list_links(char **err /*OUT*/) {
 
   res=psync_sql_query_rdlock("SELECT id, code, comment, traffic, maxspace, downloads, created,"
                         " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink,"
-                        " parentfolderid, haspassword, type, views FROM links");
+                        " parentfolderid, haspassword, type, views, expire,"
+                        " enableuploadforeveryone, enableuploadforchosenusers FROM links");
 
   psync_list_bulder_add_sql(builder, res, create_link);
 

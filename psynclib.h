@@ -459,6 +459,7 @@ typedef struct {
   uint8_t haspassword;
   uint8_t type;
   uint64_t views;
+  uint64_t expire;
   uint8_t enableuploadforeveryone;
   uint8_t enableuploadforchosenusers;
 } link_info_t;
