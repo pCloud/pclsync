@@ -619,8 +619,8 @@ int cache_links(char **err /*OUT*/) {
       } else {
         psync_sql_bind_uint(q, 20, 0);
       }
-      if (psync_check_result(link, "enableuploadforeveryone", PARAM_BOOL)) {
-        psync_sql_bind_uint(q, 21, psync_find_result(link, "enableuploadforeveryone", PARAM_BOOL)->num);
+      if (psync_check_result(link, "enableduploadforeveryone", PARAM_BOOL)) {
+        psync_sql_bind_uint(q, 21, psync_find_result(link, "enableduploadforeveryone", PARAM_BOOL)->num);
       }
       else {
         psync_sql_bind_uint(q, 21, 0);
