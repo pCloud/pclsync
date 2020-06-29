@@ -598,7 +598,7 @@ int cache_links(char **err /*OUT*/) {
 
     q=psync_sql_prep_statement("REPLACE INTO links  (id, code, comment, traffic, maxspace, downloads, created,"
                                  " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink,"
-                                 " parentfolderid, haspassword, views, type, expire, enableduploadforchosenusers, enableuploadforeveryone)"
+                                 " parentfolderid, haspassword, views, type, expire, enableuploadforchosenusers, enableuploadforeveryone)"
                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     psync_sql_bind_uint(q, 1, psync_find_result(link, "linkid", PARAM_NUM)->num);
     psync_sql_bind_string(q, 2, psync_find_result(link, "code", PARAM_STR)->str);

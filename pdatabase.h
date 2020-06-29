@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS baccountteam (id INTEGER PRIMARY KEY, name TEXT); \
 CREATE TABLE IF NOT EXISTS links ( \
 id INTEGER PRIMARY KEY, code VARCHAR(2048), comment TEXT, traffic INTEGER, maxspace INTEGER, \
 downloads INTEGER, created INTEGER, modified INTEGER, name VARCHAR(2048),  isfolder INTEGER, folderid INTEGER, fileid INTEGER, isincomming INTEGER, icon INTEGER, fulllink VARCHAR(2048), \
-parentfolderid INTEGER, haspassword INTEGER, type INTEGER, views INTEGER, expire INTEGER, enableduploadforchosenusers INTEGER, enableuploadforeveryone INTEGER); \
+parentfolderid INTEGER, haspassword INTEGER, type INTEGER, views INTEGER, expire INTEGER, enableuploadforchosenusers INTEGER, enableuploadforeveryone INTEGER); \
 CREATE TABLE IF NOT EXISTS contacts (id INTEGER PRIMARY KEY, mail varchar(2048), name TEXT); \
 INSERT OR IGNORE INTO folder (id, name) VALUES (0, '');\
 INSERT OR IGNORE INTO localfolder (id) VALUES (0);\
