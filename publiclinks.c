@@ -974,6 +974,7 @@ plink_info_list_t * do_psync_list_links(char **err /*OUT*/) {
                         " parentfolderid, haspassword, type, views, expire,"
                         " enableuploadforeveryone, enableuploadforchosenusers FROM links");
 
+  if (!res) return NULL;
   psync_list_bulder_add_sql(builder, res, create_link);
 
 
