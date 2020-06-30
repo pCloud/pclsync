@@ -957,7 +957,10 @@ static int create_link(psync_list_builder_t *builder, void *element, psync_varia
   link->haspassword = psync_get_number(row[16]);
   link->views = psync_get_number(row[17]);
   link->type = psync_get_number(row[18]);
-  link->expire = psync_get_number(row[19]);
+  if (!psync_is_null(row[19]))
+  link->expire=psync_get_number(row[19]);
+  else
+    link->expire=0;
   if (!psync_is_null(row[20]))
     link->enableuploadforeveryone = psync_get_number(row[20]);
   else
