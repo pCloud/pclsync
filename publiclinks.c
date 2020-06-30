@@ -747,8 +747,7 @@ int do_change_link_expire(unsigned long long linkid, unsigned long long expire, 
   binresult* bres;
   uint64_t result;
   *err = 0;
-  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("expire", expire) };
-  binparam paramsd[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("deleteexpire", 1) };
+
   api = psync_apipool_get();
   if (unlikely(!api)) {
     debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
@@ -756,10 +755,14 @@ int do_change_link_expire(unsigned long long linkid, unsigned long long expire, 
     return -2;
   }
 
-  if (expire)
+  if (expire) {
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("expire", expire) };
     bres = send_command(api, "changepublink", params);
-  else
+  }
+  else {
+    binparam paramsd[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("deleteexpire", 1) };
     bres = send_command(api, "changepublink", paramsd);
+  }
 
   result = process_bres("changepublink", bres, api, err);
   psync_free(bres);
@@ -773,8 +776,7 @@ int do_change_link_password(unsigned long long linkid, const char* password, cha
   binresult* bres;
   uint64_t result;
   *err = 0;
-  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_STR("linkpassword", password) };
-  binparam paramsd[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("deletepassword", 1) };
+  
   api = psync_apipool_get();
   if (unlikely(!api)) {
     debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
@@ -782,11 +784,14 @@ int do_change_link_password(unsigned long long linkid, const char* password, cha
     return -2;
   }
 
-  if (password)
+  if (password){
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_STR("linkpassword", password) };
     bres = send_command(api, "changepublink", params);
-  else
+  }
+  else {
+    binparam paramsd[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), P_NUM("deletepassword", 1) };
     bres = send_command(api, "changepublink", paramsd);
-
+  }
   result = process_bres("changepublink", bres, api, err);
   psync_free(bres);
 
@@ -815,7 +820,6 @@ int do_change_link_enable_upload(unsigned long long linkid, int enableuploadfore
 
   return result;
 }
-
 
 int64_t do_psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxspace, int maxfiles) {
   psync_socket *api;
