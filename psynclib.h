@@ -547,6 +547,16 @@ typedef struct {
   reciever_info_t entries[];
 } preciever_list_t;
 
+typedef struct {
+  uint64_t recieverid;
+  const char* mail;
+} bookmark_info_t;
+
+typedef struct {
+  size_t entrycnt;
+  bookmark_info_t entries[];
+} bookmarks_list_t;
+
 #define PSYNC_INVALID_SYNCID (psync_syncid_t)-1
 
 #ifdef __cplusplus

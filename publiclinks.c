@@ -636,7 +636,10 @@ int cache_links(char **err /*OUT*/) {
     psync_sql_bind_uint(q, 16, psync_find_result(link, "haspassword", PARAM_BOOL)->num);
     psync_sql_bind_uint(q, 17, psync_find_result(link, "views", PARAM_NUM)->num);
 	  psync_sql_bind_uint(q, 18, psync_find_result(link, "type", PARAM_NUM)->num);
-    psync_sql_bind_uint(q, 19, psync_find_result(link, "expire", PARAM_NUM)->num);
+    if (psync_check_result(link, "expire", PARAM_NUM))
+      psync_sql_bind_uint(q, 19, psync_find_result(link, "expire", PARAM_NUM)->num);
+    else
+      psync_sql_bind_uint(q, 19, 0);
     
     psync_sql_run_free(q);
   }
@@ -955,8 +958,14 @@ static int create_link(psync_list_builder_t *builder, void *element, psync_varia
   link->views = psync_get_number(row[17]);
   link->type = psync_get_number(row[18]);
   link->expire = psync_get_number(row[19]);
-  link->enableuploadforeveryone = psync_get_number(row[20]);
-  link->enableuploadforchosenusers = psync_get_number(row[21]);
+  if (!psync_is_null(row[20]))
+    link->enableuploadforeveryone = psync_get_number(row[20]);
+  else
+    link->enableuploadforeveryone = 0;
+  if (!psync_is_null(row[21]))
+    link->enableuploadforchosenusers = psync_get_number(row[21]);
+  else
+    link->enableuploadforchosenusers = 0;
   psync_list_add_lstring_offset(builder, offsetof(link_info_t, fulllink), len);
   return 0;
 }
@@ -1340,6 +1349,83 @@ int do_link_remove_access(unsigned long long linkid, unsigned long long receiver
 	psync_free(bres);
 
 	return result;
+}
+
+int do_cache_bookmarks(char** err)
+{
+  psync_socket* api;
+  binresult* bres;
+  uint64_t result;
+  const char* errorret;
+  psync_list_builder_t* builder;
+  reciever_info_t* pcont;
+  const binresult* list = 0, * reciever = 0, * br = 0;
+  preciever_list_t* ret = 0;
+  int i = 0, lcnt;
+  *err = 0;
+  //publink/listemailwithaccess
+  binparam params[] = { P_STR("auth", psync_my_auth) };
+  api = psync_apipool_get();
+  if (unlikely(!api)) {
+    debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+    *err = psync_strndup("Connection error.", 17);
+    return NULL;
+  }
+
+  bres = send_command(api, "publink/listpins", params);
+
+  if (likely(bres))
+    psync_apipool_release(api);
+  else {
+    psync_apipool_release_bad(api);
+    debug(D_WARNING, "Send command returned in valid result.\n");
+    *err = psync_strndup("Connection error.", 17);
+    return NULL;
+  }
+  result = psync_find_result(bres, "result", PARAM_NUM)->num;
+  if (unlikely(result)) {
+    errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+    *err = psync_strndup(errorret, strlen(errorret));
+    debug(D_WARNING, "command deletepublink returned error code %u", (unsigned)result);
+    psync_process_api_error(result);
+    if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+      return NULL;
+    else {
+      *err = psync_strndup("Connection error.", 17);
+      return NULL;
+    }
+  }
+
+  list = psync_find_result(bres, "list", PARAM_ARRAY);
+  lcnt = list->length;
+  if (!lcnt) {
+    psync_free(bres);
+    return NULL;
+  }
+  builder = psync_list_builder_create(sizeof(bookmark_info_t), offsetof(bookmarks_list_t, entries));
+  for (i = 0; i < lcnt; ++i) {
+    reciever = list->array[i];
+    pcont = (link_cont_t*)psync_list_bulder_add_element(builder);
+    br = psync_find_result(reciever, "email", PARAM_STR);
+    pcont->mail = br->str;
+    psync_list_add_lstring_offset(builder, offsetof(link_cont_t, name), br->length);
+    pcont->recieverid = psync_find_result(reciever, "receiverid", PARAM_NUM)->num;
+  }
+  ret = (link_cont_t*)psync_list_builder_finalize(builder);
+
+  psync_free(bres);
+
+  return ret;
+}
+
+int do_save_bookmark(const char* code, int locationid, const char* name, const char* description, char** err)
+{
+
+}
+
+int do_remove_bookmark(const char* code, int locationid, char** err)
+{
+
 }
 
 int process_bres(const char* cmd, binresult *bres, psync_socket *api, char **err)
