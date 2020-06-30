@@ -548,8 +548,11 @@ typedef struct {
 } preciever_list_t;
 
 typedef struct {
-  uint64_t recieverid;
-  const char* mail;
+  const char* link;
+  const char* name;
+  const char* code;
+  uint64_t created;
+  uint8_t locationid;
 } bookmark_info_t;
 
 typedef struct {
@@ -1338,6 +1341,9 @@ int64_t psync_screenshot_public_link(const char *path, int hasdelay, int64_t del
  * psync_link_remove_access Remove upload access of user specified by recieverid to link specified by linkid
  * psync_psync_change_link Changes settings of download link
  *
+ * psync_cache_bookmarks Returns list of bookmarked links.
+ * psync_remove_bookmark Removes bookmark be given code and locationid of the link.
+ *
  * psync_change_link_expire Change expire date of link. Delete expire date if expire equals 0.
  * psync_change_link_password Change password of link. Delete password date if password equals NULL.
  * psync_change_link_enable_upload Allows upload to a download link. If enableuploadforchosenusers is
@@ -1350,6 +1356,9 @@ preciever_list_t* psync_list_email_with_access(unsigned long long linkid, char**
 int psync_link_add_access(unsigned long long linkid, const char* mail, char** err);
 
 int psync_link_remove_access(unsigned long long linkid, unsigned long long receiverid, char** err);
+
+bookmarks_list_t* psync_cache_bookmarks(char** err);
+int psync_remove_bookmark(const char* code, int locationid, char** err);
 
 int psync_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
   const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,

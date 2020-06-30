@@ -958,7 +958,7 @@ static int create_link(psync_list_builder_t *builder, void *element, psync_varia
   link->views = psync_get_number(row[17]);
   link->type = psync_get_number(row[18]);
   if (!psync_is_null(row[19]))
-  link->expire=psync_get_number(row[19]);
+    link->expire=psync_get_number(row[19]);
   else
     link->expire=0;
   if (!psync_is_null(row[20]))
@@ -1354,19 +1354,18 @@ int do_link_remove_access(unsigned long long linkid, unsigned long long receiver
 	return result;
 }
 
-int do_cache_bookmarks(char** err)
+bookmarks_list_t *do_cache_bookmarks(char** err)
 {
   psync_socket* api;
   binresult* bres;
   uint64_t result;
   const char* errorret;
   psync_list_builder_t* builder;
-  reciever_info_t* pcont;
-  const binresult* list = 0, * reciever = 0, * br = 0;
-  preciever_list_t* ret = 0;
+  bookmark_info_t* pcont;
+  const binresult* list = 0, * bookmark = 0, * br = 0;
+  bookmarks_list_t* ret = 0;
   int i = 0, lcnt;
   *err = 0;
-  //publink/listemailwithaccess
   binparam params[] = { P_STR("auth", psync_my_auth) };
   api = psync_apipool_get();
   if (unlikely(!api)) {
@@ -1407,12 +1406,19 @@ int do_cache_bookmarks(char** err)
   }
   builder = psync_list_builder_create(sizeof(bookmark_info_t), offsetof(bookmarks_list_t, entries));
   for (i = 0; i < lcnt; ++i) {
-    reciever = list->array[i];
-    pcont = (link_cont_t*)psync_list_bulder_add_element(builder);
-    br = psync_find_result(reciever, "email", PARAM_STR);
-    pcont->mail = br->str;
-    psync_list_add_lstring_offset(builder, offsetof(link_cont_t, name), br->length);
-    pcont->recieverid = psync_find_result(reciever, "receiverid", PARAM_NUM)->num;
+    bookmark = list->array[i];
+    pcont = (bookmark_info_t*)psync_list_bulder_add_element(builder);
+    br = psync_find_result(bookmark, "link", PARAM_STR);
+    pcont->link = br->str;
+    psync_list_add_lstring_offset(builder, offsetof(bookmark_info_t, link), br->length);
+    br = psync_find_result(bookmark, "name", PARAM_STR);
+    pcont->name = br->str;
+    psync_list_add_lstring_offset(builder, offsetof(bookmark_info_t, name), br->length);
+    br = psync_find_result(bookmark, "code", PARAM_STR);
+    pcont->code = br->str;
+    psync_list_add_lstring_offset(builder, offsetof(bookmark_info_t, code), br->length);
+    pcont->created = psync_find_result(bookmark, "ctime", PARAM_NUM)->num;
+    pcont->locationid = psync_find_result(bookmark, "locationid", PARAM_NUM)->num;
   }
   ret = (link_cont_t*)psync_list_builder_finalize(builder);
 
@@ -1428,7 +1434,25 @@ int do_save_bookmark(const char* code, int locationid, const char* name, const c
 
 int do_remove_bookmark(const char* code, int locationid, char** err)
 {
+  psync_socket* api;
+  binresult* bres;
+  uint64_t result;
+  const char* errorret;
 
+  *err = 0;
+  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("locationid", locationid), P_STR("code", code) };
+  api = psync_apipool_get();
+  if (unlikely(!api)) {
+    debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+    *err = psync_strndup("Connection error.", 17);
+    return -2;
+  }
+
+  bres = send_command(api, "publink/unpin", params);
+  result = process_bres("publink/unpin", bres, api, err);
+  psync_free(bres);
+
+  return result;
 }
 
 int process_bres(const char* cmd, binresult *bres, psync_socket *api, char **err)

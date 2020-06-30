@@ -2308,6 +2308,16 @@ int psync_link_remove_access(unsigned long long linkid, unsigned long long recei
   return do_link_remove_access(linkid, receiverid, err);
 }
 
+bookmarks_list_t* psync_cache_bookmarks(char** err)
+{
+  return do_cache_bookmarks(err);
+}
+
+int psync_remove_bookmark(const char* code, int locationid, char** err)
+{
+  return do_remove_bookmark(code, locationid, err);
+}
+
 int psync_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
   const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
   int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err)

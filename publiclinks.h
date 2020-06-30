@@ -65,7 +65,7 @@ int do_psync_change_link(unsigned long long linkid, unsigned long long expire, i
 preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **err);
 int do_link_add_access(unsigned long long linkid, const char *mail, char **err);
 int do_link_remove_access(unsigned long long linkid, unsigned long long receiverid, char **err);
-int do_cache_bookmarks();
+bookmarks_list_t *do_cache_bookmarks(char** err);
 int do_save_bookmark(const char* code, int locationid, const char* name, const char* description, char** err);
 int do_remove_bookmark(const char* code, int locationid, char** err);
 #endif //_PUBLIC_LINKS_H
