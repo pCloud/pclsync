@@ -286,12 +286,12 @@ ALTER TABLE links ADD parentfolderid INTEGER; \
 ALTER TABLE links ADD haspassword INTEGER; \
 ALTER TABLE links ADD type INTEGER; \
 ALTER TABLE links ADD views INTEGER; \
-ALTER TABLE links ADD enableuploadforeveryone INTEGER; \
-ALTER TABLE links ADD enableuploadforchosenusers INTEGER; \
 UPDATE setting SET value=21 WHERE id='dbversion'; \
-COMMIT;"
+COMMIT;",
 "BEGIN;\
 ALTER TABLE links ADD expire INTEGER; \
+ALTER TABLE links ADD enableuploadforeveryone INTEGER; \
+ALTER TABLE links ADD enableuploadforchosenusers INTEGER; \
 UPDATE setting SET value=22 WHERE id='dbversion'; \
 COMMIT;"
 };

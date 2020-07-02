@@ -600,6 +600,10 @@ int cache_links(char **err /*OUT*/) {
                                  " modified, name,  isfolder, folderid, fileid, isincomming, icon, fulllink,"
                                  " parentfolderid, haspassword, views, type, expire, enableuploadforchosenusers, enableuploadforeveryone)"
                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    if (!q) {
+      debug(D_WARNING, "cache links sql prep return NULL", (unsigned)result);
+      return -1;
+    }
     psync_sql_bind_uint(q, 1, psync_find_result(link, "linkid", PARAM_NUM)->num);
     psync_sql_bind_string(q, 2, psync_find_result(link, "code", PARAM_STR)->str);
     psync_sql_bind_uint(q, 3, 0);
