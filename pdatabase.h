@@ -289,9 +289,11 @@ ALTER TABLE links ADD views INTEGER; \
 UPDATE setting SET value=21 WHERE id='dbversion'; \
 COMMIT;",
 "BEGIN;\
-ALTER TABLE links ADD expire INTEGER; \
-ALTER TABLE links ADD enableuploadforeveryone INTEGER; \
-ALTER TABLE links ADD enableuploadforchosenusers INTEGER; \
+DROP TABLE links; \
+CREATE TABLE IF NOT EXISTS links ( \
+id INTEGER PRIMARY KEY, code VARCHAR(2048), comment TEXT, traffic INTEGER, maxspace INTEGER, \
+downloads INTEGER, created INTEGER, modified INTEGER, name VARCHAR(2048),  isfolder INTEGER, folderid INTEGER, fileid INTEGER, isincomming INTEGER, icon INTEGER, fulllink VARCHAR(2048), \
+parentfolderid INTEGER, haspassword INTEGER, type INTEGER, views INTEGER, expire INTEGER, enableuploadforchosenusers INTEGER, enableuploadforeveryone INTEGER); \
 UPDATE setting SET value=22 WHERE id='dbversion'; \
 COMMIT;"
 };
