@@ -1270,7 +1270,7 @@ preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **er
   	return NULL;
   }
   
-  bres = send_command(api, "publink/listemailwithaccess", params);
+  bres = send_command(api, "publink/listemailswithaccess", params);
   
   if (likely(bres))
   	psync_apipool_release(api);
