@@ -641,7 +641,7 @@ int cache_links(char **err /*OUT*/) {
     psync_sql_bind_uint(q, 17, psync_find_result(link, "views", PARAM_NUM)->num);
 	  psync_sql_bind_uint(q, 18, psync_find_result(link, "type", PARAM_NUM)->num);
     if (psync_check_result(link, "expire", PARAM_NUM))
-      psync_sql_bind_uint(q, 19, psync_find_result(link, "expire", PARAM_NUM)->num);
+      psync_sql_bind_uint(q, 19, psync_find_result(link, "expires", PARAM_NUM)->num);
     else
       psync_sql_bind_uint(q, 19, 0);
     
@@ -1251,56 +1251,58 @@ int do_delete_all_file_links(psync_fileid_t fileid, char**err) {
 
 preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **err)
 {
-	psync_socket *api;
-	binresult *bres;
-	uint64_t result;
-	const char *errorret;
-	psync_list_builder_t *builder;
+  psync_socket *api;
+  binresult *bres;
+  uint64_t result;
+  const char *errorret;
+  psync_list_builder_t *builder;
   reciever_info_t* pcont;
   const binresult* list = 0, *reciever=0, *br=0;
   preciever_list_t* ret = 0;
   int i = 0, lcnt;
-	*err = 0;
-	//publink/listemailwithaccess
-	binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid) };
-	api = psync_apipool_get();
-	if (unlikely(!api)) {
-		debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
-		*err = psync_strndup("Connection error.", 17);
-		return NULL;
-	}
-
-	bres = send_command(api, "publink/listemailwithaccess", params);
-
-	if (likely(bres))
-		psync_apipool_release(api);
-	else {
-		psync_apipool_release_bad(api);
-		debug(D_WARNING, "Send command returned in valid result.\n");
-		*err = psync_strndup("Connection error.", 17);
-		return NULL;
-	}
-	result = psync_find_result(bres, "result", PARAM_NUM)->num;
-	if (unlikely(result)) {
-		errorret = psync_find_result(bres, "error", PARAM_STR)->str;
-		*err = psync_strndup(errorret, strlen(errorret));
-		debug(D_WARNING, "command deletepublink returned error code %u", (unsigned)result);
-		psync_process_api_error(result);
-		if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
-			return NULL;
-		else {
-			*err = psync_strndup("Connection error.", 17);
-			return NULL;
-		}
-	}
-
+  *err = 0;
+  //publink/listemailwithaccess
+  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid) };
+  api = psync_apipool_get();
+  if (unlikely(!api)) {
+  	debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+  	*err = psync_strndup("Connection error.", 17);
+  	return NULL;
+  }
+  
+  bres = send_command(api, "publink/listemailwithaccess", params);
+  
+  if (likely(bres))
+  	psync_apipool_release(api);
+  else {
+  	psync_apipool_release_bad(api);
+  	debug(D_WARNING, "Send command returned in valid result.\n");
+  	*err = psync_strndup("Connection error.", 17);
+  	return NULL;
+  }
+  result = psync_find_result(bres, "result", PARAM_NUM)->num;
+  if (unlikely(result)) {
+  	errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+  	*err = psync_strndup(errorret, strlen(errorret));
+  	debug(D_WARNING, "command deletepublink returned error code %u", (unsigned)result);
+  	psync_process_api_error(result);
+  	if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+  		return NULL;
+  	else {
+  		*err = psync_strndup("Connection error.", 17);
+  		return NULL;
+  	}
+  }
+  
   list = psync_find_result(bres, "list", PARAM_ARRAY);
   lcnt = list->length;
-  if (!lcnt) {
-    psync_free(bres);
-    return NULL;
-  }
   builder = psync_list_builder_create(sizeof(reciever_info_t), offsetof(preciever_list_t, entries));
+
+  if (!lcnt) {
+    ret = (link_cont_t*)psync_list_builder_finalize(builder);
+    psync_free(bres);
+    return ret;
+  }
   for (i = 0; i < lcnt; ++i) {
     reciever = list->array[i];
     pcont = (link_cont_t*)psync_list_bulder_add_element(builder);
@@ -1311,9 +1313,9 @@ preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **er
   }
   ret = (link_cont_t*)psync_list_builder_finalize(builder);
 
-	psync_free(bres);
-
-	return ret;
+  psync_free(bres);
+  
+  return ret;
 }
 
 int do_link_add_access(unsigned long long linkid, const char *mail,char **err)
