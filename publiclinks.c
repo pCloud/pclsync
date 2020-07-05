@@ -640,7 +640,7 @@ int cache_links(char **err /*OUT*/) {
     psync_sql_bind_uint(q, 16, psync_find_result(link, "haspassword", PARAM_BOOL)->num);
     psync_sql_bind_uint(q, 17, psync_find_result(link, "views", PARAM_NUM)->num);
 	  psync_sql_bind_uint(q, 18, psync_find_result(link, "type", PARAM_NUM)->num);
-    if (psync_check_result(link, "expire", PARAM_NUM))
+    if (psync_check_result(link, "expires", PARAM_NUM))
       psync_sql_bind_uint(q, 19, psync_find_result(link, "expires", PARAM_NUM)->num);
     else
       psync_sql_bind_uint(q, 19, 0);
