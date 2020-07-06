@@ -1382,12 +1382,13 @@ bookmarks_list_t *do_cache_bookmarks(char** err)
 
   list = psync_find_result(bres, "list", PARAM_ARRAY);
   lcnt = list->length;
+  builder = psync_list_builder_create(sizeof(bookmark_info_t), offsetof(bookmarks_list_t, entries));
   if (!lcnt) {
     ret = (link_cont_t*)psync_list_builder_finalize(builder);
     psync_free(bres);
     return ret;
   }
-  builder = psync_list_builder_create(sizeof(bookmark_info_t), offsetof(bookmarks_list_t, entries));
+  
   for (i = 0; i < lcnt; ++i) {
     bookmark = list->array[i];
     pcont = (bookmark_info_t*)psync_list_bulder_add_element(builder);
