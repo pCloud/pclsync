@@ -199,9 +199,7 @@ int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char 
 			*err = psync_strndup("Connection error.", 17);
 			return -2;
 		}
-
 		bres = send_command(api, "getfolderpublink", params);
-
 	}
 	else {
 		binparam* t;
@@ -226,7 +224,6 @@ int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char 
 		bres = do_send_command(api, "getfolderpublink", sizeof("getfolderpublink") - 1, t, pind, -1, 1);
 		psync_free(t);
 	}
-
 	if (likely(bres))
 		psync_apipool_release(api);
 	else {
@@ -247,18 +244,14 @@ int64_t do_psync_folder_public_link(const char *path, char **link /*OUT*/, char 
 			return -1;
 		}
 	}
-
 	rescode = psync_find_result(bres, "link", PARAM_STR)->str;
 	*link = psync_strndup(rescode, strlen(rescode));
-
-
 	result = 0;
 	result = psync_find_result(bres, "linkid", PARAM_NUM)->num;
 
 	psync_free(bres);
 
 	return result;
-
 }
 
 int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic, const char* password) {
@@ -267,10 +260,8 @@ int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, 
   uint64_t result;
   const char *rescode;
   const char *errorret;
-
   *err  = 0;
   *link = 0;
-
   if (!expire && !maxdownloads && !maxtraffic) {
     binparam params[] = {P_STR("auth", psync_my_auth), P_STR("path", path)};
     api = psync_apipool_get();
@@ -279,9 +270,7 @@ int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, 
       *err = psync_strndup("Connection error.", 17);
       return -2;
     }
-
     bres = send_command(api, "getfolderpublink", params);
-
   } else {
     binparam* t;
     int numparam = 2 + !!expire + !!maxdownloads + !!maxtraffic + !!password;
@@ -331,15 +320,11 @@ int64_t do_psync_folder_public_link_full(const char *path, char **link /*OUT*/, 
 
   rescode = psync_find_result(bres, "link", PARAM_STR)->str;
   *link = psync_strndup(rescode, strlen(rescode));
-
-
-  result = 0;
   result = psync_find_result(bres, "linkid", PARAM_NUM)->num;
 
   psync_free(bres);
 
   return result;
-
 }
 
 int64_t do_psync_folder_updownlink_link(int canupload, unsigned long long folderid, const char* mail, char **err /*OUT*/) {
@@ -348,15 +333,13 @@ int64_t do_psync_folder_updownlink_link(int canupload, unsigned long long folder
 	uint64_t result;
 	const char *errorret;
 	binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("mail", mail), P_NUM("canupload", canupload) };
-	*err = 0;
-		
+	*err = 0;		
 	api = psync_apipool_get();
 	if (unlikely(!api)) {
 		debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
 		*err = psync_strndup("Connection error.", 17);
 		return -2;
 	}
-
   bres = send_command(api, "publink/createfolderlinkandsend", params);
 
 	if (likely(bres))
@@ -584,15 +567,12 @@ int cache_links(char **err /*OUT*/) {
       return 0;
     }
   }
-
   publinks=psync_find_result(bres, "publinks", PARAM_ARRAY);
-
   linkscnt = publinks->length;
   if (!linkscnt){
     psync_free(bres);
     return 0;
   }
-
   for (i = 0; i < linkscnt; ++i) {
     link = publinks->array[i];
 
@@ -655,9 +635,7 @@ int do_psync_delete_link(int64_t linkid, char **err /*OUT*/) {
   binresult *bres;
   uint64_t result;
   const char *errorret;
-
   *err  = 0;
-
   binparam params[] = {P_STR("auth", psync_my_auth), P_NUM("linkid", linkid)};
   api = psync_apipool_get();
   if (unlikely(!api)) {
@@ -665,9 +643,7 @@ int do_psync_delete_link(int64_t linkid, char **err /*OUT*/) {
     *err = psync_strndup("Connection error.", 17);
     return -2;
   }
-
   bres = send_command(api, "deletepublink", params);
-
 
   if (likely(bres))
     psync_apipool_release(api);
@@ -690,10 +666,7 @@ int do_psync_delete_link(int64_t linkid, char **err /*OUT*/) {
       return -1;
     }
   }
-
-
   psync_free(bres);
-
   return 0;
 }
 
@@ -1261,17 +1234,14 @@ preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **er
   preciever_list_t* ret = 0;
   int i = 0, lcnt;
   *err = 0;
-  //publink/listemailwithaccess
   binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid) };
   api = psync_apipool_get();
   if (unlikely(!api)) {
   	debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
   	*err = psync_strndup("Connection error.", 17);
   	return NULL;
-  }
-  
-  bres = send_command(api, "publink/listemailswithaccess", params);
-  
+  }  
+  bres = send_command(api, "publink/listemailswithaccess", params);  
   if (likely(bres))
   	psync_apipool_release(api);
   else {
@@ -1413,8 +1383,9 @@ bookmarks_list_t *do_cache_bookmarks(char** err)
   list = psync_find_result(bres, "list", PARAM_ARRAY);
   lcnt = list->length;
   if (!lcnt) {
+    ret = (link_cont_t*)psync_list_builder_finalize(builder);
     psync_free(bres);
-    return NULL;
+    return ret;
   }
   builder = psync_list_builder_create(sizeof(bookmark_info_t), offsetof(bookmarks_list_t, entries));
   for (i = 0; i < lcnt; ++i) {
