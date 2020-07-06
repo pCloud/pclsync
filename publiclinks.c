@@ -1284,7 +1284,7 @@ preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **er
   if (unlikely(result)) {
   	errorret = psync_find_result(bres, "error", PARAM_STR)->str;
   	*err = psync_strndup(errorret, strlen(errorret));
-  	debug(D_WARNING, "command deletepublink returned error code %u", (unsigned)result);
+  	debug(D_WARNING, "command listemailswithaccess returned error code %u", (unsigned)result);
   	psync_process_api_error(result);
   	if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
   		return NULL;
@@ -1299,19 +1299,21 @@ preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **er
   builder = psync_list_builder_create(sizeof(reciever_info_t), offsetof(preciever_list_t, entries));
 
   if (!lcnt) {
-    ret = (link_cont_t*)psync_list_builder_finalize(builder);
+    ret = (preciever_list_t*)psync_list_builder_finalize(builder);
     psync_free(bres);
     return ret;
   }
   for (i = 0; i < lcnt; ++i) {
     reciever = list->array[i];
-    pcont = (link_cont_t*)psync_list_bulder_add_element(builder);
+    pcont = (reciever_info_t*)psync_list_bulder_add_element(builder);
     br = psync_find_result(reciever, "email", PARAM_STR);
-    pcont->mail = br->str;
-    psync_list_add_lstring_offset(builder, offsetof(link_cont_t, name), br->length);
+    if (br) {
+      pcont->mail = br->str;
+      psync_list_add_lstring_offset(builder, offsetof(reciever_info_t, mail), br->length);
+    }
     pcont->recieverid = psync_find_result(reciever, "receiverid", PARAM_NUM)->num;
   }
-  ret = (link_cont_t*)psync_list_builder_finalize(builder);
+  ret = (preciever_list_t*)psync_list_builder_finalize(builder);
 
   psync_free(bres);
   
