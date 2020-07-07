@@ -613,6 +613,8 @@ int cache_links(char **err /*OUT*/) {
       psync_sql_bind_uint(q, 10, 0);
       psync_sql_bind_uint(q, 11, 0);
       psync_sql_bind_uint(q, 12, psync_find_result(meta, "fileid", PARAM_NUM)->num);
+      psync_sql_bind_uint(q, 20, 0);
+      psync_sql_bind_uint(q, 21, 0);
     }
     psync_sql_bind_uint(q, 13, psync_find_result(meta, "icon", PARAM_NUM)->num);
     psync_sql_bind_string(q, 14, psync_find_result(link, "link", PARAM_STR)->str);
@@ -781,16 +783,22 @@ int do_change_link_enable_upload(unsigned long long linkid, int enableuploadfore
   binresult* bres;
   uint64_t result;
   *err = 0;
-  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid), 
-    P_NUM("enableuploadforeveryone", enableuploadforeveryone),P_NUM("enableuploadforchosenusers", enableuploadforchosenusers) };
   api = psync_apipool_get();
   if (unlikely(!api)) {
     debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
     *err = psync_strndup("Connection error.", 17);
     return -2;
   }
-
-  bres = send_command(api, "changepublink", params);
+  if (enableuploadforeveryone || enableuploadforchosenusers){
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid),
+    P_NUM("enableuploadforeveryone", enableuploadforeveryone),P_NUM("enableuploadforchosenusers", enableuploadforchosenusers) };
+    bres = send_command(api, "changepublink", params);
+  }
+  else {
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("linkid", linkid),P_NUM("disableupload", 1) };
+    bres = send_command(api, "changepublink", params);
+  }
+  
 
   result = process_bres("changepublink", bres, api, err);
   psync_free(bres);
@@ -1290,7 +1298,7 @@ preciever_list_t *do_list_email_with_access(unsigned long long linkid, char **er
   return ret;
 }
 
-int do_link_add_access(unsigned long long linkid, const char *mail,char **err)
+int do_link_add_access(unsigned long long linkid, const char *mail, char **err)
 {
 	psync_socket *api;
 	binresult *bres;
