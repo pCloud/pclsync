@@ -1447,6 +1447,31 @@ int do_remove_bookmark(const char* code, int locationid, char** err)
   return result;
 }
 
+int do_change_bookmark(const char* code, int locationid, const char* name, const char* description, char** err)
+{
+  psync_socket* api;
+  binresult* bres;
+  uint64_t result;
+  const char* errorret;
+
+  *err = 0;
+  //publink/addaccess
+  binparam params[] = { P_STR("auth", psync_my_auth), P_STR("code", code), P_NUM("locationid", locationid),
+    P_STR("name", name), P_STR("description", description) };
+  api = psync_apipool_get();
+  if (unlikely(!api)) {
+    debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+    *err = psync_strndup("Connection error.", 17);
+    return -2;
+  }
+
+  bres = send_command(api, "publink/changepin", params);
+  result = process_bres("publink/changepin", bres, api, err);
+  psync_free(bres);
+
+  return result;
+}
+
 int process_bres(const char* cmd, binresult *bres, psync_socket *api, char **err)
 {
 	const char *errorret;

@@ -68,4 +68,5 @@ int do_link_remove_access(unsigned long long linkid, unsigned long long receiver
 bookmarks_list_t *do_cache_bookmarks(char** err);
 int do_save_bookmark(const char* code, int locationid, const char* name, const char* description, char** err);
 int do_remove_bookmark(const char* code, int locationid, char** err);
+int do_change_bookmark(const char* code, int locationid, const char* name, const char* description, char** err);
 #endif //_PUBLIC_LINKS_H

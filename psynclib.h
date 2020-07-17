@@ -1359,6 +1359,7 @@ int psync_link_remove_access(unsigned long long linkid, unsigned long long recei
 
 bookmarks_list_t* psync_cache_bookmarks(char** err);
 int psync_remove_bookmark(const char* code, int locationid, char** err);
+int psync_change_bookmark(const char* code, int locationid, const char* name, const char* description, char** err);
 
 int psync_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
   const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,

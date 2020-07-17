@@ -2463,3 +2463,8 @@ int psync_send_publink(const char *code, const char *mail, const char *message, 
 	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("code", code), P_STR("mails", mail), P_STR("message", message), P_NUM("source", 1) };
 	return psync_run_command("sendpublink", params, err);
 }
+
+int psync_change_bookmark(const char* code, int locationid, const char* name, const char* description, char** err)
+{
+  return do_change_bookmark(code, locationid, name, description, err);
+}
