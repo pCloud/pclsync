@@ -551,6 +551,7 @@ typedef struct {
   const char* link;
   const char* name;
   const char* code;
+  const char* description;
   uint64_t created;
   uint8_t locationid;
 } bookmark_info_t;
