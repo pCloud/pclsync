@@ -1425,11 +1425,6 @@ bookmarks_list_t *do_cache_bookmarks(char** err)
   return ret;
 }
 
-int do_save_bookmark(const char* code, int locationid, const char* name, const char* description, char** err)
-{
-
-}
-
 int do_remove_bookmark(const char* code, int locationid, char** err)
 {
   psync_socket* api;

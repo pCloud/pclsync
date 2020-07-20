@@ -2318,6 +2318,11 @@ int psync_remove_bookmark(const char* code, int locationid, char** err)
   return do_remove_bookmark(code, locationid, err);
 }
 
+int psync_change_bookmark(const char* code, int locationid, const char* name, const char* description, char** err)
+{
+  return do_change_bookmark(code, locationid, name, description, err);
+}
+
 int psync_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
   const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,
   int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err)
@@ -2462,9 +2467,4 @@ void set_tfa_flag(int value){
 int psync_send_publink(const char *code, const char *mail, const char *message, char **err){
 	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("code", code), P_STR("mails", mail), P_STR("message", message), P_NUM("source", 1) };
 	return psync_run_command("sendpublink", params, err);
-}
-
-int psync_change_bookmark(const char* code, int locationid, const char* name, const char* description, char** err)
-{
-  return do_change_bookmark(code, locationid, name, description, err);
 }
