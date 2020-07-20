@@ -1356,7 +1356,7 @@ bookmarks_list_t *do_cache_bookmarks(char** err)
   bookmarks_list_t* ret = 0;
   int i = 0, lcnt;
   *err = 0;
-  binparam params[] = { P_STR("auth", psync_my_auth) };
+  binparam params[] = { P_STR("auth", psync_my_auth) , P_STR("timeformat", "timestamp") };
   api = psync_apipool_get();
   if (unlikely(!api)) {
     debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
@@ -1409,7 +1409,7 @@ bookmarks_list_t *do_cache_bookmarks(char** err)
     br = psync_find_result(bookmark, "code", PARAM_STR);
     pcont->code = br->str;
     psync_list_add_lstring_offset(builder, offsetof(bookmark_info_t, code), br->length);
-    br = psync_find_result(bookmark, "code", PARAM_STR);
+    br = psync_find_result(bookmark, "description", PARAM_STR);
     if (br){
       pcont->description = br->str;
       psync_list_add_lstring_offset(builder, offsetof(bookmark_info_t, description), br->length);
