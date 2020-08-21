@@ -184,8 +184,7 @@ char *generate_device_id(){
   return psync_strdup(deviceidhex);
 }
 
-int check_active_subscribtion(const binresult *res)
-{
+int check_active_subscribtion(const binresult *res){
   const binresult *sub;
   char *status;
   int subscnt,i;
@@ -196,6 +195,41 @@ int check_active_subscribtion(const binresult *res)
     return 1;
   }
   psync_free(status);
+  return 0;
+}
+
+int check_user_relocated(uint64_t luserid, psync_socket* sock){
+  binresult* res;
+  const binresult* userids;
+  uint64_t result,userid;
+  int cnt,i,lid,clid;
+  binresult* id;
+  binparam params[] = { P_STR("timeformat", "timestamp"),
+                      P_STR("auth", psync_my_auth)};
+  res = send_command(sock, "getolduserids", params);
+  if(unlikely_log(!res)) return 0;
+  result = psync_find_result(res, "result", PARAM_NUM);
+  if(result){
+    debug(D_NOTICE, "getolduserids returned error %lu %s", (unsigned long)result, psync_find_result(res, "error", PARAM_STR)->str);
+    psync_free(res);
+    return 0;
+  }
+
+  userids = psync_find_result(res, "userids", PARAM_ARRAY);
+  cnt = userids->length;
+  if (!cnt) {
+    psync_free(res);
+    return 0;
+  }
+
+  clid = psync_sql_cellstr("SELECT value FROM setting WHERE id='location_id'");
+
+  for (i = 0; i < cnt; ++i) {
+    id = userids->array[i];
+    userid = psync_find_result(id, "userid", PARAM_NUM)->num;
+    lid = psync_find_result(id, "locationid", PARAM_NUM)->num;
+    if (luserid == userid && lid == clid) return 0;
+  }
   return 0;
 }
 
@@ -331,7 +365,7 @@ static psync_socket *get_connected_socket(){
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
         continue;
       }
-	  if (result==2306){
+	    if (result==2306){
 		psync_socket_close(sock);
 		psync_free(psync_my_verify_token);
 		psync_my_verify_token = psync_strdup(psync_find_result(res, "verifytoken", PARAM_STR)->str);
@@ -340,7 +374,7 @@ static psync_socket *get_connected_socket(){
 		psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 		continue;
 	  }
-	  if (result==2321){
+	    if (result==2321){
 		psync_socket_close(sock);
 		cres=psync_check_result(res, "location", PARAM_HASH);
 		if (cres){
@@ -351,13 +385,19 @@ static psync_socket *get_connected_socket(){
 		psync_free(res);
 		continue;
 	  }
-      psync_socket_close(sock);
+    if(result=2330){
       psync_free(res);
-      if (result==2000 || result==2012 || result==2064 || result==2074){
-        psync_my_2fa_code_type=0;
-        psync_my_2fa_code[0]=0;
-        if (result==2012 || result==2064 || result==2074)
-          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
+      psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATING);
+      psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+      continue;
+    }
+    psync_socket_close(sock);
+    psync_free(res);
+    if (result==2000 || result==2012 || result==2064 || result==2074){
+      psync_my_2fa_code_type=0;
+      psync_my_2fa_code[0]=0;
+      if (result==2012 || result==2064 || result==2074)
+        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
 		else if (user && pass){
 			//Ugly fix, sorry :(
 			if (!strcmp(user, "pass") && !strcmp(pass, "dummy"))
@@ -401,11 +441,16 @@ static psync_socket *get_connected_socket(){
     psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
     if (luserid){
       if (unlikely_log(luserid!=userid)){
-        psync_sql_rollback_transaction();
-        debug(D_NOTICE, "user mistmatch, db userid=%lu, connected userid=%lu", (unsigned long)luserid, (unsigned long)userid);
+        if(check_user_relocated(luserid, sock)){
+          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
+        }
+        else {
+          psync_sql_rollback_transaction();
+          debug(D_NOTICE, "user mistmatch, db userid=%lu, connected userid=%lu", (unsigned long)luserid, (unsigned long)userid);
+          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_MISMATCH);
+        }
         psync_socket_close(sock);
         psync_free(res);
-        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_MISMATCH);
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
         continue;
       }
