@@ -1151,12 +1151,14 @@ int psync_register(const char *email, const char *password, int termsaccepted, c
   else {
     if (err)
       *err = psync_strdup("Could not connect to the server.");
+	psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
     return -1;
   }
   sock = psync_api_connect(binapi, psync_setting_get_bool(_PS(usessl)));
   if (unlikely_log(!sock)){
 	  if (err)
 		  *err = psync_strdup("Could not connect to the server.");
+	  psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
 	  return -1;
   }
   res = send_command(sock, "register", params);
@@ -1164,6 +1166,7 @@ int psync_register(const char *email, const char *password, int termsaccepted, c
 	psync_socket_close(sock);
 	if (err)
 	  *err = psync_strdup("Could not connect to the server.");
+	psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
 	return -1;
   }
   result = psync_find_result(res, "result", PARAM_NUM)->num;
@@ -1171,6 +1174,7 @@ int psync_register(const char *email, const char *password, int termsaccepted, c
 	debug(D_WARNING, "command register returned code %u", (unsigned)result);
     if (err)
 	  *err = psync_strdup(psync_find_result(res, "error", PARAM_STR)->str);
+	psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   }
   psync_socket_close(sock);
   psync_free(res);
