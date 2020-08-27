@@ -390,10 +390,11 @@ static psync_socket *get_connected_socket(){
 		continue;
 	  }
     if(result==2330){
+	    psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATING);
       psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-	  psync_socket_close(sock);
-	  psync_free(res);
+	    psync_socket_close(sock);
+	    psync_free(res);
       continue;
     }
 	psync_socket_close(sock);
@@ -403,22 +404,24 @@ static psync_socket *get_connected_socket(){
       psync_my_2fa_code[0]=0;
       if (result==2012 || result==2064 || result==2074)
         psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
-		else if (user && pass){
-			//Ugly fix, sorry :(
-			if (!strcmp(user, "pass") && !strcmp(pass, "dummy"))
-			{
-			  debug(D_NOTICE, "got %lu, for user=%s, not rising PSTATUS_AUTH_BADLOGIN", (unsigned long)result, user);
-			  psync_milisleep(1000);
-			  continue;
-			}
-			else {
-				psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
-			}
-		}
-        else
-          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADTOKEN);
-        psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-      }
+	  else if (user && pass){
+	  	//Ugly fix, sorry :(
+	  	if (!strcmp(user, "pass") && !strcmp(pass, "dummy"))
+	  	{
+	  	  debug(D_NOTICE, "got %lu, for user=%s, not rising PSTATUS_AUTH_BADLOGIN", (unsigned long)result, user);
+	  	  psync_milisleep(1000);
+	  	  continue;
+	  	}
+	  	else {
+	  	  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
+	  	}
+	  }
+	  else {
+		psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADTOKEN);
+		psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
+	  }
+      psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+    }
       else if (result==4000)
         psync_milisleep(5*60*1000);
       else if (result==2205 || result==2229){
@@ -448,7 +451,7 @@ static psync_socket *get_connected_socket(){
     if (luserid){
       if (unlikely_log(luserid!=userid)){
         if(check_user_relocated(luserid, sock)){
-		  debug(D_NOTICE, "setting PSTATUS_AUTH_RELOCATED");
+		      debug(D_NOTICE, "setting PSTATUS_AUTH_RELOCATED");
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
         }
         else {
