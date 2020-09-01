@@ -399,12 +399,12 @@ static psync_socket *get_connected_socket(){
     }
 	psync_socket_close(sock);
 	psync_free(res);
-    if (result==2000 || result==2012 || result==2064 || result==2074){
+    if (result==2000 || result==2012 || result==2064 || result==2074 || result==2092){
       psync_my_2fa_code_type=0;
       psync_my_2fa_code[0]=0;
-      if (result==2012 || result==2064 || result==2074)
+      if (result==2012 || result==2064 || result==2074 || result==2092)
         psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
-	  else if (user && pass){
+	    else if (user && pass){
 	  	//Ugly fix, sorry :(
 	  	if (!strcmp(user, "pass") && !strcmp(pass, "dummy"))
 	  	{
