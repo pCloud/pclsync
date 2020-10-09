@@ -1492,16 +1492,19 @@ int psync_crypto_share_folder(psync_folderid_t folderid, const char *name, const
 	char *priv_key=NULL;
 	char *signature=NULL;
 	int change_err; 
-  if (!temppass){
+
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
+                                     P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_STR("privatekey", priv_key),
+                                     P_STR("signature", signature), P_NUM("strictmode", 1) };
+
+    if (!temppass){
 		binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
 			P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_NUM("strictmode", 1) };
 		return psync_run_command("sharefolder", params, err);                     
   }
 	if ((change_err=psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature)))
 		return change_err;
-	binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
-										 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_STR("privatekey", priv_key),
-										 P_STR("signature", signature), P_NUM("strictmode", 1) };
+
 	return psync_run_command("sharefolder", params, err);
 }
 
@@ -1515,16 +1518,19 @@ int psync_crypto_account_teamshare(psync_folderid_t folderid, const char *name, 
 	char *priv_key=NULL;
 	char *signature=NULL;
 	int change_err;
-	if (!temppass){
+
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
+                                     P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint),
+                                     P_STR("privatekey", priv_key), P_STR("signature", signature) };
+
+    if (!temppass){
 		binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
 											 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint)};
 		return psync_run_command("account_teamshare", params, err);
   }
 	if ((change_err=psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature)))
 		return change_err;
-	binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
-										 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint),
-										 P_STR("privatekey", priv_key), P_STR("signature", signature)};
+
 	return psync_run_command("account_teamshare", params, err);
 }
 
@@ -2102,15 +2108,18 @@ psync_folderid_t *psync_crypto_folderids(){
 }
 
 int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint, const char *code){
-  psync_socket *api;
-  binresult *res;
-  uint64_t result;
-  int tries=0, err;
-	char *priv_key=NULL;
-	char *signature=NULL;
-	if ((err=psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature)))
+    psync_socket *api;
+    binresult *res;
+    uint64_t result;
+    int tries=0, err;
+    char *priv_key=NULL;
+    char *signature=NULL;
+
+    binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
+
+    if ((err=psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature)))
 		return err;
-	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
+
 	debug(D_NOTICE, "uploading re-encoded private key");
 	while (1){
 		api=psync_apipool_get();
@@ -2145,9 +2154,12 @@ int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hi
   int tries=0, err;
 	char *priv_key=NULL;
 	char *signature=NULL;
+
+    binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
+
 	if ((err=psync_crypto_change_passphrase_unlocked(newpass, 0, &priv_key, &signature)))
 		return err;
-	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
+
 	debug(D_NOTICE, "uploading re-encoded private key");
 	while (1){
 		api=psync_apipool_get();
