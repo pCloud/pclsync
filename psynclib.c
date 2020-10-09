@@ -211,39 +211,52 @@ void psync_apiserver_init(){
 
 int psync_init(){
   psync_thread_name="main app thread";
+
   debug(D_NOTICE, "initializing library version "PSYNC_LIB_VERSION);
   debug(D_NOTICE, "last commit time "GIT_COMMIT_DATE);
   debug(D_NOTICE, "previous commit time "GIT_PREV_COMMIT_DATE);
   debug(D_NOTICE, "previous commit id "GIT_PREV_COMMIT_ID);
+
   if (IS_DEBUG){
     pthread_mutex_lock(&psync_libstate_mutex);
+
     if (psync_libstate!=0){
       pthread_mutex_unlock(&psync_libstate_mutex);
       debug(D_BUG, "you are not supposed to call psync_init for a second time");
+
       return 0;
     }
   }
+
   psync_locked_init();
   psync_cache_init();
   psync_compat_init();
+
   if (!psync_database){
     psync_database=psync_get_default_database_path();
+
     if (unlikely_log(!psync_database)){
       if (IS_DEBUG)
         pthread_mutex_unlock(&psync_libstate_mutex);
+
       return_error(PERROR_NO_HOMEDIR);
     }
   }
+
   if (psync_sql_connect(psync_database)){
     if (IS_DEBUG)
       pthread_mutex_unlock(&psync_libstate_mutex);
+
     return_error(PERROR_DATABASE_OPEN);
   }
+
   psync_sql_statement("UPDATE task SET inprogress=0 WHERE inprogress=1");
   psync_timer_init();
+
   if (unlikely_log(psync_ssl_init())){
     if (IS_DEBUG)
       pthread_mutex_unlock(&psync_libstate_mutex);
+
     return_error(PERROR_SSL_INIT_FAILED);
   }
 
@@ -252,6 +265,7 @@ int psync_init(){
   psync_status_init();
   psync_timer_sleep_handler(psync_stop_crypto_on_sleep);
   psync_path_status_init();
+
   if (IS_DEBUG){
     psync_libstate=1;
     pthread_mutex_unlock(&psync_libstate_mutex);
@@ -259,6 +273,7 @@ int psync_init(){
 
   psync_run_thread("Overlay main thread", overlay_main_loop);
   init_overlay_callbacks();
+
   if (PSYNC_SSL_DEBUG_LEVEL)
     psync_set_ssl_debug_callback(ssl_debug_cb);
 
@@ -267,27 +282,37 @@ int psync_init(){
 
 void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback_t event_callback){
   debug(D_NOTICE, "starting sync");
+
   if (IS_DEBUG){
     pthread_mutex_lock(&psync_libstate_mutex);
     if (psync_libstate==0){
       pthread_mutex_unlock(&psync_libstate_mutex);
+
       debug(D_BUG, "you are calling psync_start_sync before psync_init");
+
       return;
     }
     else if (psync_libstate==2){
       pthread_mutex_unlock(&psync_libstate_mutex);
+
       debug(D_BUG, "you are calling psync_start_sync for a second time");
+
       return;
     }
     else
       psync_libstate=2;
+
     pthread_mutex_unlock(&psync_libstate_mutex);
   }
+
   psync_apiserver_init();
+
   if (status_callback)
     psync_set_status_callback(status_callback);
+
   if (event_callback)
     psync_set_event_callback(event_callback);
+
   psync_syncer_init();
   psync_diff_init();
   psync_upload_init();
@@ -295,9 +320,11 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
   psync_netlibs_init();
   psync_localscan_init();
   psync_p2p_init();
+
   if (psync_setting_get_bool(_PS(autostartfs)))
     psync_fs_start();
-  psync_devmon_init();    
+
+  psync_devmon_init();
 }
 
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize){
@@ -1488,16 +1515,19 @@ int psync_crypto_share_folder(psync_folderid_t folderid, const char *name, const
 	char *priv_key=NULL;
 	char *signature=NULL;
 	int change_err; 
-  if (!temppass){
+
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
+                                     P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_STR("privatekey", priv_key),
+                                     P_STR("signature", signature), P_NUM("strictmode", 1) };
+
+    if (!temppass){
 		binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
 			P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_NUM("strictmode", 1) };
 		return psync_run_command("sharefolder", params, err);                     
   }
 	if ((change_err=psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature)))
 		return change_err;
-	binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
-										 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_STR("privatekey", priv_key),
-										 P_STR("signature", signature), P_NUM("strictmode", 1) };
+
 	return psync_run_command("sharefolder", params, err);
 }
 
@@ -1511,16 +1541,19 @@ int psync_crypto_account_teamshare(psync_folderid_t folderid, const char *name, 
 	char *priv_key=NULL;
 	char *signature=NULL;
 	int change_err;
-	if (!temppass){
+
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
+                                     P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint),
+                                     P_STR("privatekey", priv_key), P_STR("signature", signature) };
+
+    if (!temppass){
 		binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
 											 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint)};
 		return psync_run_command("account_teamshare", params, err);
   }
 	if ((change_err=psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature)))
 		return change_err;
-	binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
-										 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint),
-										 P_STR("privatekey", priv_key), P_STR("signature", signature)};
+
 	return psync_run_command("account_teamshare", params, err);
 }
 
@@ -2098,15 +2131,18 @@ psync_folderid_t *psync_crypto_folderids(){
 }
 
 int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint, const char *code){
-  psync_socket *api;
-  binresult *res;
-  uint64_t result;
-  int tries=0, err;
-	char *priv_key=NULL;
-	char *signature=NULL;
-	if ((err=psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature)))
+    psync_socket *api;
+    binresult *res;
+    uint64_t result;
+    int tries=0, err;
+    char *priv_key=NULL;
+    char *signature=NULL;
+
+    binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
+
+    if ((err=psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature)))
 		return err;
-	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
+
 	debug(D_NOTICE, "uploading re-encoded private key");
 	while (1){
 		api=psync_apipool_get();
@@ -2141,9 +2177,12 @@ int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hi
   int tries=0, err;
 	char *priv_key=NULL;
 	char *signature=NULL;
+
+    binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
+
 	if ((err=psync_crypto_change_passphrase_unlocked(newpass, 0, &priv_key, &signature)))
 		return err;
-	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
+
 	debug(D_NOTICE, "uploading re-encoded private key");
 	while (1){
 		api=psync_apipool_get();
