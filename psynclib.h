@@ -120,6 +120,8 @@ typedef struct {
 #define PSTATUS_TFA_REQUIRED           16
 #define PSTATUS_BAD_TFA_CODE           17
 #define PSTATUS_VERIFY_REQUIRED        18
+#define PSTATUS_RELOCATION             19
+#define PSTATUS_RELOCATED              20
 
 
 #define PSTATUS_ACCOUT_TFAERR          PSTATUS_TFA_REQUIRED

@@ -397,14 +397,11 @@ BOOL DoRegisterDeviceInterfaceToHwnd(
 static DWORD GetPhysicalDriveParams(char *strdrivepath IN, DWORD drivetype, char *fspath)
 {
   DWORD dwRet = NO_ERROR;
+  HANDLE hDevice = CreateFileA(strdrivepath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE,
+    NULL, OPEN_EXISTING, 0, NULL);
+  if (INVALID_HANDLE_VALUE == hDevice)
+    return GetLastError();
   STORAGE_PROPERTY_QUERY storagePropertyQuery;
-
-  HANDLE hDevice = CreateFileA(strdrivepath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-  
-  if (INVALID_HANDLE_VALUE == hDevice) {
-      return GetLastError();
-  }
-
   ZeroMemory(&storagePropertyQuery, sizeof(STORAGE_PROPERTY_QUERY));
   storagePropertyQuery.PropertyId = StorageDeviceProperty;
   storagePropertyQuery.QueryType = PropertyStandardQuery;

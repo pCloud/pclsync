@@ -1011,9 +1011,13 @@ plink_contents_t *do_show_link(const char *code, char **err /*OUT*/) {
     return NULL;
   }
 
-  meta=psync_find_result(bres, "metadata", PARAM_HASH);
+  meta=psync_check_result(bres, "metadata", PARAM_HASH);
   if (meta) {
-    contents=psync_find_result(meta, "contents", PARAM_ARRAY);
+	contents=psync_check_result(meta, "contents", PARAM_ARRAY);
+	if (!contents){
+	  psync_free(bres);
+	  return 0;
+	}
     concnt = contents->length;
     if (!concnt){
       psync_free(bres);
