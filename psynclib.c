@@ -1489,23 +1489,24 @@ int psync_share_folder(psync_folderid_t folderid, const char *name, const char *
 }
 
 int psync_crypto_share_folder(psync_folderid_t folderid, const char *name, const char *mail, const char *message, uint32_t permissions, char *hint, char *temppass,  char **err){
-	char *priv_key=NULL;
-	char *signature=NULL;
-	int change_err; 
-
-    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
-                                     P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_STR("privatekey", priv_key),
-                                     P_STR("signature", signature), P_NUM("strictmode", 1) };
-
-    if (!temppass){
-		binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
-			P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_NUM("strictmode", 1) };
-		return psync_run_command("sharefolder", params, err);                     
+  char *priv_key=NULL;
+  char *signature=NULL;
+  int change_err; 
+  
+  if (!temppass){
+  	binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
+  		P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_NUM("strictmode", 1) };
+  	return psync_run_command("sharefolder", params, err);                     
   }
-	if ((change_err=psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature)))
-		return change_err;
-
-	return psync_run_command("sharefolder", params, err);
+  if ((change_err = psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature))){
+	  return change_err;
+  }
+  {
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
+      P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_STR("privatekey", priv_key),
+      P_STR("signature", signature), P_NUM("strictmode", 1) };
+    return psync_run_command("sharefolder", params, err);
+  }
 }
 
 int psync_account_teamshare(psync_folderid_t folderid, const char *name, psync_teamid_t teamid, const char *message, uint32_t permissions, char **err){
@@ -1519,19 +1520,22 @@ int psync_crypto_account_teamshare(psync_folderid_t folderid, const char *name, 
 	char *signature=NULL;
 	int change_err;
 
-    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
-                                     P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint),
-                                     P_STR("privatekey", priv_key), P_STR("signature", signature) };
-
     if (!temppass){
 		binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
 											 P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint)};
 		return psync_run_command("account_teamshare", params, err);
-  }
-	if ((change_err=psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature)))
-		return change_err;
+	}
 
-	return psync_run_command("account_teamshare", params, err);
+	if ((change_err = psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature))){
+	  return change_err;
+	}
+
+	{
+		binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("teamid", teamid),
+			P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint),
+			P_STR("privatekey", priv_key), P_STR("signature", signature) };
+		return psync_run_command("account_teamshare", params, err);
+	}
 }
 
 int psync_cancel_share_request(psync_sharerequestid_t requestid, char **err){
@@ -2108,83 +2112,86 @@ psync_folderid_t *psync_crypto_folderids(){
 }
 
 int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, const char *hint, const char *code){
-    psync_socket *api;
-    binresult *res;
-    uint64_t result;
-    int tries=0, err;
-    char *priv_key=NULL;
-    char *signature=NULL;
-
+  psync_socket *api;
+  binresult *res;
+  uint64_t result;
+  int tries=0, err;
+  char *priv_key=NULL;
+  char *signature=NULL;
+  
+  if ((err = psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature))){
+    return err;
+  }
+  {
     binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
-
-    if ((err=psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature)))
-		return err;
-
-	debug(D_NOTICE, "uploading re-encoded private key");
-	while (1){
-		api=psync_apipool_get();
-		if (!api)
-			return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
-		res=send_command(api, "crypto_changeuserprivate", params);
-		if (unlikely_log(!res)){
-			psync_apipool_release_bad(api);
-			if (++tries>5)
-				return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
-		}
-		else{
-			psync_apipool_release(api);
-			break;
-		}
-	}
-	result=psync_find_result(res, "result", PARAM_NUM)->num;
-	psync_free(res);
-	if (result!=0)
-		debug(D_WARNING, "crypto_changeuserprivate returned %u", (unsigned)result);
-	if (result==0){
-	  psync_delete_cached_crypto_keys();
-		return PSYNC_CRYPTO_SETUP_SUCCESS;
-	}
-	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
+    debug(D_NOTICE, "uploading re-encoded private key");
+    while (1){
+    	api = psync_apipool_get();
+    	if (!api)
+    	  return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+    	res = send_command(api, "crypto_changeuserprivate", params);
+    	if (unlikely_log(!res)){
+    	  psync_apipool_release_bad(api);
+    	  if (++tries > 5)
+    	  	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+    	}
+    	else{
+    	  psync_apipool_release(api);
+    	  break;
+    	}
+    }
+    result = psync_find_result(res, "result", PARAM_NUM)->num;
+    psync_free(res);
+    if (result != 0)
+    	debug(D_WARNING, "crypto_changeuserprivate returned %u", (unsigned)result);
+    if (result == 0){
+    	psync_delete_cached_crypto_keys();
+    	return PSYNC_CRYPTO_SETUP_SUCCESS;
+    }
+    return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
+  }
 }
 
 int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hint, const char *code){
   psync_socket *api;
   binresult *res;
   uint64_t result;
-  int tries=0, err;
-	char *priv_key=NULL;
-	char *signature=NULL;
-
-    binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
-
-	if ((err=psync_crypto_change_passphrase_unlocked(newpass, 0, &priv_key, &signature)))
-		return err;
-
+  int tries = 0, err;
+  char *priv_key = NULL;
+  char *signature = NULL;
+  
+  
+  if ((err = psync_crypto_change_passphrase_unlocked(newpass, 0, &priv_key, &signature))){
+  	return err;
+  }
+  {
+	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("privatekey", priv_key), P_STR("signature", signature), P_STR("hint", hint), P_STR("code", code) };
 	debug(D_NOTICE, "uploading re-encoded private key");
 	while (1){
-		api=psync_apipool_get();
-		if (!api)
-			return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
-		res=send_command(api, "crypto_changeuserprivate", params);
-		if (unlikely_log(!res)){
-			psync_apipool_release_bad(api);
-			if (++tries>5)
-				return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
-		}
-		else{
-			psync_apipool_release(api);
-			break;
-		}
+	  api = psync_apipool_get();
+	  if (!api)
+	  	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+	  res = send_command(api, "crypto_changeuserprivate", params);
+	  if (unlikely_log(!res)){
+	  	psync_apipool_release_bad(api);
+	  	if (++tries > 5)
+	  	  return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+	  }
+	  else{
+	  	psync_apipool_release(api);
+	  	break;
+	  }
 	}
-	result=psync_find_result(res, "result", PARAM_NUM)->num;
+	result = psync_find_result(res, "result", PARAM_NUM)->num;
 	psync_free(res);
-	if (result!=0)
+	if (result != 0)
 		debug(D_WARNING, "crypto_changeuserprivate returned %u", (unsigned)result);
-	if (result==0){
-	  psync_delete_cached_crypto_keys();
+	if (result == 0){
+		psync_delete_cached_crypto_keys();
 		return PSYNC_CRYPTO_SETUP_SUCCESS;
 	}
 	return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_UNKNOWN_ERROR);
+  }
 }
 
 int psync_crypto_crypto_send_change_user_private(){
