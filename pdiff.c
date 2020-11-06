@@ -413,7 +413,9 @@ static psync_socket *get_connected_socket(){
 	  	  continue;
 	  	}
 	  	else {
-	  	  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
+        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
+        psync_free(psync_my_pass);
+        psync_my_pass = NULL;
 	  	}
 	  }
 	  else {
