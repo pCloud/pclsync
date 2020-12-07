@@ -51,6 +51,10 @@
 #include "ppathstatus.h"
 #include <ctype.h>
 
+//Bobo
+#include <ptools.h>
+//Bobo
+
 #define PSYNC_SQL_DOWNLOAD "synctype&"NTO_STR(PSYNC_DOWNLOAD_ONLY)"="NTO_STR(PSYNC_DOWNLOAD_ONLY)
 
 typedef struct {
@@ -238,32 +242,53 @@ int check_user_relocated(uint64_t luserid, psync_socket* sock){
 }
 
 static psync_socket *get_connected_socket(){
-  char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi;
+  char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi, *chrUserid, err;
   const char *appversion;
   psync_socket *sock;
+  psync_socket *sock2;
   binresult *res;
   const binresult *cres;
   psync_sql_res *q;
   uint64_t result, userid, luserid, locationid;
-  int saveauth, isbusiness, cryptosetup, digest, lid;
+  int saveauth, isbusiness, cryptosetup, digest, lid, isFirstLogin;
+
   digest=1;
   psync_free(psync_my_2fa_token);
   auth=user=pass=psync_my_2fa_token=NULL;
   psync_is_business=0;
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
+
   if (!deviceid)
     deviceid=generate_device_id();
+
   debug(D_NOTICE, "using deviceid %s", deviceid);
   appversion=psync_appname();
   devicestring=psync_device_string();
+
   while (1){
     psync_free(auth);
     psync_free(user);
     psync_free(pass);
     psync_wait_status(PSTATUS_TYPE_RUN, PSTATUS_RUN_RUN|PSTATUS_RUN_PAUSE);
+
     auth=psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'");
     user=psync_sql_cellstr("SELECT value FROM setting WHERE id='user'");
     pass=psync_sql_cellstr("SELECT value FROM setting WHERE id='pass'");
+
+    //Bobo
+    chrUserid = psync_sql_cellstr("SELECT value FROM setting WHERE id='userid'");
+    debug(D_NOTICE, "BOBO: Selected userid: [%s]", chrUserid);
+
+    if (chrUserid == NULL) {
+      isFirstLogin = 1;
+    }
+    else {
+      isFirstLogin = 0;
+    }
+
+    debug(D_NOTICE, "BOBO: Is First Login: [%d]", isFirstLogin);
+    //Bobo
+
     if (!auth && psync_my_auth[0])
       auth=psync_strdup(psync_my_auth);
     if (!user && psync_my_user)
@@ -283,9 +308,11 @@ static psync_socket *get_connected_socket(){
       psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
       continue;
     }
+
     psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
     saveauth=psync_setting_get_bool(_PS(saveauth));
     sock=psync_api_connect(apiserver, psync_setting_get_bool(_PS(usessl)));
+
     if (unlikely_log(!sock)){
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_OFFLINE);
       psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
@@ -306,7 +333,7 @@ static psync_socket *get_connected_socket(){
                         P_BOOL("getauth", 1),
                         P_BOOL("cryptokeyssign", 1),
                         P_BOOL("getapiserver", 1),
-						P_BOOL("getlastsubscription", 1),
+						            P_BOOL("getlastsubscription", 1),
                         P_NUM("os", P_OS_ID)};
       res=send_command(sock, method, params);
     }
@@ -439,16 +466,71 @@ static psync_socket *get_connected_socket(){
         psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
       continue;
     }
+
+    //Bobo
+    if (isFirstLogin) {
+      debug(D_NOTICE, "BOBO: This a first login. Send event.");
+
+    }
+    else {
+      debug(D_NOTICE, "BOBO: Not a first login. Move along.");
+
+      time_t rawtime;
+      time(&rawtime);
+
+      char timec[12];
+      sprintf(timec, "%llu", rawtime);
+
+      debug(D_NOTICE, "BOBO: Time: [%s].", timec);
+
+      //char* macAddr;
+      //macAddr = "CC:48:3A:3C:31:38"; // getMACaddr();
+      /*
+      eventParams params = {6,
+        {P_STR("category", "INSTALLATION_PROCESS"),
+        P_STR("action", "FIRST_LOGIN"),
+        P_STR("label", "TEST"),
+        P_STR("mac_address", "CC:48:3A:3C:31:38"),
+        P_NUM("os", 5),
+        P_NUM("etime", timec)}
+      };
+      */
+/*
+      for (int i = 0; i < params.paramCnt; i++) {
+        debug(D_NOTICE, "BOBO: Parameter %d: [%s]=[%s]", i, params.Params[i].paramname, params.Params[i].str);
+      }
+*/
+      binparam params[] = {P_STR("category", "INSTALLATION_PROCESS"),
+        P_STR("action", "FIRST_LOGIN"),
+        P_STR("label", "TEST"),
+        P_STR("mac_address", "CC:48:3A:3C:31:38"),
+        P_NUM("os", 5),
+        P_STR("etime", timec)};
+
+      debug(D_NOTICE, "BOBO: Parameters set.");
+
+      //locationid = PSYNC_LOCATIONID_DEFAULT;
+      sock2 = psync_api_connect("api71.pcloud.com", psync_setting_get_bool(_PS(usessl)));
+
+      res = send_command(sock2, EVENT_WS, params);
+      
+      //create_backend_event(&params, "api71.pcloud.com", locationid, res);
+      
+      debug(D_NOTICE, "BOBO: Event result: [%s].", res->str);
+    }
+    //Bobo
+
     psync_my_userid=userid=psync_find_result(res, "userid", PARAM_NUM)->num;
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
-	cres = psync_check_result(res, "freequota", PARAM_NUM);
-	if (cres){
-	  free_quota=cres->num;
-	}
+	  cres = psync_check_result(res, "freequota", PARAM_NUM);
+
+    if (cres){
+	    free_quota=cres->num;
+	  }
 	  
     luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
     psync_is_business=psync_find_result(res, "business", PARAM_BOOL)->num;
-	lid=psync_setting_get_uint(_PS(location_id));
+	  lid=psync_setting_get_uint(_PS(location_id));
     psync_sql_start_transaction();
     psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
     if (luserid){
