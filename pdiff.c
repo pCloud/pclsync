@@ -50,10 +50,8 @@
 #include "pcloudcrypto.h"
 #include "ppathstatus.h"
 #include <ctype.h>
-
-//Bobo
 #include <ptools.h>
-//Bobo
+
 
 #define PSYNC_SQL_DOWNLOAD "synctype&"NTO_STR(PSYNC_DOWNLOAD_ONLY)"="NTO_STR(PSYNC_DOWNLOAD_ONLY)
 
@@ -245,12 +243,11 @@ static psync_socket *get_connected_socket(){
   char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi, *chrUserid, err;
   const char *appversion;
   psync_socket *sock;
-  psync_socket *sock2;
   binresult *res;
   const binresult *cres;
   psync_sql_res *q;
   uint64_t result, userid, luserid, locationid;
-  int saveauth, isbusiness, cryptosetup, digest, lid, isFirstLogin;
+  int saveauth, isbusiness, cryptosetup, digest, lid, isFirstLogin, intRes;
 
   digest=1;
   psync_free(psync_my_2fa_token);
@@ -274,20 +271,18 @@ static psync_socket *get_connected_socket(){
     auth=psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'");
     user=psync_sql_cellstr("SELECT value FROM setting WHERE id='user'");
     pass=psync_sql_cellstr("SELECT value FROM setting WHERE id='pass'");
-
-    //Bobo
+        
     chrUserid = psync_sql_cellstr("SELECT value FROM setting WHERE id='userid'");
-    debug(D_NOTICE, "BOBO: Selected userid: [%s]", chrUserid);
 
+    //If there is no userid row, we assume it's first login, after instalation. 
+    //Rise a flag so we can send a first login event later.
     if (chrUserid == NULL) {
       isFirstLogin = 1;
     }
     else {
       isFirstLogin = 0;
     }
-
-    debug(D_NOTICE, "BOBO: Is First Login: [%d]", isFirstLogin);
-    //Bobo
+    
 
     if (!auth && psync_my_auth[0])
       auth=psync_strdup(psync_my_auth);
@@ -467,59 +462,33 @@ static psync_socket *get_connected_socket(){
       continue;
     }
 
-    //Bobo
+    //If the flag is up, send a first login event to track the number of sucessful installs.
     if (isFirstLogin) {
-      debug(D_NOTICE, "BOBO: This a first login. Send event.");
-
-    }
-    else {
-      debug(D_NOTICE, "BOBO: Not a first login. Move along.");
-
+      debug(D_NOTICE, "This is a first login. Send the FIRST_LOGIN event.");
       time_t rawtime;
       time(&rawtime);
 
-      char timec[12];
-      sprintf(timec, "%llu", rawtime);
+      char* macAddr = getMACaddr();
 
-      debug(D_NOTICE, "BOBO: Time: [%s].", timec);
-
-      //char* macAddr;
-      //macAddr = "CC:48:3A:3C:31:38"; // getMACaddr();
-      /*
-      eventParams params = {6,
-        {P_STR("category", "INSTALLATION_PROCESS"),
-        P_STR("action", "FIRST_LOGIN"),
-        P_STR("label", "TEST"),
-        P_STR("mac_address", "CC:48:3A:3C:31:38"),
-        P_NUM("os", 5),
-        P_NUM("etime", timec)}
+      eventParams params = { 
+        2, //Number of parameters we are passing below.
+        {
+          P_STR(EPARAM_MAC, macAddr),
+          P_STR("auth", auth)
+        }
       };
-      */
-/*
-      for (int i = 0; i < params.paramCnt; i++) {
-        debug(D_NOTICE, "BOBO: Parameter %d: [%s]=[%s]", i, params.Params[i].paramname, params.Params[i].str);
-      }
-*/
-      binparam params[] = {P_STR("category", "INSTALLATION_PROCESS"),
-        P_STR("action", "FIRST_LOGIN"),
-        P_STR("label", "TEST"),
-        P_STR("mac_address", "CC:48:3A:3C:31:38"),
-        P_NUM("os", 5),
-        P_STR("etime", timec)};
-
-      debug(D_NOTICE, "BOBO: Parameters set.");
-
-      //locationid = PSYNC_LOCATIONID_DEFAULT;
-      sock2 = psync_api_connect("api71.pcloud.com", psync_setting_get_bool(_PS(usessl)));
-
-      res = send_command(sock2, EVENT_WS, params);
-      
-      //create_backend_event(&params, "api71.pcloud.com", locationid, res);
-      
-      debug(D_NOTICE, "BOBO: Event result: [%s].", res->str);
+      //Test server: "binapi71.pcloud.com"
+      intRes = create_backend_event(
+        apiserver,
+        INST_EVENT_CATEG,
+        INST_EVENT_FLOGIN,
+        INST_EVENT_CATEG,
+        P_OS_ID,
+        rawtime,
+        &params,
+        res);
     }
-    //Bobo
-
+    
     psync_my_userid=userid=psync_find_result(res, "userid", PARAM_NUM)->num;
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
 	  cres = psync_check_result(res, "freequota", PARAM_NUM);

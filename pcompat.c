@@ -966,10 +966,7 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
 #if IS_DEBUG
   psync_nanotime(&start);
 #endif
-  debug(D_NOTICE, "BOBO: Select socket.");
   res=select(sock+1, &rfds, NULL, NULL, &tv);
-
-  debug(D_NOTICE, "BOBO: Select result: [%d]", res);
 
   if (res==1){
 #if IS_DEBUG
@@ -980,8 +977,6 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
     else if (msec>=5000)
       debug(D_NOTICE, "got response from socket after %lu milliseconds", msec);
 #endif
-    debug(D_NOTICE, "BOBO: Wait socket success.");
-
     return 0;
   }
   if (res==0){
@@ -991,8 +986,6 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
   }
   else
     debug(D_WARNING, "select returned %d", res);
-
-  debug(D_NOTICE, "BOBO: Wait socket error.");
 
   return SOCKET_ERROR;
 }
@@ -2011,22 +2004,17 @@ static int psync_socket_readall_ssl(psync_socket *sock, void *buff, int num){
   int br, r;
   br=0;
 
-  debug(D_NOTICE, "BOBO: Try write buffer.");
   psync_socket_try_write_buffer(sock);
 
-  debug(D_NOTICE, "BOBO: Read socket.");
   if (!psync_ssl_pendingdata(sock->ssl) && !sock->pending && psync_wait_socket_read_timeout(sock->sock)) {
-    debug(D_NOTICE, "BOBO: Failed to read socket.");
     return -1;
   }
 
   sock->pending=0;
 
-  debug(D_NOTICE, "BOBO: Reading [%d] from socket....", br);
   while (br<num){
-
     psync_socket_try_write_buffer(sock);
-    debug(D_NOTICE, "BOBO: Read SSL.");
+
     r=psync_ssl_read(sock->ssl, (char *)buff+br, num-br);
 
     if (r==PSYNC_SSL_FAIL){
@@ -2045,8 +2033,6 @@ static int psync_socket_readall_ssl(psync_socket *sock, void *buff, int num){
       return br;
     br+=r;
   }
-
-  debug(D_NOTICE, "BOBO: Return bytes read: [%d]", br);
 
   return br;
 }
@@ -2078,11 +2064,9 @@ static int psync_socket_readall_plain(psync_socket *sock, void *buff, int num){
 
 int psync_socket_readall(psync_socket* sock, void* buff, int num) {
   if (sock->ssl) {
-    debug(D_NOTICE, "BOBO: SSL socked read.");
     return psync_socket_readall_ssl(sock, buff, num);
   }
   else {
-    debug(D_NOTICE, "BOBO: Normal socked read.");
     return psync_socket_readall_plain(sock, buff, num);
   }
 }

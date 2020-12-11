@@ -13,11 +13,12 @@ char* getMACaddr() {
   DWORD dwBufLen = sizeof(IP_ADAPTER_INFO);
   char* mac_addr[100];
   char* chunk[2];
+  char* retMac;
 
   AdapterInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
 
   if (AdapterInfo == NULL) {
-    printf("Error allocating memory needed to call GetAdaptersinfo\n");
+    debug(D_CRITICAL, "Error allocating memory AdpterInfo structure!");
     free(mac_addr);
 
     return NULL;
@@ -28,7 +29,7 @@ char* getMACaddr() {
     AdapterInfo = (IP_ADAPTER_INFO*)malloc(dwBufLen);
 
     if (AdapterInfo == NULL) {
-      printf("Error allocating memory needed to call GetAdaptersinfo\n");
+      debug(D_CRITICAL, "Error allocating memory needed to call GetAdaptersinfo!");
       free(mac_addr);
 
       return NULL;
@@ -37,95 +38,40 @@ char* getMACaddr() {
 
   if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == NO_ERROR) {
     PIP_ADAPTER_INFO pAdapterInfo = AdapterInfo;
+    mac_addr[0] = 0;
 
-    do {
-      mac_addr[0] = 0;
-
-      for (int i = 0; i < pAdapterInfo->AddressLength; i = i + 1) {
-        sprintf(chunk, "%02X", pAdapterInfo->Address[i]);
-
-        strcat(mac_addr, chunk);
-
-        if (i < pAdapterInfo->AddressLength - 1) {
-          strcat(mac_addr, ":");
-        }
-      }
-
-      break;
-      pAdapterInfo = pAdapterInfo->Next;
-    } while (pAdapterInfo);
+    for (int i = 0; i < pAdapterInfo->AddressLength; i = i + 1) {
+      sprintf(chunk, "%02X", pAdapterInfo->Address[i]);
+      strcat(mac_addr, chunk);
+    }
   }
 
   free(AdapterInfo);
 
-  return mac_addr;
+  retMac = (char*)malloc(strlen(mac_addr) + 1);
+  memcpy(retMac, mac_addr, strlen(mac_addr) + 1);
+
+  return retMac;
 }
 /*************************************************************/
-void add_event_param(eventParams* eParams, char* paramName, char* paramVal) {
-/*
-  uint16_t paramtype;
-  uint16_t paramnamelen;
-  uint32_t opts;
-  const char* paramname;
-  union {
-    uint64_t num;
-    const char* str;
-  };
-*/
-  /*
-  if (!eParams->Params) {
-    eParams->Params = (binparam*){0};
-  }
-  */
-  eParams->Params[eParams->paramCnt].paramtype = PARAM_STR;
-  
-  eParams->Params[eParams->paramCnt].paramnamelen = strlen(paramName);
-  strcpy(eParams->Params[eParams->paramCnt].paramname, paramName);
-
-  eParams->Params[eParams->paramCnt].opts = strlen(paramVal);
-  strcpy(eParams->Params[eParams->paramCnt].str, paramVal);
-
-  eParams->paramCnt++;
-}
-/*************************************************************/
-int get_os_id() {
-#if defined(P_OS_LINUX)   
-   return 1;
-#endif
-#if defined(P_OS_WINDOWS) 
-   return 5; 
-#endif
-#if defined(P_OS_MACOSX)  
-   return 6; 
-#endif
-#if defined(P_OS_LINUX)   
-   return 7; 
-#endif
-
-  return 0;
-}
-/*************************************************************/
-int create_backend_event(eventParams* params,
-                         const char*  binapi,
-                         unsigned int locationid,
+int create_backend_event(const char*  binapi,
+                         const char*  category,
+                         const char*  action,
+                         const char*  label,
+                         int          os,
+                         int          etime,
+                         eventParams* params,
                          char**       err) {
   binresult*    res;
   psync_socket* sock;
   uint64_t      result;
+  binparam*     paramsLocal;
   int i;
-
-  if (binapi) {
-    psync_set_apiserver(binapi, locationid);
-  }
-  else {
-    if (err) {
-      *err = psync_strdup("Could not connect to the server.");
-    }
-
-    psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
-
-    return -1;
-  }
+  int pCnt = params->paramCnt; //Number of optional parameters
+  int mpCnt = 5; //Number of mandatory params
+  int tpCnt; //Total number of parameters
+  char* keyParams;
+  char charBuff[30][258];
 
   sock = psync_api_connect(binapi, psync_setting_get_bool(0));
 
@@ -139,40 +85,77 @@ int create_backend_event(eventParams* params,
     return -1;
   }
 
-  //binparam* paramsLocal = (binparam*)malloc(params->paramCnt * sizeof(binparam));
-
-  //memcpy(paramsLocal, &params->Params, params->paramCnt * sizeof(binparam));
-
-  debug(D_WARNING, "BOBO: Number of input params: [%d]", params->paramCnt);
-  /*
-  for (i = 0; i < params->paramCnt; i++) {
-    debug(D_WARNING, "BOBO: %d) Input Paramer Name: [%s] - Value:[%s]", i, params->Params[i].paramname, params->Params[i].str);
+  if (pCnt > 0) { //We have optional parameters
+    tpCnt = pCnt + mpCnt + 1; //+1 for the "key" parameter.
+  }
+  else {
+    tpCnt = mpCnt; //Manadatory parameters only.
   }
 
-  for (i = 0; i < params->paramCnt; i++) {
-    debug(D_WARNING, "BOBO: %d) Local Parameter Name: [%s] - Value:[%s]", i, paramsLocal[i].paramname, paramsLocal[i].str);
+  paramsLocal = (binparam*)malloc((tpCnt) * sizeof(binparam)); //Allocate size for all parameters.
+
+  //Set the mandatory pramaters.
+  paramsLocal[0] = (binparam)P_STR(EPARAM_CATEG, category);
+  paramsLocal[1] = (binparam)P_STR(EPARAM_ACTION, action);
+  paramsLocal[2] = (binparam)P_STR(EPARAM_LABEL, label);
+  paramsLocal[3] = (binparam)P_NUM(EPARAM_OS, os);
+  paramsLocal[4] = (binparam)P_NUM(EPARAM_TIME, etime);
+
+  if (pCnt > 0) {
+    keyParams = (char*)malloc(258 * pCnt);
+    keyParams[0] = 0;
+
+    for (i = 0; i < pCnt; i++) {
+      charBuff[i][0] = 0;
+
+      if (i > 0) {
+        strcat(keyParams, ",");
+        strcat(keyParams, params->Params[i].paramname);
+      }
+      else {
+        strcat(keyParams, params->Params[i].paramname);
+      }
+
+      sprintf(charBuff[i], "key%s", params->Params[i].paramname);
+
+      if (params->Params[i].paramtype == 0) {
+        paramsLocal[mpCnt + i] = (binparam)P_STR(charBuff[i], params->Params[i].str);
+
+        continue;
+      }
+
+      if (params->Params[i].paramtype == 1) {
+        paramsLocal[mpCnt + i] = (binparam)P_NUM(charBuff[i], params->Params[i].num);
+
+        continue;
+      }
+
+      if (params->Params[i].paramtype == 2) {
+        paramsLocal[mpCnt + i] = (binparam)P_BOOL(charBuff, params->Params[i].num);
+        continue;
+      }
+    }
+
+    paramsLocal[mpCnt + pCnt] = (binparam)P_STR(EPARAM_KEY, keyParams);
   }
-  */
-  debug(D_WARNING, "BOBO: Sending command.");
-  //#define send_command(sock, cmd, params) do_send_command(sock, cmd, strlen(cmd), params, sizeof(params)/sizeof(binparam), -1, 1)
-  //binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdlen, const binparam *params, size_t paramcnt, int64_t datalen, int readres)
-  //res = do_send_command(sock, EVENT_WS, strlen(EVENT_WS), paramsLocal, params->paramCnt, -1, 1);
 
-  binparam paramsLocal[] = { P_STR("category", "INSTALLATION_PROCESS"),
-    P_STR("action", "FIRST_LOGIN"),
-    P_STR("label", "TEST"),
-    P_STR("mac_address", "CC:48:3A:3C:31:38"),
-    P_NUM("os", 5),
-    P_NUM("etime", 1607080865) };
+  for (i = 0; i <= tpCnt; i++) {
+    if (paramsLocal[i].paramtype == 0) {
+      debug(D_NOTICE, "%d: String Param: [%s] - [%s]", i, paramsLocal[i].paramname, paramsLocal[i].str);
+      continue;
+    }
 
-  res = send_command(sock, EVENT_WS, paramsLocal);
-  //free(paramsLocal);
-  psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
+    if (paramsLocal[i].paramtype == 1) {
+      debug(D_NOTICE, "%d: Number Param: [%s] - [%d]", i, paramsLocal[i].paramname, paramsLocal[i].num);
+      continue;
+    }
+  }
 
-  debug(D_WARNING, "BOBO: Command sent.");
+  res = do_send_command(sock, EVENT_WS, strlen(EVENT_WS), paramsLocal, tpCnt, -1, 1);
+
+  free(paramsLocal);
   
   if (unlikely_log(!res)) {
-    debug(D_WARNING, "BOBO: Can't get the result.");
     psync_socket_close(sock);
 
     if (err) {
@@ -185,23 +168,16 @@ int create_backend_event(eventParams* params,
   }
 
   result = psync_find_result(res, "result", PARAM_NUM)->num;
-  debug(D_WARNING, "BOBO: Found result [%d].", result);
+
+  psync_socket_close(sock);
 
   if (result) {
-    debug(D_WARNING, "command register returned code %u", (unsigned)result);
-
     if (err) {
       *err = psync_strdup(psync_find_result(res, "error", PARAM_STR)->str);
     }
 
-    psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
+    debug(D_CRITICAL, "Event command failed. Error:[%s]", *err);
   }
-
-  psync_socket_close(sock);
-  psync_free(res);
-
-  //Back to the real server. To be removed!
-  psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
 
   return result;
 }

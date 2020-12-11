@@ -25,26 +25,26 @@
 #define EPARAM_OS     "os"
 #define EPARAM_TIME   "etime"
 #define EPARAM_MAC    "mac_address"
+#define EPARAM_KEY    "key"
 
-#define INST_EVENT_CATEG  "INSTALLATION_PROCESS";
-#define INST_EVENT_FLOGIN "FIRST_LOGIN";
+#define INST_EVENT_CATEG  "INSTALLATION_PROCESS"
+#define INST_EVENT_FLOGIN "FIRST_LOGIN"
 
 typedef struct _eventParams {
   int paramCnt;
   binparam Params[100];
 } eventParams;
 
-void add_event_param(
-  eventParams* eParams, 
-  char* paramName, 
-  char* paramVal);
-
+/**********************************************************************************************************/
 int create_backend_event(
-  eventParams* params,
   const char* binapi,
-  unsigned int locationid,
+  const char* category,
+  const char* action,
+  const char* label,
+  int          os,
+  int          etime,
+  eventParams* params,
   char** err);
 
 char* getMACaddr();
-
-int get_os_id();
+/**********************************************************************************************************/
