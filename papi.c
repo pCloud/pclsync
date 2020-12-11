@@ -386,21 +386,15 @@ binresult *get_result(psync_socket *sock){
   uint32_t ressize;
   
   if (unlikely_log(psync_socket_readall(sock, &ressize, sizeof(uint32_t)) != sizeof(uint32_t))) {
-    debug(D_NOTICE, "BOBO: Failed to read response from a socket.");
-    
     return NULL;
   }
   
   data=(unsigned char *)psync_malloc(ressize);
   
   if (unlikely_log(psync_socket_readall(sock, data, ressize)!=ressize)){
-    debug(D_NOTICE, "BOBO: Failed again? Return NULL.");
-
     psync_free(data);
     return NULL;
   }
-
-  debug(D_NOTICE, "BOBO: Parse result data.");
   
   res=parse_result(data, ressize);
   psync_free(data);
@@ -478,20 +472,14 @@ unsigned char *do_prepare_command(const char *command, size_t cmdlen, const binp
   if (datalen!=-1)
     plen+=sizeof(uint64_t);
 
-  debug(D_WARNING, "BOBO: Number of params: [%d].", paramcnt);
-
   for (i = 0; i < paramcnt; i++) {
-    debug(D_WARNING, "BOBO: [%d ]Add Param. Type: [%d]", i, params[i].paramtype);
     if (params[i].paramtype == PARAM_STR) {
-      debug(D_WARNING, "BOBO: Add STR param.");
       plen += params[i].paramnamelen + params[i].opts + 5; /* 1byte type+paramnamelen, nbytes paramnamelen, 4byte strlen, nbytes str */
     }
     else if (params[i].paramtype == PARAM_NUM) {
-      debug(D_WARNING, "BOBO: Add NUM Param.");
       plen += params[i].paramnamelen + 1 + sizeof(uint64_t);
     } 
     else if (params[i].paramtype == PARAM_BOOL) {
-      debug(D_WARNING, "BOBO: Add BOOL Param.");
       plen += params[i].paramnamelen + 2;
     }
   }
@@ -536,38 +524,28 @@ binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdle
   unsigned char *sdata;
   size_t plen;
 
-  debug(D_NOTICE, "BOBO: Command:[%s] len: [%d], paramcnt: [%d] data len: [%d]", command, cmdlen, paramcnt, datalen);
   sdata=do_prepare_command(command, cmdlen, params, paramcnt, datalen, 0, &plen);
 
   if (!sdata) {
-    debug(D_NOTICE, "BOBO: Parameter list empty. Returning.");
     return NULL;
   }
 
-  debug(D_NOTICE, "BOBO: Sending command: [%s]", command);
-
   if (readres&2){
-    debug(D_NOTICE, "BOBO: Sending command. Thread.");
-
     if (unlikely_log(psync_socket_writeall_thread(sock, sdata, plen)!=plen)){
       psync_free(sdata);
       return NULL;
     }
   }
   else{
-    debug(D_NOTICE, "BOBO: Sending command. Current thread.");
     if (unlikely_log(psync_socket_writeall(sock, sdata, plen)!=plen)){
-      debug(D_NOTICE, "BOBO: Failed to send all data.");
       psync_free(sdata);
       return NULL;
     }
   }
   psync_free(sdata);
   if (readres&1){
-    debug(D_NOTICE, "BOBO: Read and return the result.");
     return get_result(sock);
   } else {
-    debug(D_NOTICE, "BOBO: Return OK");
     return PTR_OK;
   }
 }
@@ -607,7 +585,6 @@ const binresult *psync_do_find_result(const binresult *res, const char *name, ui
     if (D_CRITICAL<=DEBUG_LEVEL){
       const char *nm="NULL";
       if (res){
-        psync_debug(file, function, line, D_CRITICAL, "BOBO: Socket result type: [%s]", res->type);
         nm=type_names[res->type];
       }
       psync_debug(file, function, line, D_CRITICAL, "expecting hash as first parameter, got %s", nm);
