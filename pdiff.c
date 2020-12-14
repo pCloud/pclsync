@@ -282,6 +282,7 @@ static psync_socket *get_connected_socket(){
     else {
       isFirstLogin = 0;
     }
+ 
 
     if (!auth && psync_my_auth[0])
       auth=psync_strdup(psync_my_auth);
