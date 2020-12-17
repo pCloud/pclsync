@@ -461,33 +461,6 @@ static psync_socket *get_connected_socket(){
         psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
       continue;
     }
-
-    //If the flag is up, send a first login event to track the number of sucessful installs.
-    if (isFirstLogin) {
-      debug(D_NOTICE, "This is a first login. Send the FIRST_LOGIN event.");
-      time_t rawtime;
-      time(&rawtime);
-
-      char* macAddr = getMACaddr();
-
-      eventParams params = { 
-        2, //Number of parameters we are passing below.
-        {
-          P_STR(EPARAM_MAC, macAddr),
-          P_STR("auth", auth)
-        }
-      };
-      //Test server: "binapi71.pcloud.com"
-      intRes = create_backend_event(
-        apiserver,
-        INST_EVENT_CATEG,
-        INST_EVENT_FLOGIN,
-        INST_EVENT_CATEG,
-        P_OS_ID,
-        rawtime,
-        &params,
-        res);
-    }
     
     psync_my_userid=userid=psync_find_result(res, "userid", PARAM_NUM)->num;
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
@@ -502,6 +475,7 @@ static psync_socket *get_connected_socket(){
 	  lid=psync_setting_get_uint(_PS(location_id));
     psync_sql_start_transaction();
     psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
+
     if (luserid){
       if (unlikely_log(luserid!=userid)){
         if(check_user_relocated(luserid, sock)){
@@ -673,6 +647,35 @@ static psync_socket *get_connected_socket(){
     if (cres->length)
       psync_apipool_set_server(cres->array[0]->str);
     psync_free(res);
+
+    //If the flag is up, send a first login event to track the number of sucessful installs.
+    if (isFirstLogin) {
+      debug(D_NOTICE, "This is a first login. Send the FIRST_LOGIN event. Token:[%s], User id: [%lu]", psync_my_auth, (unsigned long)userid);
+      time_t rawtime;
+      time(&rawtime);
+
+      char* macAddr[40];
+      getMACaddr(macAddr);
+
+      eventParams params = {
+        1, //Number of parameters we are passing below.
+        {
+          P_STR(EPARAM_MAC, macAddr)
+        }
+      };
+      //Test US server: "binapi71.pcloud.com"
+      intRes = create_backend_event(
+        apiserver,
+        INST_EVENT_CATEG,
+        INST_EVENT_FLOGIN,
+        INST_EVENT_CATEG,
+        psync_my_auth,
+        P_OS_ID,
+        rawtime,
+        &params,
+        res);
+    }
+
     if (isbusiness){
       binparam params[]={P_STR("timeformat", "timestamp"),
                          P_STR("auth", psync_my_auth)};
@@ -696,6 +699,7 @@ static psync_socket *get_connected_socket(){
       psync_free(res);
       psync_sql_sync();
     }
+
     psync_free(auth);
     psync_free(user);
     psync_free(pass);
