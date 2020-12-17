@@ -4,16 +4,15 @@
  * Library containing tool functions, not used in the main 
  * functionality. Keeping statistics, getting data for them etc.
  */
-#define _CRT_SECURE_NO_WARNINGS
 #include <ptools.h>
 
 /*************************************************************/
-char* getMACaddr() {
+void getMACaddr(char *mac_addr) {
+  char* chunk[2];
+
+#if defined(P_OS_WINDOWS)
   PIP_ADAPTER_INFO AdapterInfo;
   DWORD dwBufLen = sizeof(IP_ADAPTER_INFO);
-  char* mac_addr[100];
-  char* chunk[2];
-  char* retMac;
 
   AdapterInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
 
@@ -47,17 +46,39 @@ char* getMACaddr() {
   }
 
   free(AdapterInfo);
+#endif
 
-  retMac = (char*)malloc(strlen(mac_addr) + 1);
-  memcpy(retMac, mac_addr, strlen(mac_addr) + 1);
+#if defined(P_OS_LINUX)
+  int fd;
+  struct ifreq ifr;
+  char* iface = "eth0";
+  unsigned char* mac;
 
-  return retMac;
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+  ifr.ifr_addr.sa_family = AF_INET;
+  strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
+
+  ioctl(fd, SIOCGIFHWADDR, &ifr);
+
+  close(fd);
+
+  mac = (unsigned char*)ifr.ifr_hwaddr.sa_data;
+
+  sprintf(mac_addr, "%.2x%.2x%.2x%.2x%.2x%.2x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  mac_addr[12] = 0;
+#endif
+
+#if defined(P_OS_MACOSX)
+  strcpy(retMac, "HARDCODEDMACADDRESS");
+#endif
 }
 /*************************************************************/
 int create_backend_event(const char*  binapi,
                          const char*  category,
                          const char*  action,
                          const char*  label,
+                         const char*  auth,
                          int          os,
                          int          etime,
                          eventParams* params,
@@ -68,7 +89,7 @@ int create_backend_event(const char*  binapi,
   binparam*     paramsLocal;
   int i;
   int pCnt = params->paramCnt; //Number of optional parameters
-  int mpCnt = 5; //Number of mandatory params
+  int mpCnt = 6; //Number of mandatory params
   int tpCnt; //Total number of parameters
   char* keyParams;
   char charBuff[30][258];
@@ -79,8 +100,6 @@ int create_backend_event(const char*  binapi,
     if (err) {
       *err = psync_strdup("Could not connect to the server.");
     }
-
-    psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
 
     return -1;
   }
@@ -98,8 +117,9 @@ int create_backend_event(const char*  binapi,
   paramsLocal[0] = (binparam)P_STR(EPARAM_CATEG, category);
   paramsLocal[1] = (binparam)P_STR(EPARAM_ACTION, action);
   paramsLocal[2] = (binparam)P_STR(EPARAM_LABEL, label);
-  paramsLocal[3] = (binparam)P_NUM(EPARAM_OS, os);
-  paramsLocal[4] = (binparam)P_NUM(EPARAM_TIME, etime);
+  paramsLocal[3] = (binparam)P_STR(EPARAM_LABEL, auth);
+  paramsLocal[4] = (binparam)P_NUM(EPARAM_OS, os);
+  paramsLocal[5] = (binparam)P_NUM(EPARAM_TIME, etime);
 
   if (pCnt > 0) {
     keyParams = (char*)malloc(258 * pCnt);
