@@ -55,6 +55,7 @@ int create_backend_event(
   const char* category,
   const char* action,
   const char* label,
+  const char* auth,
   int          os,
   int          etime,
   eventParams* params,
