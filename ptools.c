@@ -20,7 +20,7 @@ void getMACaddr(char *mac_addr) {
     debug(D_CRITICAL, "Error allocating memory AdpterInfo structure!");
     free(mac_addr);
 
-    return NULL;
+    return;
   }
 
   if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == ERROR_BUFFER_OVERFLOW) {
@@ -31,7 +31,7 @@ void getMACaddr(char *mac_addr) {
       debug(D_CRITICAL, "Error allocating memory needed to call GetAdaptersinfo!");
       free(mac_addr);
 
-      return NULL;
+      return;
     }
   }
 
