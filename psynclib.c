@@ -993,7 +993,7 @@ int psync_delete_sync(psync_syncid_t syncid){
 }
 
 psync_folder_list_t *psync_get_sync_list(){
-  return psync_list_get_list();
+  return psync_list_get_list(PSYNC_STR_ALLSYNCS);
 }
 
 psuggested_folders_t *psync_get_sync_suggestions(){
@@ -2491,3 +2491,35 @@ int psync_send_publink(const char *code, const char *mail, const char *message, 
 	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("code", code), P_STR("mails", mail), P_STR("message", message), P_NUM("source", 1) };
 	return psync_run_command("sendpublink", params, err);
 }
+//Bobo
+/***********************************************************************************************************************************************/
+psync_folder_list_t* psync_get_syncs_bytype(char syncType) {
+  psync_folder_list_t* ret;
+
+
+  debug(D_NOTICE, "BOBO: Get sync type: [%s]", syncType);
+
+  return psync_list_get_list(syncType);
+}
+/***********************************************************************************************************************************************/
+int psync_create_backup(char* path) {
+  debug(D_NOTICE, "BOBO: Create backup: [%s]", path);
+
+  return 1;
+}
+/***********************************************************************************************************************************************/
+int psync_delete_backup(int folderId) {
+  debug(D_NOTICE, "BOBO: Delete backup folder id: [%d]", folderId);
+
+  return 1;
+}
+/***********************************************************************************************************************************************/
+char* get_machine_name() {
+  return "Some Machine Name 1";
+}
+/***********************************************************************************************************************************************/
+char* get_backup_root_name() {
+  return "Backup Root Dir Name 1";
+}
+/***********************************************************************************************************************************************/
+//Bobo

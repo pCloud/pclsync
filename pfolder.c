@@ -872,7 +872,7 @@ typedef struct {
   psync_synctype_t synctype;
 } psync_tmp_folder_t;
 
-psync_folder_list_t *psync_list_get_list(){
+psync_folder_list_t *psync_list_get_list(char* syncTypes){
   psync_sql_res *res;
   psync_variant_row row;
   psync_tmp_folder_t *folders;
@@ -882,10 +882,24 @@ psync_folder_list_t *psync_list_get_list(){
   size_t strlens, l;
   psync_folderid_t folderid;
   uint32_t alloced, lastfolder, i;
+
   folders=NULL;
   alloced=lastfolder=0;
   strlens=0;
-  res=psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
+
+  //Bobo
+  char sqlStr[1000];
+  debug(D_NOTICE, "BOBO: Get Syncs list, id mask: [%s]", syncTypes);
+
+  sprintf(sqlStr, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (%s)", syncTypes);
+
+  //res=psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
+
+  //res = psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (?)");
+  res = psync_sql_query_rdlock(sqlStr);
+
+  //psync_sql_bind_lstring(res, 1, syncTypes, strlen(syncTypes));
+
   while ((row=psync_sql_fetch_row(res))){
     if (alloced==lastfolder){
       alloced=(alloced+32)*2;
@@ -919,6 +933,10 @@ psync_folder_list_t *psync_list_get_list(){
   str=((char *)ret)+l;
   ret->foldercnt=lastfolder;
   for (i=0; i<lastfolder; i++){
+    //Bobo
+    debug(D_NOTICE, "BOBO: Sync list, path: [%s]", folders[i].localpath);
+    //Bobo
+
     l=folders[i].locallen;
     memcpy(str, folders[i].localpath, l);
     psync_free(folders[i].localpath);

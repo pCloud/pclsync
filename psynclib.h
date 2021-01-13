@@ -202,11 +202,21 @@ typedef struct pstatus_struct_ {
 #define PNOTIFICATION_ACTION_GO_TO_URL     2
 #define PNOTIFICATION_ACTION_SHARE_REQUEST 3
 
+//Bobo
 #define PSYNC_DOWNLOAD_ONLY  1
 #define PSYNC_UPLOAD_ONLY    2
 #define PSYNC_FULL           3
+#define PSYNC_BACKUPS        7
+
+#define PSYNC_STR_DOWNLOAD_ONLY  "1"
+#define PSYNC_STR_UPLOAD_ONLY    "2"
+#define PSYNC_STR_FULL           "3"
+#define PSYNC_STR_ALLSYNCS       "1,2,3"
+#define PSYNC_STR_BACKUPS        "7"
+
 #define PSYNC_SYNCTYPE_MIN   1
-#define PSYNC_SYNCTYPE_MAX   3
+#define PSYNC_SYNCTYPE_MAX   7
+//Bobo
 
 #define PERROR_LOCAL_FOLDER_NOT_FOUND   1
 #define PERROR_REMOTE_FOLDER_NOT_FOUND  2
@@ -782,6 +792,24 @@ int psync_delete_sync(psync_syncid_t syncid);
 psync_folder_list_t *psync_get_sync_list();
 
 psuggested_folders_t *psync_get_sync_suggestions();
+
+//Bobo
+// Gets a list of local syncs, based on their type. Type empty string means all. Accepts comma separated list of types example: 1,2,3
+psync_folder_list_t* psync_get_syncs_bytype(int syncType);
+
+//Create a backup for the local folder defined by path parameter.
+int psync_create_backup(char* path);
+
+//Deletes a local backup folder with the id passed in the folderId parameter.
+int psync_delete_backup(int folderId);
+
+//Returns the local machine name.
+char* get_machine_name();
+
+//Returns the root backup folder of the machine.
+char* get_backup_root_name();
+
+//Bobo
 
 /* Use the following functions to list local or remote folders.
  * For local folders fileid and folderid will be set to a value that
