@@ -384,15 +384,21 @@ binresult *get_result(psync_socket *sock){
   unsigned char *data;
   binresult *res;
   uint32_t ressize;
-  if (unlikely_log(psync_socket_readall(sock, &ressize, sizeof(uint32_t))!=sizeof(uint32_t)))
+  
+  if (unlikely_log(psync_socket_readall(sock, &ressize, sizeof(uint32_t)) != sizeof(uint32_t))) {
     return NULL;
+  }
+  
   data=(unsigned char *)psync_malloc(ressize);
+  
   if (unlikely_log(psync_socket_readall(sock, data, ressize)!=ressize)){
     psync_free(data);
     return NULL;
   }
+  
   res=parse_result(data, ressize);
   psync_free(data);
+  
   return res;
 }
 
@@ -465,13 +471,18 @@ unsigned char *do_prepare_command(const char *command, size_t cmdlen, const binp
   plen=cmdlen+2;
   if (datalen!=-1)
     plen+=sizeof(uint64_t);
-  for (i=0; i<paramcnt; i++)
-    if (params[i].paramtype==PARAM_STR)
-      plen+=params[i].paramnamelen+params[i].opts+5; /* 1byte type+paramnamelen, nbytes paramnamelen, 4byte strlen, nbytes str */
-    else if (params[i].paramtype==PARAM_NUM)
-      plen+=params[i].paramnamelen+1+sizeof(uint64_t);
-    else if (params[i].paramtype==PARAM_BOOL)
-      plen+=params[i].paramnamelen+2;
+
+  for (i = 0; i < paramcnt; i++) {
+    if (params[i].paramtype == PARAM_STR) {
+      plen += params[i].paramnamelen + params[i].opts + 5; /* 1byte type+paramnamelen, nbytes paramnamelen, 4byte strlen, nbytes str */
+    }
+    else if (params[i].paramtype == PARAM_NUM) {
+      plen += params[i].paramnamelen + 1 + sizeof(uint64_t);
+    } 
+    else if (params[i].paramtype == PARAM_BOOL) {
+      plen += params[i].paramnamelen + 2;
+    }
+  }
   if (unlikely_log(plen>0xffff))
     return NULL;
   sdata=data=(unsigned char *)psync_malloc(plen+2+additionalalloc);
@@ -512,9 +523,13 @@ unsigned char *do_prepare_command(const char *command, size_t cmdlen, const binp
 binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdlen, const binparam *params, size_t paramcnt, int64_t datalen, int readres){
   unsigned char *sdata;
   size_t plen;
+
   sdata=do_prepare_command(command, cmdlen, params, paramcnt, datalen, 0, &plen);
-  if (!sdata)
+
+  if (!sdata) {
     return NULL;
+  }
+
   if (readres&2){
     if (unlikely_log(psync_socket_writeall_thread(sock, sdata, plen)!=plen)){
       psync_free(sdata);
@@ -528,10 +543,11 @@ binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdle
     }
   }
   psync_free(sdata);
-  if (readres&1)
+  if (readres&1){
     return get_result(sock);
-  else
+  } else {
     return PTR_OK;
+  }
 }
 
 void psync_do_dump_binresult(const binresult *res, const char *file, const char *function, int unsigned line){
@@ -568,8 +584,9 @@ const binresult *psync_do_find_result(const binresult *res, const char *name, ui
   if (unlikely(!res || res->type!=PARAM_HASH)){
     if (D_CRITICAL<=DEBUG_LEVEL){
       const char *nm="NULL";
-      if (res)
+      if (res){
         nm=type_names[res->type];
+      }
       psync_debug(file, function, line, D_CRITICAL, "expecting hash as first parameter, got %s", nm);
     }
     return empty_types[type];

@@ -967,6 +967,7 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
   psync_nanotime(&start);
 #endif
   res=select(sock+1, &rfds, NULL, NULL, &tv);
+
   if (res==1){
 #if IS_DEBUG
     psync_nanotime(&end);
@@ -985,6 +986,7 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
   }
   else
     debug(D_WARNING, "select returned %d", res);
+
   return SOCKET_ERROR;
 }
 
@@ -2001,13 +2003,20 @@ int psync_socket_write(psync_socket *sock, const void *buff, int num){
 static int psync_socket_readall_ssl(psync_socket *sock, void *buff, int num){
   int br, r;
   br=0;
+
   psync_socket_try_write_buffer(sock);
-  if (!psync_ssl_pendingdata(sock->ssl) && !sock->pending && psync_wait_socket_read_timeout(sock->sock))
+
+  if (!psync_ssl_pendingdata(sock->ssl) && !sock->pending && psync_wait_socket_read_timeout(sock->sock)) {
     return -1;
+  }
+
   sock->pending=0;
+
   while (br<num){
     psync_socket_try_write_buffer(sock);
+
     r=psync_ssl_read(sock->ssl, (char *)buff+br, num-br);
+
     if (r==PSYNC_SSL_FAIL){
       if (likely_log(psync_ssl_errno==PSYNC_SSL_ERR_WANT_READ || psync_ssl_errno==PSYNC_SSL_ERR_WANT_WRITE)){
         if (wait_sock_ready_for_ssl(sock->sock))
@@ -2024,6 +2033,7 @@ static int psync_socket_readall_ssl(psync_socket *sock, void *buff, int num){
       return br;
     br+=r;
   }
+
   return br;
 }
 
@@ -2052,11 +2062,13 @@ static int psync_socket_readall_plain(psync_socket *sock, void *buff, int num){
   return br;
 }
 
-int psync_socket_readall(psync_socket *sock, void *buff, int num){
-  if (sock->ssl)
+int psync_socket_readall(psync_socket* sock, void* buff, int num) {
+  if (sock->ssl) {
     return psync_socket_readall_ssl(sock, buff, num);
-  else
+  }
+  else {
     return psync_socket_readall_plain(sock, buff, num);
+  }
 }
 
 
