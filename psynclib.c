@@ -66,6 +66,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <stddef.h>
+//Bobo
+#include <Windows.h>
+//Bobo
 
 typedef struct {
   psync_list list;
@@ -2496,14 +2499,23 @@ int psync_send_publink(const char *code, const char *mail, const char *message, 
 psync_folder_list_t* psync_get_syncs_bytype(char syncType) {
   psync_folder_list_t* ret;
 
-
   debug(D_NOTICE, "BOBO: Get sync type: [%s]", syncType);
 
   return psync_list_get_list(syncType);
 }
 /***********************************************************************************************************************************************/
 int psync_create_backup(char* path) {
+  uint64_t bFId;
+  psync_syncid_t syncFId;
+
   debug(D_NOTICE, "BOBO: Create backup: [%s]", path);
+
+  bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='Backup_Root_FolderId'", 0);
+  debug(D_NOTICE, "BOBO: Got id from DB: [%d]", bFId);
+
+  //psync_syncid_t psync_add_sync_by_folderid(const char* localpath, psync_folderid_t folderid, psync_synctype_t synctype);
+  syncFId = psync_add_sync_by_folderid(path, 666, PSYNC_BACKUPS);
+  debug(D_NOTICE, "BOBO: Local Sync folder id: [%d]", syncFId);
 
   return 1;
 }
@@ -2520,6 +2532,13 @@ char* get_machine_name() {
 /***********************************************************************************************************************************************/
 char* get_backup_root_name() {
   return "Backup Root Dir Name 1";
+}
+/***********************************************************************************************************************************************/
+void get_machine_name(char* pcName) {
+  int   nameSize = MAX_COMPUTERNAME_LENGTH + 1;
+  int   res;
+
+  res = GetComputerNameA(pcName, &nameSize);
 }
 /***********************************************************************************************************************************************/
 //Bobo

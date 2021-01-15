@@ -804,7 +804,7 @@ int psync_create_backup(char* path);
 int psync_delete_backup(int folderId);
 
 //Returns the local machine name.
-char* get_machine_name();
+void get_machine_name(char* pcName);
 
 //Returns the root backup folder of the machine.
 char* get_backup_root_name();
