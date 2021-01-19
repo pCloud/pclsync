@@ -4,31 +4,9 @@
  * Library containing tool functions, not used in the main
  * functionality. Keeping statistics, getting data for them etc.
  */
+#pragma once
 
 #include "papi.h"
-#include "psettings.h"
-#include "plibs.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#if defined(P_OS_WINDOWS)
-#define _CRT_SECURE_NO_WARNINGS
-#pragma comment(lib, "iphlpapi.lib")
-
-#include <Windows.h>
-#include <Iphlpapi.h>
-#endif
-
-#if defined(P_OS_LINUX)
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-#endif
-
-#if defined(P_OS_MACOSX)
-#endif
 
 #define EVENT_WS "loganalyticsevent"
 
@@ -60,6 +38,15 @@ int create_backend_event(
   int          etime,
   eventParams* params,
   char** err);
-
+/**********************************************************************************************************/
+int backend_call(const char* binapi,
+  const char* wsPath,
+  eventParams* requiredParams,
+  eventParams* optionalParams,
+  binparam* resData,
+  char** err);
+/**********************************************************************************************************/
 void getMACaddr(char* mac_addr);
+/**********************************************************************************************************/
+void get_machine_name(char* pcName);
 /**********************************************************************************************************/

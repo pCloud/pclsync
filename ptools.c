@@ -5,6 +5,33 @@
  * functionality. Keeping statistics, getting data for them etc.
  */
 #include <ptools.h>
+//#include <pcompat.h>
+#include "psettings.h"
+#include "plibs.h"
+
+#if defined(P_OS_WINDOWS)
+#define _CRT_SECURE_NO_WARNINGS
+#pragma comment(lib, "iphlpapi.lib")
+
+#include <Iphlpapi.h>
+//#include <Windows.h>
+#endif
+
+#if defined(P_OS_LINUX)
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#endif
+
+#if defined(P_OS_MACOSX)
+#endif
+
+//Bobo
+ //#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
+//Bobo
 
 /*************************************************************/
 void getMACaddr(char *mac_addr) {
@@ -201,5 +228,143 @@ int create_backend_event(const char*  binapi,
   }
 
   return result;
+}
+/*************************************************************/
+int backend_call(const char*  binapi,
+                 const char*  wsPath,
+                 eventParams* requiredParams,
+                 eventParams* optionalParams,
+                 binparam*    resData,
+                 char**       err) {
+  int reqParCnt = requiredParams->paramCnt;
+  int optParCnt = optionalParams->paramCnt;
+  int totalParCnt = reqParCnt + optParCnt;
+  int i;
+
+  binparam* localParams;
+  binresult*    res;
+  psync_socket* sock;
+  uint64_t      result;
+
+  if(totalParCnt > 0) {
+    localParams = (binparam*)malloc((totalParCnt) * sizeof(binparam)); //Allocate size for all required parameters.
+  }
+
+
+  //Add required parameters to the structure
+  for (i = 0; i < reqParCnt; i++) {
+    if (requiredParams->Params[i].paramtype == 0) {
+      localParams[i] = (binparam)P_STR(requiredParams->Params->paramname, requiredParams->Params[i].str);
+
+      continue;
+    }
+
+    if (requiredParams->Params[i].paramtype == 1) {
+      localParams[i] = (binparam)P_NUM(requiredParams->Params->paramname, requiredParams->Params[i].num);
+
+      continue;
+    }
+
+    if (requiredParams->Params[i].paramtype == 2) {
+      localParams[i] = (binparam)P_BOOL(requiredParams->Params->paramname, requiredParams->Params[i].num);
+
+      continue;
+    }
+  }
+
+  //Add optional parameters to the structure
+  for (i = i; i < i + optParCnt; i++) {
+    if (optionalParams->Params[i].paramtype == 0) {
+      localParams[i] = (binparam)P_STR(optionalParams->Params->paramname, optionalParams->Params[i].str);
+
+      continue;
+    }
+
+    if (optionalParams->Params[i].paramtype == 1) {
+      localParams[i] = (binparam)P_NUM(optionalParams->Params->paramname, optionalParams->Params[i].num);
+
+      continue;
+    }
+
+    if (optionalParams->Params[i].paramtype == 2) {
+      localParams[i] = (binparam)P_BOOL(optionalParams->Params->paramname, optionalParams->Params[i].num);
+
+      continue;
+    }
+  }
+
+  debug(D_NOTICE, "BOBO: Parama struct populated. Number of pramas: [%d]", totalParCnt);
+  for (i = 0; i <= totalParCnt; i++) {
+    if (localParams[i].paramtype == 0) {
+      debug(D_NOTICE, "BOBO: %d: String Param: [%s] - [%s]", i, localParams[i].paramname, localParams[i].str);
+      continue;
+    }
+
+    if (localParams[i].paramtype == 1) {
+      debug(D_NOTICE, "BOBO: %d: Number Param: [%s] - [%d]", i, localParams[i].paramname, localParams[i].num);
+      continue;
+    }
+  }
+
+  sock = psync_api_connect(binapi, psync_setting_get_bool(0));
+
+  if (unlikely_log(!sock)) {
+    if (err) {
+      *err = psync_strdup("Could not connect to the server.");
+    }
+
+    return -1;
+  }
+
+
+  res = do_send_command(sock, wsPath, strlen(wsPath), localParams, totalParCnt, -1, 1);
+
+  free(localParams);
+
+  if (unlikely_log(!res)) {
+    psync_socket_close(sock);
+
+    if (err) {
+      *err = psync_strdup("Could not connect to the server.");
+    }
+
+    psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
+
+    return -1;
+  }
+
+  result = psync_find_result(res, "result", PARAM_NUM)->num;
+
+  psync_socket_close(sock);
+
+  if (result) {
+    if (err) {
+      *err = psync_strdup(psync_find_result(res, "error", PARAM_STR)->str);
+    }
+
+    debug(D_CRITICAL, "Backend command failed. Error:[%s]", *err);
+  }
+  else {
+    resData = res;
+  }
+
+  return result;
+}
+/*************************************************************/
+void get_machine_name(char* pcName) {
+  int   nameSize = MAX_COMPUTERNAME_LENGTH + 1;
+  int   res;
+
+#if defined(P_OS_WINDOWS)
+  res = GetComputerNameA(pcName, &nameSize);
+#endif
+
+#if defined(P_OS_LINUX)
+  strcpy(pcName, "linuxMachine");
+#endif
+
+#if defined(P_OS_MACOSX)
+  strcpy(pcName, "macMachine");
+#endif
 }
 /*************************************************************/

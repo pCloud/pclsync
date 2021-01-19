@@ -795,19 +795,19 @@ psuggested_folders_t *psync_get_sync_suggestions();
 
 //Bobo
 // Gets a list of local syncs, based on their type. Type empty string means all. Accepts comma separated list of types example: 1,2,3
-psync_folder_list_t* psync_get_syncs_bytype(int syncType);
+psync_folder_list_t* psync_get_syncs_bytype(const char* syncType);
 
 //Create a backup for the local folder defined by path parameter.
 int psync_create_backup(char* path);
 
 //Deletes a local backup folder with the id passed in the folderId parameter.
-int psync_delete_backup(int folderId);
+int psync_delete_backup(psync_syncid_t folderId);
 
 //Returns the local machine name.
-void get_machine_name(char* pcName);
+void get_pc_name(char* pcName);
 
-//Returns the root backup folder of the machine.
-char* get_backup_root_name();
+//Returns the name of the root backup folder of the machine.
+void get_backup_root_name(char* bName);
 
 //Bobo
 

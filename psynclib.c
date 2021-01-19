@@ -67,7 +67,8 @@
 #include <ctype.h>
 #include <stddef.h>
 //Bobo
-#include <Windows.h>
+#include <ptools.h>
+#include <papi.h>
 //Bobo
 
 typedef struct {
@@ -2496,49 +2497,104 @@ int psync_send_publink(const char *code, const char *mail, const char *message, 
 }
 //Bobo
 /***********************************************************************************************************************************************/
-psync_folder_list_t* psync_get_syncs_bytype(char syncType) {
-  psync_folder_list_t* ret;
-
-  debug(D_NOTICE, "BOBO: Get sync type: [%s]", syncType);
+psync_folder_list_t* psync_get_syncs_bytype(const char* syncType) {
+  debug(D_NOTICE, "BOBO: Get syncs type: [%s]", syncType);
 
   return psync_list_get_list(syncType);
 }
 /***********************************************************************************************************************************************/
 int psync_create_backup(char* path) {
-  uint64_t bFId;
-  psync_syncid_t syncFId;
+  uint64_t         bFId;
+  psync_syncid_t   syncFId;
+  psync_sql_res*   sql;
+  const binresult* rootFolObj;
+  const binresult  retData;
+
+  char  bRootFoName[500];
+  char* beCallRes;
+  int   res = 0;
+
+  char* buff;
 
   debug(D_NOTICE, "BOBO: Create backup: [%s]", path);
 
-  bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='Backup_Root_FolderId'", 0);
+  bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
   debug(D_NOTICE, "BOBO: Got id from DB: [%d]", bFId);
 
+  if (bFId == 0) {
+    get_pc_name(bRootFoName);
+    debug(D_NOTICE, "BOBO: No root folder in DB. Get machine name: [%s]", bRootFoName);
+
+    //psync_strlcpy(psync_my_auth, psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'"), sizeof(psync_my_auth));
+    //buff = psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'");
+
+    //debug(D_NOTICE, "BOBO: Auth: [%s]", buff);
+    /*
+    eventParams requiredParams = {
+      3, //Number of parameters we are passing below.
+      {
+        P_STR("auth", psync_my_auth),
+        P_STR("DeviceName", bRootFoName),
+        P_NUM("OS", P_OS_ID)
+      }
+    };
+
+    eventParams optionalParams = {
+      0
+    };
+
+    //Test US server: "binapi71.pcloud.com"
+    res = backend_call("binapi76.pcloud.com",
+                       "backup/createdevice",
+                       &requiredParams,
+                       &optionalParams,
+                       &retData,
+                       &beCallRes);
+
+    debug(D_NOTICE, "BOBO: Backend Call res: [%d]", res);
+
+    rootFolObj = psync_find_result(&retData, "devicefoldermeta", PARAM_ARRAY);
+
+    */
+    if(res == 0) {
+      debug(D_NOTICE, "BOBO: Store root folder in local DB.");
+
+      sql = psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('BackupRootFoId', ?)");
+      psync_sql_bind_string(sql, 1, "0");
+      psync_sql_run_free(sql);
+    }
+
+    debug(D_NOTICE, "BOBO: Done.");
+  }
+
+  //process_createfolder(rootFolObj);
+
   //psync_syncid_t psync_add_sync_by_folderid(const char* localpath, psync_folderid_t folderid, psync_synctype_t synctype);
-  syncFId = psync_add_sync_by_folderid(path, 666, PSYNC_BACKUPS);
+  syncFId = psync_add_sync_by_folderid(path, 0, PSYNC_BACKUPS);
   debug(D_NOTICE, "BOBO: Local Sync folder id: [%d]", syncFId);
 
   return 1;
 }
 /***********************************************************************************************************************************************/
-int psync_delete_backup(int folderId) {
+int psync_delete_backup(psync_syncid_t folderId) {
+  int res;
+  
   debug(D_NOTICE, "BOBO: Delete backup folder id: [%d]", folderId);
+  
+  res = psync_delete_sync(folderId);
 
-  return 1;
-}
-/***********************************************************************************************************************************************/
-char* get_machine_name() {
-  return "Some Machine Name 1";
-}
-/***********************************************************************************************************************************************/
-char* get_backup_root_name() {
-  return "Backup Root Dir Name 1";
-}
-/***********************************************************************************************************************************************/
-void get_machine_name(char* pcName) {
-  int   nameSize = MAX_COMPUTERNAME_LENGTH + 1;
-  int   res;
+  debug(D_NOTICE, "BOBO: Sync Deleted. Res: [%d]", res);
 
-  res = GetComputerNameA(pcName, &nameSize);
+  return res;
 }
+/***********************************************************************************************************************************************/
+void get_backup_root_name(char* bName) {
+  strcpy(bName, "Backup Root Dir Name 1");
+}
+/***********************************************************************************************************************************************/
+void get_pc_name(char* pcName) {
+  get_machine_name(pcName);
+}
+/***********************************************************************************************************************************************/
 /***********************************************************************************************************************************************/
 //Bobo
