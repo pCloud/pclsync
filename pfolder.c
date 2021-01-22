@@ -125,7 +125,13 @@ static psync_folderid_t wait_folder_id_in_db(psync_folderid_t folderid){
   }
   return PSYNC_INVALID_FOLDERID;
 }
-
+//Bobo
+/**********************************************************************************************************/
+psync_folderid_t psync_wait_folder_in_local_db(psync_folderid_t folderid) {
+  return wait_folder_id_in_db(folderid);
+}
+/**********************************************************************************************************/
+//Bobo
 psync_folderid_t psync_get_folderid_by_path_or_create(const char *path){
   psync_folderid_t cfolderid;
   const char *sl;
@@ -891,7 +897,12 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
   char sqlStr[1000];
   debug(D_NOTICE, "BOBO: Get Syncs list, id mask: [%s]", syncTypes);
 
-  sprintf(sqlStr, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (%s)", syncTypes);
+  if(strlen(syncTypes)>0) {
+    sprintf(sqlStr, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (%s)", syncTypes);
+  }
+  else {
+    sprintf(sqlStr, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
+  }
 
   //res=psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
 

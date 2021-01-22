@@ -4,8 +4,7 @@
  * Library containing tool functions, not used in the main 
  * functionality. Keeping statistics, getting data for them etc.
  */
-#include <ptools.h>
-//#include <pcompat.h>
+#include "ptools.h"
 #include "psettings.h"
 #include "plibs.h"
 
@@ -26,12 +25,6 @@
 
 #if defined(P_OS_MACOSX)
 #endif
-
-//Bobo
- //#include <stdio.h>
-//#include <stdlib.h>
-//#include <string.h>
-//Bobo
 
 /*************************************************************/
 void getMACaddr(char *mac_addr) {
@@ -97,7 +90,7 @@ void getMACaddr(char *mac_addr) {
 #endif
 
 #if defined(P_OS_MACOSX)
-  strcpy(retMac, "HARDCODEDMACADDRESS");
+  strcpy(mac_addr, "HARDCODEDMACADDRESS");
 #endif
 }
 /*************************************************************/
@@ -232,69 +225,78 @@ int create_backend_event(const char*  binapi,
 /*************************************************************/
 int backend_call(const char*  binapi,
                  const char*  wsPath,
+                 const char*  payloadName,
                  eventParams* requiredParams,
                  eventParams* optionalParams,
-                 binparam*    resData,
+                 binresult**  resData,
                  char**       err) {
   int reqParCnt = requiredParams->paramCnt;
   int optParCnt = optionalParams->paramCnt;
   int totalParCnt = reqParCnt + optParCnt;
-  int i;
 
   binparam* localParams;
   binresult*    res;
+  binresult*    payload;
   psync_socket* sock;
   uint64_t      result;
+
+  debug(D_NOTICE, "BOBO: 1. Param cnt:[%d]", totalParCnt);
 
   if(totalParCnt > 0) {
     localParams = (binparam*)malloc((totalParCnt) * sizeof(binparam)); //Allocate size for all required parameters.
   }
 
+  debug(D_NOTICE, "BOBO: 2");
 
   //Add required parameters to the structure
-  for (i = 0; i < reqParCnt; i++) {
+  for (int i = 0; i < reqParCnt; i++) {
     if (requiredParams->Params[i].paramtype == 0) {
-      localParams[i] = (binparam)P_STR(requiredParams->Params->paramname, requiredParams->Params[i].str);
+      localParams[i] = (binparam)P_STR(requiredParams->Params[i].paramname, requiredParams->Params[i].str);
 
       continue;
     }
 
     if (requiredParams->Params[i].paramtype == 1) {
-      localParams[i] = (binparam)P_NUM(requiredParams->Params->paramname, requiredParams->Params[i].num);
+      localParams[i] = (binparam)P_NUM(requiredParams->Params[i].paramname, requiredParams->Params[i].num);
 
       continue;
     }
 
     if (requiredParams->Params[i].paramtype == 2) {
-      localParams[i] = (binparam)P_BOOL(requiredParams->Params->paramname, requiredParams->Params[i].num);
+      localParams[i] = (binparam)P_BOOL(requiredParams->Params[i].paramname, requiredParams->Params[i].num);
 
       continue;
     }
   }
-
+  debug(D_NOTICE, "BOBO: 3. Opt param cnt:[%d], Req params: [%d], Total Count: [%d]", optParCnt, reqParCnt, totalParCnt);
   //Add optional parameters to the structure
-  for (i = i; i < i + optParCnt; i++) {
+  for (int i = reqParCnt; i < totalParCnt; i++) {
+    int j = 0;
+    debug(D_NOTICE, "BOBO: 3. [%d] Param Type: [%d], Param value: [%s]", i, optionalParams->Params[j].paramtype, optionalParams->Params[j].str);
+
     if (optionalParams->Params[i].paramtype == 0) {
-      localParams[i] = (binparam)P_STR(optionalParams->Params->paramname, optionalParams->Params[i].str);
+      localParams[i] = (binparam)P_STR(optionalParams->Params[j].paramname, optionalParams->Params[j].str);
 
       continue;
     }
 
     if (optionalParams->Params[i].paramtype == 1) {
-      localParams[i] = (binparam)P_NUM(optionalParams->Params->paramname, optionalParams->Params[i].num);
+      localParams[i] = (binparam)P_NUM(optionalParams->Params[j].paramname, optionalParams->Params[j].num);
 
       continue;
     }
 
     if (optionalParams->Params[i].paramtype == 2) {
-      localParams[i] = (binparam)P_BOOL(optionalParams->Params->paramname, optionalParams->Params[i].num);
+      localParams[i] = (binparam)P_BOOL(optionalParams->Params[j].paramname, optionalParams->Params[j].num);
 
       continue;
     }
-  }
 
+    j++;
+  }
+  debug(D_NOTICE, "BOBO: 4");
   debug(D_NOTICE, "BOBO: Parama struct populated. Number of pramas: [%d]", totalParCnt);
-  for (i = 0; i <= totalParCnt; i++) {
+  for (int i = 0; i <= totalParCnt; i++) {
     if (localParams[i].paramtype == 0) {
       debug(D_NOTICE, "BOBO: %d: String Param: [%s] - [%s]", i, localParams[i].paramname, localParams[i].str);
       continue;
@@ -305,6 +307,8 @@ int backend_call(const char*  binapi,
       continue;
     }
   }
+
+  debug(D_NOTICE, "BOBO: 5");
 
   sock = psync_api_connect(binapi, psync_setting_get_bool(0));
 
@@ -333,7 +337,18 @@ int backend_call(const char*  binapi,
     return -1;
   }
 
+  debug(D_NOTICE, "BOBO: Get results value.");
   result = psync_find_result(res, "result", PARAM_NUM)->num;
+
+
+  debug(D_NOTICE, "BOBO: Got results from call.");
+  psync_do_dump_binresult(res, "ptools.c", "backend_call", 666);
+
+  debug(D_NOTICE, "BOBO: Get the folder object.");
+  payload = psync_find_result(res, payloadName, PARAM_HASH);
+
+  debug(D_NOTICE, "BOBO: Dump folder object to log. Size:[%d]", payload->length);
+  psync_do_dump_binresult(payload, "ptools.c", "backend_call", 666);
 
   psync_socket_close(sock);
 
@@ -345,17 +360,22 @@ int backend_call(const char*  binapi,
     debug(D_CRITICAL, "Backend command failed. Error:[%s]", *err);
   }
   else {
-    resData = res;
+    debug(D_CRITICAL, "BOBO: Allocate memory for return result. Res size: [%d]", payload->length);
+    *resData = (binresult*)malloc(payload->length*sizeof(binresult));
+
+    debug(D_CRITICAL, "BOBO: Copy memory to result pointer.");
+    memcpy(*resData, payload, (payload->length * sizeof(binresult)));
   }
 
   return result;
 }
 /*************************************************************/
 void get_machine_name(char* pcName) {
-  int   nameSize = MAX_COMPUTERNAME_LENGTH + 1;
+  int   nameSize;
   int   res;
 
 #if defined(P_OS_WINDOWS)
+  nameSize = MAX_COMPUTERNAME_LENGTH + 1;
   res = GetComputerNameA(pcName, &nameSize);
 #endif
 
@@ -366,5 +386,46 @@ void get_machine_name(char* pcName) {
 #if defined(P_OS_MACOSX)
   strcpy(pcName, "macMachine");
 #endif
+}
+/*************************************************************/
+void parse_os_path(char* path, folderPath* folders) {
+  char fName[100];
+  int i = 0, j = 0, k = 0;
+#if defined(P_OS_WINDOWS)
+  char delimiter[] = "\\";
+#elif
+  char delimiter[] = "/";
+#endif
+  if (strlen(path) < 1) {
+    return;
+  }
+
+  while (1) {
+    if (path[i] != delimiter[0]) {
+      fName[k] = path[i];
+      k++;
+    }
+    else {
+      fName[k] = 0;
+      strcpy_s(folders->folders[j], sizeof(fName), fName);
+
+      k = 0;
+      j++;
+    }
+
+    i++;
+
+    if (path[i] == 0) {
+      fName[k] = 0;
+
+      if (strlen(fName) > 0) {
+        strcpy_s(folders->folders[j], sizeof(fName), fName);
+        j++;
+      }
+
+      break;
+    }
+  }
+  folders->cnt = j;
 }
 /*************************************************************/

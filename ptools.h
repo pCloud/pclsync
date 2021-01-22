@@ -22,11 +22,24 @@
 #define INST_EVENT_CATEG  "INSTALLATION_PROCESS"
 #define INST_EVENT_FLOGIN "FIRST_LOGIN"
 
+//Payload name constants
+#define DEVICE_FOLDER_META "devicefoldermeta"
+#define BACKUP_FOLDER_META "backupfoldermeta"
+#define NO_PAYLOAD         ""
+
+//Parameter name constants
+#define FOLDER_ID          "folderid"
+#define PARENT_FOLDER_NAME "parentname"
+
 typedef struct _eventParams {
   int paramCnt;
   binparam Params[100];
 } eventParams;
 
+typedef struct _folderPath {
+  int cnt;
+  char* folders[50][100];
+} folderPath;
 /**********************************************************************************************************/
 int create_backend_event(
   const char* binapi,
@@ -40,13 +53,16 @@ int create_backend_event(
   char** err);
 /**********************************************************************************************************/
 int backend_call(const char* binapi,
-  const char* wsPath,
+  const char*  wsPath,
+  const char* payloadName,
   eventParams* requiredParams,
   eventParams* optionalParams,
-  binparam* resData,
+  binresult**  resData,
   char** err);
 /**********************************************************************************************************/
 void getMACaddr(char* mac_addr);
 /**********************************************************************************************************/
 void get_machine_name(char* pcName);
+/**********************************************************************************************************/
+void parse_os_path(char* path, folderPath* folders);
 /**********************************************************************************************************/

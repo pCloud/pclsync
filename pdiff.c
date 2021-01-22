@@ -50,7 +50,7 @@
 #include "pcloudcrypto.h"
 #include "ppathstatus.h"
 #include <ctype.h>
-#include <ptools.h>
+#include "ptools.h"
 
 
 #define PSYNC_SQL_DOWNLOAD "synctype&"NTO_STR(PSYNC_DOWNLOAD_ONLY)"="NTO_STR(PSYNC_DOWNLOAD_ONLY)
