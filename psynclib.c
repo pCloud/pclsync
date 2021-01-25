@@ -2509,19 +2509,20 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
   binresult* retData;
   binresult* rootFolObj;
 
-  psync_sql_res*   sql;
+  psync_sql_res* sql;
 
-  char  bRootFoName[500];
+  char  bRootFoName[64];
+  char* tmpBuff;
   int   res = 0;
-  char* errMsg;
 
-  get_pc_name(bRootFoName);
+  debug(D_NOTICE, "BOBO: Get local machine name.");
+
+  tmpBuff = get_pc_name();
+  psync_strlcpy(bRootFoName, tmpBuff, 64);
+
+  free(tmpBuff);
+
   debug(D_NOTICE, "BOBO: No root folder in DB. Get machine name: [%s]", bRootFoName);
-
-  debug(D_NOTICE, "BOBO: Auth string: [%s]", psync_my_auth);
-  psync_strlcpy(psync_my_auth, psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'"), sizeof(psync_my_auth));
-
-  debug(D_NOTICE, "BOBO: Auth: [%s]", psync_my_auth);
 
   eventParams requiredParams = {
     3, //Number of parameters we are passing below.
@@ -2543,12 +2544,11 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
                      &requiredParams,
                      &optionalParams,
                      &retData,
-                     &errMsg);
-
-  debug(D_NOTICE, "BOBO: Backend Call res: [%d], RetSize[%d]", res, retData->length);
-  psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
+                     msgErr);
 
   if (res == 0) {
+    psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
+
     rootFolIdObj = psync_find_result(retData, "folderid", PARAM_NUM);
     debug(D_NOTICE, "BOBO: Got back folder id: [%lld], type:[%d]", rootFolIdObj->num, rootFolIdObj->type);
 
@@ -2559,10 +2559,10 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
 
     debug(D_NOTICE, "BOBO: Wait for backend to sync folder to local DB. Id [%lld]", rootFolIdObj->num);
     
-    rootFolObj = psync_find_result(retData, BACKUP_FOLDER_META, PARAM_HASH);
-    debug(D_NOTICE, "BOBO: Got folder data from backend. Create local folder.");
+    //rootFolObj = psync_find_result(retData, BACKUP_FOLDER_META, PARAM_HASH);
     
-    psync_diff_update_folder(rootFolObj);
+    psync_wait_folder_in_local_db(rootFolIdObj->num);
+    //psync_diff_update_folder(retData);
     debug(D_NOTICE, "BOBO: Done.");
   }
 
@@ -2583,8 +2583,6 @@ int psync_create_backup(char*  path,
   folderPath       folders;
 
   int   res = 0, oParCnt = 0;
-  char* parFolderName, folderName;
-
 
   debug(D_NOTICE, "BOBO: Create backup: [%s]", path);
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
@@ -2596,8 +2594,6 @@ int psync_create_backup(char*  path,
 
   parse_os_path(path, &folders);
 
-  //folderName = psync_strdup(folders.folders[folders.cnt - 1]);
-  //debug(D_NOTICE, "BOBO: Parent name: [%s]", folderName);
   debug(D_NOTICE, "BOBO: Folder name: [%s]", folders.folders[folders.cnt - 1]);
 
   if (folders.cnt > 1) {
@@ -2605,7 +2601,6 @@ int psync_create_backup(char*  path,
     debug(D_NOTICE, "BOBO: Parent name: [%s]", folders.folders[folders.cnt - 2]);
   }
   else {
-    //parFolderName = psync_strdup("");
     folders.folders[folders.cnt - 2] = "";
     oParCnt = 0;
   }
@@ -2637,11 +2632,11 @@ int psync_create_backup(char*  path,
                      &reqPar,
                      &optPar,
                      &retData,
-                     &errMsg);
-
-  psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
-
+                     errMsg);
+    
   if (res == 0) {
+    psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
+
     folObj = psync_find_result(retData, BACKUP_FOLDER_META, PARAM_HASH);
     debug(D_NOTICE, "BOBO: Got folder data from backend. Create local folder.");
 
@@ -2650,7 +2645,7 @@ int psync_create_backup(char*  path,
 
     folId = psync_find_result(retData, FOLDER_ID, PARAM_NUM);
 
-    syncFId = psync_add_sync_by_folderid(path, folId, PSYNC_BACKUPS);
+    syncFId = psync_add_sync_by_folderid(path, folId->num, PSYNC_BACKUPS);
     debug(D_NOTICE, "BOBO: Local Sync folder id: [%lld]", syncFId);
   }
 
@@ -2659,7 +2654,7 @@ int psync_create_backup(char*  path,
   return res;
 }
 /***********************************************************************************************************************************************/
-int psync_delete_backup(psync_syncid_t folderId, 
+int psync_delete_backup(psync_folderid_t folderId,
                         char** errMsg) {
   binresult* retData;
   int   res = 0;
@@ -2690,7 +2685,7 @@ int psync_delete_backup(psync_syncid_t folderId,
 
   debug(D_NOTICE, "BOBO: Stop sync result: [%d].", res);
 
-  if (res = 0) {
+  if (res == 0) {
     debug(D_NOTICE, "BOBO: Delete local sync.");
     res = psync_delete_sync(folderId);
     debug(D_NOTICE, "BOBO: Delete Result:[%d]", res);
@@ -2702,13 +2697,12 @@ int psync_delete_backup(psync_syncid_t folderId,
   return res;
 }
 /***********************************************************************************************************************************************/
-void get_backup_root_name(char* bName) {
-  bName = psync_sql_cellstr("SELECT name FROM setting s JOIN folder f ON s.value = f.id AND s.id = 'BackupRootFoId'");
-  debug(D_NOTICE, "Root folder name: [%s]", bName);
+char* get_backup_root_name() {
+  return psync_sql_cellstr("SELECT name FROM setting s JOIN folder f ON s.value = f.id AND s.id = 'BackupRootFoId'");
 }
 /***********************************************************************************************************************************************/
-void get_pc_name(char* pcName) {
-  get_machine_name(pcName);
+char* get_pc_name() {
+  return get_machine_name();
 }
 /***********************************************************************************************************************************************/
 //Bobo

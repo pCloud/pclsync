@@ -351,21 +351,24 @@ int backend_call(const char*  binapi,
   return result;
 }
 /*************************************************************/
-void get_machine_name(char* pcName) {
+char* get_machine_name() {
   int   nameSize;
   int   res;
-
 #if defined(P_OS_WINDOWS)
+  char  pcName[MAX_COMPUTERNAME_LENGTH + 1];
+
   nameSize = MAX_COMPUTERNAME_LENGTH + 1;
   res = GetComputerNameA(pcName, &nameSize);
+
+  return psync_strdup(pcName);
 #endif
 
 #if defined(P_OS_LINUX)
-  pcName = psync_strdup("linuxMachine");
+  return psync_strdup("linuxMachine");
 #endif
 
 #if defined(P_OS_MACOSX)
-  pcName = psync_strdup("macMachine");
+  return psync_strdup("macMachine");
 #endif
 }
 /*************************************************************/

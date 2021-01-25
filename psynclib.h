@@ -801,13 +801,13 @@ psync_folder_list_t* psync_get_syncs_bytype(const char* syncType);
 int psync_create_backup(char* path, char** err);
 
 //Deletes a local backup folder with the id passed in the folderId parameter.
-int psync_delete_backup(psync_syncid_t folderId, char** err);
+int psync_delete_backup(psync_folderid_t folderId, char** err);
 
 //Returns the local machine name.
-void get_pc_name(char* pcName);
+char* get_pc_name();
 
 //Returns the name of the root backup folder of the machine.
-void get_backup_root_name(char* bName);
+char* get_backup_root_name();
 
 //Bobo
 
