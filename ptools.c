@@ -90,7 +90,7 @@ void getMACaddr(char *mac_addr) {
 #endif
 
 #if defined(P_OS_MACOSX)
-  strcpy(mac_addr, "HARDCODEDMACADDRESS");
+  mac_addr = psync_strdup("HARDCODEDMACADDRESS");
 #endif
 }
 /*************************************************************/
@@ -240,13 +240,9 @@ int backend_call(const char*  binapi,
   psync_socket* sock;
   uint64_t      result;
 
-  debug(D_NOTICE, "BOBO: 1. Param cnt:[%d]", totalParCnt);
-
   if(totalParCnt > 0) {
     localParams = (binparam*)malloc((totalParCnt) * sizeof(binparam)); //Allocate size for all required parameters.
   }
-
-  debug(D_NOTICE, "BOBO: 2");
 
   //Add required parameters to the structure
   for (int i = 0; i < reqParCnt; i++) {
@@ -268,11 +264,10 @@ int backend_call(const char*  binapi,
       continue;
     }
   }
-  debug(D_NOTICE, "BOBO: 3. Opt param cnt:[%d], Req params: [%d], Total Count: [%d]", optParCnt, reqParCnt, totalParCnt);
+
   //Add optional parameters to the structure
   for (int i = reqParCnt; i < totalParCnt; i++) {
     int j = 0;
-    debug(D_NOTICE, "BOBO: 3. [%d] Param Type: [%d], Param value: [%s]", i, optionalParams->Params[j].paramtype, optionalParams->Params[j].str);
 
     if (optionalParams->Params[i].paramtype == 0) {
       localParams[i] = (binparam)P_STR(optionalParams->Params[j].paramname, optionalParams->Params[j].str);
@@ -294,21 +289,16 @@ int backend_call(const char*  binapi,
 
     j++;
   }
-  debug(D_NOTICE, "BOBO: 4");
-  debug(D_NOTICE, "BOBO: Parama struct populated. Number of pramas: [%d]", totalParCnt);
+
   for (int i = 0; i <= totalParCnt; i++) {
     if (localParams[i].paramtype == 0) {
-      debug(D_NOTICE, "BOBO: %d: String Param: [%s] - [%s]", i, localParams[i].paramname, localParams[i].str);
       continue;
     }
 
     if (localParams[i].paramtype == 1) {
-      debug(D_NOTICE, "BOBO: %d: Number Param: [%s] - [%d]", i, localParams[i].paramname, localParams[i].num);
       continue;
     }
   }
-
-  debug(D_NOTICE, "BOBO: 5");
 
   sock = psync_api_connect(binapi, psync_setting_get_bool(0));
 
@@ -319,7 +309,6 @@ int backend_call(const char*  binapi,
 
     return -1;
   }
-
 
   res = do_send_command(sock, wsPath, strlen(wsPath), localParams, totalParCnt, -1, 1);
 
@@ -337,17 +326,12 @@ int backend_call(const char*  binapi,
     return -1;
   }
 
-  debug(D_NOTICE, "BOBO: Get results value.");
   result = psync_find_result(res, "result", PARAM_NUM)->num;
 
-
-  debug(D_NOTICE, "BOBO: Got results from call.");
   psync_do_dump_binresult(res, "ptools.c", "backend_call", 666);
 
-  debug(D_NOTICE, "BOBO: Get the folder object.");
   payload = psync_find_result(res, payloadName, PARAM_HASH);
 
-  debug(D_NOTICE, "BOBO: Dump folder object to log. Size:[%d]", payload->length);
   psync_do_dump_binresult(payload, "ptools.c", "backend_call", 666);
 
   psync_socket_close(sock);
@@ -360,10 +344,7 @@ int backend_call(const char*  binapi,
     debug(D_CRITICAL, "Backend command failed. Error:[%s]", *err);
   }
   else {
-    debug(D_CRITICAL, "BOBO: Allocate memory for return result. Res size: [%d]", payload->length);
     *resData = (binresult*)malloc(payload->length*sizeof(binresult));
-
-    debug(D_CRITICAL, "BOBO: Copy memory to result pointer.");
     memcpy(*resData, payload, (payload->length * sizeof(binresult)));
   }
 
@@ -380,11 +361,11 @@ void get_machine_name(char* pcName) {
 #endif
 
 #if defined(P_OS_LINUX)
-  strcpy(pcName, "linuxMachine");
+  pcName = psync_strdup("linuxMachine");
 #endif
 
 #if defined(P_OS_MACOSX)
-  strcpy(pcName, "macMachine");
+  pcName = psync_strdup("macMachine");
 #endif
 }
 /*************************************************************/
@@ -393,9 +374,10 @@ void parse_os_path(char* path, folderPath* folders) {
   int i = 0, j = 0, k = 0;
 #if defined(P_OS_WINDOWS)
   char delimiter[] = "\\";
-#elif
+#else
   char delimiter[] = "/";
 #endif
+
   if (strlen(path) < 1) {
     return;
   }
@@ -407,7 +389,7 @@ void parse_os_path(char* path, folderPath* folders) {
     }
     else {
       fName[k] = 0;
-      strcpy_s(folders->folders[j], sizeof(fName), fName);
+      folders->folders[j] = psync_strdup(fName);
 
       k = 0;
       j++;
@@ -419,7 +401,7 @@ void parse_os_path(char* path, folderPath* folders) {
       fName[k] = 0;
 
       if (strlen(fName) > 0) {
-        strcpy_s(folders->folders[j], sizeof(fName), fName);
+        folders->folders[j] = psync_strdup(fName);
         j++;
       }
 

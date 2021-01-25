@@ -798,10 +798,10 @@ psuggested_folders_t *psync_get_sync_suggestions();
 psync_folder_list_t* psync_get_syncs_bytype(const char* syncType);
 
 //Create a backup for the local folder defined by path parameter.
-int psync_create_backup(char* path);
+int psync_create_backup(char* path, char** err);
 
 //Deletes a local backup folder with the id passed in the folderId parameter.
-int psync_delete_backup(psync_syncid_t folderId);
+int psync_delete_backup(psync_syncid_t folderId, char** err);
 
 //Returns the local machine name.
 void get_pc_name(char* pcName);

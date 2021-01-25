@@ -38,7 +38,7 @@ typedef struct _eventParams {
 
 typedef struct _folderPath {
   int cnt;
-  char* folders[50][100];
+  char* folders[50];
 } folderPath;
 /**********************************************************************************************************/
 int create_backend_event(
