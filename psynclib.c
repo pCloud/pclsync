@@ -2547,17 +2547,8 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
                      msgErr);
 
   if (res == 0) {
-    psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
-
-    debug(D_NOTICE, "BOBO: Get folder meta.");
-    rootFolMeta = psync_find_result(retData, FOLDER_META, PARAM_HASH);
-    debug(D_NOTICE, "BOBO: Dump folder meta.");
-    psync_do_dump_binresult(rootFolMeta, "ptools.c", "backend_call", 666);
-    debug(D_NOTICE, "BOBO: Done.");
-
-    rootFolIdObj = psync_find_result(rootFolMeta, "folderid", PARAM_NUM);
+    rootFolIdObj = psync_find_result(retData, "folderid", PARAM_NUM);
     debug(D_NOTICE, "BOBO: Got back folder id: [%lld], type:[%d]", rootFolIdObj->num, rootFolIdObj->type);
-
 
     //Store the root folder id in the local DB
     sql = psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('BackupRootFoId', ?)");
@@ -2568,12 +2559,14 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
     
     //rootFolObj = psync_find_result(retData, FOLDER_META, PARAM_HASH);
     
-    psync_wait_folder_in_local_db(rootFolIdObj->num);
-    psync_diff_update_folder(rootFolMeta);
+    //psync_wait_folder_in_local_db(rootFolIdObj->num);
+    
+    //psync_diff_update_folder(rootFolMeta);
     debug(D_NOTICE, "BOBO: Done.");
+
+    free(retData);
   }
 
-  free(retData);
   debug(D_NOTICE, "BOBO: Done.");
 
   return rootFolIdObj->num;
@@ -2646,11 +2639,14 @@ int psync_create_backup(char*  path,
     debug(D_NOTICE, "BOBO: Got folder data from backend. Dump result.");
     psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
 
+    /*
     debug(D_NOTICE, "BOBO: Create folder in local DB.");
     psync_diff_update_folder(retData);
     debug(D_NOTICE, "BOBO: Done.");
-
+    */
     folId = psync_find_result(retData, FOLDER_ID, PARAM_NUM);
+
+    psync_wait_folder_in_local_db(folId);
 
     debug(D_NOTICE, "BOBO: Add sync.");
     syncFId = psync_add_sync_by_folderid(path, folId->num, PSYNC_BACKUPS);
