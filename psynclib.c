@@ -2505,7 +2505,7 @@ psync_folder_list_t* psync_get_syncs_bytype(const char* syncType) {
 /***********************************************************************************************************************************************/
 psync_folderid_t create_bup_mach_folder(char** msgErr) {
   binresult* rootFolIdObj;
-  binresult* rootFolNameObj;
+  binresult* rootFolMeta;
   binresult* retData;
   binresult* rootFolObj;
 
@@ -2540,7 +2540,7 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
   //Test US server: "binapi71.pcloud.com"
   res = backend_call(apiserver,
                      "backup/createdevice",
-                     DEVICE_FOLDER_META,
+                     FOLDER_META,
                      &requiredParams,
                      &optionalParams,
                      &retData,
@@ -2549,8 +2549,15 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
   if (res == 0) {
     psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
 
-    rootFolIdObj = psync_find_result(retData, "folderid", PARAM_NUM);
+    debug(D_NOTICE, "BOBO: Get folder meta.");
+    rootFolMeta = psync_find_result(retData, FOLDER_META, PARAM_HASH);
+    debug(D_NOTICE, "BOBO: Dump folder meta.");
+    psync_do_dump_binresult(rootFolMeta, "ptools.c", "backend_call", 666);
+    debug(D_NOTICE, "BOBO: Done.");
+
+    rootFolIdObj = psync_find_result(rootFolMeta, "folderid", PARAM_NUM);
     debug(D_NOTICE, "BOBO: Got back folder id: [%lld], type:[%d]", rootFolIdObj->num, rootFolIdObj->type);
+
 
     //Store the root folder id in the local DB
     sql = psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('BackupRootFoId', ?)");
@@ -2559,10 +2566,10 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
 
     debug(D_NOTICE, "BOBO: Wait for backend to sync folder to local DB. Id [%lld]", rootFolIdObj->num);
     
-    //rootFolObj = psync_find_result(retData, BACKUP_FOLDER_META, PARAM_HASH);
+    //rootFolObj = psync_find_result(retData, FOLDER_META, PARAM_HASH);
     
     psync_wait_folder_in_local_db(rootFolIdObj->num);
-    //psync_diff_update_folder(retData);
+    psync_diff_update_folder(rootFolMeta);
     debug(D_NOTICE, "BOBO: Done.");
   }
 
@@ -2607,13 +2614,14 @@ int psync_create_backup(char*  path,
 
   //Create the backup folder in the backend.
   debug(D_NOTICE, "BOBO: Init parameters for [backup/createbackup] call.");
-  
+ 
   eventParams reqPar = {
-    3, //Number of parameters we are passing below.
+    4, //Number of parameters we are passing below.
     {
       P_STR("auth", psync_my_auth),
       P_STR("name", folders.folders[folders.cnt - 1]),
-      P_NUM("folderid", bFId)
+      P_NUM("folderid", bFId),
+      P_STR("timeformat", "timestamp")
     }
   };
 
@@ -2628,28 +2636,28 @@ int psync_create_backup(char*  path,
   //Test US server: "binapi71.pcloud.com"
   res = backend_call(apiserver,
                      "backup/createbackup",
-                     BACKUP_FOLDER_META,
+                     FOLDER_META,
                      &reqPar,
                      &optPar,
                      &retData,
                      errMsg);
     
   if (res == 0) {
+    debug(D_NOTICE, "BOBO: Got folder data from backend. Dump result.");
     psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
 
-    folObj = psync_find_result(retData, BACKUP_FOLDER_META, PARAM_HASH);
-    debug(D_NOTICE, "BOBO: Got folder data from backend. Create local folder.");
-
-    psync_diff_update_folder(folObj);
+    debug(D_NOTICE, "BOBO: Create folder in local DB.");
+    psync_diff_update_folder(retData);
     debug(D_NOTICE, "BOBO: Done.");
 
     folId = psync_find_result(retData, FOLDER_ID, PARAM_NUM);
 
+    debug(D_NOTICE, "BOBO: Add sync.");
     syncFId = psync_add_sync_by_folderid(path, folId->num, PSYNC_BACKUPS);
-    debug(D_NOTICE, "BOBO: Local Sync folder id: [%lld]", syncFId);
-  }
+    debug(D_NOTICE, "BOBO: Local Sync id: [%lld]", syncFId);
 
-  free(retData);
+    free(retData);
+  }
 
   return res;
 }
@@ -2657,6 +2665,9 @@ int psync_create_backup(char*  path,
 int psync_delete_backup(psync_folderid_t folderId,
                         char** errMsg) {
   binresult* retData;
+  psync_syncid_t syncId;
+  psync_sql_res* sqlRes;
+  psync_uint_row row;
   int   res = 0;
 
   debug(D_NOTICE, "BOBO: Delete backup folder id: [%lld]", folderId);
@@ -2674,24 +2685,34 @@ int psync_delete_backup(psync_folderid_t folderId,
   };
 
   debug(D_NOTICE, "BOBO: Sending [backup/stopbackup].");
-  //Test US server: "binapi71.pcloud.com"
+
   res = backend_call(apiserver,
                      "backup/stopbackup",
                      NO_PAYLOAD,
                      &reqPar,
                      &optPar,
                      &retData,
-                     &errMsg);
+                     errMsg);
 
   debug(D_NOTICE, "BOBO: Stop sync result: [%d].", res);
 
   if (res == 0) {
-    debug(D_NOTICE, "BOBO: Delete local sync.");
-    res = psync_delete_sync(folderId);
+    /*
+    sqlRes = psync_sql_query_rdlock("SELECT syncid FROM syncedfolder WHERE folderid = ?");
+
+    psync_sql_bind_uint(res, 1, folderId);
+    row = psync_sql_fetch_rowint(sqlRes);
+    psync_sql_free_result(sqlRes);
+
+    debug(D_NOTICE, "BOBO: Delete local sync. Got sync id from local DB: [%lld]", row);
+
+    res = psync_delete_sync(syncId);
+
     debug(D_NOTICE, "BOBO: Delete Result:[%d]", res);
+    */
   }
   else {
-    debug(D_NOTICE, "BOBO: Delete sync in backend failed: [%s]", errMsg);
+    debug(D_NOTICE, "BOBO: Delete sync in backend failed: [%s]", *errMsg);
   }
   
   return res;

@@ -328,12 +328,6 @@ int backend_call(const char*  binapi,
 
   result = psync_find_result(res, "result", PARAM_NUM)->num;
 
-  psync_do_dump_binresult(res, "ptools.c", "backend_call", 666);
-
-  payload = psync_find_result(res, payloadName, PARAM_HASH);
-
-  psync_do_dump_binresult(payload, "ptools.c", "backend_call", 666);
-
   psync_socket_close(sock);
 
   if (result) {
@@ -344,8 +338,12 @@ int backend_call(const char*  binapi,
     debug(D_CRITICAL, "Backend command failed. Error:[%s]", *err);
   }
   else {
-    *resData = (binresult*)malloc(payload->length*sizeof(binresult));
-    memcpy(*resData, payload, (payload->length * sizeof(binresult)));
+    if(strlen(payloadName) > 0) {
+      payload = psync_find_result(res, payloadName, PARAM_HASH);
+
+      *resData = (binresult*)malloc(payload->length * sizeof(binresult));
+      memcpy(*resData, payload, (payload->length * sizeof(binresult)));
+    }
   }
 
   return result;

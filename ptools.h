@@ -23,8 +23,7 @@
 #define INST_EVENT_FLOGIN "FIRST_LOGIN"
 
 //Payload name constants
-#define DEVICE_FOLDER_META "devicefoldermeta"
-#define BACKUP_FOLDER_META "backupfoldermeta"
+#define FOLDER_META "metadata"
 #define NO_PAYLOAD         ""
 
 //Parameter name constants
