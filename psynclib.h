@@ -812,6 +812,9 @@ char* get_pc_name();
 //Returns the name of the root backup folder of the machine.
 char* get_backup_root_name();
 
+//Asynchronous delete of local sync in thred, if a local sync with the folder id passed in fId parameter exists in the local DB
+int psync_delete_sync_by_folderid(psync_folderid_t fId);
+
 //Bobo
 
 /* Use the following functions to list local or remote folders.

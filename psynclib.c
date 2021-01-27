@@ -2498,7 +2498,7 @@ int psync_send_publink(const char *code, const char *mail, const char *message, 
 //Bobo
 /***********************************************************************************************************************************************/
 psync_folder_list_t* psync_get_syncs_bytype(const char* syncType) {
-  debug(D_NOTICE, "BOBO: Get syncs type: [%s]", syncType);
+  debug(D_NOTICE, "Get syncs type: [%s]", syncType);
 
   return psync_list_get_list(syncType);
 }
@@ -2515,14 +2515,10 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
   char* tmpBuff;
   int   res = 0;
 
-  debug(D_NOTICE, "BOBO: Get local machine name.");
-
   tmpBuff = get_pc_name();
   psync_strlcpy(bRootFoName, tmpBuff, 64);
 
   free(tmpBuff);
-
-  debug(D_NOTICE, "BOBO: No root folder in DB. Get machine name: [%s]", bRootFoName);
 
   eventParams requiredParams = {
     3, //Number of parameters we are passing below.
@@ -2537,6 +2533,7 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
     0
   };
 
+  debug(D_NOTICE, "Call backend [backup/createdevice].");
   //Test US server: "binapi71.pcloud.com"
   res = backend_call(apiserver,
                      "backup/createdevice",
@@ -2548,24 +2545,14 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
 
   if (res == 0) {
     rootFolIdObj = psync_find_result(retData, "folderid", PARAM_NUM);
-    debug(D_NOTICE, "BOBO: Got back folder id: [%lld], type:[%d]", rootFolIdObj->num, rootFolIdObj->type);
 
     //Store the root folder id in the local DB
     sql = psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('BackupRootFoId', ?)");
     psync_sql_bind_uint(sql, 1, rootFolIdObj->num);
     psync_sql_run_free(sql);
 
-    debug(D_NOTICE, "BOBO: Wait for backend to sync folder to local DB. Id [%lld]", rootFolIdObj->num);
-    
-    //rootFolObj = psync_find_result(retData, FOLDER_META, PARAM_HASH);
-    //psync_wait_folder_in_local_db(rootFolIdObj->num);
-    //psync_diff_update_folder(rootFolMeta);
-    debug(D_NOTICE, "BOBO: Done.");
-
     free(retData);
   }
-
-  debug(D_NOTICE, "BOBO: Done.");
 
   return rootFolIdObj->num;
 }
@@ -2582,9 +2569,7 @@ int psync_create_backup(char*  path,
 
   int   res = 0, oParCnt = 0;
 
-  debug(D_NOTICE, "BOBO: Create backup: [%s]", path);
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
-  debug(D_NOTICE, "BOBO: Got id from DB: [%lld]", bFId);
 
   if (bFId == 0) {
     bFId = create_bup_mach_folder(errMsg);
@@ -2592,19 +2577,13 @@ int psync_create_backup(char*  path,
 
   parse_os_path(path, &folders);
 
-  debug(D_NOTICE, "BOBO: Folder name: [%s]", folders.folders[folders.cnt - 1]);
-
   if (folders.cnt > 1) {
     oParCnt = 1;
-    debug(D_NOTICE, "BOBO: Parent name: [%s]", folders.folders[folders.cnt - 2]);
   }
   else {
     folders.folders[folders.cnt - 2] = "";
     oParCnt = 0;
   }
-
-  //Create the backup folder in the backend.
-  debug(D_NOTICE, "BOBO: Init parameters for [backup/createbackup] call.");
  
   eventParams reqPar = {
     4, //Number of parameters we are passing below.
@@ -2623,8 +2602,8 @@ int psync_create_backup(char*  path,
     }
   };
 
-  debug(D_NOTICE, "BOBO: Sending [backup/createbackup].");
-  //Test US server: "binapi71.pcloud.com"
+  debug(D_NOTICE, "Call backend [backup/createbackup].");
+
   res = backend_call(apiserver,
                      "backup/createbackup",
                      FOLDER_META,
@@ -2634,20 +2613,11 @@ int psync_create_backup(char*  path,
                      errMsg);
     
   if (res == 0) {
-    debug(D_NOTICE, "BOBO: Got folder data from backend. Dump result.");
-    psync_do_dump_binresult(retData, "ptools.c", "backend_call", 666);
-
-    debug(D_NOTICE, "BOBO: Create folder in local DB.");
     psync_diff_update_folder(retData);
-    debug(D_NOTICE, "BOBO: Done.");
 
     folId = psync_find_result(retData, FOLDER_ID, PARAM_NUM);
 
-    //psync_wait_folder_in_local_db(folId);
-
-    debug(D_NOTICE, "BOBO: Add sync.");
     syncFId = psync_add_sync_by_folderid(path, folId->num, PSYNC_BACKUPS);
-    debug(D_NOTICE, "BOBO: Local Sync id: [%lld]", syncFId);
 
     free(retData);
   }
@@ -2664,15 +2634,13 @@ int psync_delete_backup(psync_syncid_t syncId,
 
   int   res = 0;
 
-  debug(D_NOTICE, "BOBO: Delete backup sync id: [%d]", syncId);
-
   sqlRes = psync_sql_query_rdlock("SELECT folderid FROM syncfolder WHERE id = ?");
 
   psync_sql_bind_uint(sqlRes, 1, syncId);
   row = psync_sql_fetch_rowint(sqlRes);
 
   if (unlikely(!row)) {
-    debug(D_NOTICE, "BOBO: Failed to find folder id for syncId: [%lld]", syncId);
+    debug(D_ERROR, "Failed to find folder id for syncId: [%lld]", syncId);
     psync_sql_free_result(sqlRes);
 
     res = -1;
@@ -2681,8 +2649,6 @@ int psync_delete_backup(psync_syncid_t syncId,
     folderId = row[0];
 
     psync_sql_free_result(sqlRes);
-
-    debug(D_NOTICE, "BOBO: Got sync folderId from local DB: [%lld]", folderId);
   }
  
   if(res == 0) {
@@ -2698,7 +2664,7 @@ int psync_delete_backup(psync_syncid_t syncId,
       0
     };
 
-    debug(D_NOTICE, "BOBO: Sending [backup/stopbackup].");
+    debug(D_NOTICE, "Call backend [backup/stopbackup].");
 
     res = backend_call(apiserver,
                        "backup/stopbackup",
@@ -2709,15 +2675,11 @@ int psync_delete_backup(psync_syncid_t syncId,
                        errMsg);
 
     if (res == 0) {
-      debug(D_NOTICE, "BOBO: Backend call success. Delete Local Sync.");
-
       res = psync_delete_sync(syncId);
-
-      debug(D_NOTICE, "BOBO: Delete Local Sync Result:[%d]", res);
     }
   }
 
-  debug(D_NOTICE, "BOBO: Stop sync result: [%d].", res);
+  debug(D_NOTICE, "Stop sync result: [%d].", res);
   
   return res;
 }
@@ -2735,8 +2697,6 @@ int psync_stop_device(psync_folderid_t folderId,
     bFId = folderId;
   }
 
-  debug(D_NOTICE, "BOBO: Got device id from DB: [%lld]", bFId);
-
   if(bFId > 0) {
     eventParams reqPar = {
       2, //Number of parameters we are passing below.
@@ -2750,7 +2710,7 @@ int psync_stop_device(psync_folderid_t folderId,
       0
     };
 
-    debug(D_NOTICE, "BOBO: Sending [backup/stopdevice].");
+    debug(D_NOTICE, "Call backend [backup/stopdevice].");
 
     res = backend_call(apiserver,
                        "backup/stopdevice",
@@ -2761,7 +2721,7 @@ int psync_stop_device(psync_folderid_t folderId,
                        errMsg);
   }
   else {
-    debug(D_NOTICE, "BOBO: Can't find device id in DB.");
+    debug(D_ERROR, "Can't find device id in local DB.");
   }
 
   return res;
@@ -2773,6 +2733,52 @@ char* get_backup_root_name() {
 /***********************************************************************************************************************************************/
 char* get_pc_name() {
   return get_machine_name();
+}
+/***********************************************************************************************************************************************/
+void psync_async_delete_sync(void* ptr) {
+  psync_syncid_t syncId = (psync_syncid_t*)ptr;
+  int res;
+
+  debug(D_NOTICE, "BOBO: Thread syncId: [%d]", syncId);
+
+  res = psync_delete_sync(syncId);
+
+  debug(D_NOTICE, "BOBO: Sync delete result: [%d]", res);
+}
+/***********************************************************************************************************************************************/
+int psync_delete_sync_by_folderid(psync_folderid_t fId) {
+  psync_sql_res* sqlRes;
+  psync_uint_row row;
+
+  psync_syncid_t* syncId;
+  psync_syncid_t* syncIdT;
+
+  debug(D_NOTICE, "BOBO: Check folderId in local DB: [%lld]", fId);
+
+  sqlRes = psync_sql_query_rdlock("SELECT id FROM syncfolder WHERE folderid = ?");
+  psync_sql_bind_uint(sqlRes, 1, fId);
+  row = psync_sql_fetch_rowint(sqlRes);
+
+  if (unlikely(!row)) {
+    debug(D_NOTICE, "BOBO: Sync not found!");
+    psync_sql_free_result(sqlRes);
+
+    return -1;
+  }
+
+  syncId = row[0];
+  debug(D_NOTICE, "BOBO: Got sync id from DB: [%d], raw: [%lld].", syncId, row[0]);
+  
+  psync_sql_free_result(sqlRes);
+
+  syncIdT = psync_new(psync_syncid_t);
+  syncIdT = syncId;
+
+  psync_run_thread1("psync_async_sync_delete", psync_async_delete_sync, syncIdT);
+
+  debug(D_NOTICE, "BOBO: Thread started.");
+
+  return 0;
 }
 /***********************************************************************************************************************************************/
 //Bobo

@@ -895,7 +895,6 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
 
   //Bobo
   char sqlStr[1000];
-  debug(D_NOTICE, "BOBO: Get Syncs list, id mask: [%s]", syncTypes);
 
   if(strlen(syncTypes)>0) {
     sprintf(sqlStr, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (%s)", syncTypes);
@@ -904,12 +903,7 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
     sprintf(sqlStr, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
   }
 
-  //res=psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
-
-  //res = psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (?)");
   res = psync_sql_query_rdlock(sqlStr);
-
-  //psync_sql_bind_lstring(res, 1, syncTypes, strlen(syncTypes));
 
   while ((row=psync_sql_fetch_row(res))){
     if (alloced==lastfolder){
