@@ -803,6 +803,9 @@ int psync_create_backup(char* path, char** err);
 //Deletes a local backup folder with the id passed in the folderId parameter.
 int psync_delete_backup(psync_folderid_t folderId, char** err);
 
+//Stop all the backups of the device. Passing 0 for folderId stops the current device.
+int psync_stop_device(psync_folderid_t folderId, char** errMsg);
+
 //Returns the local machine name.
 char* get_pc_name();
 

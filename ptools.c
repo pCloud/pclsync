@@ -28,9 +28,9 @@
 
 /*************************************************************/
 void getMACaddr(char *mac_addr) {
-  char* chunk[2];
-
 #if defined(P_OS_WINDOWS)
+  int i;
+  char* chunk[2];
   PIP_ADAPTER_INFO AdapterInfo;
   DWORD dwBufLen = sizeof(IP_ADAPTER_INFO);
 
@@ -233,6 +233,7 @@ int backend_call(const char*  binapi,
   int reqParCnt = requiredParams->paramCnt;
   int optParCnt = optionalParams->paramCnt;
   int totalParCnt = reqParCnt + optParCnt;
+  int i;
 
   binparam* localParams;
   binresult*    res;
@@ -245,7 +246,7 @@ int backend_call(const char*  binapi,
   }
 
   //Add required parameters to the structure
-  for (int i = 0; i < reqParCnt; i++) {
+  for (i = 0; i < reqParCnt; i++) {
     if (requiredParams->Params[i].paramtype == 0) {
       localParams[i] = (binparam)P_STR(requiredParams->Params[i].paramname, requiredParams->Params[i].str);
 
@@ -266,7 +267,7 @@ int backend_call(const char*  binapi,
   }
 
   //Add optional parameters to the structure
-  for (int i = reqParCnt; i < totalParCnt; i++) {
+  for (i = reqParCnt; i < totalParCnt; i++) {
     int j = 0;
 
     if (optionalParams->Params[i].paramtype == 0) {
@@ -290,7 +291,7 @@ int backend_call(const char*  binapi,
     j++;
   }
 
-  for (int i = 0; i <= totalParCnt; i++) {
+  for (i = 0; i <= totalParCnt; i++) {
     if (localParams[i].paramtype == 0) {
       continue;
     }
@@ -350,9 +351,9 @@ int backend_call(const char*  binapi,
 }
 /*************************************************************/
 char* get_machine_name() {
+#if defined(P_OS_WINDOWS)
   int   nameSize;
   int   res;
-#if defined(P_OS_WINDOWS)
   char  pcName[MAX_COMPUTERNAME_LENGTH + 1];
 
   nameSize = MAX_COMPUTERNAME_LENGTH + 1;

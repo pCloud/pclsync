@@ -944,10 +944,6 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
   str=((char *)ret)+l;
   ret->foldercnt=lastfolder;
   for (i=0; i<lastfolder; i++){
-    //Bobo
-    debug(D_NOTICE, "BOBO: Sync list, path: [%s]", folders[i].localpath);
-    //Bobo
-
     l=folders[i].locallen;
     memcpy(str, folders[i].localpath, l);
     psync_free(folders[i].localpath);
