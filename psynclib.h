@@ -800,8 +800,8 @@ psync_folder_list_t* psync_get_syncs_bytype(const char* syncType);
 //Create a backup for the local folder defined by path parameter.
 int psync_create_backup(char* path, char** err);
 
-//Deletes a local backup folder with the id passed in the folderId parameter.
-int psync_delete_backup(psync_folderid_t folderId, char** err);
+//Deletes a local sync with the id passed in syncId. Stops the backup in the backen with the coresponding folderId.
+int psync_delete_backup(psync_syncid_t syncId, char** errMsg);
 
 //Stop all the backups of the device. Passing 0 for folderId stops the current device.
 int psync_stop_device(psync_folderid_t folderId, char** errMsg);

@@ -2655,64 +2655,69 @@ int psync_create_backup(char*  path,
   return res;
 }
 /***********************************************************************************************************************************************/
-int psync_delete_backup(psync_folderid_t folderId,
+int psync_delete_backup(psync_syncid_t syncId,
                         char** errMsg) {
   binresult* retData;
   psync_sql_res* sqlRes;
   psync_uint_row row;
-  psync_syncid_t syncId;
+  psync_folderid_t folderId;
 
   int   res = 0;
 
-  debug(D_NOTICE, "BOBO: Delete backup folder id: [%lld]", folderId);
+  debug(D_NOTICE, "BOBO: Delete backup sync id: [%d]", syncId);
 
-  eventParams reqPar = {
-    2, //Number of parameters we are passing below.
-    {
-      P_STR("auth", psync_my_auth),
-      P_NUM("folderid", folderId)
-    }
-  };
+  sqlRes = psync_sql_query_rdlock("SELECT folderid FROM syncfolder WHERE id = ?");
 
-  eventParams optPar = {
-    0
-  };
+  psync_sql_bind_uint(sqlRes, 1, syncId);
+  row = psync_sql_fetch_rowint(sqlRes);
 
-  debug(D_NOTICE, "BOBO: Sending [backup/stopbackup].");
-
-  res = backend_call(apiserver,
-                     "backup/stopbackup",
-                     NO_PAYLOAD,
-                     &reqPar,
-                     &optPar,
-                     &retData,
-                     errMsg);
-
-  debug(D_NOTICE, "BOBO: Stop sync result: [%d].", res);
-
-  if (res == 0) {
-    sqlRes = psync_sql_query_rdlock("SELECT syncid FROM syncedfolder WHERE folderid = ?");
-
-    psync_sql_bind_uint(sqlRes, 1, folderId);
-    row = psync_sql_fetch_rowint(sqlRes);
+  if (unlikely(!row)) {
+    debug(D_NOTICE, "BOBO: Failed to find folder id for syncId: [%lld]", syncId);
     psync_sql_free_result(sqlRes);
 
-    if(row){
-      syncId = row[0];
+    res = -1;
+  }
+  else{
+    folderId = row[0];
 
-      debug(D_NOTICE, "BOBO: Got sync id from local DB: [%d]", syncId);
+    psync_sql_free_result(sqlRes);
+
+    debug(D_NOTICE, "BOBO: Got sync folderId from local DB: [%lld]", folderId);
+  }
+ 
+  if(res == 0) {
+    eventParams reqPar = {
+      2, //Number of parameters we are passing below.
+      {
+        P_STR("auth", psync_my_auth),
+        P_NUM("folderid", folderId)
+      }
+    };
+
+    eventParams optPar = {
+      0
+    };
+
+    debug(D_NOTICE, "BOBO: Sending [backup/stopbackup].");
+
+    res = backend_call(apiserver,
+                       "backup/stopbackup",
+                       NO_PAYLOAD,
+                       &reqPar,
+                       &optPar,
+                       &retData,
+                       errMsg);
+
+    if (res == 0) {
+      debug(D_NOTICE, "BOBO: Backend call success. Delete Local Sync.");
 
       res = psync_delete_sync(syncId);
 
-      debug(D_NOTICE, "BOBO: Delete Sync Result:[%d]", res);
-    }
-    else {
-      debug(D_NOTICE, "BOBO: Failed to find sync id for folder: [%lld]", folderId);
+      debug(D_NOTICE, "BOBO: Delete Local Sync Result:[%d]", res);
     }
   }
-  else {
-    debug(D_NOTICE, "BOBO: Delete sync in backend failed: [%s]", *errMsg);
-  }
+
+  debug(D_NOTICE, "BOBO: Stop sync result: [%d].", res);
   
   return res;
 }

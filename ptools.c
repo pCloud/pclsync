@@ -24,6 +24,7 @@
 #endif
 
 #if defined(P_OS_MACOSX)
+#include <unistd.h>
 #endif
 
 /*************************************************************/
@@ -179,7 +180,7 @@ int create_backend_event(const char*  binapi,
     paramsLocal[mpCnt + pCnt] = (binparam)P_STR(EPARAM_KEY, keyParams);
   }
 
-  for (i = 0; i <= tpCnt; i++) {
+  for (i = 0; i < tpCnt; i++) {
     if (paramsLocal[i].paramtype == 0) {
       debug(D_NOTICE, "%d: String Param: [%s] - [%s]", i, paramsLocal[i].paramname, paramsLocal[i].str);
       continue;
@@ -351,10 +352,11 @@ int backend_call(const char*  binapi,
 }
 /*************************************************************/
 char* get_machine_name() {
+  int   nameSize = 1024;
+  char  pcName[1024];
+  
 #if defined(P_OS_WINDOWS)
-  int   nameSize;
   int   res;
-  char  pcName[MAX_COMPUTERNAME_LENGTH + 1];
 
   nameSize = MAX_COMPUTERNAME_LENGTH + 1;
   res = GetComputerNameA(pcName, &nameSize);
@@ -363,11 +365,13 @@ char* get_machine_name() {
 #endif
 
 #if defined(P_OS_LINUX)
-  return psync_strdup("linuxMachine");
+  gethostname(pcName, nameSize);
+  return psync_strdup(pcName);
 #endif
 
 #if defined(P_OS_MACOSX)
-  return psync_strdup("macMachine");
+  gethostname(pcName, nameSize);
+  return psync_strdup(pcName);
 #endif
 }
 /*************************************************************/
