@@ -66,10 +66,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <stddef.h>
-//Bobo
 #include "ptools.h"
 #include "papi.h"
-//Bobo
 
 typedef struct {
   psync_list list;
@@ -2495,7 +2493,6 @@ int psync_send_publink(const char *code, const char *mail, const char *message, 
 	binparam params[] = { P_STR("auth", psync_my_auth), P_STR("code", code), P_STR("mails", mail), P_STR("message", message), P_NUM("source", 1) };
 	return psync_run_command("sendpublink", params, err);
 }
-//Bobo
 /***********************************************************************************************************************************************/
 psync_folder_list_t* psync_get_syncs_bytype(const char* syncType) {
   debug(D_NOTICE, "Get syncs type: [%s]", syncType);
@@ -2567,6 +2564,10 @@ int psync_create_backup(char*  path,
   binresult*       retData;
   folderPath       folders;
 
+  char*            optFolName;
+
+  psync_uint_row row;
+
   int   res = 0, oParCnt = 0;
 
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
@@ -2575,16 +2576,35 @@ int psync_create_backup(char*  path,
     bFId = create_bup_mach_folder(errMsg);
   }
 
+  /*
+  debug(D_ERROR, "Check if folder is already synced. [%s]", path);
+  sql = psync_sql_query_rdlock("SELECT id FROM syncfolder WHERE localpath = ?");
+
+  psync_sql_bind_uint(sql, 1, path);
+  row = psync_sql_fetch_rowint(sql);
+
+  if (unlikely(!row)) {
+    
+    psync_sql_free_result(sql);
+    
+    *errMsg = psync_strdup(BUPMSG_FOLDER_ALREADY_SYCED);
+
+    res = -1;
+  }
+  psync_sql_free_result(sql);
+  */
+
   parse_os_path(path, &folders);
 
   if (folders.cnt > 1) {
     oParCnt = 1;
+    optFolName = psync_strdup(folders.folders[folders.cnt - 2]);
   }
   else {
-    folders.folders[folders.cnt - 2] = "";
     oParCnt = 0;
+    optFolName = psync_strdup("");
   }
- 
+
   eventParams reqPar = {
     4, //Number of parameters we are passing below.
     {
@@ -2598,7 +2618,7 @@ int psync_create_backup(char*  path,
   eventParams optPar = {
     oParCnt,
     {
-      P_STR(PARENT_FOLDER_NAME, folders.folders[folders.cnt - 2])
+      P_STR(PARENT_FOLDER_NAME, optFolName)
     }
   };
 
@@ -2781,4 +2801,3 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
   return 0;
 }
 /***********************************************************************************************************************************************/
-//Bobo

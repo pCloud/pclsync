@@ -893,7 +893,6 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
   alloced=lastfolder=0;
   strlens=0;
 
-  //Bobo
   char sqlStr[1000];
 
   if(strlen(syncTypes)>0) {

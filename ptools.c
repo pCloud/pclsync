@@ -376,10 +376,12 @@ char* get_machine_name() {
 }
 /*************************************************************/
 void parse_os_path(char* path, folderPath* folders) {
-  char fName[100];
+  char fName[255];
+  char* buff;
   int i = 0, j = 0, k = 0;
+
 #if defined(P_OS_WINDOWS)
-  char delimiter[] = "\\";
+  char delimiter[] = PSYNC_DIRECTORY_SEPARATOR;
 #else
   char delimiter[] = "/";
 #endif
@@ -390,8 +392,18 @@ void parse_os_path(char* path, folderPath* folders) {
 
   while (1) {
     if (path[i] != delimiter[0]) {
-      fName[k] = path[i];
-      k++;
+      if (path[i] == ':') {
+        //In case we meet a ":" as in C:\ we set the name to Drive + the string before the ":"
+        fName[k] = NULL;
+        buff = psync_strcat("Drive ", &fName, NULL);
+        psync_strlcpy(fName, buff, strlen(buff)+1);
+
+        k = k + strlen("Drive ");
+      }
+      else {
+        fName[k] = path[i];
+        k++;
+      }
     }
     else {
       fName[k] = 0;

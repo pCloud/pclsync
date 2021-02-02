@@ -793,7 +793,7 @@ psync_folder_list_t *psync_get_sync_list();
 
 psuggested_folders_t *psync_get_sync_suggestions();
 
-//Bobo
+//Backups
 // Gets a list of local syncs, based on their type. Type empty string means all. Accepts comma separated list of types example: 1,2,3
 psync_folder_list_t* psync_get_syncs_bytype(const char* syncType);
 
@@ -814,8 +814,7 @@ char* get_backup_root_name();
 
 //Asynchronous delete of local sync in thred, if a local sync with the folder id passed in fId parameter exists in the local DB
 int psync_delete_sync_by_folderid(psync_folderid_t fId);
-
-//Bobo
+//Backups
 
 /* Use the following functions to list local or remote folders.
  * For local folders fileid and folderid will be set to a value that
