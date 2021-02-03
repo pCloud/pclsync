@@ -721,9 +721,9 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
       perms=psync_get_number(row[1]);
       flags=psync_get_number(row[4]);
       entry.folder.cansyncup=((perms&PSYNC_PERM_WRITE)==PSYNC_PERM_WRITE) &&
-                             ((perms&(PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST|PSYNC_FOLDER_FLAG_BACKUP_DEVICE|PSYNC_FOLDER_FLAG_BACKUP_ROOT|PSYNC_FOLDER_FLAG_BACKUP))==0);
+                             ((flags&(PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST|PSYNC_FOLDER_FLAG_BACKUP_DEVICE|PSYNC_FOLDER_FLAG_BACKUP_ROOT|PSYNC_FOLDER_FLAG_BACKUP))==0);
       entry.folder.cansyncdown=((perms&PSYNC_PERM_READ)==PSYNC_PERM_READ) &&
-                             ((perms&(PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST|PSYNC_FOLDER_FLAG_BACKUP_DEVICE|PSYNC_FOLDER_FLAG_BACKUP_ROOT|PSYNC_FOLDER_FLAG_BACKUP))==0);
+                             ((flags&(PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST|PSYNC_FOLDER_FLAG_BACKUP_DEVICE|PSYNC_FOLDER_FLAG_BACKUP_ROOT|PSYNC_FOLDER_FLAG_BACKUP))==0);
       entry.folder.canshare=(psync_my_userid==psync_get_number(row[3]));
       entry.folder.isencrypted=(psync_get_number(row[4])&PSYNC_FOLDER_FLAG_ENCRYPTED)?1:0;
       if (parentencrypted&&psync_crypto_isstarted()){
