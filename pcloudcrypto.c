@@ -268,7 +268,7 @@ static binresult *psync_get_keys_bin_auth(const char *auth){
   binresult *res;
 	api=psync_apipool_get();
 	if (!api)
-		return PRINT_RETURN_CONST(PSYNC_CRYPTO_SETUP_CANT_CONNECT);
+		return NULL;
 	res=send_command(api, "crypto_getuserkeys", params);
 	if (unlikely_log(!res)){
 		psync_apipool_release_bad(api);

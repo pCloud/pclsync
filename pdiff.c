@@ -200,7 +200,7 @@ int check_active_subscribtion(const binresult *res){
     }
     psync_free(status);
   }
-  
+
   return 0;
 }
 
@@ -271,10 +271,10 @@ static psync_socket *get_connected_socket(){
     auth=psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'");
     user=psync_sql_cellstr("SELECT value FROM setting WHERE id='user'");
     pass=psync_sql_cellstr("SELECT value FROM setting WHERE id='pass'");
-        
+
     chrUserid = psync_sql_cellstr("SELECT value FROM setting WHERE id='userid'");
 
-    //If there is no userid row, we assume it's first login, after instalation. 
+    //If there is no userid row, we assume it's first login, after instalation.
     //Rise a flag so we can send a first login event later.
     if (chrUserid == NULL) {
       isFirstLogin = 1;
@@ -282,7 +282,7 @@ static psync_socket *get_connected_socket(){
     else {
       isFirstLogin = 0;
     }
- 
+
 
     if (!auth && psync_my_auth[0])
       auth=psync_strdup(psync_my_auth);
@@ -461,7 +461,7 @@ static psync_socket *get_connected_socket(){
         psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
       continue;
     }
-    
+
     psync_my_userid=userid=psync_find_result(res, "userid", PARAM_NUM)->num;
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
 	  cres = psync_check_result(res, "freequota", PARAM_NUM);
@@ -469,7 +469,7 @@ static psync_socket *get_connected_socket(){
     if (cres){
 	    free_quota=cres->num;
 	  }
-	  
+
     luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
     psync_is_business=psync_find_result(res, "business", PARAM_BOOL)->num;
 	  lid=psync_setting_get_uint(_PS(location_id));
@@ -595,7 +595,7 @@ static psync_socket *get_connected_socket(){
       psync_sql_run(q);
       isbusiness=0;
     }
-    
+
     cres=psync_check_result(res, "cryptov2isactive", PARAM_BOOL);
     if (cres)
       psync_set_bool_setting("cryptov2isactive", cres->num);
@@ -714,6 +714,26 @@ static psync_socket *get_connected_socket(){
   }
 }
 
+static uint64_t extract_meta_folder_flags(const binresult *meta) {
+  const binresult *res;
+  uint64_t flags;
+  if ((res=psync_check_result(meta, "encrypted", PARAM_BOOL)) && res->num)
+    flags|=PSYNC_FOLDER_FLAG_ENCRYPTED;
+  if ((res=psync_check_result(meta, "ispublicroot", PARAM_BOOL)) && res->num)
+    flags|=PSYNC_FOLDER_FLAG_PUBLIC_ROOT;
+  if ((res=psync_check_result(meta, "isbackupdevicelist", PARAM_BOOL)) && res->num)
+    flags|=PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST;
+  if ((res=psync_check_result(meta, "isbackupdevice", PARAM_BOOL)) && res->num)
+    flags|=PSYNC_FOLDER_FLAG_BACKUP_DEVICE;
+  if ((res=psync_check_result(meta, "isbackuproot", PARAM_BOOL)) && res->num)
+    flags|=PSYNC_FOLDER_FLAG_BACKUP_ROOT;
+  if ((res=psync_check_result(meta, "isbackup", PARAM_BOOL)) && res->num)
+    flags|=PSYNC_FOLDER_FLAG_BACKUP;
+
+
+  return flags;
+}
+
 static void process_createfolder(const binresult *entry){
   static psync_sql_res *st=NULL, *st2=NULL;
   psync_sql_res *res, *stmt, *stmt2;
@@ -743,9 +763,7 @@ static void process_createfolder(const binresult *entry){
       return;
   }
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
-  flags=0;
-  if ((name=psync_check_result(meta, "encrypted", PARAM_BOOL)) && name->num)
-    flags|=PSYNC_FOLDER_FLAG_ENCRYPTED;
+  flags=extract_meta_folder_flags(meta);
   if (psync_find_result(meta, "ismine", PARAM_BOOL)->num){
     userid=psync_my_userid;
     perms=PSYNC_PERM_ALL;
@@ -856,7 +874,7 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_res *res;
   psync_full_result_int *fres1, *fres2;
   const binresult *meta, *name;
-  uint64_t userid, perms, mtime, flags;
+  uint64_t userid, perms, mtime, flags, oldflags;
   psync_variant_row vrow;
   psync_uint_row row;
   psync_folderid_t parentfolderid, folderid, oldparentfolderid, localfolderid;
@@ -878,9 +896,7 @@ static void process_modifyfolder(const binresult *entry){
       return;
   }
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
-  flags=0;
-  if ((name=psync_check_result(meta, "encrypted", PARAM_BOOL)) && name->num)
-    flags|=PSYNC_FOLDER_FLAG_ENCRYPTED;
+  flags=extract_meta_folder_flags(meta);
   if (psync_find_result(meta, "ismine", PARAM_BOOL)->num){
     userid=psync_my_userid;
     perms=PSYNC_PERM_ALL;
@@ -892,12 +908,13 @@ static void process_modifyfolder(const binresult *entry){
   name=psync_find_result(meta, "name", PARAM_STR);
   folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
   parentfolderid=psync_find_result(meta, "parentfolderid", PARAM_NUM)->num;
-  res=psync_sql_query("SELECT parentfolderid, name FROM folder WHERE id=?");
+  res=psync_sql_query("SELECT parentfolderid, name, flags FROM folder WHERE id=?");
   psync_sql_bind_uint(res, 1, folderid);
   vrow=psync_sql_fetch_row(res);
   if (likely(vrow)){
     oldparentfolderid=psync_get_number(vrow[0]);
     oldname=psync_dup_string(vrow[1]);
+    oldflags=psync_get_number(vrow[2]);
   }
   else{
     debug(D_ERROR, "got modify for non-existing folder %lu (%s), processing as create", (unsigned long)folderid, name->str);
@@ -906,6 +923,8 @@ static void process_modifyfolder(const binresult *entry){
     return;
   }
   psync_sql_free_result(res);
+  if ((oldflags&PSYNC_FOLDER_FLAG_BACKUP_ROOT)!=0 && (flags&PSYNC_FOLDER_FLAG_BACKUP_ROOT)==0)
+    psync_delete_sync_by_folderid(folderid);
   mtime=psync_find_result(meta, "modified", PARAM_NUM)->num;
   psync_sql_bind_uint(st, 1, parentfolderid);
   psync_sql_bind_uint(st, 2, userid);
@@ -1508,14 +1527,14 @@ static void process_modifyuserinfo(const binresult *entry){
     return;
   res=psync_find_result(entry, "userinfo", PARAM_HASH);
   q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
-  
+
   cres=psync_check_result(res, "userid", PARAM_NUM);
   if (cres){
     psync_sql_bind_string(q, 1, "userid");
     psync_sql_bind_uint(q, 2, cres->num);
     psync_sql_run(q);
   }
-  
+
   psync_sql_bind_string(q, 1, "quota");
   current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
   psync_sql_bind_uint(q, 2, current_quota);
@@ -1556,14 +1575,14 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_string(q, 1, "premiumlifetime");
   psync_sql_bind_uint(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
   psync_sql_run(q);
-  
+
   cres = psync_check_result(res, "vivapcloud", PARAM_BOOL);
   if (cres){
     psync_sql_bind_string(q, 1, "vivapcloud");
     psync_sql_bind_uint(q, 2, cres->num);
     psync_sql_run(q);
   }
-  
+
   cres = psync_check_result(res, "family", PARAM_HASH);
   if (cres){
     psync_sql_bind_string(q, 1, "owner");
@@ -1636,7 +1655,7 @@ static void send_share_notify(psync_eventtype_t eventid, const binresult *share,
   uint64_t teamid = 0;
   uint64_t touserid = 0;
   uint64_t fromuserid = 0;
-  
+
   if (initialdownload)
     return;
   stringslen=0;
@@ -2022,7 +2041,7 @@ static void process_establishbshareout(const binresult *entry) {
     }
   }
   send_share_notify(((isincomming) ? PEVENT_SHARE_REQUESTIN : PEVENT_SHARE_REQUESTOUT ), share, 1);
-  
+
   q=psync_sql_prep_statement("REPLACE INTO bsharedfolder (id, folderid, ctime, permissions, message, name, isuser, "
                                                           "touserid, isteam, toteamid, fromuserid, folderownerid, isincoming)"
                                                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -2185,7 +2204,7 @@ static void process_modifiedsharein(const binresult *entry){
   const binresult *share;
   if (!entry)
     return;
-  share=psync_find_result(entry, "share", PARAM_HASH);    
+  share=psync_find_result(entry, "share", PARAM_HASH);
   send_share_notify(PEVENT_SHARE_MODIFYIN, share, 0);
   modify_shared_folder(share, psync_find_result(share, "shareid", PARAM_NUM)->num);
 }

@@ -704,7 +704,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
   psync_variant_row row;
   size_t namelen;
   pentry_t entry;
-  uint64_t perms;
+  uint64_t perms, flags;
   list=folder_list_init();
   char *tmp;
   int parentencrypted=0;
@@ -725,8 +725,11 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
     while ((row=psync_sql_fetch_row(res))){
       entry.folder.folderid=psync_get_number(row[0]);
       perms=psync_get_number(row[1]);
-      entry.folder.cansyncup=((perms&PSYNC_PERM_WRITE)==PSYNC_PERM_WRITE);
-      entry.folder.cansyncdown=((perms&PSYNC_PERM_READ)==PSYNC_PERM_READ);
+      flags=psync_get_number(row[4]);
+      entry.folder.cansyncup=((perms&PSYNC_PERM_WRITE)==PSYNC_PERM_WRITE) &&
+                             ((flags&(PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST|PSYNC_FOLDER_FLAG_BACKUP_DEVICE|PSYNC_FOLDER_FLAG_BACKUP_ROOT|PSYNC_FOLDER_FLAG_BACKUP))==0);
+      entry.folder.cansyncdown=((perms&PSYNC_PERM_READ)==PSYNC_PERM_READ) &&
+                             ((flags&(PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST|PSYNC_FOLDER_FLAG_BACKUP_DEVICE|PSYNC_FOLDER_FLAG_BACKUP_ROOT|PSYNC_FOLDER_FLAG_BACKUP))==0);
       entry.folder.canshare=(psync_my_userid==psync_get_number(row[3]));
       entry.folder.isencrypted=(psync_get_number(row[4])&PSYNC_FOLDER_FLAG_ENCRYPTED)?1:0;
       if (parentencrypted&&psync_crypto_isstarted()){
@@ -741,7 +744,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
       else{
         entry.name=psync_get_lstring(row[2], &namelen);
         entry.namelen=namelen;
-      }      
+      }
       entry.isfolder=1;
       folder_list_add(list, &entry);
     }
