@@ -109,6 +109,8 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
   switch (result){
     case 2002: /* parent does not exists */
     case 2003: /* access denied */
+    case 2075: /* not a member of a business account */
+    case 2344: /* can't create folders in backup folder */
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, task->id);
       psync_sql_run_free(res);
@@ -174,6 +176,8 @@ static int handle_rmdir_api_error(uint64_t result, fsupload_task_t *task){
     case 2003: /* access denied, skip*/
     case 2006: /* not empty */
     case 2028: /* folder is shared */
+    case 2287: /* public folder */
+    case 2345: /* backup */
       psync_fstask_folder_deleted(task->folderid, task->id, task->text1);
       return 0;
     default:
@@ -302,6 +306,8 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
   switch (result){
     case 2005: /* folder does not exists */
     case 2003: /* access denied */
+    case 2075: /* are not a member of a business account */
+    case 2346: /* backup folder */
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);
       psync_sql_run_free(res);
@@ -1362,10 +1368,14 @@ static int handle_rename_file_api_error(uint64_t result, fsupload_task_t *task){
   switch (result){
     case 2009: /* file does not exist, skip */
     case 2005: /* destination does not exist, skip */
+    case 2004: /* already exists */
     case 2003: /* access denied, skip */
     case 2001: /* invalid name, should not happen */
     case 2008: /* overquota */
     case 2049: /* Source and target are the same file */
+    case 2284: /* public folder can't contain download */
+    case 2343: /* backup folders can't contain download links */
+    case 2346: /* you can't place this item in backup folders */
       psync_fstask_file_renamed(task->folderid, task->id, task->text1, task->int1);
       return 0;
   }
@@ -1424,6 +1434,14 @@ static int handle_rename_folder_api_error(uint64_t result, fsupload_task_t *task
     case 2008: /* overquota */
     case 2023: /* moving into shared folder */
     case 2043: /* into itself or child  */
+    case 2282: /* public folder can't contain shared folder */
+    case 2283: /* public folder can't contain upload link */
+    case 2284: /* public folder can't contain download link */
+    case 2285: /* shared folder can't contain public folder */
+    case 2340: /* backup folders can't contain shared folders */
+    case 2342: /* backup folders can't contain upload links */
+    case 2343: /* backup folders can't contain download links */
+    case 2346: /* you can't place this item in backup folder */
       psync_fstask_folder_renamed(task->folderid, task->id, task->text1, task->int1);
       return 0;
     case 2004: /* destination folder already exists */

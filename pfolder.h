@@ -1,7 +1,7 @@
 /* Copyright (c) 2013-2014 Anton Titov.
  * Copyright (c) 2013-2014 pCloud Ltd.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -12,7 +12,7 @@
  *     * Neither the name of pCloud Ltd nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -34,8 +34,13 @@
 #define PSYNC_INVALID_FOLDERID ((psync_folderid_t)-1)
 #define PSYNC_INVALID_PATH NULL
 
-#define PSYNC_FOLDER_FLAG_ENCRYPTED 1
-#define PSYNC_FOLDER_FLAG_INVISIBLE 2
+#define PSYNC_FOLDER_FLAG_ENCRYPTED           1
+#define PSYNC_FOLDER_FLAG_INVISIBLE           2
+#define PSYNC_FOLDER_FLAG_PUBLIC_ROOT         4
+#define PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST  8
+#define PSYNC_FOLDER_FLAG_BACKUP_DEVICE       16
+#define PSYNC_FOLDER_FLAG_BACKUP_ROOT         32
+#define PSYNC_FOLDER_FLAG_BACKUP              64
 
 psync_folderid_t psync_get_folderid_by_path(const char *path) PSYNC_NONNULL(1) PSYNC_PURE;
 psync_folderid_t psync_get_folderid_by_path_or_create(const char *path) PSYNC_NONNULL(1);
