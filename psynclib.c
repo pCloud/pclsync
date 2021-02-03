@@ -747,6 +747,9 @@ psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_
   psync_stat_t st;
   psync_syncid_t ret;
   int unsigned md;
+
+  debug(D_NOTICE, "BOBO: Add sync by folder id localpath: [%s]", localpath);
+
   if (unlikely_log(synctype<PSYNC_SYNCTYPE_MIN || synctype>PSYNC_SYNCTYPE_MAX))
     return_isyncid(PERROR_INVALID_SYNCTYPE);
   if (unlikely_log(psync_stat(localpath, &st)) || unlikely_log(!psync_stat_isfolder(&st)))
@@ -770,7 +773,8 @@ psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_
   res=psync_sql_query("SELECT localpath FROM syncfolder");
   if (unlikely_log(!res))
     return_isyncid(PERROR_DATABASE_ERROR);
-  while ((srow=psync_sql_fetch_rowstr(res)))
+
+  while ((srow=psync_sql_fetch_rowstr(res))) {
     if (psync_str_is_prefix(srow[0], localpath)){
       psync_sql_free_result(res);
       return_isyncid(PERROR_PARENT_OR_SUBFOLDER_ALREADY_SYNCING);
@@ -779,7 +783,10 @@ psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_
       psync_sql_free_result(res);
       return_isyncid(PERROR_FOLDER_ALREADY_SYNCING);
     }
+  }
+
   psync_sql_free_result(res);
+
   if (folderid){
     res=psync_sql_query("SELECT permissions FROM folder WHERE id=?");
     if (unlikely_log(!res))
@@ -2563,36 +2570,43 @@ int psync_create_backup(char*  path,
   binresult*       folId;
   binresult*       retData;
   folderPath       folders;
+  psync_uint_row   row;
+  psync_str_row    srow;
 
   char*            optFolName;
-
-  psync_uint_row row;
-
   int   res = 0, oParCnt = 0;
+
+  debug(D_ERROR, "Check if folder is already synced. [%s]", path);
+
+  sql = psync_sql_query("SELECT localpath FROM syncfolder");
+
+  if (unlikely_log(!sql)) {
+    return_isyncid(PERROR_DATABASE_ERROR);
+  }
+
+  while ((srow = psync_sql_fetch_rowstr(sql))) {
+    debug(D_NOTICE, "BOBO: Check if path: [%s] is not a child of: [%s]", srow[0], path);
+
+    if (psync_str_is_prefix(srow[0], path)) {
+      psync_sql_free_result(sql);
+
+      *errMsg = psync_strdup("There is already an active sync or backup for a parent of this folder.");
+      return PERROR_PARENT_OR_SUBFOLDER_ALREADY_SYNCING;
+    }
+    else if (!psync_filename_cmp(srow[0], path)) {
+      psync_sql_free_result(sql);
+
+      *errMsg = psync_strdup("There is already an active sync or backup for this folder.");
+      return PERROR_FOLDER_ALREADY_SYNCING;
+    }
+  }
+  psync_sql_free_result(sql);
 
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
 
   if (bFId == 0) {
     bFId = create_bup_mach_folder(errMsg);
   }
-
-  /*
-  debug(D_ERROR, "Check if folder is already synced. [%s]", path);
-  sql = psync_sql_query_rdlock("SELECT id FROM syncfolder WHERE localpath = ?");
-
-  psync_sql_bind_uint(sql, 1, path);
-  row = psync_sql_fetch_rowint(sql);
-
-  if (unlikely(!row)) {
-    
-    psync_sql_free_result(sql);
-    
-    *errMsg = psync_strdup(BUPMSG_FOLDER_ALREADY_SYCED);
-
-    res = -1;
-  }
-  psync_sql_free_result(sql);
-  */
 
   parse_os_path(path, &folders);
 
@@ -2640,6 +2654,13 @@ int psync_create_backup(char*  path,
     syncFId = psync_add_sync_by_folderid(path, folId->num, PSYNC_BACKUPS);
 
     free(retData);
+
+    if (syncFId < 0) {
+      *errMsg = psync_strdup("Error creating sync.");
+      return syncFId;
+    }
+
+    debug(D_NOTICE, "Created sync with id[%d].", syncFId);
   }
 
   return res;
