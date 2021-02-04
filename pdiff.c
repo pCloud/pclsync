@@ -716,7 +716,7 @@ static psync_socket *get_connected_socket(){
 
 static uint64_t extract_meta_folder_flags(const binresult *meta) {
   const binresult *res;
-  uint64_t flags;
+  uint64_t flags = 0;
   if ((res=psync_check_result(meta, "encrypted", PARAM_BOOL)) && res->num)
     flags|=PSYNC_FOLDER_FLAG_ENCRYPTED;
   if ((res=psync_check_result(meta, "ispublicroot", PARAM_BOOL)) && res->num)
@@ -729,7 +729,6 @@ static uint64_t extract_meta_folder_flags(const binresult *meta) {
     flags|=PSYNC_FOLDER_FLAG_BACKUP_ROOT;
   if ((res=psync_check_result(meta, "isbackup", PARAM_BOOL)) && res->num)
     flags|=PSYNC_FOLDER_FLAG_BACKUP;
-
 
   return flags;
 }
