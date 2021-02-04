@@ -804,7 +804,7 @@ int psync_create_backup(char* path, char** err);
 int psync_delete_backup(psync_syncid_t syncId, char** errMsg);
 
 //Stop all the backups of the device. Passing 0 for folderId stops the current device.
-int psync_stop_device(psync_folderid_t folderId, char** errMsg);
+void psync_stop_device(psync_folderid_t folderId, char** errMsg);
 
 //Returns the local machine name.
 char* get_pc_name();

@@ -499,13 +499,19 @@ void psync_unlink(){
   psync_sql_res *res;
   char *deviceid;
   int ret;
+  char errMsg[1024];
+
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
   debug(D_NOTICE, "unlink");
+
   psync_diff_lock();
   unlinked=1;
   tfa=0;
   psync_stop_all_download();
   psync_stop_all_upload();
+  //Stop the root backup folder before unlinking the database. 0 means fetch the deviceid from local DB.
+  psync_stop_device(0, &errMsg);
+
   psync_status_recalc_to_download();
   psync_status_recalc_to_upload();
   psync_invalidate_auth(psync_my_auth);
@@ -748,7 +754,7 @@ psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_
   psync_syncid_t ret;
   int unsigned md;
 
-  debug(D_NOTICE, "BOBO: Add sync by folder id localpath: [%s]", localpath);
+  debug(D_NOTICE, "Add sync by folder id localpath: [%s]", localpath);
 
   if (unlikely_log(synctype<PSYNC_SYNCTYPE_MIN || synctype>PSYNC_SYNCTYPE_MAX))
     return_isyncid(PERROR_INVALID_SYNCTYPE);
@@ -764,7 +770,6 @@ psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_
   if (syncmp){
     size_t len=strlen(syncmp);
     if (!psync_filename_cmpn(syncmp, localpath, len) && (localpath[len]==0 || localpath[len]=='/' || localpath[len]=='\\')){
-      debug(D_NOTICE, "local path %s is on pCloudDrive mounted as %s, rejecting sync", localpath, syncmp);
       psync_free(syncmp);
       return_isyncid(PERROR_LOCAL_IS_ON_PDRIVE);
     }
@@ -2585,8 +2590,6 @@ int psync_create_backup(char*  path,
   }
 
   while ((srow = psync_sql_fetch_rowstr(sql))) {
-    debug(D_NOTICE, "BOBO: Check if path: [%s] is not a child of: [%s]", srow[0], path);
-
     if (psync_str_is_prefix(srow[0], path)) {
       psync_sql_free_result(sql);
 
@@ -2725,7 +2728,7 @@ int psync_delete_backup(psync_syncid_t syncId,
   return res;
 }
 /***********************************************************************************************************************************************/
-int psync_stop_device(psync_folderid_t folderId,
+void psync_stop_device(psync_folderid_t folderId,
                       char**           errMsg) {
   binresult* retData;
   psync_folderid_t bFId;
@@ -2760,12 +2763,14 @@ int psync_stop_device(psync_folderid_t folderId,
                        &optPar,
                        &retData,
                        errMsg);
+
+    if (res != 0) {
+      debug(D_ERROR, "Failed to stop device in the backend Message: [%s].", *errMsg);
+    }
   }
   else {
     debug(D_ERROR, "Can't find device id in local DB.");
   }
-
-  return res;
 }
 /***********************************************************************************************************************************************/
 char* get_backup_root_name() {
@@ -2780,11 +2785,7 @@ void psync_async_delete_sync(void* ptr) {
   psync_syncid_t syncId = (psync_syncid_t*)ptr;
   int res;
 
-  debug(D_NOTICE, "BOBO: Thread syncId: [%d]", syncId);
-
   res = psync_delete_sync(syncId);
-
-  debug(D_NOTICE, "BOBO: Sync delete result: [%d]", res);
 }
 /***********************************************************************************************************************************************/
 int psync_delete_sync_by_folderid(psync_folderid_t fId) {
@@ -2794,21 +2795,18 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
   psync_syncid_t* syncId;
   psync_syncid_t* syncIdT;
 
-  debug(D_NOTICE, "BOBO: Check folderId in local DB: [%lld]", fId);
-
   sqlRes = psync_sql_query_rdlock("SELECT id FROM syncfolder WHERE folderid = ?");
   psync_sql_bind_uint(sqlRes, 1, fId);
   row = psync_sql_fetch_rowint(sqlRes);
 
   if (unlikely(!row)) {
-    debug(D_NOTICE, "BOBO: Sync not found!");
+    debug(D_ERROR, "Sync not found!");
     psync_sql_free_result(sqlRes);
 
     return -1;
   }
 
   syncId = row[0];
-  debug(D_NOTICE, "BOBO: Got sync id from DB: [%d], raw: [%lld].", syncId, row[0]);
   
   psync_sql_free_result(sqlRes);
 
@@ -2816,8 +2814,6 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
   syncIdT = syncId;
 
   psync_run_thread1("psync_async_sync_delete", psync_async_delete_sync, syncIdT);
-
-  debug(D_NOTICE, "BOBO: Thread started.");
 
   return 0;
 }
