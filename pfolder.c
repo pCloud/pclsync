@@ -125,13 +125,11 @@ static psync_folderid_t wait_folder_id_in_db(psync_folderid_t folderid){
   }
   return PSYNC_INVALID_FOLDERID;
 }
-//Bobo
 /**********************************************************************************************************/
 psync_folderid_t psync_wait_folder_in_local_db(psync_folderid_t folderid) {
   return wait_folder_id_in_db(folderid);
 }
 /**********************************************************************************************************/
-//Bobo
 psync_folderid_t psync_get_folderid_by_path_or_create(const char *path){
   psync_folderid_t cfolderid;
   const char *sl;

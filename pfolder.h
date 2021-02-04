@@ -58,9 +58,7 @@ pentry_t *psync_folder_stat_path(const char *remotepath);
 
 psync_folder_list_t* psync_list_get_list(char* syncTypes);
 
-//Bobo
 psync_folderid_t psync_wait_folder_in_local_db(psync_folderid_t folderid);
-//Bobo
 
 #ifdef P_OS_WINDOWS
 void psync_refresh_explorer_crypto_folder();

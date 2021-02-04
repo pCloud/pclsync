@@ -499,7 +499,7 @@ void psync_unlink(){
   psync_sql_res *res;
   char *deviceid;
   int ret;
-  char errMsg[1024];
+  char* errMsg;
 
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
   debug(D_NOTICE, "unlink");
@@ -2506,6 +2506,59 @@ int psync_send_publink(const char *code, const char *mail, const char *message, 
 	return psync_run_command("sendpublink", params, err);
 }
 /***********************************************************************************************************************************************/
+int psync_is_folder_syncable(char*  localPath, 
+                             char** errMsg) {
+  psync_sql_res* sql;
+  psync_str_row  srow;
+  psync_uint_row row;
+
+  char* syncmp;
+
+  debug(D_NOTICE, "Check if folder is already synced. LocalPath [%s]", localPath);
+
+  sql = psync_sql_query("SELECT localpath FROM syncfolder");
+
+  if (unlikely_log(!sql)) {
+    return_isyncid(PERROR_DATABASE_ERROR);
+  }
+
+  while ((srow = psync_sql_fetch_rowstr(sql))) {
+    if (psync_str_is_prefix(srow[0], localPath)) {
+      psync_sql_free_result(sql);
+
+      *errMsg = psync_strdup("There is already an active sync or backup for a parent of this folder.");
+      return PERROR_PARENT_OR_SUBFOLDER_ALREADY_SYNCING;
+    }
+    else if (!psync_filename_cmp(srow[0], localPath)) {
+      psync_sql_free_result(sql);
+
+      *errMsg = psync_strdup("There is already an active sync or backup for this folder.");
+      return PERROR_FOLDER_ALREADY_SYNCING;
+    }
+  }
+  psync_sql_free_result(sql);
+
+  debug(D_NOTICE, "Check if folder is not on the Drive.");
+
+  syncmp = psync_fs_getmountpoint();
+
+  debug(D_NOTICE, "Mount point: [%s].", syncmp);
+  if (syncmp) {
+    size_t len = strlen(syncmp);
+
+    debug(D_NOTICE, "Do check.");
+    if (!psync_filename_cmpn(syncmp, localPath, len) && (localPath[len] == 0 || localPath[len] == '/' || localPath[len] == '\\')) {
+      psync_free(syncmp);
+
+      *errMsg = psync_strdup("Folder is located on pCloud drive.");
+      return PERROR_LOCAL_IS_ON_PDRIVE;
+    }
+    psync_free(syncmp);
+  }
+
+  return 0;
+}
+/***********************************************************************************************************************************************/
 psync_folder_list_t* psync_get_syncs_bytype(const char* syncType) {
   debug(D_NOTICE, "Get syncs type: [%s]", syncType);
 
@@ -2570,40 +2623,18 @@ int psync_create_backup(char*  path,
                         char** errMsg) {
   psync_folderid_t bFId;
   psync_syncid_t   syncFId;
-  psync_sql_res*   sql;
-  binresult*       folObj;
   binresult*       folId;
   binresult*       retData;
   folderPath       folders;
-  psync_uint_row   row;
-  psync_str_row    srow;
 
   char*            optFolName;
   int   res = 0, oParCnt = 0;
 
-  debug(D_ERROR, "Check if folder is already synced. [%s]", path);
+  res = psync_is_folder_syncable(path, errMsg);
 
-  sql = psync_sql_query("SELECT localpath FROM syncfolder");
-
-  if (unlikely_log(!sql)) {
-    return_isyncid(PERROR_DATABASE_ERROR);
+  if (res != 0) {
+    return res;
   }
-
-  while ((srow = psync_sql_fetch_rowstr(sql))) {
-    if (psync_str_is_prefix(srow[0], path)) {
-      psync_sql_free_result(sql);
-
-      *errMsg = psync_strdup("There is already an active sync or backup for a parent of this folder.");
-      return PERROR_PARENT_OR_SUBFOLDER_ALREADY_SYNCING;
-    }
-    else if (!psync_filename_cmp(srow[0], path)) {
-      psync_sql_free_result(sql);
-
-      *errMsg = psync_strdup("There is already an active sync or backup for this folder.");
-      return PERROR_FOLDER_ALREADY_SYNCING;
-    }
-  }
-  psync_sql_free_result(sql);
 
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
 

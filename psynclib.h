@@ -202,7 +202,7 @@ typedef struct pstatus_struct_ {
 #define PNOTIFICATION_ACTION_GO_TO_URL     2
 #define PNOTIFICATION_ACTION_SHARE_REQUEST 3
 
-//Bobo
+//Sync constants
 #define PSYNC_DOWNLOAD_ONLY  1
 #define PSYNC_UPLOAD_ONLY    2
 #define PSYNC_FULL           3
@@ -216,7 +216,7 @@ typedef struct pstatus_struct_ {
 
 #define PSYNC_SYNCTYPE_MIN   1
 #define PSYNC_SYNCTYPE_MAX   7
-//Bobo
+//Sync constants end
 
 #define PERROR_LOCAL_FOLDER_NOT_FOUND   1
 #define PERROR_REMOTE_FOLDER_NOT_FOUND  2
@@ -794,6 +794,8 @@ psync_folder_list_t *psync_get_sync_list();
 psuggested_folders_t *psync_get_sync_suggestions();
 
 //Backups
+int psync_is_folder_syncable(char* localPath, char** errMsg);
+
 // Gets a list of local syncs, based on their type. Type empty string means all. Accepts comma separated list of types example: 1,2,3
 psync_folder_list_t* psync_get_syncs_bytype(const char* syncType);
 
