@@ -38,7 +38,9 @@
 #include "pcallbacks.h"
 #include "ppathstatus.h"
 #include "prunratelimit.h"
+#include "pssl.h"
 #include <string.h>
+#include <ctype.h>
 
 typedef struct {
   psync_list list;
@@ -73,6 +75,16 @@ typedef struct {
   char localpath[];
 } sync_restat_list;
 
+typedef struct {
+  psync_deviceid_t deviceid;
+  psync_inode_t inode;
+} device_inode_t;
+
+static device_inode_t *ignored_paths=NULL;
+static uint32_t ign_paths_cnt=0;
+static uint32_t ign_paths_alloc=0;
+static time_t ign_last_check=0;
+static unsigned char ign_checksum[PSYNC_SHA256_DIGEST_LEN];
 
 static pthread_mutex_t scan_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t scan_cond=PTHREAD_COND_INITIALIZER;
@@ -115,7 +127,7 @@ static void scanner_set_syncs_to_list(psync_list *lst, psync_list *lst_deviceid_
   psync_stat_t st;
   psync_deviceid_t deviceid;
   psync_inode_t inodeid;
-  
+
   psync_list_init(lst);
   psync_list_init(lst_deviceid_full);
   syncmp=psync_fs_getmountpoint();
@@ -150,16 +162,102 @@ static void scanner_set_syncs_to_list(psync_list *lst, psync_list *lst_deviceid_
     l_full_deviceid->synctype=psync_get_number(row[3]);
     memcpy(l_full_deviceid->localpath, lp, lplen+1);
     psync_list_add_tail(lst_deviceid_full, &l_full_deviceid->list);
-    
+
   }
   psync_sql_free_result(res);
   psync_free(syncmp);
+}
+
+static void add_ignored_dir(const char *path){
+  psync_stat_t st;
+  if (psync_stat(path, &st))
+    return;
+  if (ign_paths_cnt>=ign_paths_alloc) {
+    if (!ign_paths_alloc)
+      ign_paths_alloc=8;
+    else
+      ign_paths_alloc*=2;
+    ignored_paths=(device_inode_t *)psync_realloc(ignored_paths, sizeof(device_inode_t)*ign_paths_alloc);
+  }
+  ignored_paths[ign_paths_cnt].deviceid=psync_stat_device_full(&st);
+  ignored_paths[ign_paths_cnt].inode=psync_stat_inode(&st);
+  ign_paths_cnt++;
+}
+
+static void reload_ignored_folders(){
+  unsigned char checkcurr[PSYNC_SHA256_DIGEST_LEN];
+  const char *ign, *start, *end, *next;
+  char *dir, *home;
+  size_t ignlen, dirlen, homelen;
+  ign=psync_setting_get_string(_PS(ignorepatterns));
+  ignlen=strlen(ign);
+  psync_sha256((const unsigned char *)ign, ignlen, checkcurr);
+  if (!memcmp(ign_checksum, checkcurr, PSYNC_SHA256_DIGEST_LEN) && ign_last_check+3600<psync_timer_time())
+    return;
+  memcpy(ign_checksum, checkcurr, PSYNC_SHA256_DIGEST_LEN);
+  ign_last_check=psync_timer_time();
+  ign_paths_cnt=0;
+  next=ign;
+  home=NULL;
+  homelen=0;
+  while (1) {
+    start=next;
+    while (isspace(*start))
+      start++;
+    if (!*start)
+      break;
+    end=start;
+    while (*end && *end!=';' && *end!='\n')
+      end++;
+    if (*end)
+      next=end+1;
+    else
+      next=end;
+    while (end>start && isspace(*(end-1)))
+      end--;
+    dirlen=end-start;
+    if (dirlen>=5 && !memcmp(start, "$HOME", 5)){
+      if (!home){
+        home=psync_get_home_dir();
+        if (home)
+          homelen=strlen(home);
+      }
+      if (home){
+        dir=(char *)psync_malloc(dirlen+homelen-4);
+        memcpy(dir, home, homelen);
+        memcpy(dir+homelen, start+5, dirlen-5);
+        dir[dirlen+homelen-5]=0;
+      }
+      else{
+        dir=NULL;
+      }
+    }
+    else{
+      dir=(char *)psync_malloc(dirlen+1);
+      memcpy(dir, start, dirlen);
+      dir[dirlen]=0;
+    }
+    if (dir)
+      add_ignored_dir(dir);
+    psync_free(dir);
+  }
+  psync_free(home);
+}
+
+static int is_path_to_ignore(psync_deviceid_t deviceid, psync_inode_t inode){
+  uint32_t i;
+  for (i=0; i<ign_paths_cnt; i++)
+    if (ignored_paths[i].deviceid==deviceid && ignored_paths[i].inode==inode)
+      return 1;
+  return 0;
 }
 
 static void scanner_local_entry_to_list(void *ptr, psync_pstat *st){
   psync_list *lst;
   sync_folderlist *e;
   size_t l;
+  if (is_path_to_ignore(psync_stat_device_full(&st->stat), psync_stat_inode(&st->stat)))
+    return;
   lst=(psync_list *)ptr;
   l=strlen(st->name)+1;
   e=(sync_folderlist *)psync_malloc(offsetof(sync_folderlist, name)+l);
@@ -775,6 +873,7 @@ restart:
   pthread_mutex_unlock(&scan_mutex);
   if (!psync_statuses_ok_array(requiredstatuses, ARRAY_SIZE(requiredstatuses)))
     return;
+  reload_ignored_folders();
   for (i=0; i<SCAN_LIST_CNT; i++)
     psync_list_init(&scan_lists[i]);
   scanner_set_syncs_to_list(&slist, &slist_full_deviceid);
@@ -800,7 +899,8 @@ restart:
 	  deviceid=psync_stat_device_full(&st);
 	}
 	if (l->deviceid!=deviceid){
-	  debug(D_NOTICE, "The deviceid of sync folder '%s' has changed from %llu to %llu while scanning. Will restart the local scan.", l->localpath, l->deviceid, deviceid);
+	  debug(D_NOTICE, "The deviceid of sync folder '%s' has changed from %llu to %llu while scanning. Will restart the local scan.",
+          l->localpath, (unsigned long long)l->deviceid, (unsigned long long)deviceid);
 	  psync_restart_localscan();
 	  break;
 	}
@@ -1067,7 +1167,7 @@ void psync_restat_sync_folders(){
       psync_localnotify_del_sync(l->syncid);
       if (l->deviceid)
         psync_localnotify_add_sync(l->syncid);
-      has_changes=1;      
+      has_changes=1;
     }
   }
   pthread_mutex_unlock(&restat_mutex);

@@ -724,7 +724,7 @@ void psync_unlink();
  * psync_tfa_has_devices() - can be called after PSTATUS_TFA_REQUIRED is received and returns true if the user has other devices logged in
  *
  * psync_tfa_type() - can be called after PSTATUS_TFA_REQUIRED is received and returns TFA type.
- *  1 - msisdn 
+ *  1 - msisdn
  *  2 - google authenticator
  *
  * psync_tfa_send_sms() - sends SMS with two factor authentication code to the phone number on file. If parameters country_code and phone_number are not NULL,
@@ -843,7 +843,7 @@ void psync_run_localscan();
  * twice. The termsaccepted field should only be set to true if the user actually
  * indicated acceptance of pCloud terms and conditions.
  *
- * binapi is the binapi selected in the registration form and locationid is the one 
+ * binapi is the binapi selected in the registration form and locationid is the one
  * coresponding to that binapi.
  *
  * Returns zero on success, -1 if network error occurs or a positive error code from
@@ -927,6 +927,8 @@ const char *psync_get_auth_string();
  * psync_get_string_setting returns empty string on failure (type mismatch or non-existing setting), all other psync_get_*_setting
  * return zero on failure.
  *
+ * psync_reset_setting resets setting to default value. Returns 0 on success and -1 on error. Currently only "ignorepatterns" and "ignorepaths" are supported.
+ *
  * All settings are reset to default values on unlink.
  *
  * int and uint are interchangeable and are considered same type.
@@ -941,6 +943,7 @@ uint64_t psync_get_uint_setting(const char *settingname);
 int psync_set_uint_setting(const char *settingname, uint64_t value);
 const char *psync_get_string_setting(const char *settingname);
 int psync_set_string_setting(const char *settingname, const char *value);
+int psync_reset_setting(const char *settingname);
 
 /*
  * Values are like settings, except that you can store and retrieve any key-value pair you want. There are some library-polpulated
@@ -1023,7 +1026,7 @@ int psync_share_folder(psync_folderid_t folderid, const char *name, const char *
 
 /* psync_crypto_share_folder shares a crypto folder with the user "mail". The "permissions" parameter is bitwise or of
  * PSYNC_PERM_READ, PSYNC_PERM_CREATE, PSYNC_PERM_MODIFY and PSYNC_PERM_DELETE (PSYNC_PERM_READ is actually
- * ignored and always set). The "temppass" parameter is used to create a temporary crypto pass for the provided user if the user doesn't 
+ * ignored and always set). The "temppass" parameter is used to create a temporary crypto pass for the provided user if the user doesn't
  * have activated crypto an if left empty no attempt to create a temporary pass is made by the function.
  *
  * On success returns 0, otherwise returns API error number (or -1 on network error) and sets err to a string
@@ -1467,19 +1470,19 @@ char * psync_get_token();
 //Remove db information about device
 // void premove_device(const char* device_id);
 
-/* Checks for promotions. 
+/* Checks for promotions.
  * If url is empty there is no ptomotion.
  * Returns -1 in case of network error or
  * one of the positive error codes
 */
 int psync_get_promo(char **url);
-/* 
+/*
  * Checks if the user has any crypto folders.
  */
 int psync_has_crypto_folders();
 void set_tfa_flag(int value);
 /*
-* 
+*
 */
 apiservers_list_t *psync_get_apiservers(char **err /*OUT*/);
 void psync_set_apiserver(const char* binapi, uint32_t locationid);

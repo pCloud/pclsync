@@ -272,6 +272,10 @@ $RECYCLE.BIN;\
 *.part;\
 .pcloud;"
 
+#define PSYNC_IGNORE_PATHS_DEFAULT "Paths\
+to\
+ignore"
+
 /* Defaults for business account settings */
 #define PSYNC_BACC_COMPANYNAME      "Not set"
 #define PSYNC_BACC_OWNERUSERID      0
@@ -305,6 +309,7 @@ $RECYCLE.BIN;\
 #define PSYNC_SETTING_hasactivesubscription 19
 #define PSYNC_SETTING_api_server        20
 #define PSYNC_SETTING_location_id        21
+#define PSYNC_SETTING_ignorepaths        22
 
 typedef int psync_settingid_t;
 
@@ -324,5 +329,6 @@ uint64_t psync_setting_get_uint(psync_settingid_t settingid) PSYNC_PURE;
 int psync_setting_set_uint(psync_settingid_t settingid, uint64_t value);
 const char *psync_setting_get_string(psync_settingid_t settingid) PSYNC_PURE;
 int psync_setting_set_string(psync_settingid_t settingid, const char *value);
+int psync_setting_reset(psync_settingid_t settingid);
 
 #endif

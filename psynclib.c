@@ -297,7 +297,7 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
   psync_p2p_init();
   if (psync_setting_get_bool(_PS(autostartfs)))
     psync_fs_start();
-  psync_devmon_init();    
+  psync_devmon_init();
 }
 
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize){
@@ -410,7 +410,7 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
   psync_stop_all_download();
   psync_stop_all_upload();
   psync_async_stop();
-  psync_cache_clean_all(); 
+  psync_cache_clean_all();
   psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   psync_restart_localscan();
   psync_timer_notify_exception();
@@ -1273,6 +1273,10 @@ int psync_set_string_setting(const char *settingname, const char *value){
   return psync_setting_set_string(psync_setting_getid(settingname), value);
 }
 
+int psync_reset_setting(const char *settingname){
+  return psync_setting_reset(psync_setting_getid(settingname));
+}
+
 int psync_has_value(const char *valuename){
   psync_sql_res *res;
   psync_uint_row row;
@@ -1446,7 +1450,7 @@ psync_share_list_t *psync_list_shares(int incoming){
   psync_list_builder_t *builder;
   psync_sql_res *res;
   builder=psync_list_builder_create(sizeof(psync_share_t), offsetof(psync_share_list_t, shares));
-  incoming=!!incoming;  
+  incoming=!!incoming;
   if (incoming) {
     res=psync_sql_query_rdlock("SELECT id, folderid, ctime, permissions, userid, ifnull(mail, ''), ifnull(mail, '') as frommail, name, ifnull(bsharedfolderid, 0), 0 FROM sharedfolder WHERE isincoming=1 AND id >= 0 "
                                 " UNION ALL "
@@ -1491,12 +1495,12 @@ int psync_share_folder(psync_folderid_t folderid, const char *name, const char *
 int psync_crypto_share_folder(psync_folderid_t folderid, const char *name, const char *mail, const char *message, uint32_t permissions, char *hint, char *temppass,  char **err){
   char *priv_key=NULL;
   char *signature=NULL;
-  int change_err; 
-  
+  int change_err;
+
   if (!temppass){
   	binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_STR("mail", mail),
   		P_STR("message", message), P_NUM("permissions", convert_perms(permissions)), P_STR("hint", hint), P_NUM("strictmode", 1) };
-  	return psync_run_command("sharefolder", params, err);                     
+  	return psync_run_command("sharefolder", params, err);
   }
   if ((change_err = psync_crypto_change_passphrase_unlocked(temppass, PSYNC_CRYPTO_FLAG_TEMP_PASS, &priv_key, &signature))){
 	  return change_err;
@@ -2118,7 +2122,7 @@ int psync_crypto_change_crypto_pass(const char *oldpass, const char *newpass, co
   int tries=0, err;
   char *priv_key=NULL;
   char *signature=NULL;
-  
+
   if ((err = psync_crypto_change_passphrase(oldpass, newpass, 0, &priv_key, &signature))){
     return err;
   }
@@ -2159,8 +2163,8 @@ int psync_crypto_change_crypto_pass_unlocked(const char *newpass, const char *hi
   int tries = 0, err;
   char *priv_key = NULL;
   char *signature = NULL;
-  
-  
+
+
   if ((err = psync_crypto_change_passphrase_unlocked(newpass, 0, &priv_key, &signature))){
   	return err;
   }
