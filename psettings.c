@@ -31,6 +31,7 @@
 #include "pp2p.h"
 #include "pfs.h"
 #include "ppagecache.h"
+#include "plocalscan.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -81,7 +82,8 @@ static psync_setting_t settings[]={
   {"cryptov2isactive", NULL, NULL, {PSYNC_BACC_V2}, PSYNC_TBOOL},
   {"hasactivesubscription", NULL, NULL, {0}, PSYNC_TBOOL},
   {"api_server", NULL, NULL, {0}, PSYNC_TSTRING},
-  {"location_id", NULL, NULL, {PSYNC_LOCATIONID_DEFAULT}, PSYNC_TNUMBER}
+  {"location_id", NULL, NULL, {PSYNC_LOCATIONID_DEFAULT}, PSYNC_TNUMBER},
+  {"ignorepaths", psync_wake_localscan, NULL, {0}, PSYNC_TSTRING}
 };
 
 void psync_settings_reset(){
@@ -117,6 +119,7 @@ void psync_settings_reset(){
   settings[_PS(hasactivesubscription)].boolean=0;
   settings[_PS(api_server)].str=PSYNC_API_HOST;
   settings[_PS(location_id)].num=PSYNC_LOCATIONID_DEFAULT;
+  settings[_PS(ignorepaths)].str=PSYNC_IGNORE_PATHS_DEFAULT;
   for (i=0; i<ARRAY_SIZE(settings); i++){
     if (settings[i].type==PSYNC_TSTRING){
       settings[i].str=psync_strdup(settings[i].str);
@@ -159,6 +162,7 @@ void psync_settings_init(){
   settings[_PS(hasactivesubscription)].boolean=0;
   settings[_PS(api_server)].str=PSYNC_API_HOST;
   settings[_PS(location_id)].num=PSYNC_LOCATIONID_DEFAULT;
+  settings[_PS(ignorepaths)].str=PSYNC_IGNORE_PATHS_DEFAULT;
   for (i=0; i<ARRAY_SIZE(settings); i++){
     if (settings[i].type==PSYNC_TSTRING){
       settings[i].str=psync_strdup(settings[i].str);
@@ -308,6 +312,18 @@ int psync_setting_set_string(psync_settingid_t settingid, const char *value){
   if (settings[settingid].change_callback)
     settings[settingid].change_callback();
   psync_free_after_sec(oldval, 600);
+  return 0;
+}
+
+int psync_setting_reset(psync_settingid_t settingid){
+  switch (settingid) {
+    case _PS(ignorepatterns):
+      return psync_setting_set_string(_PS(ignorepatterns), PSYNC_IGNORE_PATTERNS_DEFAULT);
+    case _PS(ignorepaths):
+      return psync_setting_set_string(_PS(ignorepaths), PSYNC_IGNORE_PATHS_DEFAULT);
+    default:
+      return -1;
+  }
   return 0;
 }
 
