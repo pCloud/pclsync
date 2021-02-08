@@ -925,6 +925,8 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_free_result(res);
   if ((oldflags&PSYNC_FOLDER_FLAG_BACKUP_ROOT)!=0 && (flags&PSYNC_FOLDER_FLAG_BACKUP_ROOT)==0)
     psync_delete_sync_by_folderid(folderid);
+  if ((oldflags&PSYNC_FOLDER_FLAG_BACKUP_DEVICE)!=0 && (flags&PSYNC_FOLDER_FLAG_BACKUP_DEVICE)==0)
+    psync_delete_backup_device_by_folderid(folderid);
   mtime=psync_find_result(meta, "modified", PARAM_NUM)->num;
   psync_sql_bind_uint(st, 1, parentfolderid);
   psync_sql_bind_uint(st, 2, userid);
