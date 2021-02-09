@@ -885,6 +885,10 @@ restart:
       debug(D_WARNING, "could not stat local sync folder %s and will not scan it (recursively)", l->localpath);
       continue;
     }
+    if (is_path_to_ignore(psync_stat_device_full(&st), psync_stat_inode(&st))){
+      debug(D_NOTICE, "not syncing folder %s as it is in ignore list", l->localpath);
+      continue;
+    }
     scanner_scan_folder(l->localpath, l->folderid, 0, l->syncid, l->synctype, psync_stat_device_full(&st));
   }
   psync_list_for_each_element(l, &slist_full_deviceid, sync_list, list){
