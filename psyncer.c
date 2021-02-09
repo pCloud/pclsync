@@ -336,6 +336,10 @@ int psync_str_is_prefix(const char *str1, const char *str2){
   size_t len1, len2;
   len1=strlen(str1);
   len2=strlen(str2);
+
+  while (len1 > 1 && (str1[len1 - 1] == '/' || str1[len1 - 1] == PSYNC_DIRECTORY_SEPARATORC))
+    len1--;
+
   if (len2<len1){
     if (str1[len2]!='/' && str1[len2]!=PSYNC_DIRECTORY_SEPARATORC)
       return 0;

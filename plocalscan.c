@@ -170,6 +170,7 @@ static void scanner_set_syncs_to_list(psync_list *lst, psync_list *lst_deviceid_
 
 static void add_ignored_dir(const char *path){
   psync_stat_t st;
+
   if (psync_stat(path, &st))
     return;
   if (ign_paths_cnt>=ign_paths_alloc) {
@@ -189,11 +190,15 @@ static void reload_ignored_folders(){
   const char *ign, *start, *end, *next;
   char *dir, *home;
   size_t ignlen, dirlen, homelen;
-  ign=psync_setting_get_string(_PS(ignorepatterns));
+
+  ign=psync_setting_get_string(_PS(ignorepaths));
   ignlen=strlen(ign);
+
   psync_sha256((const unsigned char *)ign, ignlen, checkcurr);
+
   if (!memcmp(ign_checksum, checkcurr, PSYNC_SHA256_DIGEST_LEN) && ign_last_check+3600<psync_timer_time())
     return;
+
   memcpy(ign_checksum, checkcurr, PSYNC_SHA256_DIGEST_LEN);
   ign_last_check=psync_timer_time();
   ign_paths_cnt=0;
@@ -246,9 +251,12 @@ static void reload_ignored_folders(){
 
 static int is_path_to_ignore(psync_deviceid_t deviceid, psync_inode_t inode){
   uint32_t i;
-  for (i=0; i<ign_paths_cnt; i++)
-    if (ignored_paths[i].deviceid==deviceid && ignored_paths[i].inode==inode)
+  for (i=0; i<ign_paths_cnt; i++){
+    if (ignored_paths[i].deviceid == deviceid && ignored_paths[i].inode == inode) {
       return 1;
+    }
+  }
+
   return 0;
 }
 
@@ -256,8 +264,11 @@ static void scanner_local_entry_to_list(void *ptr, psync_pstat *st){
   psync_list *lst;
   sync_folderlist *e;
   size_t l;
-  if (is_path_to_ignore(psync_stat_device_full(&st->stat), psync_stat_inode(&st->stat)))
+
+  if (is_path_to_ignore(psync_stat_device_full(&st->stat), psync_stat_inode(&st->stat))) {
     return;
+  }
+
   lst=(psync_list *)ptr;
   l=strlen(st->name)+1;
   e=(sync_folderlist *)psync_malloc(offsetof(sync_folderlist, name)+l);
@@ -274,6 +285,7 @@ static void scanner_local_entry_to_list(void *ptr, psync_pstat *st){
 
 static int scanner_local_folder_to_list(const char *localpath, psync_list *lst){
   psync_list_init(lst);
+
   return psync_list_dir(localpath, scanner_local_entry_to_list, lst);
 }
 
@@ -883,6 +895,10 @@ restart:
     psync_stat_t st;
     if (unlikely(psync_stat(l->localpath, &st))){
       debug(D_WARNING, "could not stat local sync folder %s and will not scan it (recursively)", l->localpath);
+      continue;
+    }
+    if (is_path_to_ignore(psync_stat_device_full(&st), psync_stat_inode(&st))) {
+      debug(D_NOTICE, "not syncing folder %s as it is in ignore list", l->localpath);
       continue;
     }
     scanner_scan_folder(l->localpath, l->folderid, 0, l->syncid, l->synctype, psync_stat_device_full(&st));

@@ -272,9 +272,17 @@ $RECYCLE.BIN;\
 *.part;\
 .pcloud;"
 
-#define PSYNC_IGNORE_PATHS_DEFAULT "Paths\
-to\
-ignore"
+#if defined (P_OS_WINDOWS)
+#define PSYNC_IGNORE_PATHS_DEFAULT "C:\\$Recycle.Bin;C:\\$WinREAgent;C:\\Windows;C:\\Program Files;C:\\Program Files(x86);"
+#endif
+
+#if defined (P_OS_MACOSX)
+#define PSYNC_IGNORE_PATHS_DEFAULT "/Applications;,/Library;/private;/System;/bin;/etc;/sbin;/usr;"
+#endif
+
+#if defined (P_OS_LINUX)
+#define PSYNC_IGNORE_PATHS_DEFAULT "/Applications;,/Library;/private;/System;/bin;/dev;/etc;/net;/sbin;/usr;/Developer;"
+#endif
 
 /* Defaults for business account settings */
 #define PSYNC_BACC_COMPANYNAME      "Not set"
