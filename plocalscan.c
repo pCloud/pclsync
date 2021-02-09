@@ -189,10 +189,10 @@ static void reload_ignored_folders(){
   const char *ign, *start, *end, *next;
   char *dir, *home;
   size_t ignlen, dirlen, homelen;
-  ign=psync_setting_get_string(_PS(ignorepatterns));
+  ign=psync_setting_get_string(_PS(ignorepaths));
   ignlen=strlen(ign);
   psync_sha256((const unsigned char *)ign, ignlen, checkcurr);
-  if (!memcmp(ign_checksum, checkcurr, PSYNC_SHA256_DIGEST_LEN) && ign_last_check+3600<psync_timer_time())
+  if (!memcmp(ign_checksum, checkcurr, PSYNC_SHA256_DIGEST_LEN) && ign_last_check+3600>psync_timer_time())
     return;
   memcpy(ign_checksum, checkcurr, PSYNC_SHA256_DIGEST_LEN);
   ign_last_check=psync_timer_time();
