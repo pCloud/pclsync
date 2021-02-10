@@ -959,13 +959,21 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
       l--;
     if (str[l]=='/')
       l++;
+
     ret->folders[i].remotename=str+l;
     str+=folders[i].remotelen;
     ret->folders[i].folderid=folders[i].folderid;
     ret->folders[i].syncid=folders[i].syncid;
     ret->folders[i].synctype=folders[i].synctype;
+
+    //Fixes a corner case when windows root is being synced. Example C:\\ displays in the front end as empty string.
+    if ((strlen(ret->folders[i].localname) == 1) && (ret->folders[i].localname[0] == PSYNC_DIRECTORY_SEPARATORC)) {
+      psync_strlcpy(ret->folders[i].localname, ret->folders[i].remotename, folders[i].remotelen);
+    }
   }
+
   psync_free(folders);
+
   return ret;
 }
 

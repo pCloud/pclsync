@@ -277,11 +277,11 @@ $RECYCLE.BIN;\
 #endif
 
 #if defined (P_OS_MACOSX)
-#define PSYNC_IGNORE_PATHS_DEFAULT "/Applications;,/Library;/private;/System;/bin;/etc;/sbin;/usr;"
+#define PSYNC_IGNORE_PATHS_DEFAULT "/Applications;/Library;/private;/System;/bin;/etc;/sbin;/usr;"
 #endif
 
 #if defined (P_OS_LINUX)
-#define PSYNC_IGNORE_PATHS_DEFAULT "/Applications;,/Library;/private;/System;/bin;/dev;/etc;/net;/sbin;/usr;/Developer;"
+#define PSYNC_IGNORE_PATHS_DEFAULT "/Applications;/Library;/private;/System;/bin;/dev;/etc;/net;/sbin;/usr;/Developer;"
 #endif
 
 /* Defaults for business account settings */
