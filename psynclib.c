@@ -2867,6 +2867,6 @@ int psync_delete_backup_device(psync_folderid_t fId) {
     debug(D_NOTICE, "Stop for different device. Id: [%lld]", bFId);
   }
 
-  return TRUE;
+  return 1;
 }
 /***********************************************************************************************************************************************/

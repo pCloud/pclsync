@@ -370,7 +370,14 @@ char* get_machine_name() {
 #endif
 
 #if defined(P_OS_MACOSX)
-  gethostname(pcName, nameSize);
+  //gethostname(pcName, nameSize);
+  FILE* stream = popen("system_profiler SPSoftwareDataType | grep \"Computer Name\" | cut -d: -f2 | tr -d [:space:]", "r");
+  char buf[128];
+
+  while (!feof(stream) && !ferror(stream)) {
+    int byteRead = fread(buf, 1, 128, stream);
+  }
+
   return psync_strdup(pcName);
 #endif
 }
