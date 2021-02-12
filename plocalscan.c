@@ -891,7 +891,7 @@ static void scanner_scan(int first){
   starttime=psync_current_time;
   restartsleep=1000;
 
-  debug(D_WARNING, "BOBO: Gor [%lu] tasks from localfolder.", i);
+  debug(D_WARNING, "BOBO: Process tasks from localfolder.");
 restart:
   pthread_mutex_lock(&scan_mutex);
   while (scan_stoppers)
