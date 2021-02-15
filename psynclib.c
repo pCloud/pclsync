@@ -2679,7 +2679,7 @@ int psync_create_backup(char*  path,
                      &optPar,
                      &retData,
                      errMsg);
-    
+
   if (res == 0) {
     psync_diff_update_folder(retData);
 
@@ -2690,7 +2690,7 @@ int psync_create_backup(char*  path,
     free(retData);
 
     if (syncFId < 0) {
-      *errMsg = psync_strdup("Error creating sync.");
+      *errMsg = psync_strdup("Error creating backup.");
       return syncFId;
     }
 

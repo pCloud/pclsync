@@ -431,12 +431,23 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   //debug(D_NOTICE, "scanning folder %s deviceid: %llu", localpath, deviceid);
   debug(D_NOTICE, "BOBO: scanning folder %s deviceid: %llu", localpath, deviceid);
 
-  if (unlikely_log(scanner_local_folder_to_list(localpath, &disklist)))
+  if (unlikely_log(scanner_local_folder_to_list(localpath, &disklist))){
+    debug(D_NOTICE, "BOBO: Error while scanning folders. Return.");
+
     return;
+  }
+
+  debug(D_NOTICE, "BOBO: Done scanning folders.");
 
   scanner_db_folder_to_list(syncid, localfolderid, &dblist);
+
+  debug(D_NOTICE, "BOBO: Done scanning DB folders to list.");
+
   psync_list_sort(&dblist, folderlist_cmp);
   psync_list_sort(&disklist, folderlist_cmp);
+
+  debug(D_NOTICE, "BOBO: Done sorting folderlists.");
+
   ldisk=disklist.next;
   ldb=dblist.next;
 

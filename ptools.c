@@ -205,8 +205,6 @@ int create_backend_event(const char*  binapi,
       *err = psync_strdup("Could not connect to the server.");
     }
 
-    psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
-
     return -1;
   }
 
@@ -324,8 +322,6 @@ int backend_call(const char*  binapi,
       *err = psync_strdup("Could not connect to the server.");
     }
 
-    psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
-
     return -1;
   }
 
@@ -361,25 +357,28 @@ char* get_machine_name() {
 
   nameSize = MAX_COMPUTERNAME_LENGTH + 1;
   res = GetComputerNameA(pcName, &nameSize);
-
-  return psync_strdup(pcName);
 #endif
 
 #if defined(P_OS_LINUX)
   gethostname(pcName, nameSize);
-  return psync_strdup(pcName);
 #endif
 
+
 #if defined(P_OS_MACOSX)
-  //gethostname(pcName, nameSize);
-  FILE* stream = popen("system_profiler SPSoftwareDataType | grep \"Computer Name\" | cut -d: -f2 | tr -d [:space:]", "r");
+  FILE* stream = popen("system_profiler SPSoftwareDataType | grep \"Computer Name\" | cut -d: -f2", "r");
 
   while (!feof(stream) && !ferror(stream)) {
     int byteRead = fread(pcName, 1, 128, stream);
   }
 
-  return psync_strdup(pcName);
+  char* n = strchr(pcName, '\n');
+
+  if (n){
+    *n = '\0';
+  }
 #endif
+
+  return psync_strdup(pcName);
 }
 /*************************************************************/
 void parse_os_path(char* path, folderPath* folders) {

@@ -914,6 +914,7 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
     l++;
     str=(char *)psync_malloc(l);
     memcpy(str, cstr, l);
+
     strlens+=l;
     folders[lastfolder].localpath=str;
     folders[lastfolder].locallen=l;
@@ -937,26 +938,34 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
   ret=(psync_folder_list_t *)psync_malloc(l+strlens);
   str=((char *)ret)+l;
   ret->foldercnt=lastfolder;
+
   for (i=0; i<lastfolder; i++){
     l=folders[i].locallen;
     memcpy(str, folders[i].localpath, l);
     psync_free(folders[i].localpath);
     ret->folders[i].localpath=str;
     l--;
+
     while (l && str[l]!=PSYNC_DIRECTORY_SEPARATORC && str[l]!='/')
       l--;
+
     if ((str[l]==PSYNC_DIRECTORY_SEPARATORC || str[l]=='/') && str[l+1])
       l++;
+
     ret->folders[i].localname=str+l;
     str+=folders[i].locallen;
+
     l=folders[i].remotelen;
     memcpy(str, folders[i].remotepath, l);
     psync_free(folders[i].remotepath);
     ret->folders[i].remotepath=str;
+
     if (l)
       l--;
+
     while (l && str[l]!='/')
       l--;
+
     if (str[l]=='/')
       l++;
 
@@ -965,11 +974,6 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
     ret->folders[i].folderid=folders[i].folderid;
     ret->folders[i].syncid=folders[i].syncid;
     ret->folders[i].synctype=folders[i].synctype;
-
-    //Fixes a corner case when windows root is being synced. Example C:\\ displays in the front end as empty string.
-    if ((strlen(ret->folders[i].localname) == 1) && (ret->folders[i].localname[0] == PSYNC_DIRECTORY_SEPARATORC)) {
-      psync_strlcpy(ret->folders[i].localname, ret->folders[i].remotename, folders[i].remotelen);
-    }
   }
 
   psync_free(folders);
