@@ -429,29 +429,17 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   char *subpath;
   int cmp;
   //debug(D_NOTICE, "scanning folder %s deviceid: %llu", localpath, deviceid);
-  debug(D_NOTICE, "BOBO: scanning folder %s deviceid: %llu", localpath, deviceid);
-
   if (unlikely_log(scanner_local_folder_to_list(localpath, &disklist))){
-    debug(D_NOTICE, "BOBO: Error while scanning folders. Return.");
-
     return;
   }
 
-  debug(D_NOTICE, "BOBO: Done scanning folders.");
-
   scanner_db_folder_to_list(syncid, localfolderid, &dblist);
-
-  debug(D_NOTICE, "BOBO: Done scanning DB folders to list.");
 
   psync_list_sort(&dblist, folderlist_cmp);
   psync_list_sort(&disklist, folderlist_cmp);
 
-  debug(D_NOTICE, "BOBO: Done sorting folderlists.");
-
   ldisk=disklist.next;
   ldb=dblist.next;
-
-  debug(D_NOTICE, "BOBO: process changes list.");
 
   while (ldisk!=&disklist && ldb!=&dblist){
     fdisk=psync_list_element(ldisk, sync_folderlist, list);
@@ -487,8 +475,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     }
   }
 
-  debug(D_NOTICE, "BOBO: Done processing change list. ");
-
   while (ldisk!=&disklist){
     fdisk=psync_list_element(ldisk, sync_folderlist, list);
     add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
@@ -512,11 +498,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
       psync_free(subpath);
    }
 
-  debug(D_NOTICE, "BOBO: Free list elements. ");
-
   psync_list_for_each_element_call(&disklist, sync_folderlist, list, psync_free);
-
-  debug(D_NOTICE, "BOBO: Done scanner_scan_folder.");
 }
 
 static int compare_sizeinodemtime(const psync_list *l1, const psync_list *l2){
@@ -902,7 +884,6 @@ static void scanner_scan(int first){
   starttime=psync_current_time;
   restartsleep=1000;
 
-  debug(D_WARNING, "BOBO: Process tasks from localfolder.");
 restart:
   pthread_mutex_lock(&scan_mutex);
   while (scan_stoppers)
@@ -918,8 +899,6 @@ restart:
   changes=0;
   movedfolders=0;
 
-  debug(D_WARNING, "BOBO: Process scan folder tasks.");
-
   psync_list_for_each_element(l, &slist, sync_list, list){
     psync_stat_t st;
     if (unlikely(psync_stat(l->localpath, &st))){
@@ -932,8 +911,6 @@ restart:
     }
     scanner_scan_folder(l->localpath, l->folderid, 0, l->syncid, l->synctype, psync_stat_device_full(&st));
   }
-  
-  debug(D_WARNING, "BOBO: Process tasks to restart scan.");
   
   psync_list_for_each_element(l, &slist_full_deviceid, sync_list, list){
 	psync_stat_t st;
@@ -957,8 +934,6 @@ restart:
   psync_list_for_each_element_call(&slist, sync_list, list, psync_free);
   psync_list_for_each_element_call(&slist_full_deviceid, sync_list, list, psync_free);
   w=0;
-
-  debug(D_WARNING, "BOBO: Run checks.");
 
   do {
     pthread_mutex_lock(&scan_mutex);
@@ -1016,8 +991,6 @@ restart:
     }
   } while (i);
 
-  debug(D_WARNING, "BOBO: Run checks. Done.");
-
   pthread_mutex_lock(&scan_mutex);
   if (unlikely(restart_scan)){
     pthread_mutex_unlock(&scan_mutex);
@@ -1027,7 +1000,6 @@ restart:
     if (restartsleep<16000)
       restartsleep*=2;
 
-    debug(D_WARNING, "BOBO: Restart scan.");
     goto restart;
   }
   pthread_mutex_unlock(&scan_mutex);
@@ -1038,8 +1010,6 @@ restart:
                                compare_sizeinodemtime);
   l2=&scan_lists[SCAN_LIST_RENFILESTO];
   trn=0;
-
-  debug(D_WARNING, "BOBO: Start transaction.");
 
   psync_sql_start_transaction();
   psync_list_for_each(l1, &scan_lists[SCAN_LIST_RENFILESFROM]){
@@ -1070,10 +1040,8 @@ restart:
   }
   psync_path_status_clear_sync_path_cache();
 
-  debug(D_WARNING, "BOBO: Commit transaction.");
   psync_sql_commit_transaction();
 
-  debug(D_WARNING, "BOBO: Wake uploads. Recals uploads.");
   if (w){
     psync_wake_upload();
     psync_status_recalc_to_upload_async();
@@ -1085,8 +1053,6 @@ restart:
     restartsleep=1000;
     goto restart;
   }
-
-  debug(D_WARNING, "BOBO: Done: scanner_scan().");
 }
 
 static int scanner_wait(){

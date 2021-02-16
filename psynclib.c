@@ -2829,16 +2829,10 @@ void psync_async_delete_sync(void* ptr) {
   psync_syncid_t syncId = (psync_syncid_t*)ptr;
   int res;
 
-  debug(D_NOTICE, "BOBO: Delete sync async. Sync Id: [%d]", syncId);
-
   res = psync_delete_sync(syncId);
 
-  debug(D_NOTICE, "BOBO: Delete sync async. Res: [%d]", res);
-
   if (res == 0) {
-    debug(D_NOTICE, "BOBO: Send event.");
     psync_send_eventid(PEVENT_BACKUP_STOP);
-    debug(D_NOTICE, "BOBO: Send event Done.");
   }
 }
 /***********************************************************************************************************************************************/
@@ -2848,8 +2842,6 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
 
   psync_syncid_t* syncId;
   psync_syncid_t* syncIdT;
-
-  debug(D_NOTICE, "BOBO: Delete sync for folder id: [%lld]", fId);
 
   sqlRes = psync_sql_query_rdlock("SELECT id FROM syncfolder WHERE folderid = ?");
   psync_sql_bind_uint(sqlRes, 1, fId);
@@ -2868,8 +2860,6 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
 
   syncIdT = psync_new(psync_syncid_t);
   syncIdT = syncId;
-
-  debug(D_NOTICE, "BOBO: Start asynchronous sync delete. sync id:[%d]", syncIdT);
 
   psync_run_thread1("psync_async_sync_delete", psync_async_delete_sync, syncIdT);
 
