@@ -2511,8 +2511,10 @@ int psync_is_folder_syncable(char*  localPath,
   psync_sql_res* sql;
   psync_str_row  srow;
   psync_uint_row row;
+  folderPath     folders;
 
   char* syncmp;
+  const char* ignorePaths;
 
   debug(D_NOTICE, "Check if folder is already synced. LocalPath [%s]", localPath);
 
@@ -2554,6 +2556,17 @@ int psync_is_folder_syncable(char*  localPath,
       return PERROR_LOCAL_IS_ON_PDRIVE;
     }
     psync_free(syncmp);
+  }
+
+  //Check if folder is not a child of an igrnored folder
+  ignorePaths = psync_setting_get_string(_PS(ignorepaths));
+  parse_os_path(ignorePaths, &folders, DELIM_SEMICOLON, 0);
+
+  for (int i = 0; i < folders.cnt; i++) {
+    if (psync_str_is_prefix(folders.folders[i], localPath)) {
+      *errMsg = psync_strdup("This folder is a child  of a folder in your ignore folders list.");
+      return PERROR_PARENT_IS_IGNORED;
+    }
   }
 
   return 0;
@@ -2642,7 +2655,7 @@ int psync_create_backup(char*  path,
     bFId = create_bup_mach_folder(errMsg);
   }
 
-  parse_os_path(path, &folders);
+  parse_os_path(path, &folders, DELIM_DIR, 1);
 
   if (folders.cnt > 1) {
     oParCnt = 1;

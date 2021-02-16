@@ -234,6 +234,7 @@ typedef struct pstatus_struct_ {
 #define PERROR_LOCAL_IS_ON_PDRIVE      14
 #define PERROR_NO_MEMORY               15
 #define PERROR_NET_ERROR               16
+#define PERROR_PARENT_IS_IGNORED       17
 
 #define PERROR_CACHE_MOVE_NOT_EMPTY       1
 #define PERROR_CACHE_MOVE_NO_WRITE_ACCESS 2

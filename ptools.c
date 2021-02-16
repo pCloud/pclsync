@@ -381,24 +381,18 @@ char* get_machine_name() {
   return psync_strdup(pcName);
 }
 /*************************************************************/
-void parse_os_path(char* path, folderPath* folders) {
+void parse_os_path(char* path, folderPath* folders, char* delim, int mode) {
   char fName[255];
   char* buff;
   int i = 0, j = 0, k = 0;
-
-#if defined(P_OS_WINDOWS)
-  char delimiter[] = PSYNC_DIRECTORY_SEPARATOR;
-#else
-  char delimiter[] = "/";
-#endif
 
   if (strlen(path) < 1) {
     return;
   }
 
   while (1) {
-    if (path[i] != delimiter[0]) {
-      if (path[i] == ':') {
+    if (path[i] != delim) {
+      if ((path[i] == ':') && (mode == 1)) {
         //In case we meet a ":" as in C:\ we set the name to Drive + the string before the ":"
         fName[k] = NULL;
         buff = psync_strcat("Drive ", &fName, NULL);

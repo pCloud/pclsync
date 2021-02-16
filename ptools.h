@@ -30,6 +30,21 @@
 #define FOLDER_ID          "folderid"
 #define PARENT_FOLDER_NAME "parentname"
 
+//Parser delimeter symbols
+#define DELIM_SEMICOLON ';'
+
+#if defined(P_OS_WINDOWS)
+#define DELIM_DIR   '\\'
+#endif
+
+#if defined(P_OS_LINUX)
+#define DELIM_DIR  '/'
+#endif
+
+#if defined(P_OS_MACOSX)
+#define DELIM_DIR  '/'
+#endif
+
 typedef struct _eventParams {
   int paramCnt;
   binparam Params[100];
@@ -63,5 +78,5 @@ void getMACaddr(char* mac_addr);
 /**********************************************************************************************************/
 char* get_machine_name();
 /**********************************************************************************************************/
-void parse_os_path(char* path, folderPath* folders);
+void parse_os_path(char* path, folderPath* folders, char* delim, int mode);
 /**********************************************************************************************************/
