@@ -2565,7 +2565,9 @@ int psync_is_folder_syncable(char*  localPath,
   parse_os_path(ignorePaths, &folders, DELIM_SEMICOLON, 0);
 
   for (i = 0; i < folders.cnt; i++) {
-    if (psync_str_is_prefix(folders.folders[i], localPath)) {
+    debug(D_NOTICE, "Check ignored folder: [%s]=[%s]", folders.folders[i], localPath);
+
+    if (psync_left_str_is_prefix(folders.folders[i], localPath)) {
       *errMsg = psync_strdup("This folder is a child  of a folder in your ignore folders list.");
       return PERROR_PARENT_IS_IGNORED;
     }
