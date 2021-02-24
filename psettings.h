@@ -32,7 +32,7 @@
 #include "pcompiler.h"
 #include "pcompat.h"
 
-#define PSYNC_LIB_VERSION "1.5.0"
+#define PSYNC_LIB_VERSION "1.5.1"
 
 /*
 #define PSYNC_API_HOST     "api74.pcloud.com"

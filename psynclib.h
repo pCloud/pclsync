@@ -201,7 +201,9 @@ typedef struct pstatus_struct_ {
 #define PEVENT_SHARE_MODIFYOUT   (PEVENT_FIRST_SHARE_EVENT+11)
 
 //Bobo
-#define PEVENT_BACKUP_STOP   PEVENT_FIRST_BACKUP_EVENT
+#define PEVENT_BACKUP_STOP            PEVENT_FIRST_BACKUP_EVENT
+#define PEVENT_BKUP_F_DEL_SYNCED      (PEVENT_FIRST_BACKUP_EVENT+1)
+#define PEVENT_BKUP_F_DEL_NOTSYNCED   (PEVENT_FIRST_BACKUP_EVENT+2)
 //Bobo
 
 
@@ -828,6 +830,9 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId);
 
 //Called when stop device is exceuted in the web, will delete the localy stored device id in order to create new one if backup is started again.
 int psync_delete_backup_device(psync_folderid_t fId);
+
+//Backup events
+void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId);
 
 //Backups
 
@@ -1471,6 +1476,10 @@ int psync_crypto_account_teamshare(psync_folderid_t folderid, const char *name, 
  * Links, team, team users emails, contacts or all.
  */
 void psync_register_account_events_callback(paccount_cache_callback_t callback);
+
+//Bobo
+void psync_register_backup_events_callback(pevent_callback_t callback);
+//Bobo
 
 void psync_get_current_userid(psync_userid_t* /*OUT*/ ret);
 void psync_get_folder_ownerid(psync_folderid_t folderid, psync_userid_t* /*OUT*/ ret);

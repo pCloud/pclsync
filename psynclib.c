@@ -69,6 +69,10 @@
 #include "ptools.h"
 #include "papi.h"
 
+//Bobo
+time_t lastBupDelEventTime = 0;
+//Bobo
+
 typedef struct {
   psync_list list;
   char str[];
@@ -2835,7 +2839,10 @@ void psync_async_delete_sync(void* ptr) {
 
   res = psync_delete_sync(syncId);
 
+  debug(D_NOTICE, "BOBO: Backup stopped on the Web.");
+
   if (res == 0) {
+    debug(D_NOTICE, "BOBO: Send event.");
     psync_send_eventid(PEVENT_BACKUP_STOP);
   }
 }
@@ -2889,5 +2896,35 @@ int psync_delete_backup_device(psync_folderid_t fId) {
   }
 
   return 1;
+}
+/***********************************************************************************************************************************************/
+void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId) {
+  time_t currTime = psync_time();;
+  time_t bupNotifDelay = 300;
+
+//PEVENT_BKUP_F_DEL_SYNCED
+//PEVENT_BKUP_F_DEL_NOTSYNCED
+
+  debug(D_NOTICE, "BOBO: Backup delete event. Remote Id: [%lld]",  remoteFId);
+
+  debug(D_NOTICE, "BOBO: Check event delay: Now: [%lld], Last event time: [%lld], Delay: [%lld] > [%lld]", currTime, lastBupDelEventTime, (currTime - lastBupDelEventTime), bupNotifDelay);
+  
+  if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
+    debug(D_NOTICE, "BOBO: Time since last event: [%lld]. Sending event.", (currTime - lastBupDelEventTime));
+
+    if (remoteFId == 0) {
+      debug(D_NOTICE, "BOBO: Send deleted not synced event.");
+      psync_send_eventid(PEVENT_BKUP_F_DEL_NOTSYNCED);
+    }
+    else {
+      debug(D_NOTICE, "BOBO: Send deleted synced event.");
+      psync_send_eventid(PEVENT_BKUP_F_DEL_SYNCED);
+    }
+
+    lastBupDelEventTime = currTime;
+  }
+  else {
+    debug(D_NOTICE, "BOBO: Too soon. Skip backup delete event.");
+  }
 }
 /***********************************************************************************************************************************************/
