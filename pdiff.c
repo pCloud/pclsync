@@ -675,6 +675,15 @@ static psync_socket *get_connected_socket(){
         &params,
         res);
     }
+    //Bobo
+    else {
+      debug(D_NOTICE, "Not a first login. Run sync event.");
+
+      send_psyncs_event(
+        apiserver,
+        psync_my_auth);
+    }
+    //Bobo
 
     if (isbusiness){
       binparam params[]={P_STR("timeformat", "timestamp"),

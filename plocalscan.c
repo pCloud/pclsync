@@ -443,8 +443,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     return;
   }
 
-  debug(D_NOTICE, "BOBO: Starting folder scanner.");
-
   scanner_db_folder_to_list(syncid, localfolderid, &dblist);
 
   psync_list_sort(&dblist, folderlist_cmp);

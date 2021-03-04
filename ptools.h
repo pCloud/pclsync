@@ -22,6 +22,14 @@
 #define INST_EVENT_CATEG  "INSTALLATION_PROCESS"
 #define INST_EVENT_FLOGIN "FIRST_LOGIN"
 
+//Syncs count constants
+#define PSYNC_SYNCS_COUNT  "syncs_count"
+
+#define PSYNC_EVENT_CATEG  "SYNCS_EVENTS"
+#define PSYNC_EVENT_ACTION "SYNCS_LOG_COUNT"
+#define PSYNC_EVENT_LABEL  "SYNCS_COUNT"
+
+
 //Payload name constants
 #define FOLDER_META "metadata"
 #define NO_PAYLOAD         ""
@@ -79,4 +87,7 @@ void getMACaddr(char* mac_addr);
 char* get_machine_name();
 /**********************************************************************************************************/
 void parse_os_path(char* path, folderPath* folders, char* delim, int mode);
+/**********************************************************************************************************/
+void send_psyncs_event(const char* binapi,
+                       const char* auth);
 /**********************************************************************************************************/

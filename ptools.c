@@ -429,3 +429,62 @@ void parse_os_path(char* path, folderPath* folders, char* delim, int mode) {
   folders->cnt = j;
 }
 /*************************************************************/
+void send_psyncs_event(const char* binapi,
+                       const char* auth) {
+  psync_folderid_t syncEventFlag = 0;
+  time_t           rawtime;
+  char*            errMsg;
+  psync_sql_res*   sql;
+
+  int intRes;
+  int syncCnt = 0;
+
+  errMsg = (char*)malloc(1024 * sizeof(char)); 
+  errMsg[0] = 0;
+
+  time(&rawtime);
+
+  debug(D_NOTICE, "Send syncs count.");
+
+  syncEventFlag = psync_sql_cellint("SELECT value FROM setting WHERE id='syncEventSentFlag'", 0);
+
+  debug(D_NOTICE, "Syncs flag: [%lld].", syncEventFlag);
+
+  if (syncEventFlag != 1) {
+    syncCnt = psync_sql_cellint("SELECT COUNT(*) FROM syncfolder WHERE synctype != 7", 0);
+
+    if (syncCnt < 1) {
+      debug(D_NOTICE, "BOBO: No syncs, skip the event.");
+
+      return;
+    }
+
+    eventParams params = {
+      1, //Number of parameters we are passing below.
+      {
+        P_NUM(PSYNC_SYNCS_COUNT, syncCnt)
+      }
+    };
+
+    intRes = create_backend_event(
+      binapi,
+      PSYNC_EVENT_CATEG,  // "SYNCS_EVENTS"
+      PSYNC_EVENT_ACTION, // "SYNCS_LOG_COUNT"
+      PSYNC_EVENT_LABEL,  // "SYNCS_COUNT"
+      auth,
+      P_OS_ID,
+      rawtime,
+      &params,
+      &errMsg);
+
+    debug(D_NOTICE, "BOBO: Syncs Count Event Result:[%d], Message: [%s] .", intRes, errMsg);
+    psync_free(errMsg);
+
+    sql = psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('syncEventSentFlag', ?)");
+    psync_sql_bind_uint(sql, 1, 1);
+    psync_sql_run_free(sql);
+
+    debug(D_NOTICE, "BOBO: Flag stored in DB.");
+  }
+}
+/*************************************************************/

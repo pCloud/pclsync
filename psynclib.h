@@ -204,8 +204,9 @@ typedef struct pstatus_struct_ {
 #define PEVENT_BACKUP_STOP            PEVENT_FIRST_BACKUP_EVENT
 #define PEVENT_BKUP_F_DEL_SYNCED      (PEVENT_FIRST_BACKUP_EVENT+1)
 #define PEVENT_BKUP_F_DEL_NOTSYNCED   (PEVENT_FIRST_BACKUP_EVENT+2)
-//Bobo
 
+#define PEVENT_BKUP_F_DEL_DRIVE       (PEVENT_FIRST_BACKUP_EVENT+3)
+//Bobo
 
 #define PNOTIFICATION_ACTION_NONE          0
 #define PNOTIFICATION_ACTION_GO_TO_FOLDER  1
@@ -833,6 +834,9 @@ int psync_delete_backup_device(psync_folderid_t fId);
 
 //Backup events
 void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId);
+
+//Send async event
+void psync_async_ui_callback(void* ptr);
 
 //Backups
 

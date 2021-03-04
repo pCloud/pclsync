@@ -2660,6 +2660,7 @@ int psync_create_backup(char*  path,
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
 
   if (bFId == 0) {
+    retryRootCrt:
     bFId = create_bup_mach_folder(errMsg);
   }
 
@@ -2716,6 +2717,18 @@ int psync_create_backup(char*  path,
     }
 
     debug(D_NOTICE, "Created sync with id[%d].", syncFId);
+  }
+  else if(res == 2002) {
+  // The backup folder for the machine was deleted for wathever reason. Delete the id stored in DB and create the new one.
+    debug(D_NOTICE, "BOBO: Backup folder is not valid. Delete sored id.");
+
+    psync_sql_start_transaction();
+    psync_sql_statement("DELETE FROM setting WHERE id='BackupRootFoId'");
+    psync_sql_commit_transaction();
+
+    debug(D_NOTICE, "BOBO: Done. Goto create new backup folder.");
+
+    goto retryRootCrt;
   }
 
   return res;
@@ -2845,6 +2858,17 @@ void psync_async_delete_sync(void* ptr) {
     debug(D_NOTICE, "BOBO: Send event.");
     psync_send_eventid(PEVENT_BACKUP_STOP);
   }
+}
+/***********************************************************************************************************************************************/
+void psync_async_ui_callback(void* ptr) {
+  int eventId = (int*)ptr;
+  int res;
+
+  debug(D_NOTICE, "BOBO: Send event to UI. Event id: [%d]", eventId);
+
+  psync_send_eventid(PEVENT_BACKUP_STOP);
+
+  debug(D_NOTICE, "BOBO: Done.");
 }
 /***********************************************************************************************************************************************/
 int psync_delete_sync_by_folderid(psync_folderid_t fId) {
