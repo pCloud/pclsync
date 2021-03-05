@@ -166,9 +166,7 @@ typedef struct pstatus_struct_ {
 
 #define PEVENT_FIRST_USER_EVENT      (1<<30)
 #define PEVENT_FIRST_SHARE_EVENT     (PEVENT_FIRST_USER_EVENT+200)
-//Bobo
 #define PEVENT_FIRST_BACKUP_EVENT    (PEVENT_FIRST_SHARE_EVENT+200)
-//Bobo
 
 #define PEVENT_LOCAL_FOLDER_CREATED   (PEVENT_TYPE_LOCAL+PEVENT_TYPE_FOLDER+PEVENT_TYPE_CREATE)
 #define PEVENT_REMOTE_FOLDER_CREATED  (PEVENT_TYPE_REMOTE+PEVENT_TYPE_FOLDER+PEVENT_TYPE_CREATE)
@@ -200,13 +198,10 @@ typedef struct pstatus_struct_ {
 #define PEVENT_SHARE_MODIFYIN    (PEVENT_FIRST_SHARE_EVENT+10)
 #define PEVENT_SHARE_MODIFYOUT   (PEVENT_FIRST_SHARE_EVENT+11)
 
-//Bobo
 #define PEVENT_BACKUP_STOP            PEVENT_FIRST_BACKUP_EVENT
 #define PEVENT_BKUP_F_DEL_SYNCED      (PEVENT_FIRST_BACKUP_EVENT+1)
 #define PEVENT_BKUP_F_DEL_NOTSYNCED   (PEVENT_FIRST_BACKUP_EVENT+2)
-
 #define PEVENT_BKUP_F_DEL_DRIVE       (PEVENT_FIRST_BACKUP_EVENT+3)
-//Bobo
 
 #define PNOTIFICATION_ACTION_NONE          0
 #define PNOTIFICATION_ACTION_GO_TO_FOLDER  1
@@ -1481,9 +1476,7 @@ int psync_crypto_account_teamshare(psync_folderid_t folderid, const char *name, 
  */
 void psync_register_account_events_callback(paccount_cache_callback_t callback);
 
-//Bobo
 void psync_register_backup_events_callback(pevent_callback_t callback);
-//Bobo
 
 void psync_get_current_userid(psync_userid_t* /*OUT*/ ret);
 void psync_get_folder_ownerid(psync_folderid_t folderid, psync_userid_t* /*OUT*/ ret);

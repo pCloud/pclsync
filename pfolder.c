@@ -894,16 +894,13 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
   alloced=lastfolder=0;
   strlens=0;
 
-  char sqlStr[1000];
-
-  if(strlen(syncTypes)>0) {
-    sprintf(sqlStr, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (%s)", syncTypes);
+  if (strlen(syncTypes) > 0) {
+    res = psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (?)");
+    psync_sql_bind_string(res, 1, syncTypes);
   }
   else {
-    sprintf(sqlStr, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
+    res = psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
   }
-
-  res = psync_sql_query_rdlock(sqlStr);
 
   while ((row=psync_sql_fetch_row(res))){
     if (alloced==lastfolder){

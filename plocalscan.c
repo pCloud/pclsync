@@ -411,11 +411,9 @@ static void add_deleted_element(const sync_folderlist *e, psync_folderid_t folde
   c=copy_folderlist_element(e, folderid, localfolderid, syncid, synctype);
 
   if (e->isfolder) {
-    debug(D_NOTICE, "BOBO: Add deleted folder.");
     add_element_to_scan_list(SCAN_LIST_DELFOLDERS, c);
   }
   else {
-    debug(D_NOTICE, "BOBO: Add deleted file.Remote id: [%lld], Sync Type: [%d]", c->remoteid, synctype);
     //Send events only for backups, not for other syncs
     if (synctype == 7) {
       psync_send_backup_del_event(c->remoteid);
@@ -469,8 +467,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
         }
       }
       else{
-        debug(D_NOTICE, "BOBO: Add deleted element. Folder id [%lld], Sync Id: [%d]", folderid, syncid);
-
         add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
         add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       }

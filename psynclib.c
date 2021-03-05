@@ -69,9 +69,8 @@
 #include "ptools.h"
 #include "papi.h"
 
-//Bobo
+//Variable containing UNIX time of the last backup file deleted event 
 time_t lastBupDelEventTime = 0;
-//Bobo
 
 typedef struct {
   psync_list list;
@@ -2720,13 +2719,11 @@ int psync_create_backup(char*  path,
   }
   else if(res == 2002) {
   // The backup folder for the machine was deleted for wathever reason. Delete the id stored in DB and create the new one.
-    debug(D_NOTICE, "BOBO: Backup folder is not valid. Delete sored id.");
+    debug(D_NOTICE, "Backup folder id is not valid. Delete it and create a new one.");
 
     psync_sql_start_transaction();
     psync_sql_statement("DELETE FROM setting WHERE id='BackupRootFoId'");
     psync_sql_commit_transaction();
-
-    debug(D_NOTICE, "BOBO: Done. Goto create new backup folder.");
 
     goto retryRootCrt;
   }
@@ -2852,10 +2849,9 @@ void psync_async_delete_sync(void* ptr) {
 
   res = psync_delete_sync(syncId);
 
-  debug(D_NOTICE, "BOBO: Backup stopped on the Web.");
+  debug(D_NOTICE, "Backup stopped on the Web.");
 
   if (res == 0) {
-    debug(D_NOTICE, "BOBO: Send event.");
     psync_send_eventid(PEVENT_BACKUP_STOP);
   }
 }
@@ -2864,11 +2860,9 @@ void psync_async_ui_callback(void* ptr) {
   int eventId = (int*)ptr;
   int res;
 
-  debug(D_NOTICE, "BOBO: Send event to UI. Event id: [%d]", eventId);
+  debug(D_NOTICE, "Send event to UI. Event id: [%d]", eventId);
 
-  psync_send_eventid(PEVENT_BACKUP_STOP);
-
-  debug(D_NOTICE, "BOBO: Done.");
+  psync_send_eventid(eventId);
 }
 /***********************************************************************************************************************************************/
 int psync_delete_sync_by_folderid(psync_folderid_t fId) {
@@ -2925,30 +2919,16 @@ int psync_delete_backup_device(psync_folderid_t fId) {
 void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId) {
   time_t currTime = psync_time();;
   time_t bupNotifDelay = 300;
-
-//PEVENT_BKUP_F_DEL_SYNCED
-//PEVENT_BKUP_F_DEL_NOTSYNCED
-
-  debug(D_NOTICE, "BOBO: Backup delete event. Remote Id: [%lld]",  remoteFId);
-
-  debug(D_NOTICE, "BOBO: Check event delay: Now: [%lld], Last event time: [%lld], Delay: [%lld] > [%lld]", currTime, lastBupDelEventTime, (currTime - lastBupDelEventTime), bupNotifDelay);
   
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
-    debug(D_NOTICE, "BOBO: Time since last event: [%lld]. Sending event.", (currTime - lastBupDelEventTime));
-
     if (remoteFId == 0) {
-      debug(D_NOTICE, "BOBO: Send deleted not synced event.");
       psync_send_eventid(PEVENT_BKUP_F_DEL_NOTSYNCED);
     }
     else {
-      debug(D_NOTICE, "BOBO: Send deleted synced event.");
       psync_send_eventid(PEVENT_BKUP_F_DEL_SYNCED);
     }
 
     lastBupDelEventTime = currTime;
-  }
-  else {
-    debug(D_NOTICE, "BOBO: Too soon. Skip backup delete event.");
   }
 }
 /***********************************************************************************************************************************************/
