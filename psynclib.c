@@ -71,6 +71,7 @@
 
 //Variable containing UNIX time of the last backup file deleted event 
 time_t lastBupDelEventTime = 0;
+time_t bupNotifDelay = 300;
 
 typedef struct {
   psync_list list;
@@ -2859,10 +2860,15 @@ void psync_async_delete_sync(void* ptr) {
 void psync_async_ui_callback(void* ptr) {
   int eventId = (int*)ptr;
   int res;
+  time_t currTime = psync_time();
 
-  debug(D_NOTICE, "Send event to UI. Event id: [%d]", eventId);
+  if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
+    debug(D_NOTICE, "Send event to UI. Event id: [%d]", eventId);
 
-  psync_send_eventid(eventId);
+    psync_send_eventid(eventId);
+
+    lastBupDelEventTime = currTime;
+  }
 }
 /***********************************************************************************************************************************************/
 int psync_delete_sync_by_folderid(psync_folderid_t fId) {
@@ -2917,8 +2923,7 @@ int psync_delete_backup_device(psync_folderid_t fId) {
 }
 /***********************************************************************************************************************************************/
 void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId) {
-  time_t currTime = psync_time();;
-  time_t bupNotifDelay = 300;
+  time_t currTime = psync_time();
   
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
     if (remoteFId == 0) {
