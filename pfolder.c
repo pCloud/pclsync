@@ -890,17 +890,25 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
   psync_folderid_t folderid;
   uint32_t alloced, lastfolder, i;
 
+  char sql[1024];
+  int sqlLen;
+
   folders=NULL;
   alloced=lastfolder=0;
   strlens=0;
 
   if (strlen(syncTypes) > 0) {
-    res = psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (?)");
-    psync_sql_bind_string(res, 1, syncTypes);
+    sqlLen = psync_slprintf(sql, 1024, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (%s)", syncTypes);
+    sql[sqlLen + 1] = 0;
   }
   else {
-    res = psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
+    sqlLen = psync_slprintf(sql, 1024, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
+    sql[sqlLen + 1] = 0;
   }
+
+  debug(D_NOTICE, "BOBO: SQL string build sync types: [%s]", sql);
+
+  res = psync_sql_query_rdlock(sql);
 
   while ((row=psync_sql_fetch_row(res))){
     if (alloced==lastfolder){
