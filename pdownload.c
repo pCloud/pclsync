@@ -1218,7 +1218,7 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   set_task_inprogress(taskid, 1);
   if (size<=PSYNC_MAX_SIZE_FOR_ASYNC_DOWNLOAD){
     if (dt->localexists)
-      ret=psync_async_download_file_if_changed(fileid, dt->tmpname, csize, dt->checksum, finish_async_download_existing, dt);
+      ret=psync_async_download_file_if_changed(fileid, dt->tmpname, dt->localsize, dt->checksum, finish_async_download_existing, dt);
     else
       ret=psync_async_download_file(fileid, dt->tmpname, finish_async_download, dt);
     if (ret){
