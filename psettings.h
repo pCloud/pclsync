@@ -34,11 +34,11 @@
 
 #define PSYNC_LIB_VERSION "1.5.1"
 
-/*
-#define PSYNC_API_HOST     "api74.pcloud.com"
-#define PSYNC_API_PORT     8398
-#define PSYNC_API_PORT_SSL 8399
-*/
+ /*
+ #define PSYNC_API_HOST     "api74.pcloud.com"
+ #define PSYNC_API_PORT     8398
+ #define PSYNC_API_PORT_SSL 8399
+ */
 
 #define PSYNC_API_HOST     "bineapi.pcloud.com"
 #define PSYNC_API_PORT     80
@@ -48,13 +48,13 @@
 #define PSYNC_API_APORT     8398
 #define PSYNC_API_APORT_SSL 8399
 
-// #define PSYNC_API_HOST     "binapi69.pcloud.com"
-// #define PSYNC_API_PORT     80
-// #define PSYNC_API_PORT_SSL 443
-//
-// #define PSYNC_API_AHOST     "api69.pcloud.com"
-// #define PSYNC_API_APORT     8398
-// #define PSYNC_API_APORT_SSL 8399
+ // #define PSYNC_API_HOST     "binapi69.pcloud.com"
+ // #define PSYNC_API_PORT     80
+ // #define PSYNC_API_PORT_SSL 443
+ //
+ // #define PSYNC_API_AHOST     "api69.pcloud.com"
+ // #define PSYNC_API_APORT     8398
+ // #define PSYNC_API_APORT_SSL 8399
 
 #define PSYNC_P2P_PORT 42420
 
@@ -327,7 +327,7 @@ void psync_settings_init();
 
 void psync_settings_reset();
 
-psync_settingid_t psync_setting_getid(const char *name) PSYNC_CONST PSYNC_NONNULL(1);
+psync_settingid_t psync_setting_getid(const char* name) PSYNC_CONST PSYNC_NONNULL(1);
 
 int psync_setting_get_bool(psync_settingid_t settingid) PSYNC_PURE;
 int psync_setting_set_bool(psync_settingid_t settingid, int value);
@@ -335,8 +335,8 @@ int64_t psync_setting_get_int(psync_settingid_t settingid) PSYNC_PURE;
 int psync_setting_set_int(psync_settingid_t settingid, int64_t value);
 uint64_t psync_setting_get_uint(psync_settingid_t settingid) PSYNC_PURE;
 int psync_setting_set_uint(psync_settingid_t settingid, uint64_t value);
-const char *psync_setting_get_string(psync_settingid_t settingid) PSYNC_PURE;
-int psync_setting_set_string(psync_settingid_t settingid, const char *value);
+const char* psync_setting_get_string(psync_settingid_t settingid) PSYNC_PURE;
+int psync_setting_set_string(psync_settingid_t settingid, const char* value);
 int psync_setting_reset(psync_settingid_t settingid);
 
 #endif
