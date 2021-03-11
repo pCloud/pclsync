@@ -904,8 +904,6 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
     sqlLen = psync_slprintf(sql, 1024, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
   }
 
-  debug(D_NOTICE, "BOBO: SQL string build sync types: [%s]", sql);
-
   res = psync_sql_query_rdlock(sql);
 
   while ((row=psync_sql_fetch_row(res))){

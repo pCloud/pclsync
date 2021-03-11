@@ -1192,7 +1192,7 @@ psync_sql_res *psync_sql_query(const char *sql){
   if (ret){
 //    debug(D_NOTICE, "got query %s from cache", sql);
     ret->locked=SQL_WRITE_LOCK;
-    res->sql=sql;
+    ret->sql=sql;
 #if IS_DEBUG
     psync_sql_do_lock(file, line);
 #else
@@ -1253,7 +1253,7 @@ psync_sql_res *psync_sql_query_rdlock(const char *sql){
   if (ret){
 //    debug(D_NOTICE, "got query %s from cache", sql);
     ret->locked=SQL_READ_LOCK;
-    res->sql=sql;
+    ret->sql=sql;
 #if IS_DEBUG
     psync_sql_do_rdlock(file, line);
 #else
@@ -1317,7 +1317,7 @@ psync_sql_res *psync_sql_query_nolock(const char *sql){
   if (ret){
 //    debug(D_NOTICE, "got query %s from cache", sql);
     ret->locked=SQL_NO_LOCK;
-    res->sql=sql;
+    ret->sql=sql;
     return ret;
   }
   else
