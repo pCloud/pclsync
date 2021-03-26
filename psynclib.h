@@ -1575,6 +1575,8 @@ void psync_set_apiserver(const char* binapi, uint32_t locationid);
 * err - out parameter. Returns the error message if any.
 */
 int psync_send_publink(const char *code, const char *mail, const char *message, char **err /*OUT*/);
+
+userinfo_t* psync_get_userinfo();
 #ifdef __cplusplus
 }
 #endif

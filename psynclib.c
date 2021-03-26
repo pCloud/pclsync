@@ -2988,7 +2988,7 @@ userinfo_t* psync_get_userinfo()
     info->premiumlifetime = psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num;
     info->business = psync_find_result(res, "business", PARAM_BOOL)->num;
     info->haspaidrelocation = psync_find_result(res, "haspaidrelocation", PARAM_BOOL)->num;
-    cres = psync_check_result(res, "cryptoexpires", PARAM_NUM);
+    cres = psync_check_result(res, "efh", PARAM_NUM);
     if (cres) info->efh = cres->num;
     else info->efh = 0;
     cres = psync_check_result(res, "premiumexpires", PARAM_NUM);
