@@ -492,8 +492,6 @@ apiservers_list_t *psync_get_apiservers(char **err)
 	return ret;
 }
 
-
-
 void psync_reset_apiserver()
 {
   psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
@@ -2937,3 +2935,76 @@ void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId) {
   }
 }
 /***********************************************************************************************************************************************/
+userinfo_t* psync_get_userinfo()
+{
+  if (psync_my_auth[0]) {
+    size_t lemail, lcurrency, llanguage;
+    const char* email, * currency, * language;
+    const binresult* cres;
+    char* ptr;
+    binresult* res;
+    uint64_t err;
+    userinfo_t *info;
+    binparam params[] = { P_STR("auth", psync_my_auth), P_STR("timeformat", "timestamp") };
+    res = psync_api_run_command("userinfo", params);
+    if (!res) {
+      psync_free(res);
+      return NULL;
+    }
+    err = psync_find_result(res, "result", PARAM_NUM)->num;
+    if (err)
+    {
+      psync_free(res);
+      return NULL;
+    }
+
+    cres = psync_find_result(res, "email", PARAM_STR);
+    email = cres->str;
+    lemail = (cres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
+    cres = psync_find_result(res, "currency", PARAM_STR);
+    currency = cres->str;
+    lcurrency = (cres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
+    cres = psync_find_result(res, "language", PARAM_STR);
+    language = cres->str;
+    llanguage = (cres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
+    info = (userinfo_t*)psync_malloc(sizeof(userinfo_t) + lemail + lcurrency + llanguage);
+    ptr = (char*)(info + 1);
+    memcpy(ptr, email, lemail);
+    info->email = ptr;
+    ptr += lemail;
+    memcpy(ptr, currency, lcurrency);
+    info->currency = ptr;
+    ptr += lcurrency;
+    memcpy(ptr, language, llanguage);
+    info->language = ptr;
+
+    info->cryptosetup = psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
+    info->cryptosubscription = psync_find_result(res, "cryptosubscription", PARAM_BOOL)->num;
+    info->cryptolifetime = psync_find_result(res, "cryptolifetime", PARAM_BOOL)->num;
+    info->emailverified = psync_find_result(res, "emailverified", PARAM_BOOL)->num;
+    info->usedpublinkbranding = psync_find_result(res, "usedpublinkbranding", PARAM_BOOL)->num;
+    info->haspassword = psync_find_result(res, "haspassword", PARAM_BOOL)->num;
+    info->premium = psync_find_result(res, "premium", PARAM_BOOL)->num;
+    info->premiumlifetime = psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num;
+    info->business = psync_find_result(res, "business", PARAM_BOOL)->num;
+    info->haspaidrelocation = psync_find_result(res, "haspaidrelocation", PARAM_BOOL)->num;
+    cres = psync_check_result(res, "cryptoexpires", PARAM_NUM);
+    if (cres) info->efh = cres->num;
+    else info->efh = 0;
+    cres = psync_check_result(res, "premiumexpires", PARAM_NUM);
+    if (cres) info->premiumexpires = cres->num;
+    else info->premiumexpires = 0;
+    info->trashrevretentiondays = psync_find_result(res, "trashrevretentiondays", PARAM_NUM)->num;
+    info->plan = psync_find_result(res, "plan", PARAM_NUM)->num;
+    info->publiclinkquota = psync_find_result(res, "publiclinkquota", PARAM_NUM)->num;
+    info->userid = psync_find_result(res, "userid", PARAM_NUM)->num;
+    info->quota = psync_find_result(res, "quota", PARAM_NUM)->num;
+    info->usedquota = psync_find_result(res, "usedquota", PARAM_NUM)->num;
+    info->freequota = psync_find_result(res, "freequota", PARAM_NUM)->num;
+    info->registered = psync_find_result(res, "registered", PARAM_NUM)->num;
+    psync_free(res);
+    return info;
+  }
+
+  return NULL;
+}

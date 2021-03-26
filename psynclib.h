@@ -580,6 +580,33 @@ typedef struct {
   bookmark_info_t entries[];
 } bookmarks_list_t;
 
+typedef struct {
+  const char* email;
+  const char* currency;
+  const char* language;
+  uint8_t cryptosetup;
+  uint8_t cryptosubscription;
+  uint8_t cryptolifetime;
+  uint8_t efh;//optional
+  uint8_t emailverified;
+  uint8_t usedpublinkbranding;
+  uint8_t haspassword;
+  uint8_t premium;
+  uint8_t premiumlifetime;
+  uint8_t business;
+  uint8_t haspaidrelocation;
+  uint32_t trashrevretentiondays;
+  uint32_t plan;
+  uint32_t result;
+  uint64_t premiumexpires;//optional
+  uint64_t publiclinkquota;
+  uint64_t userid;
+  uint64_t quota;
+  uint64_t usedquota;
+  uint64_t freequota;
+  uint64_t registered;
+}userinfo_t;
+
 #define PSYNC_INVALID_SYNCID (psync_syncid_t)-1
 
 #ifdef __cplusplus
