@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "paccountevents.h"
+#include "ptools.h"
 
 typedef uint64_t psync_folderid_t;
 typedef uint64_t psync_fileid_t;
