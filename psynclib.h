@@ -1577,6 +1577,14 @@ void psync_set_apiserver(const char* binapi, uint32_t locationid);
 int psync_send_publink(const char *code, const char *mail, const char *message, char **err /*OUT*/);
 
 userinfo_t* psync_get_userinfo();
+
+/*
+* category - string representing category of the event
+* action - string representing action of the event
+* label - string representing label of the event
+* eventParams - list of binparams(optional)
+*/
+int psync_create_backend_event(const char* category, const char* action, const char* label, eventParams params, char* err);
 #ifdef __cplusplus
 }
 #endif

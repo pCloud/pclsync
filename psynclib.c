@@ -3008,3 +3008,10 @@ userinfo_t* psync_get_userinfo()
 
   return NULL;
 }
+
+int psync_create_backend_event(const char* category, const char* action, const char* label, eventParams params, char *err)
+{
+  time_t rawtime;
+  time(&rawtime);
+  return create_backend_event(apiserver, category, action, label, psync_my_auth, P_OS_ID, rawtime, &params, &err);
+}
