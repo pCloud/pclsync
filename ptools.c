@@ -92,7 +92,17 @@ void getMACaddr(char *mac_addr) {
 #endif
 
 #if defined(P_OS_MACOSX)
-  mac_addr = psync_strdup("HARDCODEDMACADDRESS");
+  char  buffer[1024];
+  int   byteRead;
+  FILE* stream = popen("ifconfig en0 | grep ether | cut -c 8-24", "r");
+
+  while (!feof(stream) && !ferror(stream)) {
+    byteRead = fread(buffer, 1, 128, stream);
+  }
+
+  buffer[byteRead-1] = '\0';
+
+  mac_addr = psync_strdup(buffer);
 #endif
 }
 /*************************************************************/
