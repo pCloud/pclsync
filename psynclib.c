@@ -2649,6 +2649,12 @@ int psync_create_backup(char*  path,
   char*            optFolName;
   int   res = 0, oParCnt = 0;
 
+  if (path[0] == 0) {
+    *errMsg = strdup("Cannot backup empty path.");
+
+    return -1;
+  }
+
   res = psync_is_folder_syncable(path, errMsg);
 
   if (res != 0) {
