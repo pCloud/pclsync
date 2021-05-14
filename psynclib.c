@@ -2650,9 +2650,9 @@ int psync_create_backup(char*  path,
   int   res = 0, oParCnt = 0;
 
   if (path[0] == 0) {
-    *errMsg = strdup("Cannot backup empty path.");
+    *errMsg = strdup(PSYNC_BACKUP_PATH_EMPTY_MSG);
 
-    return -1;
+    return PSYNC_BACKUP_PATH_EMPTY_ERR;
   }
 
   res = psync_is_folder_syncable(path, errMsg);
@@ -2662,6 +2662,8 @@ int psync_create_backup(char*  path,
   }
 
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
+
+  bFId = 0;
 
   if (bFId == 0) {
     retryRootCrt:

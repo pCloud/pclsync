@@ -654,8 +654,8 @@ static psync_socket *get_connected_socket(){
       time_t rawtime;
       time(&rawtime);
 
-      char* macAddr[40];
-      getMACaddr(macAddr);
+      char* macAddr;
+      macAddr = getMACaddr();
 
       eventParams params = {
         1, //Number of parameters we are passing below.
