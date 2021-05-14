@@ -2512,7 +2512,6 @@ int psync_is_folder_syncable(char*  localPath,
                              char** errMsg) {
   psync_sql_res* sql;
   psync_str_row  srow;
-  psync_uint_row row;
   folderPath     folders;
 
   char* syncmp;
@@ -2586,9 +2585,7 @@ psync_folder_list_t* psync_get_syncs_bytype(const char* syncType) {
 /***********************************************************************************************************************************************/
 psync_folderid_t create_bup_mach_folder(char** msgErr) {
   binresult* rootFolIdObj;
-  binresult* rootFolMeta;
   binresult* retData;
-  binresult* rootFolObj;
 
   psync_sql_res* sql;
 
@@ -2615,7 +2612,6 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
   };
 
   debug(D_NOTICE, "Call backend [backup/createdevice].");
-  //Test US server: "binapi71.pcloud.com"
   res = backend_call(apiserver,
                      "backup/createdevice",
                      FOLDER_META,
@@ -2857,7 +2853,6 @@ void psync_async_delete_sync(void* ptr) {
 /***********************************************************************************************************************************************/
 void psync_async_ui_callback(void* ptr) {
   int eventId = (int*)ptr;
-  int res;
   time_t currTime = psync_time();
 
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
