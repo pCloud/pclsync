@@ -108,7 +108,7 @@ int create_backend_event(const char*  binapi,
                          const char*  label,
                          const char*  auth,
                          int          os,
-                         int          etime,
+                         time_t       etime,
                          eventParams* params,
                          char**       err) {
   binresult*    res;

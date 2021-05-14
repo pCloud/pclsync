@@ -240,7 +240,7 @@ int check_user_relocated(uint64_t luserid, psync_socket* sock){
 }
 
 static psync_socket *get_connected_socket(){
-  char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi, *chrUserid, err;
+  char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi, *chrUserid;
   const char *appversion;
   psync_socket *sock;
   binresult *res;
@@ -663,7 +663,6 @@ static psync_socket *get_connected_socket(){
           P_STR(EPARAM_MAC, macAddr)
         }
       };
-      //Test US server: "binapi71.pcloud.com"
       intRes = create_backend_event(
         apiserver,
         INST_EVENT_CATEG,
