@@ -1416,7 +1416,9 @@ bookmarks_list_t *do_cache_bookmarks(char** err)
       pcont->description = br->str;
       psync_list_add_lstring_offset(builder, offsetof(bookmark_info_t, description), br->length);
     }
-    
+    else {
+      pcont->description = "";
+    }
     pcont->created = psync_find_result(bookmark, "ctime", PARAM_NUM)->num;
     pcont->locationid = psync_find_result(bookmark, "locationid", PARAM_NUM)->num;
   }
