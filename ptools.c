@@ -32,7 +32,7 @@
 
 /*************************************************************/
 char* getMACaddr() {
-  char  buffer[16];
+  char  buffer[128];
 
   memset(buffer, 0, sizeof(buffer));
 
@@ -80,7 +80,6 @@ char* getMACaddr() {
 #endif
 
 #if defined(P_OS_MACOSX)
-  char  buffer[1024];
   int   byteRead = 0;
   FILE* stream = popen("ifconfig en0 | grep ether | cut -c 8-24", "r");
 
@@ -88,9 +87,7 @@ char* getMACaddr() {
     byteRead = fread(buffer, 1, 128, stream);
   }
   
-  if(byteRead > 0) {
-    buffer[byteRead-1] = '\0';
-  }
+  buffer[byteRead] = 0;
 #endif
 
   if (buffer[0] == 0) {
