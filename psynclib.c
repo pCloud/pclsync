@@ -2659,8 +2659,6 @@ int psync_create_backup(char*  path,
 
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
 
-  bFId = 0;
-
   if (bFId == 0) {
     retryRootCrt:
     bFId = create_bup_mach_folder(errMsg);
