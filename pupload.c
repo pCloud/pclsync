@@ -411,6 +411,9 @@ static int check_file_if_exists(const unsigned char *hashhex, uint64_t fsize, ps
       if (filesize==fsize && !memcmp(hashhex, shashhex, PSYNC_HASH_DIGEST_HEXLEN)){
         debug(D_NOTICE, "file %lu/%s already exists and matches local checksum, not doing anything", (unsigned long)folderid, name);
         set_local_file_remote_id(localfileid, fileid, hash);
+
+
+
         return 1;
       }
       else

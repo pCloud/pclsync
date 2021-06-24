@@ -498,3 +498,56 @@ void send_psyncs_event(const char* binapi,
   }
 }
 /*************************************************************/
+int set_be_file_dates(psync_fileid_t fileid, ) {
+  int callRes;
+  char msgErr[1024];
+  binresult* retData;
+
+  debug(D_NOTICE, "BOBO: Update file date in the backend. Auth Token: [%s]", psync_my_auth);
+
+  eventParams requiredParams = {
+    5, {
+      P_STR("auth", psync_my_auth),
+      P_NUM("fileid", fileid),
+      P_STR("timeformat", "timestamp"),
+      P_NUM("newtm", psync_stat_mtime(st)),
+      P_BOOL("isctime", 0)
+    }
+  };
+
+  eventParams optionalParams = {
+    0
+  };
+
+  //"setfilemtime"
+  callRes = backend_call(
+    PSYNC_API_HOST,
+    "setfilemtime",
+    FOLDER_META,
+    &requiredParams,
+    &optionalParams,
+    &retData,
+    msgErr
+  );
+
+  eventParams requiredParams1 = {
+    5, {
+      P_STR("auth", psync_my_auth),
+      P_NUM("fileid", fileid),
+      P_STR("timeformat", "timestamp"),
+      P_NUM("newtm", psync_stat_ctime(st)),
+      P_BOOL("isctime", 1)
+    }
+  };
+
+  callRes = backend_call(
+    PSYNC_API_HOST,
+    "setfilemtime",
+    FOLDER_META,
+    &requiredParams1,
+    &optionalParams,
+    &retData,
+    msgErr
+  );
+}
+/*************************************************************/
