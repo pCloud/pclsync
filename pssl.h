@@ -70,6 +70,10 @@ typedef psync_encrypted_data_t psync_rsa_signature_t;
 
 #define psync_ssl_alloc_binary_rsa psync_ssl_alloc_encrypted_symmetric_key
 
+//Bobo
+static pthread_mutex_t rsa_decr_mutex = PTHREAD_MUTEX_INITIALIZER;
+//Bobo
+
 int psync_ssl_init();
 void psync_ssl_memclean(void *ptr, size_t len);
 int psync_ssl_connect(psync_socket_t sock, void **sslconn, const char *hostname);
@@ -114,4 +118,7 @@ psync_aes256_encoder psync_ssl_aes256_create_decoder(psync_symmetric_key_t key);
 void psync_ssl_aes256_free_decoder(psync_aes256_encoder aes);
 psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa, const unsigned char *data);
 
+//Bobo
+psync_symmetric_key_t psync_ssl_rsa_decrypt_symm_key_lock(psync_rsa_privatekey_t* rsa, const psync_encrypted_symmetric_key_t* enckey);
+//Bobo
 #endif

@@ -444,7 +444,11 @@ static int crypto_keys_match(){
     psync_free(key);
     return 0;
   }
-  deckey=psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, enckey);
+  //Bobo
+  //deckey=psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, enckey);
+  deckey= psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, enckey);
+  //Bobo
+
   psync_free(enckey);
   if (deckey==PSYNC_INVALID_SYM_KEY){
     psync_free(key);
@@ -884,7 +888,12 @@ static psync_symmetric_key_t psync_crypto_get_folder_symkey_locked(psync_folderi
   enckey=psync_crypto_get_folder_enc_key(folderid);
   if (psync_crypto_is_error(enckey))
     return (psync_symmetric_key_t)enckey;
-  symkey=psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, enckey);
+
+  //Bobo
+  //symkey=psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, enckey);
+  symkey = psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, enckey);
+  //Bobo  
+
   psync_free(enckey);
   if (symkey==PSYNC_INVALID_SYM_KEY)
     return (psync_symmetric_key_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_INVALID_KEY));
@@ -906,7 +915,12 @@ static psync_symmetric_key_t psync_crypto_get_file_symkey_locked(psync_fileid_t 
     return (psync_symmetric_key_t)enckey;
   if (nonetwork && enckey==(psync_encrypted_symmetric_key_t)PSYNC_CRYPTO_UNLOADED_SECTOR_ENCODER)
     return (psync_symmetric_key_t)PSYNC_CRYPTO_UNLOADED_SECTOR_ENCODER;
-  symkey=psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, enckey);
+
+//Bobo
+  //symkey=psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, enckey);
+  symkey = psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, enckey);
+//Bobo
+
   psync_free(enckey);
   if (unlikely_log(symkey==PSYNC_INVALID_SYM_KEY))
     return (psync_symmetric_key_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_INVALID_KEY));
@@ -1357,7 +1371,12 @@ psync_crypto_aes256_sector_encoder_decoder_t psync_cloud_crypto_get_file_encoder
     enc=(psync_crypto_aes256_sector_encoder_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_NOT_STARTED));
   else{
     // save_file_key_to_db runs thread to save to db, that's why we insert decrypted key to cache, so psync_crypto_get_file_encoder_locked finds it
-    symkey=psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, esym);
+
+//Bobo
+    //symkey=psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, esym);
+    symkey = psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, esym);
+//Bobo
+
     psync_crypto_release_file_symkey_locked(fileid, hash, symkey);
     enc=psync_crypto_get_file_encoder_locked(fileid, hash, 0);
   }
