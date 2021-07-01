@@ -7,6 +7,8 @@
 #include "ptools.h"
 #include "psettings.h"
 #include "plibs.h"
+#include "string.h"
+#include "stdlib.h"
 
 #if defined(P_OS_WINDOWS)
 #define _CRT_SECURE_NO_WARNINGS
@@ -29,21 +31,16 @@
 #endif
 
 /*************************************************************/
-void getMACaddr(char *mac_addr) {
+char* getMACaddr() {
+  char  buffer[128];
+
+  memset(buffer, 0, sizeof(buffer));
+
 #if defined(P_OS_WINDOWS)
-  int i;
-  char* chunk[2];
   PIP_ADAPTER_INFO AdapterInfo;
   DWORD dwBufLen = sizeof(IP_ADAPTER_INFO);
 
   AdapterInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
-
-  if (AdapterInfo == NULL) {
-    debug(D_CRITICAL, "Error allocating memory AdpterInfo structure!");
-    free(mac_addr);
-
-    return;
-  }
 
   if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == ERROR_BUFFER_OVERFLOW) {
     free(AdapterInfo);
@@ -51,23 +48,14 @@ void getMACaddr(char *mac_addr) {
 
     if (AdapterInfo == NULL) {
       debug(D_CRITICAL, "Error allocating memory needed to call GetAdaptersinfo!");
-      free(mac_addr);
-
-      return;
+    }
+    else {
+      if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == NO_ERROR) {
+        sprintf(buffer, "%.2x%.2x%.2x%.2x%.2x%.2x", AdapterInfo->Address[0], AdapterInfo->Address[1], AdapterInfo->Address[2], AdapterInfo->Address[3], AdapterInfo->Address[4], AdapterInfo->Address[5]);
+      }
+      free(AdapterInfo);
     }
   }
-
-  if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == NO_ERROR) {
-    PIP_ADAPTER_INFO pAdapterInfo = AdapterInfo;
-    mac_addr[0] = 0;
-
-    for (int i = 0; i < pAdapterInfo->AddressLength; i = i + 1) {
-      sprintf(chunk, "%02X", pAdapterInfo->Address[i]);
-      strcat(mac_addr, chunk);
-    }
-  }
-
-  free(AdapterInfo);
 #endif
 
 #if defined(P_OS_LINUX)
@@ -87,13 +75,28 @@ void getMACaddr(char *mac_addr) {
 
   mac = (unsigned char*)ifr.ifr_hwaddr.sa_data;
 
-  sprintf(mac_addr, "%.2x%.2x%.2x%.2x%.2x%.2x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  sprintf(buffer, "%.2x%.2x%.2x%.2x%.2x%.2x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   mac_addr[12] = 0;
 #endif
 
 #if defined(P_OS_MACOSX)
-  mac_addr = psync_strdup("HARDCODEDMACADDRESS");
+  int   byteRead = 0;
+  FILE* stream = popen("ifconfig en0 | grep ether | cut -c 8-24", "r");
+
+  while (!feof(stream) && !ferror(stream)) {
+    byteRead = fread(buffer, 1, 128, stream);
+  }
+  
+  buffer[byteRead] = 0;
 #endif
+
+  if (buffer[0] == 0) {
+    return psync_strdup("GENERIC_MAC");
+    
+  }
+  else {
+    return psync_strdup(buffer);
+  }
 }
 /*************************************************************/
 int create_backend_event(const char*  binapi,
@@ -102,7 +105,7 @@ int create_backend_event(const char*  binapi,
                          const char*  label,
                          const char*  auth,
                          int          os,
-                         int          etime,
+                         time_t       etime,
                          eventParams* params,
                          char**       err) {
   binresult*    res;
@@ -351,7 +354,9 @@ int backend_call(const char*  binapi,
 char* get_machine_name() {
   int   nameSize = 1024;
   char  pcName[1024];
-  
+
+  pcName[0] = 0;
+
 #if defined(P_OS_WINDOWS)
   int   res;
 
@@ -363,20 +368,31 @@ char* get_machine_name() {
   gethostname(pcName, nameSize);
 #endif
 
-
 #if defined(P_OS_MACOSX)
+  int byteRead;
   FILE* stream = popen("system_profiler SPSoftwareDataType | grep \"Computer Name\" | cut -d: -f2", "r");
 
   while (!feof(stream) && !ferror(stream)) {
-    int byteRead = fread(pcName, 1, 128, stream);
+    byteRead = fread(pcName, 1, 128, stream);
   }
-
-  char* n = strchr(pcName, '\n');
-
-  if (n){
-    *n = '\0';
+  if(byteRead > 0) {
+    pcName[byteRead-1] = 0;
   }
 #endif
+
+  if (pcName[0] == 0) {
+#if defined(P_OS_WINDOWS)
+    strcpy(pcName,"WinMachine");
+#endif
+
+#if defined(P_OS_LINUX)
+    strcpy(pcName, "LinuxMachine");
+#endif
+
+#if defined(P_OS_MACOSX)
+    strcpy(pcName, "MacMachine");
+#endif
+  }
 
   return psync_strdup(pcName);
 }

@@ -327,6 +327,14 @@ typedef struct pstatus_struct_ {
 #define DEFAULT_FUSE_MOUNT_POINT "pCloud"
 #endif
 
+// Lib error codes
+
+//Backup errors
+#define PSYNC_BACKUP_PATH_EMPTY_ERR 11001
+#define PSYNC_BACKUP_PATH_EMPTY_MSG "Cannot backup an empty path."
+//Backup errors end
+
+// Lib error codes end
 typedef struct {
   const char *localname;
   const char *localpath;

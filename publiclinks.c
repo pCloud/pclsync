@@ -679,8 +679,6 @@ int do_psync_change_link(unsigned long long linkid, unsigned long long expire, i
   psync_socket *api;
   binresult *bres;
   uint64_t result;
-  const char *rescode;
-  const char *errorret;
   *err = 0;
   binparam* t;
   int numparam = 5;// +!!expire + !!maxdownloads + !!maxtraffic + !!password;
@@ -890,7 +888,6 @@ int do_psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
   psync_socket *api;
   binresult *bres;
   uint64_t result;
-  const char *errorret;
 
   *err  = 0;
 
@@ -1193,7 +1190,8 @@ int do_delete_all_links(int64_t folderid, int64_t fileid, char**err) {
 int do_delete_all_folder_links(psync_folderid_t folderid, char**err) {
   psync_sql_res *res;
   psync_full_result_int *rows;
-  int ret = 0, i;
+  int ret = 0;
+  uint32_t i;
 
   res=psync_sql_query_rdlock("SELECT id, folderid, fileid, isincomming FROM links where folderid = ? ");
   psync_sql_bind_uint(res, 1, folderid);
@@ -1215,7 +1213,8 @@ int do_delete_all_folder_links(psync_folderid_t folderid, char**err) {
 int do_delete_all_file_links(psync_fileid_t fileid, char**err) {
   psync_sql_res *res;
   psync_full_result_int *rows;
-  int ret = 0, i;
+  int ret = 0;
+  uint32_t i;
 
   res=psync_sql_query_rdlock("SELECT id, folderid, fileid, isincomming FROM links where fileid = ? ");
   psync_sql_bind_uint(res, 1, fileid);
@@ -1306,8 +1305,7 @@ int do_link_add_access(unsigned long long linkid, const char *mail, char **err)
 {
 	psync_socket *api;
 	binresult *bres;
-	uint64_t result;
-	const char *errorret;
+  int result;
 
 	*err = 0;
 	//publink/addaccess
@@ -1396,7 +1394,7 @@ bookmarks_list_t *do_cache_bookmarks(char** err)
   lcnt = list->length;
   builder = psync_list_builder_create(sizeof(bookmark_info_t), offsetof(bookmarks_list_t, entries));
   if (!lcnt) {
-    ret = (link_cont_t*)psync_list_builder_finalize(builder);
+    ret = (bookmarks_list_t*)psync_list_builder_finalize(builder);
     psync_free(bres);
     return ret;
   }
@@ -1413,16 +1411,18 @@ bookmarks_list_t *do_cache_bookmarks(char** err)
     br = psync_find_result(bookmark, "code", PARAM_STR);
     pcont->code = br->str;
     psync_list_add_lstring_offset(builder, offsetof(bookmark_info_t, code), br->length);
-    br = psync_find_result(bookmark, "description", PARAM_STR);
+    br = psync_check_result(bookmark, "description", PARAM_STR);
     if (br){
       pcont->description = br->str;
       psync_list_add_lstring_offset(builder, offsetof(bookmark_info_t, description), br->length);
     }
-    
+    else {
+      pcont->description = "";
+    }
     pcont->created = psync_find_result(bookmark, "ctime", PARAM_NUM)->num;
     pcont->locationid = psync_find_result(bookmark, "locationid", PARAM_NUM)->num;
   }
-  ret = (link_cont_t*)psync_list_builder_finalize(builder);
+  ret = (bookmarks_list_t*)psync_list_builder_finalize(builder);
 
   psync_free(bres);
 
@@ -1434,7 +1434,6 @@ int do_remove_bookmark(const char* code, int locationid, char** err)
   psync_socket* api;
   binresult* bres;
   uint64_t result;
-  const char* errorret;
 
   *err = 0;
   binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("locationid", locationid), P_STR("code", code) };
@@ -1457,7 +1456,6 @@ int do_change_bookmark(const char* code, int locationid, const char* name, const
   psync_socket* api;
   binresult* bres;
   uint64_t result;
-  const char* errorret;
 
   *err = 0;
   //publink/addaccess
