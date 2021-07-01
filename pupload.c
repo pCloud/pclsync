@@ -41,6 +41,7 @@
 #include "plocalscan.h"
 #include "pfileops.h"
 #include "ppathstatus.h"
+#include "ptools.h"
 
 typedef struct {
   psync_list list;
@@ -392,7 +393,7 @@ static int copy_file(psync_fileid_t fileid, uint64_t hash, psync_folderid_t fold
   return 1;
 }
 
-static int check_file_if_exists(const unsigned char *hashhex, uint64_t fsize, psync_folderid_t folderid, const char *name, psync_fileid_t localfileid){
+static int check_file_if_exists(const unsigned char *hashhex, uint64_t fsize, psync_folderid_t folderid, const char *name, psync_fileid_t localfileid, psync_stat_t* st){
   psync_sql_res *res;
   psync_uint_row row;
   psync_fileid_t fileid;
@@ -411,6 +412,9 @@ static int check_file_if_exists(const unsigned char *hashhex, uint64_t fsize, ps
       if (filesize==fsize && !memcmp(hashhex, shashhex, PSYNC_HASH_DIGEST_HEXLEN)){
         debug(D_NOTICE, "file %lu/%s already exists and matches local checksum, not doing anything", (unsigned long)folderid, name);
         set_local_file_remote_id(localfileid, fileid, hash);
+
+        set_be_file_dates(fileid, psync_stat_ctime(st), psync_stat_mtime(st));
+
         return 1;
       }
       else
@@ -425,8 +429,7 @@ static int check_file_if_exists(const unsigned char *hashhex, uint64_t fsize, ps
   return 0;
 }
 
-static int copy_file_if_exists(const unsigned char *hashhex, uint64_t fsize, psync_folderid_t folderid, const char *name, psync_fileid_t localfileid,
-                               psync_stat_t *st){
+static int copy_file_if_exists(const unsigned char *hashhex, uint64_t fsize, psync_folderid_t folderid, const char *name, psync_fileid_t localfileid, psync_stat_t *st){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("size", fsize), P_LSTR(PSYNC_CHECKSUM, hashhex, PSYNC_HASH_DIGEST_HEXLEN), P_STR("timeformat", "timestamp")};
   binresult *res;
   const binresult *metas, *meta;
@@ -449,10 +452,15 @@ static int copy_file_if_exists(const unsigned char *hashhex, uint64_t fsize, psy
   }
   meta=metas->array[0];
   ret=copy_file(psync_find_result(meta, "fileid", PARAM_NUM)->num, psync_find_result(meta, "hash", PARAM_NUM)->num, folderid, name, localfileid, st);
-  if (ret==1)
+
+  if (ret==1){
     debug(D_NOTICE, "file %lu/%s copied to %lu/%s instead of uploading due to matching checksum",
           (long unsigned)psync_find_result(meta, "parentfolderid", PARAM_NUM)->num, psync_find_result(meta, "name", PARAM_STR)->str,
           (long unsigned)folderid, name);
+  }
+
+
+
   psync_free(res);
   return ret;
 }
@@ -1170,12 +1178,13 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     }
     psync_sql_free_result(res);
   }
-  ret=check_file_if_exists(hashhex, fsize, folderid, name, localfileid);
+  ret=check_file_if_exists(hashhex, fsize, folderid, name, localfileid, &st);
   /* PSYNC_MIN_SIZE_FOR_EXISTS_CHECK should be low enough not to waste bandwidth and high enough
    * not to waste a roundtrip to the server. Few kilos should be fine
    */
   if (ret==0 && fsize>=PSYNC_MIN_SIZE_FOR_EXISTS_CHECK)
     ret=copy_file_if_exists(hashhex, fsize, folderid, name, localfileid, &st);
+
   if (ret==1 || ret==-1){
     psync_unlock_file(lock);
     psync_free(nname);
