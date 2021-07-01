@@ -59,21 +59,18 @@ psync_encrypted_symmetric_key_t psync_ssl_copy_encrypted_symmetric_key(psync_enc
   memcpy(ret->data, src->data, src->datalen);
   return ret;
 }
-
-//Bobo
+/**************************************************************************************************************************************************************************************/
 psync_symmetric_key_t psync_ssl_rsa_decrypt_symm_key_lock(psync_rsa_privatekey_t* rsa, const psync_encrypted_symmetric_key_t* enckey) {
   psync_symmetric_key_t sym_key;
 
-  debug(D_NOTICE, "BOBO: Lock RSA decrypt mutex.");
+  debug(D_NOTICE, "Get RSA decrypt key lock.");
   pthread_mutex_lock(&rsa_decr_mutex);
-  debug(D_NOTICE, "BOBO: Got lock.");
 
   sym_key = psync_ssl_rsa_decrypt_symmetric_key(rsa, enckey);
 
-  debug(D_NOTICE, "BOBO: Unlock RSA decrypt mutex.");
   pthread_mutex_unlock(&rsa_decr_mutex);
-  debug(D_NOTICE, "BOBO: Lock released.");
+  debug(D_NOTICE, "RSA decrypt key Lock released.");
 
   return sym_key;
 }
-//Bobo
+/**************************************************************************************************************************************************************************************/
