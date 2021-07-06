@@ -9,6 +9,7 @@
 #include "plibs.h"
 #include "string.h"
 #include "stdlib.h"
+#include "pnetlibs.h"
 
 #if defined(P_OS_WINDOWS)
 #define _CRT_SECURE_NO_WARNINGS
@@ -520,7 +521,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
   };
 
   callRes = backend_call(
-    PSYNC_API_HOST,
+    apiserver,
     "setfilemtime",
     FOLDER_META,
     &requiredParams1,
@@ -542,7 +543,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
   };
 
   callRes = backend_call(
-    PSYNC_API_HOST,
+    apiserver,
     "setfilemtime",
     FOLDER_META,
     &requiredParams,
