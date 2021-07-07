@@ -77,7 +77,7 @@ char* getMACaddr() {
   mac = (unsigned char*)ifr.ifr_hwaddr.sa_data;
 
   sprintf(buffer, "%.2x%.2x%.2x%.2x%.2x%.2x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  mac_addr[12] = 0;
+  buffer[12] = 0;
 #endif
 
 #if defined(P_OS_MACOSX)
