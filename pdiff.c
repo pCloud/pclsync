@@ -928,10 +928,14 @@ static void process_modifyfolder(const binresult *entry){
     return;
   }
   psync_sql_free_result(res);
+
   if ((oldflags&PSYNC_FOLDER_FLAG_BACKUP_ROOT)!=0 && (flags&PSYNC_FOLDER_FLAG_BACKUP_ROOT)==0)
-    psync_delete_sync_by_folderid(folderid);
+    //psync_delete_sync_by_folderid(folderid);
+    psync_run_thread1("psync_async_backup_delete", psync_delete_backup_device, folderid);
+
   if ((oldflags&PSYNC_FOLDER_FLAG_BACKUP_DEVICE)!=0 && (flags&PSYNC_FOLDER_FLAG_BACKUP_DEVICE)==0)
     psync_delete_backup_device(folderid);
+
   mtime=psync_find_result(meta, "modified", PARAM_NUM)->num;
   psync_sql_bind_uint(st, 1, parentfolderid);
   psync_sql_bind_uint(st, 2, userid);
@@ -942,6 +946,7 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_bind_uint(st, 7, flags);
   psync_sql_bind_uint(st, 8, folderid);
   psync_sql_run(st);
+
   if (oldparentfolderid!=parentfolderid){
     res=psync_sql_prep_statement("UPDATE folder SET subdircnt=subdircnt-1, mtime=? WHERE id=?");
     psync_sql_bind_uint(res, 1, mtime);
