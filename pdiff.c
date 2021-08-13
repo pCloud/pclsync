@@ -271,6 +271,9 @@ static psync_socket *get_connected_socket(){
     auth=psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'");
     user=psync_sql_cellstr("SELECT value FROM setting WHERE id='user'");
     pass=psync_sql_cellstr("SELECT value FROM setting WHERE id='pass'");
+    if (user && !user[0]) user = NULL;
+    if (pass && !pass[0]) pass = NULL;
+    if (auth && !auth[0]) auth = NULL;
 
     chrUserid = psync_sql_cellstr("SELECT value FROM setting WHERE id='userid'");
 

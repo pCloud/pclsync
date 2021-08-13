@@ -610,7 +610,7 @@ int psync_cloud_crypto_stop(){
   psync_cloud_crypto_clean_cache();
   psync_fs_refresh_crypto_folders();
 #ifdef P_OS_WINDOWS
-  //psync_refresh_explorer_crypto_folder();
+  psync_refresh_explorer_crypto_folder();
 #endif
   return PSYNC_CRYPTO_STOP_SUCCESS;
 }
