@@ -45,6 +45,10 @@
 #include <string.h>
 #include <ctype.h>
 
+//Bobo
+#include "pcallbacks.h"
+//Bobo
+
 typedef struct {
   psync_list list;
   binresult *res;
@@ -1425,7 +1429,9 @@ static void change_folder_name(fsupload_task_t *task) {
 
 static int handle_rename_folder_api_error(uint64_t result, fsupload_task_t *task){
   debug(D_ERROR, "renamefolder returned error %u parentfolderid=%lu name=%s", (unsigned)result, (unsigned long)task->folderid, task->text1);
+
   psync_process_api_error(result);
+
   switch (result){
     case 2005: /* folder does not exist, skip */
     case 2042: /* moving root, should not happen */
@@ -1448,16 +1454,22 @@ static int handle_rename_folder_api_error(uint64_t result, fsupload_task_t *task
       change_folder_name(task);
       upload_wakes++;
       return -1;
+    case 2352: /* Attempt to move more files to a shared folder than the set limit */
+      psync_send_eventid(PEVENT_SHARE_RENAME_F);
   }
+
   return -1;
 }
 
 static int psync_process_task_rename_folder(fsupload_task_t *task){
   uint64_t result;
   const binresult *meta;
+
   result=psync_find_result(task->res, "result", PARAM_NUM)->num;
+
   if (result)
     return handle_rename_folder_api_error(result, task);
+
   meta=psync_find_result(task->res, "metadata", PARAM_HASH);
   psync_ops_update_folder_in_db(meta);
   psync_fstask_folder_renamed(task->folderid, task->id, task->text1, task->int1);
@@ -1699,13 +1711,16 @@ static void psync_fsupload_process_tasks(psync_list *tasks){
       psync_free(task->res);
     }
   }
+
   psync_sql_commit_transaction();
+
   if (creats){
     psync_upload_dec_uploads_cnt(creats);
     psync_status_recalc_to_upload_async();
   }
   else if (cancels || dels)
     psync_status_recalc_to_upload_async();
+
   if (dels)
     psync_diff_wake();
 }
