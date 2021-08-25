@@ -45,9 +45,7 @@
 #include <string.h>
 #include <ctype.h>
 
-//Bobo
 #include "pcallbacks.h"
-//Bobo
 
 typedef struct {
   psync_list list;
@@ -1455,6 +1453,8 @@ static int handle_rename_folder_api_error(uint64_t result, fsupload_task_t *task
       upload_wakes++;
       return -1;
     case 2352: /* Attempt to move more files to a shared folder than the set limit */
+      debug(D_ERROR, "Error 2352. Tried to move too many folders into a sahred folder at once.");
+      psync_fstask_folder_renamed(task->folderid, task->id, task->text1, task->int1);
       psync_send_eventid(PEVENT_SHARE_RENAME_F);
   }
 
