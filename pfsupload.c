@@ -1456,6 +1456,7 @@ static int handle_rename_folder_api_error(uint64_t result, fsupload_task_t *task
       debug(D_ERROR, "Error 2352. Tried to move too many folders into a sahred folder at once.");
       psync_fstask_folder_renamed(task->folderid, task->id, task->text1, task->int1);
       psync_send_eventid(PEVENT_SHARE_RENAME_F);
+      return 0;
   }
 
   return -1;
