@@ -59,6 +59,17 @@ typedef struct {
   char filename[];
 } upload_task_t;
 
+//Bobo
+typedef struct {
+  psync_folderid_t folderid;
+  psync_folderid_t newparentfolderid;
+  char* newname;
+  char* err_msg;
+  uint64_t err;
+} sync_err_struct;
+//Bobo
+
+
 static pthread_mutex_t upload_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t upload_cond=PTHREAD_COND_INITIALIZER;
 static uint32_t upload_wakes=0;
@@ -272,32 +283,91 @@ static int task_renamefile(uint64_t taskid, psync_syncid_t syncid, psync_fileid_
   else
     return task_renameremotefile(fileid, folderid, newname);
 }
+//Bobo
+int handle_api_errors(sync_err_struct *err_struct) {
+  int ret = -1;
 
+  if(err_struct->err) {
+    debug(D_NOTICE, "BOBO: Eror code: [%lu]", err_struct->err);
+  }
+  
+  if (err_struct->folderid) {
+    debug(D_NOTICE, "BOBO: Folder Id: [%lu]", err_struct->folderid);
+  }
+  
+  if (err_struct->newparentfolderid) {
+    debug(D_NOTICE, "BOBO: New Parent Folder Id: [%lu]", err_struct->newparentfolderid);
+  }
+  
+  if (err_struct->newname) {
+    debug(D_NOTICE, "BOBO: New folder name: [%s]", err_struct->newname);
+  }
+
+  if (err_struct->err_msg) {
+    debug(D_NOTICE, "BOBO: Error message: [%s]", err_struct->err_msg);
+  }
+
+  switch (err_struct->err) {
+    case BEAPI_ERR_MV_TOO_MANY_IN_SHA:
+      debug(D_NOTICE, "BOBO: Critical sync error. Stopping the sync.");
+      psync_delete_sync(get_sync_id_from_fid(err_struct->folderid));
+      psync_send_eventid(PEVENT_SYNC_RENAME_F);
+      break;
+
+    default: ret = -1;
+  }
+  
+  return ret;
+}
+//Bobo
 static int task_renameremotefolder(psync_folderid_t folderid, psync_folderid_t newparentfolderid, const char *newname){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_NUM("tofolderid", newparentfolderid), P_STR("toname", newname),
                      P_STR("timeformat", "timestamp")};
   binresult *res;
   uint64_t result;
+  sync_err_struct err_struct = {0, 0,  "", "", 0,};
   int ret;
+
+  //err_struct = (sync_err_struct*)(sizeof(sync_err_struct));
+
   res=psync_api_run_command("renamefolder", params);
+
   if (unlikely(!res))
     return -1;
+
   result=psync_find_result(res, "result", PARAM_NUM)->num;
+
+  debug(D_NOTICE, "BOBO: Renamefolder command result:[%lu]", result);
+
   if (likely(!result)){
     ret=0;
+
     debug(D_NOTICE, "remote folderid %lu moved/renamed to (%lu)/%s", (long unsigned)folderid, (long unsigned)newparentfolderid, newname);
+
     if (!psync_sql_start_transaction()){
       psync_ops_update_folder_in_db(psync_find_result(res, "metadata", PARAM_HASH));
       psync_sql_commit_transaction();
     }
+
     psync_diff_wake();
   }
   else{
+    /*
     ret=-1;
     psync_process_api_error(result);
     debug(D_NOTICE, "command renamefolder returned %lu: %s", (unsigned long)result, psync_find_result(res, "error", PARAM_STR)->str);
+    */
+    err_struct.newname = strdup(newname);
+    err_struct.err     = result;
+    err_struct.err_msg = psync_find_result(res, "error", PARAM_STR)->str;
+    err_struct.folderid = folderid;
+    err_struct.newparentfolderid = newparentfolderid;
+
+    ret = handle_api_errors(&err_struct);
   }
+
   psync_free(res);
+
   return ret;
 }
 
@@ -1469,14 +1539,18 @@ void psync_delete_upload_tasks_for_file(psync_fileid_t localfileid){
 void psync_stop_sync_upload(psync_syncid_t syncid){
   upload_list_t *upl;
   psync_sql_res *res;
+
   res=psync_sql_prep_statement("DELETE FROM task WHERE syncid=? AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_UPLOAD));
   psync_sql_bind_uint(res, 1, syncid);
   psync_sql_run_free(res);
+
   pthread_mutex_lock(&current_uploads_mutex);
   psync_list_for_each_element(upl, &uploads, upload_list_t, list)
     if (upl->syncid==syncid)
       upl->stop=1;
+
   pthread_mutex_unlock(&current_uploads_mutex);
+
   psync_status_recalc_to_upload_async();
 }
 

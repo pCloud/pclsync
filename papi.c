@@ -524,6 +524,8 @@ binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdle
   unsigned char *sdata;
   size_t plen;
 
+  debug(D_NOTICE, "BOBO: Send command: [%s]", command);
+
   sdata=do_prepare_command(command, cmdlen, params, paramcnt, datalen, 0, &plen);
 
   if (!sdata) {

@@ -102,6 +102,27 @@ typedef struct {
 	apiserver_info_t entries[];
 }apiservers_list_t;
 
+//Bobo
+//Backend API errors
+#define BEAPI_ERR_F_NOT_EXISTS       2005 // folder does not exist, skip
+#define BEAPI_ERR_MOVE_ROOT          2042 // moving root, should not happen
+#define BEAPI_ERR_ACCESS_DENIED      2003 // access denied, skip
+#define BEAPI_ERR_INVALID_NAME       2001 // invalid name, should not happen
+#define BEAPI_ERR_OVERQUOTA          2008 // overquota
+#define BEAPI_ERR_MOVE_IN_SHARED_F   2023 // moving into shared folder
+#define BEAPI_ERR_MOVE_INTO_SELF     2043 // into itself or child
+#define BEAPI_ERR_NO_SHARE_IN_PUB    2282 // public folder can't contain shared folder
+#define BEAPI_ERR_NO_UP_LINK_IN_PUB  2283 // public folder can't contain upload link
+#define BEAPI_ERR_NO_DL_LINK_IN_PUB  2284 // public folder can't contain download link
+#define BEAPI_ERR_NO_PUB_F_IN_SHARE  2285 // shared folder can't contain public folder
+#define BEAPI_ERR_NO_PUB_F_IN_BUP    2340 // backup folders can't contain shared folders
+#define BEAPI_ERR_NO_UPLINK_IN_BUP   2342 // backup folders can't contain upload links
+#define BEAPI_ERR_NO_DL_LINK_IN_BUP  2343 // backup folders can't contain download links
+#define BEAPI_ERR_NOT_ALLOWED_IN_BUP 2346 // you can't place this item in backup folder
+#define BEAPI_ERR_DEST_F_EXISTS      2004 // destination folder already exists
+#define BEAPI_ERR_MV_TOO_MANY_IN_SHA 2352 //Too many objects moved at once in shared folder
+//Bobo
+
 #define PSTATUS_READY                   0
 #define PSTATUS_DOWNLOADING             1
 #define PSTATUS_UPLOADING               2
@@ -200,6 +221,7 @@ typedef struct pstatus_struct_ {
 #define PEVENT_SHARE_MODIFYOUT   (PEVENT_FIRST_SHARE_EVENT+11)
 
 #define PEVENT_SHARE_RENAME_F    (PEVENT_FIRST_SHARE_EVENT+12)
+#define PEVENT_SYNC_RENAME_F    (PEVENT_FIRST_SHARE_EVENT+13)
 
 #define PEVENT_BACKUP_STOP            PEVENT_FIRST_BACKUP_EVENT
 #define PEVENT_BKUP_F_DEL_SYNCED      (PEVENT_FIRST_BACKUP_EVENT+1)

@@ -974,24 +974,19 @@ static void psync_delete_local_recursive(psync_syncid_t syncid, psync_folderid_t
 int psync_delete_sync(psync_syncid_t syncid){
   psync_sql_res *res;
   psync_sql_start_transaction();
-/* this is slow and unneeded:
-  psync_uint_row row;
-  res=psync_sql_query("SELECT type, itemid, localitemid FROM task WHERE syncid=?");
-  psync_sql_bind_uint(res, 1, syncid);
-  while ((row=psync_sql_fetch_rowint(res)))
-    if (row[0]==PSYNC_DOWNLOAD_FILE)
-      psync_stop_file_download(row[1], syncid);
-    else if (row[0]==PSYNC_UPLOAD_FILE)
-      psync_delete_upload_tasks_for_file(row[2]);
-  psync_sql_free_result(res);
-  */
+
+  debug(D_NOTICE, "BOBO: Delete sync id: [%u]", syncid);
+
   psync_delete_local_recursive(syncid, 0);
   res=psync_sql_prep_statement("DELETE FROM syncfolder WHERE id=?");
   psync_sql_bind_uint(res, 1, syncid);
   psync_sql_run_free(res);
+
   if (psync_sql_commit_transaction())
     return -1;
   else{
+    debug(D_NOTICE, "BOBO: Purging all sync processes.");
+
     psync_stop_sync_download(syncid);
     psync_stop_sync_upload(syncid);
     psync_localnotify_del_sync(syncid);
@@ -1000,6 +995,7 @@ int psync_delete_sync(psync_syncid_t syncid){
     psync_sql_sync();
     psync_path_status_sync_delete(syncid);
     psync_path_status_reload_syncs();
+
     return 0;
   }
 }

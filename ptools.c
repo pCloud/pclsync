@@ -557,3 +557,21 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
   return callRes;
 }
 /*************************************************************/
+psync_syncid_t get_sync_id_from_fid(psync_folderid_t fid) {
+  psync_sql_res* res;
+  psync_variant_row row;
+  psync_syncid_t syncId = -1;
+
+  res = psync_sql_query("SELECT syncid FROM syncedfolder WHERE folderid = ?");
+
+  psync_sql_bind_uint(res, 1, fid);
+
+  if ((row = psync_sql_fetch_row(res))) {
+    syncId = psync_get_number(row[0]);
+  }
+
+  psync_sql_free_result(res);
+
+  return syncId;
+}
+/*************************************************************/

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "papi.h"
+//#include "psynclib.h"
 
 #define EVENT_WS "loganalyticsevent"
 
@@ -92,4 +93,6 @@ void send_psyncs_event(const char* binapi,
                        const char* auth);
 /**********************************************************************************************************/
 int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
+/**********************************************************************************************************/
+ uint32_t get_sync_id_from_fid(uint64_t fid);
 /**********************************************************************************************************/
