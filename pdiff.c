@@ -932,10 +932,11 @@ static void process_modifyfolder(const binresult *entry){
   }
   psync_sql_free_result(res);
 
-  if ((oldflags&PSYNC_FOLDER_FLAG_BACKUP_ROOT)!=0 && (flags&PSYNC_FOLDER_FLAG_BACKUP_ROOT)==0)
-    //psync_delete_sync_by_folderid(folderid);
-    psync_run_thread1("psync_async_backup_delete", psync_delete_sync_by_folderid, folderid);
-
+  if ((oldflags & PSYNC_FOLDER_FLAG_BACKUP_ROOT) != 0 && (flags & PSYNC_FOLDER_FLAG_BACKUP_ROOT) == 0)
+  {
+    //psync_run_thread1("psync_async_backup_delete", psync_delete_sync_by_folderid, (void *)folderid);
+    psync_delete_sync_by_folderid(folderid);
+  }
   if ((oldflags&PSYNC_FOLDER_FLAG_BACKUP_DEVICE)!=0 && (flags&PSYNC_FOLDER_FLAG_BACKUP_DEVICE)==0)
     psync_delete_backup_device(folderid);
 
