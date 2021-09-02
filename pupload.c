@@ -286,32 +286,48 @@ static int task_renamefile(uint64_t taskid, psync_syncid_t syncid, psync_fileid_
 //Bobo
 int handle_api_errors(sync_err_struct *err_struct) {
   int ret = -1;
+  event_data_struct *event_data;
+
+  debug(D_NOTICE, "Process error.");
 
   if(err_struct->err) {
-    debug(D_NOTICE, "BOBO: Eror code: [%lu]", err_struct->err);
+    debug(D_NOTICE, "Eror code: [%lu]", err_struct->err);
   }
   
   if (err_struct->folderid) {
-    debug(D_NOTICE, "BOBO: Folder Id: [%lu]", err_struct->folderid);
+    debug(D_NOTICE, "Folder Id: [%lu]", err_struct->folderid);
   }
   
   if (err_struct->newparentfolderid) {
-    debug(D_NOTICE, "BOBO: New Parent Folder Id: [%lu]", err_struct->newparentfolderid);
+    debug(D_NOTICE, "New Parent Folder Id: [%lu]", err_struct->newparentfolderid);
   }
   
   if (err_struct->newname) {
-    debug(D_NOTICE, "BOBO: New folder name: [%s]", err_struct->newname);
+    debug(D_NOTICE, "New folder name: [%s]", err_struct->newname);
   }
 
   if (err_struct->err_msg) {
-    debug(D_NOTICE, "BOBO: Error message: [%s]", err_struct->err_msg);
+    debug(D_NOTICE, "Error message: [%s]", err_struct->err_msg);
   }
 
   switch (err_struct->err) {
     case BEAPI_ERR_MV_TOO_MANY_IN_SHA:
-      debug(D_NOTICE, "BOBO: Critical sync error. Stopping the sync.");
+      //Bobo
+      debug(D_NOTICE, "Critical sync error. Stopping the sync.");
       psync_delete_sync(get_sync_id_from_fid(err_struct->folderid));
-      psync_send_eventid(PEVENT_SYNC_RENAME_F);
+
+      event_data = psync_new(event_data_struct);
+      event_data->eventid = PEVENT_SYNC_RENAME_F;
+      event_data->str1 = strdup(err_struct->newname);
+      event_data->uint1 = err_struct->folderid;
+      event_data->uint2 = err_struct->newparentfolderid;
+      
+      psync_send_data_event(event_data);
+
+      debug(D_NOTICE, "BOBO: Data event sent.");
+
+      psync_free(event_data);
+      //Bobo
       break;
 
     default: ret = -1;
@@ -336,8 +352,6 @@ static int task_renameremotefolder(psync_folderid_t folderid, psync_folderid_t n
     return -1;
 
   result=psync_find_result(res, "result", PARAM_NUM)->num;
-
-  debug(D_NOTICE, "BOBO: Renamefolder command result:[%lu]", result);
 
   if (likely(!result)){
     ret=0;

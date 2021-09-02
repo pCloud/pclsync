@@ -932,16 +932,14 @@ static void process_modifyfolder(const binresult *entry){
   }
   psync_sql_free_result(res);
 
-  debug(D_NOTICE, "BOBO: Stop backup for folder id: [%lu]", folderid);
-
   if ((oldflags & PSYNC_FOLDER_FLAG_BACKUP_ROOT) != 0 && (flags & PSYNC_FOLDER_FLAG_BACKUP_ROOT) == 0) {
-    debug(D_NOTICE, "BOBO: Stop backup root");
-    //psync_delete_sync_by_folderid(folderid);
-    psync_run_thread1("psync_async_backup_delete", psync_delete_backup_device, folderid);
+    debug(D_NOTICE, "Stop backup root");
+    psync_delete_sync_by_folderid(folderid);
+    //psync_run_thread1("psync_async_backup_delete", psync_delete_sync_by_folderid, folderid);
   }
 
   if ((oldflags & PSYNC_FOLDER_FLAG_BACKUP_DEVICE) != 0 && (flags & PSYNC_FOLDER_FLAG_BACKUP_DEVICE) == 0) {
-    debug(D_NOTICE, "BOBO: Stop backup device");
+    debug(D_NOTICE, "Stop backup device");
     psync_delete_backup_device(folderid);
   }
 
