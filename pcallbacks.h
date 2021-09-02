@@ -57,6 +57,6 @@ void psync_init_data_event(void* ptr);
 
 void psync_send_data_event(event_data_struct *data);
 
-void psync_data_event_test(int eventid, char* str1, char* str2, int int1);
+void psync_data_event_test(int eventid, char* str1, uint64_t uint1, uint64_t uint2);
 //Bobo
 #endif
