@@ -268,20 +268,6 @@ int psync_init(){
   if (PSYNC_SSL_DEBUG_LEVEL)
     psync_set_ssl_debug_callback(ssl_debug_cb);
 
-  debug(D_NOTICE, "BOBO: Init data event handler.");
-  psync_init_data_event_handler(&psync_data_event_test);
-
-  event_data_struct* data;
-  data = psync_new(event_data_struct);
-
-  data->eventid = 1;
-  data->str1 = strdup("Str1");
-  data->str2 = strdup("Str2");
-  data->uint1 = 1;
-  data->uint2 = 2;
-
-  psync_send_data_event(data);
-
   return 0;
 }
 
