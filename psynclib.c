@@ -268,6 +268,20 @@ int psync_init(){
   if (PSYNC_SSL_DEBUG_LEVEL)
     psync_set_ssl_debug_callback(ssl_debug_cb);
 
+  debug(D_NOTICE, "BOBO: Init data event handler.");
+  psync_init_data_event_handler(&psync_data_event_test);
+
+  event_data_struct* data;
+  data = psync_new(event_data_struct);
+
+  data->eventid = 1;
+  data->str1 = strdup("Str1");
+  data->str2 = strdup("Str2");
+  data->uint1 = 1;
+  data->uint2 = 2;
+
+  psync_send_data_event(data);
+
   return 0;
 }
 
@@ -975,8 +989,6 @@ int psync_delete_sync(psync_syncid_t syncid){
   psync_sql_res *res;
   psync_sql_start_transaction();
 
-  debug(D_NOTICE, "BOBO: Delete sync id: [%u]", syncid);
-
   psync_delete_local_recursive(syncid, 0);
   res=psync_sql_prep_statement("DELETE FROM syncfolder WHERE id=?");
   psync_sql_bind_uint(res, 1, syncid);
@@ -985,8 +997,6 @@ int psync_delete_sync(psync_syncid_t syncid){
   if (psync_sql_commit_transaction())
     return -1;
   else{
-    debug(D_NOTICE, "BOBO: Purging all sync processes.");
-
     psync_stop_sync_download(syncid);
     psync_stop_sync_upload(syncid);
     psync_localnotify_del_sync(syncid);

@@ -444,7 +444,7 @@ void data_event_thread(void* ptr) {
 
   debug(D_NOTICE, "BOBO: Data event thread. Event id: [%d] Str1: [%s] Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->uint1, data->uint2);
 
-  data_event_fptr(data->eventid, data->str1, data->uint1, data->uint2);
+  data_event_fptr(data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
   psync_free(ptr);
 
@@ -461,6 +461,7 @@ void psync_send_data_event(event_data_struct* data) {
     event_data->uint1 = data->uint1;
     event_data->uint2 = data->uint2;
     event_data->str1 = strdup(data->str1);
+    event_data->str2 = strdup(data->str2);
 
     debug(D_NOTICE, "BOBO: Sending event id: [%d] Str1: [%s]", data->eventid, data->str1);
 
@@ -471,8 +472,8 @@ void psync_send_data_event(event_data_struct* data) {
   }
 }
 /**********************************************************************************************/
-void psync_data_event_test(int eventid, char* str1, uint64_t uint1, uint64_t uint2) {
-  debug(D_NOTICE, "BOBO: Test Data event callback. eventid [%d]. String1: [%s], uInt1: [%ul] uInt2: [%ul]", eventid, str1, uint1, uint2);
+void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
+  debug(D_NOTICE, "BOBO: Test Data event callback. eventid [%d]. String1: [%s], String2: [%s], uInt1: [%ul] uInt2: [%ul]", eventid, str1, str2, uint1, uint2);
 }
 //Bobo
 /**********************************************************************************************/

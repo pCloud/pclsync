@@ -63,7 +63,7 @@ typedef struct {
 typedef struct {
   psync_folderid_t folderid;
   psync_folderid_t newparentfolderid;
-  char* newname;
+  char* newName;
   char* err_msg;
   uint64_t err;
 } sync_err_struct;
@@ -101,7 +101,6 @@ void psync_upload_dec_uploads(){
   pthread_mutex_unlock(&upload_mutex);
   psync_send_status_update();
 }
-
 void psync_upload_dec_uploads_cnt(uint32_t cnt){
   pthread_mutex_lock(&upload_mutex);
   psync_status.filesuploading-=cnt;
@@ -261,6 +260,7 @@ static int task_renamefile(uint64_t taskid, psync_syncid_t syncid, psync_fileid_
   psync_uint_row row;
   psync_fileid_t fileid;
   psync_folderid_t folderid;
+
   if (task_wait_no_uploads(taskid))
     return -1;
   res=psync_sql_query_rdlock("SELECT fileid FROM localfile WHERE id=?");
@@ -287,6 +287,8 @@ static int task_renamefile(uint64_t taskid, psync_syncid_t syncid, psync_fileid_
 int handle_api_errors(sync_err_struct *err_struct) {
   int ret = -1;
   event_data_struct *event_data;
+  psync_syncid_t syncId;
+  char* syncFolder;
 
   debug(D_NOTICE, "Process error.");
 
@@ -302,8 +304,8 @@ int handle_api_errors(sync_err_struct *err_struct) {
     debug(D_NOTICE, "New Parent Folder Id: [%lu]", err_struct->newparentfolderid);
   }
   
-  if (err_struct->newname) {
-    debug(D_NOTICE, "New folder name: [%s]", err_struct->newname);
+  if (err_struct->newName) {
+    debug(D_NOTICE, "New folder name: [%s]", err_struct->newName);
   }
 
   if (err_struct->err_msg) {
@@ -314,13 +316,20 @@ int handle_api_errors(sync_err_struct *err_struct) {
     case BEAPI_ERR_MV_TOO_MANY_IN_SHA:
       //Bobo
       debug(D_NOTICE, "Critical sync error. Stopping the sync.");
-      psync_delete_sync(get_sync_id_from_fid(err_struct->folderid));
+
+      syncId = get_sync_id_from_fid(err_struct->folderid);
+      syncFolder = get_sync_folder_by_syncid(syncId);
+
+      debug(D_NOTICE, "BOBO: Got sync path: [%s]", syncFolder);
 
       event_data = psync_new(event_data_struct);
       event_data->eventid = PEVENT_SYNC_RENAME_F;
-      event_data->str1 = strdup(err_struct->newname);
+      event_data->str1 = strdup(err_struct->newName);
+      event_data->str2 = strdup(syncFolder);
       event_data->uint1 = err_struct->folderid;
       event_data->uint2 = err_struct->newparentfolderid;
+
+      psync_delete_sync(syncId);
       
       psync_send_data_event(event_data);
 
@@ -371,7 +380,7 @@ static int task_renameremotefolder(psync_folderid_t folderid, psync_folderid_t n
     psync_process_api_error(result);
     debug(D_NOTICE, "command renamefolder returned %lu: %s", (unsigned long)result, psync_find_result(res, "error", PARAM_STR)->str);
     */
-    err_struct.newname = strdup(newname);
+    err_struct.newName = strdup(newname);
     err_struct.err     = result;
     err_struct.err_msg = psync_find_result(res, "error", PARAM_STR)->str;
     err_struct.folderid = folderid;

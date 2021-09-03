@@ -575,3 +575,32 @@ psync_syncid_t get_sync_id_from_fid(psync_folderid_t fid) {
   return syncId;
 }
 /*************************************************************/
+char *get_sync_folder_by_syncid(uint64_t fid) {
+  psync_sql_res* res;
+  psync_variant_row row;
+  const char* syncName;
+  char* retName;
+
+  debug(D_NOTICE, "BOBO: Get folder name for id: [%ul]", fid);
+
+  res = psync_sql_query("SELECT name FROM syncfolder sf JOIN folder f ON f.id = sf.folderid WHERE sf.id = ?");
+
+  psync_sql_bind_uint(res, 1, fid);
+
+  if ((row = psync_sql_fetch_row(res))) {
+    syncName = psync_get_string(row[0]);
+  }
+  else {
+    psync_sql_free_result(res);
+    return NULL;
+  }
+
+  debug(D_NOTICE, "BOBO: Got folder name: [%s]", syncName);
+
+  retName = strdup(syncName);
+
+  psync_sql_free_result(res);
+
+  return retName;
+}
+/*************************************************************/
