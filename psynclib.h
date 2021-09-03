@@ -1617,6 +1617,13 @@ userinfo_t* psync_get_userinfo();
 * eventParams - list of binparams(optional)
 */
 int psync_create_backend_event(const char* category, const char* action, const char* label, eventParams params, char* err);
+
+
+/*
+*
+* ptr - pointer to the data event handling function.
+*/
+void psync_init_data_event_handler(void* ptr);
 #ifdef __cplusplus
 }
 #endif
