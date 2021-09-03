@@ -437,6 +437,7 @@ data_event_callback data_event_fptr = NULL;
 
 void psync_init_data_event(void *ptr) {
   data_event_fptr = (data_event_callback*)ptr;
+  debug(D_NOTICE, "Data event handler set.");
 }
 /**********************************************************************************************/
 void data_event_thread(void* ptr) {
