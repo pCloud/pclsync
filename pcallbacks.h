@@ -30,12 +30,10 @@
 
 #include "psynclib.h"
 
-#if defined(P_OS_WINDOWS)
-typedef void(/*_cdecl*/__stdcall *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
-#endif
-
 #if defined(P_OS_LINUX)
 typedef void(/*_cdecl*/ *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
+#else
+typedef void(/*_cdecl*/__stdcall *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
 #endif
 
 typedef struct {
