@@ -30,7 +30,6 @@
 
 #include "psynclib.h"
 
-//Bobo
 typedef struct {
   int eventid;
   const char *str1;
@@ -38,7 +37,7 @@ typedef struct {
   uint64_t   uint1;
   uint64_t   uint2;
 } event_data_struct;
-//Bobo
+
 
 void psync_callbacks_get_status(pstatus_t *status);
 void psync_set_status_callback(pstatus_change_callback_t callback);
@@ -49,7 +48,6 @@ void psync_send_event_by_path(psync_eventtype_t eventid, psync_syncid_t syncid, 
 void psync_send_eventid(psync_eventtype_t eventid);
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 
-//Bobo
 #define PEVENT_SYNC_RENAME_F 1
 
 typedef void(/*_cdecl*/__stdcall* data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
@@ -59,5 +57,4 @@ void psync_init_data_event(void* ptr);
 void psync_send_data_event(event_data_struct *data);
 
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
-//Bobo
 #endif

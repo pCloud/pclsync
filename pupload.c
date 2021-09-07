@@ -59,7 +59,6 @@ typedef struct {
   char filename[];
 } upload_task_t;
 
-//Bobo
 typedef struct {
   psync_folderid_t folderid;
   psync_folderid_t newparentfolderid;
@@ -67,8 +66,6 @@ typedef struct {
   char* err_msg;
   uint64_t err;
 } sync_err_struct;
-//Bobo
-
 
 static pthread_mutex_t upload_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t upload_cond=PTHREAD_COND_INITIALIZER;
@@ -283,12 +280,13 @@ static int task_renamefile(uint64_t taskid, psync_syncid_t syncid, psync_fileid_
   else
     return task_renameremotefile(fileid, folderid, newname);
 }
-//Bobo
+/****************************************************************************/
 int handle_api_errors(sync_err_struct *err_struct) {
   int ret = -1;
   event_data_struct *event_data;
   psync_syncid_t syncId;
   char* syncFolder;
+  char* folder;
 
   debug(D_NOTICE, "Process error.");
 
@@ -314,18 +312,18 @@ int handle_api_errors(sync_err_struct *err_struct) {
 
   switch (err_struct->err) {
     case BEAPI_ERR_MV_TOO_MANY_IN_SHA:
-      //Bobo
       debug(D_NOTICE, "Critical sync error. Stopping the sync.");
 
       syncId = get_sync_id_from_fid(err_struct->folderid);
       syncFolder = get_sync_folder_by_syncid(syncId);
+      folder = get_folder_name_from_path(syncFolder);
 
-      debug(D_NOTICE, "BOBO: Got sync path: [%s]", syncFolder);
+      debug(D_NOTICE, "Got sync path: [%s] Sync folder: [%s]", syncFolder, folder);
 
       event_data = psync_new(event_data_struct);
       event_data->eventid = PEVENT_SYNC_RENAME_F;
       event_data->str1 = strdup(err_struct->newName);
-      event_data->str2 = strdup(syncFolder);
+      event_data->str2 = folder;
       event_data->uint1 = err_struct->folderid;
       event_data->uint2 = err_struct->newparentfolderid;
 
@@ -333,10 +331,7 @@ int handle_api_errors(sync_err_struct *err_struct) {
       
       psync_send_data_event(event_data);
 
-      debug(D_NOTICE, "BOBO: Data event sent.");
-
       psync_free(event_data);
-      //Bobo
       break;
 
     default: ret = -1;
@@ -344,7 +339,7 @@ int handle_api_errors(sync_err_struct *err_struct) {
   
   return ret;
 }
-//Bobo
+/******************************************************************************/
 static int task_renameremotefolder(psync_folderid_t folderid, psync_folderid_t newparentfolderid, const char *newname){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_NUM("tofolderid", newparentfolderid), P_STR("toname", newname),
                      P_STR("timeformat", "timestamp")};

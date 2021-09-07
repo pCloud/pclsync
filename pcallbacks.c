@@ -432,7 +432,6 @@ void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata){
     psync_free(eventdata);
 }
 /**********************************************************************************************/
-//Bobo
 data_event_callback data_event_fptr = NULL;
 
 void psync_init_data_event(void *ptr) {
@@ -443,18 +442,15 @@ void psync_init_data_event(void *ptr) {
 void data_event_thread(void* ptr) {
   event_data_struct* data = (event_data_struct*)ptr;
 
-  debug(D_NOTICE, "BOBO: Data event thread. Event id: [%d] Str1: [%s] Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->uint1, data->uint2);
+  debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
   data_event_fptr(data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
   psync_free(ptr);
-
-  debug(D_NOTICE, "BOBO: Data event thread. Call done.");
 }
 /**********************************************************************************************/
 void psync_send_data_event(event_data_struct* data) {
   event_data_struct *event_data;
-  debug(D_NOTICE, "BOBO: Send data event called");
 
   if (data_event_fptr) {
     event_data = psync_new(event_data_struct);
@@ -464,17 +460,14 @@ void psync_send_data_event(event_data_struct* data) {
     event_data->str1 = strdup(data->str1);
     event_data->str2 = strdup(data->str2);
 
-    debug(D_NOTICE, "BOBO: Sending event id: [%d] Str1: [%s]", data->eventid, data->str1);
-
     psync_run_thread1("Data Event", data_event_thread, event_data);
   }
   else {
-    debug(D_NOTICE, "BOBO: Data event callback function not set.");
+    debug(D_ERROR, "Data event callback function not set.");
   }
 }
 /**********************************************************************************************/
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
-  debug(D_NOTICE, "BOBO: Test Data event callback. eventid [%d]. String1: [%s], String2: [%s], uInt1: [%ul] uInt2: [%ul]", eventid, str1, str2, uint1, uint2);
+  debug(D_NOTICE, "Test Data event callback. eventid [%d]. String1: [%s], String2: [%s], uInt1: [%ul] uInt2: [%ul]", eventid, str1, str2, uint1, uint2);
 }
-//Bobo
 /**********************************************************************************************/

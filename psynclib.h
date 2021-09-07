@@ -102,8 +102,7 @@ typedef struct {
 	apiserver_info_t entries[];
 }apiservers_list_t;
 
-//Bobo
-//Backend API errors
+//Backend API errors constants
 #define BEAPI_ERR_F_NOT_EXISTS       2005 // folder does not exist, skip
 #define BEAPI_ERR_MOVE_ROOT          2042 // moving root, should not happen
 #define BEAPI_ERR_ACCESS_DENIED      2003 // access denied, skip
@@ -121,7 +120,6 @@ typedef struct {
 #define BEAPI_ERR_NOT_ALLOWED_IN_BUP 2346 // you can't place this item in backup folder
 #define BEAPI_ERR_DEST_F_EXISTS      2004 // destination folder already exists
 #define BEAPI_ERR_MV_TOO_MANY_IN_SHA 2352 //Too many objects moved at once in shared folder
-//Bobo
 
 #define PSTATUS_READY                   0
 #define PSTATUS_DOWNLOADING             1
