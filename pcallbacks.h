@@ -30,6 +30,14 @@
 
 #include "psynclib.h"
 
+#if defined(P_OS_WINDOWS)
+typedef void(/*_cdecl*/__stdcall *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
+#endif
+
+#if defined(P_OS_LINUX)
+typedef void(/*_cdecl*/ *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
+#endif
+
 typedef struct {
   int eventid;
   const char *str1;
@@ -49,8 +57,6 @@ void psync_send_eventid(psync_eventtype_t eventid);
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 
 #define PEVENT_SYNC_RENAME_F 1
-
-typedef void(/*_cdecl*/__stdcall* data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
 
 void psync_init_data_event(void* ptr);
 
