@@ -604,11 +604,8 @@ char* get_folder_name_from_path(char* path) {
   char* folder;
 
   while (*path != 0) {
-    printf("char: [%c]\n", *path);
-
     if ((*path == '\\') || (*path == '/')) {
       folder = ++path;
-      printf("Folder: [%s]\n", folder);
     }
 
     path++;
