@@ -43,6 +43,9 @@
 //#define PSYNC_API_HOST     "ebinapi71.pcloud.com"
 //#define PSYNC_API_AHOST    "eapi71.pcloud.com"
 
+//#define PSYNC_API_HOST     "ebinapi69.pcloud.com"
+//#define PSYNC_API_AHOST    "eapi69.pcloud.com"
+
 #define PSYNC_API_HOST     "bineapi.pcloud.com"
 #define PSYNC_API_PORT     80
 #define PSYNC_API_PORT_SSL 443
@@ -51,13 +54,6 @@
 #define PSYNC_API_APORT     8398
 #define PSYNC_API_APORT_SSL 8399
 
- // #define PSYNC_API_HOST     "binapi69.pcloud.com"
- // #define PSYNC_API_PORT     80
- // #define PSYNC_API_PORT_SSL 443
- //
- // #define PSYNC_API_AHOST     "api69.pcloud.com"
- // #define PSYNC_API_APORT     8398
- // #define PSYNC_API_APORT_SSL 8399
 
 #define PSYNC_P2P_PORT 42420
 

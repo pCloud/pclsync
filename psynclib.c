@@ -2428,27 +2428,57 @@ char * psync_get_token(){
   else return NULL;
 }
 
-int psync_get_promo(char **url) {
+int psync_get_promo(char **url, uint64_t *width, uint64_t *height) {
   uint64_t result;
   binresult *res;
   binparam params[]={ P_STR("auth", psync_my_auth), P_NUM("os", P_OS_ID) };
   *url = 0;
+
   res = psync_api_run_command("getpromourl", params);
+
   if (unlikely_log(!res)){
-	return -1;
+	  return -1;
   }
+
   result = psync_find_result(res, "result", PARAM_NUM)->num;
+
   if (result){
     debug(D_WARNING, "getpromourl returned %d", (int)result);
     psync_free(res);
     return result;
   }
-  if (!psync_find_result(res, "haspromo", PARAM_BOOL)->num){
-  	psync_free(res);
-  	return result;
+
+  if (!psync_find_result(res, "haspromo", PARAM_BOOL)->num) {
+    psync_free(res);
+
+    return result;
   }
+
+  if (!psync_find_result(res, "width", PARAM_NUM)->num) {
+    debug(D_NOTICE, "Parameter width not found.");
+
+    psync_free(res);
+    return result;
+  }
+
+  *width = psync_find_result(res, "width", PARAM_NUM)->num;
+  debug(D_NOTICE, "Promo window Width: [%llu]", *width);
+
+
+  if (!psync_find_result(res, "height", PARAM_NUM)->num) {
+    debug(D_NOTICE, "Parameter height not found.");
+
+    psync_free(res);
+    return result;
+  }
+
+  *height = psync_find_result(res, "height", PARAM_NUM)->num;
+  debug(D_NOTICE, "Promo window Height: [%llu]", *height);
+
   *url=psync_strdup(psync_find_result(res, "url", PARAM_STR)->str);
+
   psync_free(res);
+
   return 0;
 }
 

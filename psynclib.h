@@ -1586,7 +1586,7 @@ char * psync_get_token();
  * Returns -1 in case of network error or
  * one of the positive error codes
 */
-int psync_get_promo(char **url);
+int psync_get_promo(char **url, uint64_t *width, uint64_t *height);
 /*
  * Checks if the user has any crypto folders.
  */
