@@ -2454,6 +2454,8 @@ int psync_get_promo(char **url, uint64_t *width, uint64_t *height) {
     return result;
   }
 
+  *url = psync_strdup(psync_find_result(res, "url", PARAM_STR)->str);
+
   if (!psync_find_result(res, "width", PARAM_NUM)->num) {
     debug(D_NOTICE, "Parameter width not found.");
 
@@ -2474,8 +2476,6 @@ int psync_get_promo(char **url, uint64_t *width, uint64_t *height) {
 
   *height = psync_find_result(res, "height", PARAM_NUM)->num;
   debug(D_NOTICE, "Promo window Height: [%llu]", *height);
-
-  *url=psync_strdup(psync_find_result(res, "url", PARAM_STR)->str);
 
   psync_free(res);
 
