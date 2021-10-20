@@ -131,35 +131,46 @@ psync_fspath_t *psync_fsfolder_resolve_path(const char *path){
   size_t len, elen;
   uint32_t permissions, flags, shareid;
   int hasit;
+
   cryptoerr=0;
   res=NULL;
+
   if (*path!='/')
     return NULL;
+
   cfolderid=0;
   shareid=0;
   permissions=PSYNC_PERM_ALL;
   flags=0;
+
   while (1){
     while (*path=='/')
       path++;
+
     if (*path==0){
       if (res)
         psync_sql_free_result(res);
       return NULL;
     }
+
     sl=strchr(path, '/');
+
     if (sl)
       len=sl-path;
     else{
       if (res)
         psync_sql_free_result(res);
+
       return ret_folder_data(cfolderid, path, permissions, flags, shareid);
     }
+
     if (!res)
       res=psync_sql_query_rdlock("SELECT id, permissions, flags, userid FROM folder WHERE parentfolderid=? AND name=?");
     else
       psync_sql_reset(res);
+
     psync_sql_bind_int(res, 1, cfolderid);
+
     if (flags&PSYNC_FOLDER_FLAG_ENCRYPTED){
       ename=get_encname_for_folder(cfolderid, path, len);
       if (!ename)
@@ -213,8 +224,10 @@ psync_fspath_t *psync_fsfolder_resolve_path(const char *path){
       break;
     path+=len;
   }
+
   if (res)
     psync_sql_free_result(res);
+
   return NULL;
 }
 
@@ -426,3 +439,24 @@ retry:
   psync_sql_unlock();
   return ret;
 }
+/*********************************************************************************************************************/
+psync_fsfolderid_t psync_get_folderid(psync_fsfolderid_t parent_fid, const char* name) {
+  psync_fsfolderid_t folder_id = -1;
+  psync_sql_res* res;
+  psync_uint_row row;
+
+  res = psync_sql_query_nolock("SELECT id FROM folder WHERE parentfolderid=? AND name=?");
+  psync_sql_bind_uint(res, 1, parent_fid);
+  psync_sql_bind_string(res, 2, name);
+
+  row = psync_sql_fetch_rowint(res);
+
+  if (row) {
+    folder_id = row[0];
+
+    psync_sql_free_result(res);
+  }
+
+  return folder_id;
+}
+/*********************************************************************************************************************/

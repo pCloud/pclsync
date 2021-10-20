@@ -51,4 +51,6 @@ uint32_t psync_fsfolderflags_by_id(psync_fsfolderid_t folderid, uint32_t *pperm)
 int psync_fsfolder_crypto_error();
 char *get_decname_for_folder(psync_fsfolderid_t folderid, const char *path, size_t len);
 
+psync_fsfolderid_t psync_get_folderid(psync_fsfolderid_t parent_fid, const char* name);
+
 #endif
