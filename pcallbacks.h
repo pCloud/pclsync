@@ -54,7 +54,14 @@ void psync_send_event_by_path(psync_eventtype_t eventid, psync_syncid_t syncid, 
 void psync_send_eventid(psync_eventtype_t eventid);
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 
+
+//Data event type constants. Start.
 #define PEVENT_SYNC_RENAME_F 1
+
+//Event types to notify the UI of changes to the files/folders in order to update the search index.
+#define PEVENT_FS_ADD_OBJ 101
+#define PEVENT_FS_DEL_OBJ 102
+//Data event type constants. End.
 
 void psync_init_data_event(void* ptr);
 

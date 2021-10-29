@@ -51,7 +51,7 @@
 #include "ppathstatus.h"
 #include <ctype.h>
 #include "ptools.h"
-
+#include "pcallbacks.h"
 
 #define PSYNC_SQL_DOWNLOAD "synctype&"NTO_STR(PSYNC_DOWNLOAD_ONLY)"="NTO_STR(PSYNC_DOWNLOAD_ONLY)
 
@@ -749,8 +749,9 @@ static void process_createfolder(const binresult *entry){
   uint64_t userid, perms, mtime, flags;
   psync_uint_row row;
   psync_folderid_t parentfolderid, folderid, localfolderid;
-//  char *localname;
+  char *path;
   psync_syncid_t syncid;
+
   if (!entry){
     if (st){
       psync_sql_free_result(st);
@@ -762,6 +763,7 @@ static void process_createfolder(const binresult *entry){
     }
     return;
   }
+
   if (!st){
     st=psync_sql_prep_statement("INSERT OR IGNORE INTO folder (id, parentfolderid, userid, permissions, name, ctime, mtime, flags, subdircnt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)");
     if (!st)
@@ -770,8 +772,10 @@ static void process_createfolder(const binresult *entry){
     if (!st2)
       return;
   }
+
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
   flags=extract_meta_folder_flags(meta);
+
   if (psync_find_result(meta, "ismine", PARAM_BOOL)->num){
     userid=psync_my_userid;
     perms=PSYNC_PERM_ALL;
@@ -780,10 +784,12 @@ static void process_createfolder(const binresult *entry){
     userid=psync_find_result(meta, "userid", PARAM_NUM)->num;
     perms=psync_get_permissions(meta);
   }
+
   name=psync_find_result(meta, "name", PARAM_STR);
   folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
   parentfolderid=psync_find_result(meta, "parentfolderid", PARAM_NUM)->num;
   mtime=psync_find_result(meta, "modified", PARAM_NUM)->num;
+
   psync_sql_bind_uint(st, 1, folderid);
   psync_sql_bind_uint(st, 2, parentfolderid);
   psync_sql_bind_uint(st, 3, userid);
@@ -793,6 +799,20 @@ static void process_createfolder(const binresult *entry){
   psync_sql_bind_uint(st, 7, mtime);
   psync_sql_bind_uint(st, 8, flags);
   psync_sql_run(st);
+
+  //Bobo
+  path = psync_get_path_by_folderid(folderid, NULL);
+
+  event_data_struct* event_data;
+  event_data = psync_new(event_data_struct);
+  event_data->eventid = PEVENT_FS_ADD_OBJ;
+  event_data->str1 = strdup(path);
+  event_data->str2 = strdup("");
+
+  psync_send_data_event(event_data);
+  //Bobo
+
+
   if (!psync_sql_affected_rows()){
     res=psync_sql_prep_statement("UPDATE folder SET parentfolderid=?, userid=?, permissions=?, name=?, ctime=?, mtime=?, flags=? WHERE id=?");
     psync_sql_bind_uint(res, 1, parentfolderid);
@@ -808,6 +828,7 @@ static void process_createfolder(const binresult *entry){
   psync_sql_bind_uint(st2, 1, mtime);
   psync_sql_bind_uint(st2, 2, parentfolderid);
   psync_sql_run(st2);
+
   if (psync_is_folder_in_downloadlist(parentfolderid) && !psync_is_name_to_ignore(name->str)){
     psync_add_folder_to_downloadlist(folderid);
     res=psync_sql_query("SELECT syncid, localfolderid, synctype FROM syncedfolder WHERE folderid=? AND "PSYNC_SQL_DOWNLOAD);
@@ -890,6 +911,7 @@ static void process_modifyfolder(const binresult *entry){
   psync_syncid_t syncid;
   uint32_t i, cnt;
   int oldsync, newsync;
+
   if (!entry){
     process_createfolder(NULL);
     if (st){
@@ -1056,6 +1078,7 @@ static void process_deletefolder(const binresult *entry){
   char *path;
   psync_folderid_t folderid;
   psync_uint_row row;
+
   if (!entry){
     if (st){
       psync_sql_free_result(st);
@@ -1067,17 +1090,35 @@ static void process_deletefolder(const binresult *entry){
     }
     return;
   }
+  
   if (!st){
     st=psync_sql_prep_statement("DELETE FROM folder WHERE id=?");
+
     if (!st)
       return;
+
     st2=psync_sql_prep_statement("UPDATE folder SET subdircnt=subdircnt-1, mtime=? WHERE id=?");
+
     if (!st2)
       return;
   }
+  
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
   folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
   psync_path_status_folder_deleted(folderid);
+
+  //Bobo
+  path = psync_get_path_by_folderid(folderid, NULL);
+
+  event_data_struct* event_data;
+  event_data = psync_new(event_data_struct);
+  event_data->eventid = PEVENT_FS_DEL_OBJ;
+  event_data->str1 = strdup(path);
+  event_data->str2 = strdup("");
+
+  psync_send_data_event(event_data);
+  //Bobo
+    
   if (psync_is_folder_in_downloadlist(folderid)){
     psync_del_folder_from_downloadlist(folderid);
     res=psync_sql_query("SELECT syncid, localfolderid FROM syncedfolder WHERE folderid=?");
@@ -1201,6 +1242,8 @@ static void process_createfile(const binresult *entry){
   psync_uint_row row;
   psync_str_row row2;
   int hasit;
+  char* path;
+
   if (!entry){
     if (st){
       psync_sql_free_result(st);
@@ -1213,16 +1256,19 @@ static void process_createfile(const binresult *entry){
     st=psync_sql_prep_statement("INSERT OR IGNORE INTO file (id, parentfolderid, userid, size, hash, name, ctime, mtime, category, thumb, icon, "
                                 "artist, album, title, genre, trackno, width, height, duration, fps, videocodec, audiocodec, videobitrate, "
                                 "audiobitrate, audiosamplerate, rotate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
   size=psync_find_result(meta, "size", PARAM_NUM)->num;
   fileid=psync_find_result(meta, "fileid", PARAM_NUM)->num;
   parentfolderid=psync_find_result(meta, "parentfolderid", PARAM_NUM)->num;
+
   if (psync_find_result(meta, "ismine", PARAM_BOOL)->num){
     userid=psync_my_userid;
     used_quota+=size;
   }
   else
     userid=psync_find_result(meta, "userid", PARAM_NUM)->num;
+
   hash=psync_find_result(meta, "hash", PARAM_NUM)->num;
   name=psync_find_result(meta, "name", PARAM_STR);
   check_for_deletedfileid(meta);
@@ -1234,6 +1280,7 @@ static void process_createfile(const binresult *entry){
   psync_sql_bind_lstring(st, 6, name->str, name->length);
   bind_meta(st, meta, 7);
   psync_sql_run(st);
+
   if (!psync_sql_affected_rows()){
     int off;
     res=psync_sql_prep_statement("UPDATE file SET id=?, parentfolderid=?, userid=?, size=?, hash=?, name=?, ctime=?, mtime=?, category=?, thumb=?, icon=?, "
@@ -1249,7 +1296,9 @@ static void process_createfile(const binresult *entry){
     psync_sql_bind_uint(res, off, fileid);
     psync_sql_run_free(res);
   }
+
   insert_revision(fileid, hash, psync_find_result(meta, "modified", PARAM_NUM)->num, size);
+  
   if (psync_is_folder_in_downloadlist(parentfolderid) && !psync_is_name_to_ignore(name->str)){
     res=psync_sql_query("SELECT syncid, localfolderid FROM syncedfolder WHERE folderid=? AND "PSYNC_SQL_DOWNLOAD);
     psync_sql_bind_uint(res, 1, parentfolderid);
@@ -1274,6 +1323,19 @@ static void process_createfile(const binresult *entry){
     }
     psync_sql_free_result(res);
   }
+
+  //Bobo
+  path = psync_get_path_by_fileid(fileid, NULL);
+
+  event_data_struct* event_data;
+  event_data = psync_new(event_data_struct);
+  event_data->eventid = PEVENT_FS_ADD_OBJ;
+  event_data->str1 = strdup(path);
+  event_data->str2 = strdup("");
+
+  psync_send_data_event(event_data);
+
+  //Bobo
 }
 
 static void process_modifyfile(const binresult *entry){
@@ -1289,6 +1351,7 @@ static void process_modifyfile(const binresult *entry){
   uint64_t size, userid, hash, oldsize;
   int oldsync, newsync, lneeddownload, needrename;
   uint32_t cnt, i;
+
   if (!entry){
     if (sq){
       psync_sql_free_result(sq);
@@ -1419,12 +1482,13 @@ static void process_modifyfile(const binresult *entry){
     psync_free(fres2);
   }
 }
-
+/**************************************************************************/
 static void process_deletefile(const binresult *entry){
   static psync_sql_res *st=NULL;
   const binresult *meta;
   char *path;
   psync_fileid_t fileid;
+
   if (!entry){
     if (st){
       psync_sql_free_result(st);
@@ -1432,13 +1496,16 @@ static void process_deletefile(const binresult *entry){
     }
     return;
   }
+
   if (!st){
     st=psync_sql_prep_statement("DELETE FROM file WHERE id=?");
     if (!st)
       return;
   }
+
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
   fileid=psync_find_result(meta, "fileid", PARAM_NUM)->num;
+
   if (psync_is_folder_in_downloadlist(psync_find_result(meta, "parentfolderid", PARAM_NUM)->num)){
     psync_delete_download_tasks_for_file(fileid, 0, 1);
     path=psync_get_path_by_fileid(fileid, NULL);
@@ -1448,31 +1515,50 @@ static void process_deletefile(const binresult *entry){
       needdownload=1;
     }
   }
+
+  //Bobo
+  path = psync_get_path_by_fileid(fileid, NULL);
+
+  event_data_struct* event_data;
+  event_data = psync_new(event_data_struct);
+  event_data->eventid = PEVENT_FS_DEL_OBJ;
+  event_data->str1 = strdup(path);
+  event_data->str2 = strdup("");
+
+  psync_send_data_event(event_data);
+  //Bobo
+
+
   psync_sql_bind_uint(st, 1, fileid);
   psync_sql_run(st);
+
   if (psync_sql_affected_rows()){
     if (psync_find_result(meta, "ismine", PARAM_BOOL)->num)
       used_quota-=psync_find_result(meta, "size", PARAM_NUM)->num;
     psync_fs_file_deleted(fileid);
   }
 }
-
+/**************************************************************************/
 void psync_diff_create_file(const binresult *meta){
   psync_sql_res *st;
   const binresult *name;
   uint64_t userid, fileid, hash, size;
+
   st=psync_sql_prep_statement("INSERT OR IGNORE INTO file (id, parentfolderid, userid, size, hash, name, ctime, mtime, category, thumb, icon, "
                                 "artist, album, title, genre, trackno, width, height, duration, fps, videocodec, audiocodec, videobitrate, "
                                 "audiobitrate, audiosamplerate, rotate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
   name=psync_find_result(meta, "name", PARAM_STR);
   check_for_deletedfileid(meta);
+
   if (psync_find_result(meta, "ismine", PARAM_BOOL)->num)
     userid=psync_my_userid;
   else
     userid=psync_find_result(meta, "userid", PARAM_NUM)->num;
+
   fileid=psync_find_result(meta, "fileid", PARAM_NUM)->num;
   size=psync_find_result(meta, "size", PARAM_NUM)->num;
   hash=psync_find_result(meta, "hash", PARAM_NUM)->num;
+
   psync_sql_bind_uint(st, 1, fileid);
   psync_sql_bind_uint(st, 2, psync_find_result(meta, "parentfolderid", PARAM_NUM)->num);
   psync_sql_bind_uint(st, 3, userid);
@@ -1505,6 +1591,7 @@ static void start_download(){
 
 void psync_diff_update_file(const binresult *meta){
   create_entry();
+
   process_modifyfile(&entry);
   process_modifyfile(NULL);
   start_download();
@@ -1512,6 +1599,7 @@ void psync_diff_update_file(const binresult *meta){
 
 void psync_diff_delete_file(const binresult *meta){
   create_entry();
+
   process_deletefile(&entry);
   process_deletefile(NULL);
   start_download();
@@ -1519,6 +1607,7 @@ void psync_diff_delete_file(const binresult *meta){
 
 void psync_diff_update_folder(const binresult *meta){
   create_entry();
+
   process_modifyfolder(&entry);
   process_modifyfolder(NULL);
   start_download();
@@ -1526,6 +1615,7 @@ void psync_diff_update_folder(const binresult *meta){
 
 void psync_diff_delete_folder(const binresult *meta){
   create_entry();
+
   process_deletefolder(&entry);
   process_deletefolder(NULL);
   start_download();
@@ -2555,6 +2645,7 @@ static void psync_diff_refresh_fs(const binresult *entries){
     psync_folderid_t folderid, lastfolderid;
     uint32_t i;
     lastfolderid=(psync_folderid_t)-1;
+
     for (i=0; i<entries->length; i++){
       meta=psync_check_result(entries->array[i], "metadata", PARAM_HASH);
       if (!meta)
