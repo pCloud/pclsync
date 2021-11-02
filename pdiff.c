@@ -803,13 +803,15 @@ static void process_createfolder(const binresult *entry){
   //Bobo
   path = psync_get_path_by_folderid(folderid, NULL);
 
-  event_data_struct* event_data;
-  event_data = psync_new(event_data_struct);
-  event_data->eventid = PEVENT_FS_ADD_OBJ;
-  event_data->str1 = strdup(path);
-  event_data->str2 = strdup("");
+  if (path[0] != 0) {
+    event_data_struct* event_data;
+    event_data = psync_new(event_data_struct);
+    event_data->eventid = PEVENT_FS_ADD_OBJ;
+    event_data->str1 = strdup(path);
+    event_data->str2 = strdup("");
 
-  psync_send_data_event(event_data);
+    psync_send_data_event(event_data);
+  }
   //Bobo
 
 
@@ -1110,13 +1112,15 @@ static void process_deletefolder(const binresult *entry){
   //Bobo
   path = psync_get_path_by_folderid(folderid, NULL);
 
-  event_data_struct* event_data;
-  event_data = psync_new(event_data_struct);
-  event_data->eventid = PEVENT_FS_DEL_OBJ;
-  event_data->str1 = strdup(path);
-  event_data->str2 = strdup("");
+  if (path[0] != 0) {
+    event_data_struct* event_data;
+    event_data = psync_new(event_data_struct);
+    event_data->eventid = PEVENT_FS_DEL_OBJ;
+    event_data->str1 = strdup(path);
+    event_data->str2 = strdup("");
 
-  psync_send_data_event(event_data);
+    psync_send_data_event(event_data);
+  }
   //Bobo
     
   if (psync_is_folder_in_downloadlist(folderid)){
@@ -1327,14 +1331,15 @@ static void process_createfile(const binresult *entry){
   //Bobo
   path = psync_get_path_by_fileid(fileid, NULL);
 
-  event_data_struct* event_data;
-  event_data = psync_new(event_data_struct);
-  event_data->eventid = PEVENT_FS_ADD_OBJ;
-  event_data->str1 = strdup(path);
-  event_data->str2 = strdup("");
+  if (path[0] != 0) {
+    event_data_struct* event_data;
+    event_data = psync_new(event_data_struct);
+    event_data->eventid = PEVENT_FS_ADD_OBJ;
+    event_data->str1 = strdup(path);
+    event_data->str2 = strdup("");
 
-  psync_send_data_event(event_data);
-
+    psync_send_data_event(event_data);
+  }
   //Bobo
 }
 
@@ -1519,13 +1524,15 @@ static void process_deletefile(const binresult *entry){
   //Bobo
   path = psync_get_path_by_fileid(fileid, NULL);
 
-  event_data_struct* event_data;
-  event_data = psync_new(event_data_struct);
-  event_data->eventid = PEVENT_FS_DEL_OBJ;
-  event_data->str1 = strdup(path);
-  event_data->str2 = strdup("");
+  if (path[0] != 0) {
+    event_data_struct* event_data;
+    event_data = psync_new(event_data_struct);
+    event_data->eventid = PEVENT_FS_DEL_OBJ;
+    event_data->str1 = strdup(path);
+    event_data->str2 = strdup("");
 
-  psync_send_data_event(event_data);
+    psync_send_data_event(event_data);
+  }
   //Bobo
 
 
