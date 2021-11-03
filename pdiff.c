@@ -801,9 +801,10 @@ static void process_createfolder(const binresult *entry){
   psync_sql_run(st);
 
   //Bobo
+  debug(D_NOTICE, "BOBO: Get path for data event. FolderId: [%llu]", folderid);
   path = psync_get_path_by_folderid(folderid, NULL);
 
-  if (path[0] != 0) {
+  if (path) {
     event_data_struct* event_data;
     event_data = psync_new(event_data_struct);
     event_data->eventid = PEVENT_FS_ADD_OBJ;
@@ -1110,9 +1111,10 @@ static void process_deletefolder(const binresult *entry){
   psync_path_status_folder_deleted(folderid);
 
   //Bobo
+  debug(D_NOTICE, "BOBO: Get path for data event. FolderId: [%llu]", folderid);
   path = psync_get_path_by_folderid(folderid, NULL);
 
-  if (path[0] != 0) {
+  if (path) {
     event_data_struct* event_data;
     event_data = psync_new(event_data_struct);
     event_data->eventid = PEVENT_FS_DEL_OBJ;
@@ -1329,9 +1331,10 @@ static void process_createfile(const binresult *entry){
   }
 
   //Bobo
+  debug(D_NOTICE, "BOBO: Get path for data event. FileId: [%llu]", fileid);
   path = psync_get_path_by_fileid(fileid, NULL);
 
-  if (path[0] != 0) {
+  if (path) {
     event_data_struct* event_data;
     event_data = psync_new(event_data_struct);
     event_data->eventid = PEVENT_FS_ADD_OBJ;
@@ -1522,9 +1525,10 @@ static void process_deletefile(const binresult *entry){
   }
 
   //Bobo
+  debug(D_NOTICE, "BOBO: Get path for data event. FileId: [%llu]", fileid);
   path = psync_get_path_by_fileid(fileid, NULL);
 
-  if (path[0] != 0) {
+  if (path) {
     event_data_struct* event_data;
     event_data = psync_new(event_data_struct);
     event_data->eventid = PEVENT_FS_DEL_OBJ;
