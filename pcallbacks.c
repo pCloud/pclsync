@@ -465,6 +465,8 @@ void psync_send_data_event(event_data_struct* data) {
   else {
     debug(D_ERROR, "Data event callback function not set.");
   }
+
+  psync_free(data);
 }
 /**********************************************************************************************/
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
