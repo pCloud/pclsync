@@ -800,7 +800,6 @@ static void process_createfolder(const binresult *entry){
   psync_sql_bind_uint(st, 8, flags);
   psync_sql_run(st);
 
-  /*
   path = psync_get_path_by_folderid(folderid, NULL);
 
   if (path) {
@@ -813,8 +812,9 @@ static void process_createfolder(const binresult *entry){
     psync_free(path);
 
     psync_send_data_event(event_data);
+
+    psync_free(event_data);
   }
-  */
 
   if (!psync_sql_affected_rows()){
     res=psync_sql_prep_statement("UPDATE folder SET parentfolderid=?, userid=?, permissions=?, name=?, ctime=?, mtime=?, flags=? WHERE id=?");
@@ -969,7 +969,6 @@ static void process_modifyfolder(const binresult *entry){
     psync_delete_backup_device(folderid);
   }
 
-  /*
   oldPath = psync_get_path_by_folderid(folderid, NULL);
 
   if (oldPath) {
@@ -982,8 +981,9 @@ static void process_modifyfolder(const binresult *entry){
     psync_free(oldPath);
 
     psync_send_data_event(event_data);
+
+    psync_free(event_data);
   }
-  */
 
   mtime=psync_find_result(meta, "modified", PARAM_NUM)->num;
   psync_sql_bind_uint(st, 1, parentfolderid);
@@ -996,7 +996,6 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_bind_uint(st, 8, folderid);
   psync_sql_run(st);
 
-  /*
   newPath = psync_get_path_by_folderid(folderid, NULL);
 
   if (newPath) {
@@ -1009,8 +1008,9 @@ static void process_modifyfolder(const binresult *entry){
     psync_free(newPath);
 
     psync_send_data_event(event_data);
+
+    psync_free(event_data);
   }
-  */
 
   if (oldparentfolderid!=parentfolderid){
     res=psync_sql_prep_statement("UPDATE folder SET subdircnt=subdircnt-1, mtime=? WHERE id=?");
@@ -1156,7 +1156,6 @@ static void process_deletefolder(const binresult *entry){
   folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
   psync_path_status_folder_deleted(folderid);
 
-  /*
   path = psync_get_path_by_folderid(folderid, NULL);
 
   if (path) {
@@ -1169,8 +1168,9 @@ static void process_deletefolder(const binresult *entry){
     psync_free(path);
 
     psync_send_data_event(event_data);
+
+    psync_free(event_data);
   }
-  */
     
   if (psync_is_folder_in_downloadlist(folderid)){
     psync_del_folder_from_downloadlist(folderid);
@@ -1377,7 +1377,6 @@ static void process_createfile(const binresult *entry){
     psync_sql_free_result(res);
   }
 
-  /*
   path = psync_get_path_by_fileid(fileid, NULL);
 
   if (path) {
@@ -1390,8 +1389,9 @@ static void process_createfile(const binresult *entry){
     psync_free(path);
 
     psync_send_data_event(event_data);
+
+    psync_free(event_data);
   }
-  */
 }
 
 static void process_modifyfile(const binresult *entry){
@@ -1469,8 +1469,7 @@ static void process_modifyfile(const binresult *entry){
   else
     userid=psync_find_result(meta, "userid", PARAM_NUM)->num;
 
-  /*
-  oldPath = psync_get_path_by_fileid(fileid, NULL);
+    oldPath = psync_get_path_by_fileid(fileid, NULL);
 
   if (oldPath) {
     event_data_struct* event_data;
@@ -1482,9 +1481,10 @@ static void process_modifyfile(const binresult *entry){
     psync_free(oldPath);
 
     psync_send_data_event(event_data);
-  }
-  */
 
+    psync_free(event_data);
+  }
+  
   check_for_deletedfileid(meta);
   psync_sql_bind_uint(st, 1, fileid);
   psync_sql_bind_uint(st, 2, parentfolderid);
@@ -1500,7 +1500,6 @@ static void process_modifyfile(const binresult *entry){
   oldparentfolderid=psync_get_number(row[0]);
   oldsync=psync_is_folder_in_downloadlist(oldparentfolderid);
 
-  /*
   newPath = psync_get_path_by_fileid(fileid, NULL);
 
   if (newPath) {
@@ -1513,8 +1512,9 @@ static void process_modifyfile(const binresult *entry){
     psync_free(newPath);
 
     psync_send_data_event(event_data);
+
+    psync_free(event_data);
   }
-  */
 
   if (oldparentfolderid==parentfolderid)
     newsync=oldsync;
@@ -1627,7 +1627,6 @@ static void process_deletefile(const binresult *entry){
     }
   }
 
-  /*
   path = psync_get_path_by_fileid(fileid, NULL);
 
   if (path) {
@@ -1640,8 +1639,9 @@ static void process_deletefile(const binresult *entry){
     psync_free(path);
 
     psync_send_data_event(event_data);
+
+    psync_free(event_data);
   }
-  */
 
   psync_sql_bind_uint(st, 1, fileid);
   psync_sql_run(st);

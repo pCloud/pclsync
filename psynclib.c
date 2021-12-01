@@ -2650,10 +2650,12 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
     psync_sql_bind_uint(sql, 1, rootFolIdObj->num);
     psync_sql_run_free(sql);
 
-    free(retData);
+    psync_free(retData);
+
+    return rootFolIdObj->num;
   }
 
-  return rootFolIdObj->num;
+  return 0;
 }
 /***********************************************************************************************************************************************/
 int psync_create_backup(char*  path, 
@@ -2751,7 +2753,7 @@ int psync_create_backup(char*  path,
     goto retryRootCrt;
   }
 
-  return res;
+  return -1;
 }
 /***********************************************************************************************************************************************/
 int psync_delete_backup(psync_syncid_t syncId,
