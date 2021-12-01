@@ -395,6 +395,8 @@ char* get_machine_name() {
 #endif
   }
 
+  debug(D_NOTICE, "Got machine name: [%s]", pcName);
+
   return psync_strdup(pcName);
 }
 /*************************************************************/

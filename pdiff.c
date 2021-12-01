@@ -812,8 +812,6 @@ static void process_createfolder(const binresult *entry){
     psync_free(path);
 
     psync_send_data_event(event_data);
-
-    psync_free(event_data);
   }
 
   if (!psync_sql_affected_rows()){
@@ -981,8 +979,6 @@ static void process_modifyfolder(const binresult *entry){
     psync_free(oldPath);
 
     psync_send_data_event(event_data);
-
-    psync_free(event_data);
   }
 
   mtime=psync_find_result(meta, "modified", PARAM_NUM)->num;
@@ -1008,8 +1004,6 @@ static void process_modifyfolder(const binresult *entry){
     psync_free(newPath);
 
     psync_send_data_event(event_data);
-
-    psync_free(event_data);
   }
 
   if (oldparentfolderid!=parentfolderid){
@@ -1168,8 +1162,6 @@ static void process_deletefolder(const binresult *entry){
     psync_free(path);
 
     psync_send_data_event(event_data);
-
-    psync_free(event_data);
   }
     
   if (psync_is_folder_in_downloadlist(folderid)){
@@ -1389,8 +1381,6 @@ static void process_createfile(const binresult *entry){
     psync_free(path);
 
     psync_send_data_event(event_data);
-
-    psync_free(event_data);
   }
 }
 
@@ -1481,8 +1471,6 @@ static void process_modifyfile(const binresult *entry){
     psync_free(oldPath);
 
     psync_send_data_event(event_data);
-
-    psync_free(event_data);
   }
   
   check_for_deletedfileid(meta);
@@ -1512,8 +1500,6 @@ static void process_modifyfile(const binresult *entry){
     psync_free(newPath);
 
     psync_send_data_event(event_data);
-
-    psync_free(event_data);
   }
 
   if (oldparentfolderid==parentfolderid)
@@ -1639,8 +1625,6 @@ static void process_deletefile(const binresult *entry){
     psync_free(path);
 
     psync_send_data_event(event_data);
-
-    psync_free(event_data);
   }
 
   psync_sql_bind_uint(st, 1, fileid);

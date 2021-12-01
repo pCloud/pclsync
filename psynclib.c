@@ -2633,7 +2633,8 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
     0
   };
 
-  debug(D_NOTICE, "Call backend [backup/createdevice].");
+  debug(D_NOTICE, "Call backend [backup/createdevice]. Device name: [%s]", bRootFoName);
+
   res = backend_call(apiserver,
                      "backup/createdevice",
                      FOLDER_META,
@@ -2753,7 +2754,7 @@ int psync_create_backup(char*  path,
     goto retryRootCrt;
   }
 
-  return -1;
+  return res;
 }
 /***********************************************************************************************************************************************/
 int psync_delete_backup(psync_syncid_t syncId,
