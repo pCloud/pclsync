@@ -2617,8 +2617,9 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
 
   tmpBuff = get_pc_name();
   psync_strlcpy(bRootFoName, tmpBuff, 64);
-
   free(tmpBuff);
+
+  debug(D_NOTICE, "Call backend [backup/createdevice]. Device name: [%s]", bRootFoName);
 
   eventParams requiredParams = {
     3, //Number of parameters we are passing below.
@@ -2632,8 +2633,6 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
   eventParams optionalParams = {
     0
   };
-
-  debug(D_NOTICE, "Call backend [backup/createdevice]. Device name: [%s]", bRootFoName);
 
   res = backend_call(apiserver,
                      "backup/createdevice",
@@ -2687,6 +2686,11 @@ int psync_create_backup(char*  path,
   if (bFId == 0) {
     retryRootCrt:
     bFId = create_bup_mach_folder(errMsg);
+
+    if (bFId == 0) {
+      debug(D_ERROR, "Failed to create Backup folder in the backend!");
+      return -1;
+    }
   }
 
   parse_os_path(path, &folders, DELIM_DIR, 1);
@@ -2738,7 +2742,7 @@ int psync_create_backup(char*  path,
 
     if (syncFId < 0) {
       *errMsg = psync_strdup("Error creating backup.");
-      return syncFId;
+      return -1;
     }
 
     debug(D_NOTICE, "Created sync with id[%d].", syncFId);

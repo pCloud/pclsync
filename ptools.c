@@ -16,7 +16,6 @@
 #pragma comment(lib, "iphlpapi.lib")
 
 #include <Iphlpapi.h>
-//#include <Windows.h>
 #endif
 
 #if defined(P_OS_LINUX)
@@ -338,7 +337,7 @@ int backend_call(const char*  binapi,
       *err = psync_strdup(psync_find_result(res, "error", PARAM_STR)->str);
     }
 
-    debug(D_CRITICAL, "Backend command failed. Error:[%s]", *err);
+    debug(D_CRITICAL, "Backend command failed. Error Code: [%lld], Error:[%s]", result, *err);
   }
   else {
     if(strlen(payloadName) > 0) {
@@ -360,9 +359,28 @@ char* get_machine_name() {
 
 #if defined(P_OS_WINDOWS)
   int   res;
+  TCHAR lpBuffer[MAX_COMPUTERNAME_LENGTH + 1];
 
-  nameSize = MAX_COMPUTERNAME_LENGTH + 1;
-  res = GetComputerNameA(pcName, &nameSize);
+  nameSize = MAX_COMPUTERNAME_LENGTH+1;
+
+  res = GetComputerNameW(lpBuffer, &nameSize);
+
+  if (res > 0) {
+    res = WideCharToMultiByte(
+      CP_UTF8,
+      NULL,
+      lpBuffer,
+      -1,
+      pcName,
+      1024,
+      NULL,
+      NULL
+    );
+  }
+  else {
+    debug(D_NOTICE, "Failed to get the machine name, Error code: [%d]", GetLastError());
+  }
+
 #endif
 
 #if defined(P_OS_LINUX)
@@ -615,4 +633,6 @@ char* get_folder_name_from_path(char* path) {
 
   return strdup(folder);
 }
+/*************************************************************/
+/*************************************************************/
 /*************************************************************/
