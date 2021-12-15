@@ -36,15 +36,6 @@ typedef void(/*_cdecl*/ *data_event_callback)(int eventId, char* str1, char* str
 typedef void(/*_cdecl*/__stdcall *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
 #endif
 
-typedef struct {
-  int eventid;
-  const char *str1;
-  const char* str2;
-  uint64_t   uint1;
-  uint64_t   uint2;
-} event_data_struct;
-
-
 void psync_callbacks_get_status(pstatus_t *status);
 void psync_set_status_callback(pstatus_change_callback_t callback);
 void psync_send_status_update();
@@ -54,7 +45,7 @@ void psync_send_event_by_path(psync_eventtype_t eventid, psync_syncid_t syncid, 
 void psync_send_eventid(psync_eventtype_t eventid);
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 
-
+//Data event methods and types.
 //Data event type constants. Start.
 #define PEVENT_SYNC_RENAME_F 1
 
@@ -63,9 +54,28 @@ void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 #define PEVENT_FS_DEL_OBJ 102
 //Data event type constants. End.
 
+typedef struct {
+  int eventid;
+  const char* str1;
+  const char* str2;
+  uint64_t   uint1;
+  uint64_t   uint2;
+
+  uint64_t elem_next;
+} event_data_struct;
+
+typedef struct _de_elem_list {
+  uint64_t first;
+  uint64_t last;
+} de_elem_list;
+
 void psync_init_data_event(void* ptr);
 
 void psync_send_data_event(event_data_struct *data);
 
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
+
+void* add_elem(const char* str1, int int1, de_elem_list* list);
+
+event_data_struct* pop_elem(de_elem_list* list);
 #endif
