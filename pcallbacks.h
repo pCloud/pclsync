@@ -71,7 +71,7 @@ typedef struct _de_elem_list {
 
 void psync_init_data_event(void* ptr);
 
-void free_data_event(event_data_struct* elem);
+void* free_data_event(event_data_struct* elem);
 
 void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
 
