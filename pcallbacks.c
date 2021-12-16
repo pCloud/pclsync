@@ -437,6 +437,18 @@ data_event_callback data_event_fptr = NULL;
 de_elem_list data_event_elem_list = {0,0};
 
 static pthread_mutex_t data_event_mutex = PTHREAD_MUTEX_INITIALIZER;
+/**********************************************************************************************/
+void* free_data_event(event_data_struct* elem) {
+  if (elem->str1) {
+    psync_free(elem->str1);
+  }
+
+  if (elem->str2) {
+    psync_free(elem->str2);
+  }
+
+  psync_free(elem);
+}
 
 /**********************************************************************************************/
 void* add_elem(event_data_struct* elem, de_elem_list* list) {
@@ -488,6 +500,7 @@ event_data_struct* pop_elem(de_elem_list* list) {
 void data_event_thread(void* ptr) {
   de_elem_list* event_list = (de_elem_list*)ptr;
   event_data_struct* data;
+  char* path;
 
   while (1) {
     for (int i = 0; i < 100000; i++) {
@@ -498,7 +511,7 @@ void data_event_thread(void* ptr) {
 
         data_event_fptr(data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
-        psync_free(data);
+        free_data_event(data);
       }
       else {
         break;
@@ -517,28 +530,28 @@ void psync_init_data_event(void* ptr) {
   psync_run_thread1("Data Event", data_event_thread, &data_event_elem_list);
 }
 /**********************************************************************************************/
-void psync_send_data_event(event_data_struct* data) {
-  event_data_struct *event_data;
+void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
+  event_data_struct* data;
+
+  data = psync_new(event_data_struct);
+
+  data->eventid = event_id;
+  data->str1 = strdup(str1);
+  data->str2 = strdup(str2);
+  data->uint1 = uint1;
+  data->uint2 = uint2;
 
   if (data_event_fptr) {
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = data->eventid;
-    event_data->uint1 = data->uint1;
-    event_data->uint2 = data->uint2;
-    event_data->str1 = strdup(data->str1);
-    event_data->str2 = strdup(data->str2);
-
-    add_elem(event_data, &data_event_elem_list);
+    add_elem(data, &data_event_elem_list);
   }
   else {
     debug(D_ERROR, "Data event callback function not set.");
   }
-
-  psync_free(data);
 }
 /**********************************************************************************************/
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
   debug(D_NOTICE, "Test Data event callback. eventid [%d]. String1: [%s], String2: [%s], uInt1: [%ul] uInt2: [%ul]", eventid, str1, str2, uint1, uint2);
+  return;
 }
 /**********************************************************************************************/
 //Data event methods End.

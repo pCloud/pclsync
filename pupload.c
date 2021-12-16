@@ -320,18 +320,9 @@ int handle_api_errors(sync_err_struct *err_struct) {
 
       debug(D_NOTICE, "Got sync path: [%s] Sync folder: [%s]", syncFolder, folder);
 
-      event_data = psync_new(event_data_struct);
-      event_data->eventid = PEVENT_SYNC_RENAME_F;
-      event_data->str1 = strdup(err_struct->newName);
-      event_data->str2 = folder;
-      event_data->uint1 = err_struct->folderid;
-      event_data->uint2 = err_struct->newparentfolderid;
-
       psync_delete_sync(syncId);
       
-      psync_send_data_event(event_data);
-
-      psync_free(event_data);
+      psync_send_data_event(PEVENT_SYNC_RENAME_F, err_struct->newName, folder, err_struct->folderid, err_struct->newparentfolderid);
       break;
 
     default: ret = -1;

@@ -749,7 +749,6 @@ static void process_createfolder(const binresult *entry){
   uint64_t userid, perms, mtime, flags;
   psync_uint_row row;
   psync_folderid_t parentfolderid, folderid, localfolderid;
-  char *path;
   psync_syncid_t syncid;
 
   if (!entry){
@@ -800,19 +799,7 @@ static void process_createfolder(const binresult *entry){
   psync_sql_bind_uint(st, 8, flags);
   psync_sql_run(st);
 
-  path = psync_get_path_by_folderid(folderid, NULL);
-
-  if (path) {
-    event_data_struct* event_data;
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = PEVENT_FS_ADD_OBJ;
-    event_data->str1 = strdup(path);
-    event_data->str2 = strdup("");
-
-    psync_free(path);
-
-    psync_send_data_event(event_data);
-  }
+  psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
 
   if (!psync_sql_affected_rows()){
     res=psync_sql_prep_statement("UPDATE folder SET parentfolderid=?, userid=?, permissions=?, name=?, ctime=?, mtime=?, flags=? WHERE id=?");
@@ -912,7 +899,6 @@ static void process_modifyfolder(const binresult *entry){
   psync_syncid_t syncid;
   uint32_t i, cnt;
   int oldsync, newsync;
-  char *oldPath, *newPath;
 
   if (!entry){
     process_createfolder(NULL);
@@ -967,19 +953,7 @@ static void process_modifyfolder(const binresult *entry){
     psync_delete_backup_device(folderid);
   }
 
-  oldPath = psync_get_path_by_folderid(folderid, NULL);
-
-  if (oldPath) {
-    event_data_struct* event_data;
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = PEVENT_FS_DEL_OBJ;
-    event_data->str1 = strdup(oldPath);
-    event_data->str2 = strdup("");
-
-    psync_free(oldPath);
-
-    psync_send_data_event(event_data);
-  }
+  psync_send_data_event(PEVENT_FS_DEL_OBJ, "", "", folderid, 0);
 
   mtime=psync_find_result(meta, "modified", PARAM_NUM)->num;
   psync_sql_bind_uint(st, 1, parentfolderid);
@@ -992,19 +966,7 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_bind_uint(st, 8, folderid);
   psync_sql_run(st);
 
-  newPath = psync_get_path_by_folderid(folderid, NULL);
-
-  if (newPath) {
-    event_data_struct* event_data;
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = PEVENT_FS_ADD_OBJ;
-    event_data->str1 = strdup(newPath);
-    event_data->str2 = strdup("");
-
-    psync_free(newPath);
-
-    psync_send_data_event(event_data);
-  }
+  psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
 
   if (oldparentfolderid!=parentfolderid){
     res=psync_sql_prep_statement("UPDATE folder SET subdircnt=subdircnt-1, mtime=? WHERE id=?");
@@ -1150,19 +1112,7 @@ static void process_deletefolder(const binresult *entry){
   folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
   psync_path_status_folder_deleted(folderid);
 
-  path = psync_get_path_by_folderid(folderid, NULL);
-
-  if (path) {
-    event_data_struct* event_data;
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = PEVENT_FS_DEL_OBJ;
-    event_data->str1 = strdup(path);
-    event_data->str2 = strdup("");
-    
-    psync_free(path);
-
-    psync_send_data_event(event_data);
-  }
+  psync_send_data_event(PEVENT_FS_DEL_OBJ, "", "", folderid, 0);
     
   if (psync_is_folder_in_downloadlist(folderid)){
     psync_del_folder_from_downloadlist(folderid);
@@ -1287,7 +1237,6 @@ static void process_createfile(const binresult *entry){
   psync_uint_row row;
   psync_str_row row2;
   int hasit;
-  char* path;
 
   if (!entry){
     if (st){
@@ -1369,19 +1318,7 @@ static void process_createfile(const binresult *entry){
     psync_sql_free_result(res);
   }
 
-  path = psync_get_path_by_fileid(fileid, NULL);
-
-  if (path) {
-    event_data_struct* event_data;
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = PEVENT_FS_ADD_OBJ;
-    event_data->str1 = strdup(path);
-    event_data->str2 = strdup("");
-
-    psync_free(path);
-
-    psync_send_data_event(event_data);
-  }
+  psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", 0, fileid);
 }
 
 static void process_modifyfile(const binresult *entry){
@@ -1397,7 +1334,6 @@ static void process_modifyfile(const binresult *entry){
   uint64_t size, userid, hash, oldsize;
   int oldsync, newsync, lneeddownload, needrename;
   uint32_t cnt, i;
-  char *oldPath, *newPath;
 
   if (!entry){
     if (sq){
@@ -1459,19 +1395,7 @@ static void process_modifyfile(const binresult *entry){
   else
     userid=psync_find_result(meta, "userid", PARAM_NUM)->num;
 
-    oldPath = psync_get_path_by_fileid(fileid, NULL);
-
-  if (oldPath) {
-    event_data_struct* event_data;
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = PEVENT_FS_DEL_OBJ;
-    event_data->str1 = strdup(oldPath);
-    event_data->str2 = strdup("");
-
-    psync_free(oldPath);
-
-    psync_send_data_event(event_data);
-  }
+  psync_send_data_event(PEVENT_FS_DEL_OBJ, "", "", 0, fileid);
   
   check_for_deletedfileid(meta);
   psync_sql_bind_uint(st, 1, fileid);
@@ -1488,19 +1412,7 @@ static void process_modifyfile(const binresult *entry){
   oldparentfolderid=psync_get_number(row[0]);
   oldsync=psync_is_folder_in_downloadlist(oldparentfolderid);
 
-  newPath = psync_get_path_by_fileid(fileid, NULL);
-
-  if (newPath) {
-    event_data_struct* event_data;
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = PEVENT_FS_ADD_OBJ;
-    event_data->str1 = strdup(newPath);
-    event_data->str2 = strdup("");
-
-    psync_free(newPath);
-
-    psync_send_data_event(event_data);
-  }
+  psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", 0, fileid);
 
   if (oldparentfolderid==parentfolderid)
     newsync=oldsync;
@@ -1613,19 +1525,7 @@ static void process_deletefile(const binresult *entry){
     }
   }
 
-  path = psync_get_path_by_fileid(fileid, NULL);
-
-  if (path) {
-    event_data_struct* event_data;
-    event_data = psync_new(event_data_struct);
-    event_data->eventid = PEVENT_FS_DEL_OBJ;
-    event_data->str1 = strdup(path);
-    event_data->str2 = strdup("");
-
-    psync_free(path);
-
-    psync_send_data_event(event_data);
-  }
+  psync_send_data_event(PEVENT_FS_DEL_OBJ, "", "", 0, fileid);
 
   psync_sql_bind_uint(st, 1, fileid);
   psync_sql_run(st);
