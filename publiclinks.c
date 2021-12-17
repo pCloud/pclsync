@@ -57,6 +57,10 @@ typedef struct _scr_params {
   uint64_t delay;
 } scr_params;
 
+//Prototyping
+int process_bres(const char* cmd, binresult* bres, psync_socket* api, char** err);
+//Prototyping end.
+
 static void modify_screenshot_public_link(void* par) {
   psync_socket *api;
   binresult *bres;
