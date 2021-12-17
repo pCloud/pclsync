@@ -77,7 +77,5 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
 
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
 
-void* add_elem(const char* str1, int int1, de_elem_list* list);
-
 event_data_struct* pop_elem(de_elem_list* list);
 #endif
