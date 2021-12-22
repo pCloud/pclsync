@@ -888,7 +888,7 @@ int psync_fstask_unlink(psync_fsfolderid_t folderid, const char *name){
   }
   else{
     rfileid=cr->rfileid;
-    if (unlikely(cr->fileid==0)){
+    if ((unlikely(cr->fileid==0)) || !strncmp(psync_fake_prefix, cr->name, psync_fake_prefix_len)) { //Chek if this is a fake file, if so process it here to avoid foregn key error later.
       task=psync_fstask_find_unlink(folder, cr->name, cr->taskid);
       if (likely_log(task)){
         psync_tree_del(&folder->unlinks, &task->tree);
@@ -909,10 +909,13 @@ int psync_fstask_unlink(psync_fsfolderid_t folderid, const char *name){
     if (folder->folderid>=0)
       psync_path_status_drive_folder_changed(folder->folderid);
   }
+
   revoffileid=get_file_at_old_location(fileid);
   psync_sql_start_transaction();
+  
   if (fileid<0)
     psync_fstask_stop_and_delete_file(fileid);
+  
   if (revoffileid){
     res=psync_sql_prep_statement("INSERT INTO fstask (type, status, folderid, fileid, int1, text1, int2) VALUES "
                                  "("NTO_STR(PSYNC_FS_TASK_UN_SET_REV)", 0, ?, ?, ?, ?, ?)");
