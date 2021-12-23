@@ -53,6 +53,7 @@
 
 extern char *psync_fake_prefix;
 extern size_t psync_fake_prefix_len;
+extern int64_t psync_fake_fileid;
 
 typedef struct {
   uint64_t frompage;

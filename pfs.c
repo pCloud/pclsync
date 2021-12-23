@@ -111,9 +111,10 @@ static struct fuse_chan *psync_fuse_channel=NULL;
 static struct fuse *psync_fuse=NULL;
 static char *psync_current_mountpoint=NULL;
 static psync_generic_callback_t psync_start_callback=NULL;
+
 char *psync_fake_prefix=NULL;
 size_t psync_fake_prefix_len=0;
-static int64_t psync_fake_fileid=INT64_MIN;
+int64_t psync_fake_fileid=INT64_MIN;
 
 static pthread_mutex_t start_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t start_cond=PTHREAD_COND_INITIALIZER;
@@ -1460,12 +1461,16 @@ static int psync_fs_creat_fake_locked(psync_fspath_t *fpath, struct fuse_file_in
   psync_openfile_t *of;
   psync_fsfileid_t fileid;
   size_t len;
+
   fileid=psync_fake_fileid++;
+
   len=strlen(fpath->name)+1;
+
   cr=(psync_fstask_creat_t *)psync_malloc(offsetof(psync_fstask_creat_t, name)+len);
   cr->fileid=fileid;
   cr->rfileid=0;
   cr->taskid=fileid;
+
   memcpy(cr->name, fpath->name, len);
   folder=psync_fstask_get_or_create_folder_tasks_locked(fpath->folderid);
   psync_fstask_inject_creat(folder, cr);
@@ -1476,6 +1481,7 @@ static int psync_fs_creat_fake_locked(psync_fspath_t *fpath, struct fuse_file_in
   psync_sql_unlock();
   psync_free(fpath);
   fi->fh=openfile_to_fh(of);
+
   return 0;
 }
 

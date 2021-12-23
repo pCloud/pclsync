@@ -888,7 +888,8 @@ int psync_fstask_unlink(psync_fsfolderid_t folderid, const char *name){
   }
   else{
     rfileid=cr->rfileid;
-    if ((unlikely(cr->fileid==0)) || !strncmp(psync_fake_prefix, cr->name, psync_fake_prefix_len)) { //Chek if this is a fake file, if so process it here to avoid foregn key error later.
+
+    if ((unlikely(cr->fileid==0)) || (cr->fileid <= psync_fake_fileid)) { //Chek if this is a fake file, if so process it here to avoid foregn key error later.
       task=psync_fstask_find_unlink(folder, cr->name, cr->taskid);
       if (likely_log(task)){
         psync_tree_del(&folder->unlinks, &task->tree);
