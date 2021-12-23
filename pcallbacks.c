@@ -501,9 +501,10 @@ void data_event_thread(void* ptr) {
   de_elem_list* event_list = (de_elem_list*)ptr;
   event_data_struct* data;
   char* path;
+  int i;
 
   while (1) {
-    for (int i = 0; i < 100000; i++) {
+    for (i = 0; i < 100000; i++) {
       data = pop_elem(event_list);
 
       if (data) {
