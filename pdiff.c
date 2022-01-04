@@ -888,7 +888,7 @@ static void del_synced_folder_rec(psync_folderid_t folderid, psync_syncid_t sync
 
 static void process_modifyfolder(const binresult *entry){
   static psync_sql_res *st=NULL;
-  psync_sql_res *res;
+  psync_sql_res *res, *res2;
   psync_full_result_int *fres1, *fres2;
   const binresult *meta, *name;
   uint64_t userid, perms, mtime, flags, oldflags;
@@ -965,6 +965,15 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_bind_uint(st, 7, flags);
   psync_sql_bind_uint(st, 8, folderid);
   psync_sql_run(st);
+
+  res2 = psync_sql_prep_statement("UPDATE sharerequest SET name=? WHERE folderid=?");
+  psync_sql_bind_lstring(res2, 1, name->str, name->length);
+  psync_sql_bind_uint(res2, 2, folderid);
+  psync_sql_run_free(res2);
+  res2 = psync_sql_prep_statement("UPDATE sharedfolder SET name=? WHERE folderid=?");
+  psync_sql_bind_lstring(res2, 1, name->str, name->length);
+  psync_sql_bind_uint(res2, 2, folderid);
+  psync_sql_run_free(res2);
 
   psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
 
