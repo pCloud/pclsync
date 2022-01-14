@@ -966,15 +966,6 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_bind_uint(st, 8, folderid);
   psync_sql_run(st);
 
-  res2 = psync_sql_prep_statement("UPDATE sharerequest SET name=? WHERE folderid=?");
-  psync_sql_bind_lstring(res2, 1, name->str, name->length);
-  psync_sql_bind_uint(res2, 2, folderid);
-  psync_sql_run_free(res2);
-  res2 = psync_sql_prep_statement("UPDATE sharedfolder SET name=? WHERE folderid=?");
-  psync_sql_bind_lstring(res2, 1, name->str, name->length);
-  psync_sql_bind_uint(res2, 2, folderid);
-  psync_sql_run_free(res2);
-
   psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
 
   if (oldparentfolderid!=parentfolderid){

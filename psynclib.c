@@ -1455,8 +1455,9 @@ psync_share_list_t *psync_list_shares(int incoming){
   psync_sql_res *res;
   builder=psync_list_builder_create(sizeof(psync_share_t), offsetof(psync_share_list_t, shares));
   incoming=!!incoming;
-  if (incoming) {
-    res=psync_sql_query_rdlock("SELECT id, folderid, ctime, permissions, userid, ifnull(mail, ''), ifnull(mail, '') as frommail, name, ifnull(bsharedfolderid, 0), 0 FROM sharedfolder WHERE isincoming=1 AND id >= 0 "
+  if (incoming) {//"SELECT id, folderid, ctime, permissions, userid, ifnull(mail, ''), ifnull(mail, '') as frommail, name, ifnull(bsharedfolderid, 0), 0 FROM sharedfolder WHERE isincoming=1 AND id >= 0 "
+    res=psync_sql_query_rdlock("SELECT s.id, s.folderid, s.ctime, s.permissions, s.userid, ifnull(s.mail, ''), ifnull(s.mail, '') as frommail, f.name, ifnull(s.bsharedfolderid, 0), 0 "
+                                "FROM sharedfolder s JOIN folder f on s.folderid = f.id WHERE isincoming = 1 AND s.id >= 0 "
                                 " UNION ALL "
                                 " select id, folderid, ctime, permissions, fromuserid as userid , "
                                 " case when isteam = 1 then (select name from baccountteam where id = toteamid) "
@@ -1474,7 +1475,7 @@ psync_share_list_t *psync_list_shares(int incoming){
                                 " case when bsf.isincoming = 0 and bsf.isteam = 1 then (select name from baccountteam where id = bsf.toteamid) "
                                 " else (select mail from baccountemail where id = bsf.touserid) end as mail, "
                                 " (select mail from baccountemail where id = bsf.fromuserid) as frommail, "
-                                " bsf.name as fname, bsf.id, bsf.isteam from bsharedfolder bsf, folder f where bsf.isincoming = 0 "
+                                " case when f.flags=0 then f.name else bsf.name end as fname, bsf.id, bsf.isteam from bsharedfolder bsf, folder f where bsf.isincoming = 0 "
                                 " and bsf.folderid = f.id ORDER BY fname ");
     psync_list_bulder_add_sql(builder, res, create_share);
   }
