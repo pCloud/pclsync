@@ -307,7 +307,9 @@ static psync_socket *get_connected_socket(){
       continue;
     }
 
+    debug(D_NOTICE, "STATUS: get_connected_socket");
     psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+
     saveauth=psync_setting_get_bool(_PS(saveauth));
     sock=psync_api_connect(apiserver, psync_setting_get_bool(_PS(usessl)));
 
@@ -1302,18 +1304,21 @@ static void process_createfile(const binresult *entry){
       psync_sql_bind_uint(res2, 2, row[1]);
       psync_sql_bind_uint(res2, 3, hash);
       psync_sql_bind_uint(res2, 4, fileid);
+
       if ((row2=psync_sql_fetch_rowstr(res2)))
         hasit=1;
       else
         hasit=0;
+
       psync_sql_free_result(res2);
+
       if (!hasit){
-        debug(D_NOTICE, "downloading file %s with hash %ld to local folder %lu", name->str, (long)hash, (unsigned long)row[1]);
+        debug(D_NOTICE, "downloading file [%s] with hash [%ld] to local folder [%lu]", name->str, (long)hash, (unsigned long)row[1]);
         psync_task_download_file_silent(row[0], fileid, row[1], name->str);
         needdownload=1;
       }
       else
-        debug(D_NOTICE, "file %s with hash %ld already exists in local folder %lu", name->str, (long)hash, (unsigned long)row[1]);
+        debug(D_NOTICE, "file [%s] with hash [%ld] already exists in local folder [%lu]", name->str, (long)hash, (unsigned long)row[1]);
     }
     psync_sql_free_result(res);
   }

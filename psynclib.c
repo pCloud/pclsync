@@ -362,6 +362,9 @@ void psync_set_user_pass(const char *username, const char *password, int save){
       psync_my_pass=psync_strdup(password);
     pthread_mutex_unlock(&psync_my_auth_mutex);
   }
+
+  debug(D_NOTICE, "STATUS: psync_set_user_pass");
+
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
   psync_recache_contacts=1;
 }
@@ -376,6 +379,9 @@ void psync_set_pass(const char *password, int save){
     psync_my_pass=psync_strdup(password);
     pthread_mutex_unlock(&psync_my_auth_mutex);
   }
+
+  debug(D_NOTICE, "STATUS: psync_set_pass");
+
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 }
 
@@ -385,6 +391,9 @@ void psync_set_auth(const char *auth, int save){
     psync_set_string_value("auth", auth);
   else
     psync_strlcpy(psync_my_auth, auth, sizeof(psync_my_auth));
+
+  debug(D_NOTICE, "STATUS: psync_set_auth");
+
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 }
 
@@ -624,6 +633,9 @@ static void check_tfa_result(uint64_t result){
     if (psync_status_get(PSTATUS_TYPE_AUTH)==PSTATUS_AUTH_TFAREQ){
       psync_free(psync_my_2fa_token);
       psync_my_2fa_token=NULL;
+
+      debug(D_NOTICE, "STATUS: check_tfa_result");
+
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
     }
   }
@@ -735,6 +747,9 @@ void psync_tfa_set_code(const char *code, int trusted, int is_recovery){
   psync_my_2fa_code[sizeof(psync_my_2fa_code)-1]=0;
   psync_my_2fa_trust=trusted;
   psync_my_2fa_code_type=is_recovery?2:1;
+
+  debug(D_NOTICE, "STATUS: psync_tfa_set_code");
+
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 }
 

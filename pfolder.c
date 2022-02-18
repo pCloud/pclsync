@@ -1028,3 +1028,30 @@ void psync_refresh_explorer_crypto_folder(){
   }
 }
 #endif
+/**************************************************************************/
+char* psync_get_path_from_str(char* fullPath) {
+  char* path;
+  int i = strlen(fullPath);
+
+  printf("Fullpath len: [%d]\n", i);
+
+  if (i < 2) {
+    return NULL;
+  }
+
+  while (i > 1) {
+    if (fullPath[i] == PSYNC_DIRECTORY_SEPARATORC) {
+      path = (char*)malloc((i + 1) * sizeof(char));
+      strncpy(path, fullPath, i + 1);
+
+      path[i + 1] = 0;
+
+      break;
+    }
+
+    i--;
+  }
+
+  return path;
+}
+/**************************************************************************/

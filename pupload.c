@@ -218,24 +218,34 @@ static int task_createfolder(psync_syncid_t syncid, psync_folderid_t localfolder
     }
     meta=psync_find_result(bres, "metadata", PARAM_HASH);
     folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
+
     debug(D_NOTICE, "remote folder %lu %lu/%s created", (long unsigned)folderid, (long unsigned)parentfolderid, name);
+
     psync_sql_start_transaction();
+
     psync_ops_create_folder_in_db(meta);
+
     res=psync_sql_prep_statement("UPDATE localfolder SET folderid=? WHERE id=? AND syncid=?");
     psync_sql_bind_uint(res, 1, folderid);
     psync_sql_bind_uint(res, 2, localfolderid);
     psync_sql_bind_uint(res, 3, syncid);
     psync_sql_run_free(res);
+
     res=psync_sql_prep_statement("UPDATE syncedfolder SET folderid=? WHERE localfolderid=? AND syncid=?");
     psync_sql_bind_uint(res, 1, folderid);
     psync_sql_bind_uint(res, 2, localfolderid);
     psync_sql_bind_uint(res, 3, syncid);
     psync_sql_run_free(res);
+
     ret=psync_sql_commit_transaction();
+
     psync_diff_unlock();
+
     if (psync_find_result(bres, "created", PARAM_BOOL)->num)
       psync_diff_wake();
+
     psync_free(bres);
+
     return ret;
   }
 }
@@ -421,23 +431,36 @@ static void set_local_file_conflicted(psync_fileid_t localfileid, psync_fileid_t
                                       uint64_t taskid){
   psync_sql_res *res;
   char *newpath;
-  debug(D_NOTICE, "conflict found, renaming %s to %s", localpath, newname);
-  psync_sql_start_transaction();
-  res=psync_sql_prep_statement("UPDATE localfile SET fileid=?, hash=?, name=? WHERE id=?");
-  psync_sql_bind_uint(res, 1, fileid);
-  psync_sql_bind_uint(res, 2, hash);
-  psync_sql_bind_string(res, 3, newname);
-  psync_sql_bind_uint(res, 4, localfileid);
-  psync_sql_run_free(res);
-  res=psync_sql_prep_statement("UPDATE task SET name=? WHERE id=?");
-  psync_sql_bind_string(res, 1, newname);
-  psync_sql_bind_uint(res, 2, taskid);
-  psync_sql_run_free(res);
-  newpath=psync_local_path_for_local_file(localfileid, NULL);
-  if (unlikely_log(psync_file_rename_overwrite(localpath, newpath)))
-    psync_sql_rollback_transaction();
-  else
+
+  debug(D_NOTICE, "Conflict found with file [%s]", localpath);
+
+  newpath = strcat(psync_get_path_from_str(localpath), newname);
+
+  newpath = psync_strcat(newpath, newname);
+
+  debug(D_NOTICE, "Conflict found, renaming [%s] to [%s]", localpath, newpath);
+
+  if (unlikely_log(psync_file_rename_overwrite(localpath, newpath))) {
+    debug(D_NOTICE, "Failed to rename the file.");
+  }
+  else {
+    psync_sql_start_transaction();
+
+    res = psync_sql_prep_statement("UPDATE localfile SET fileid=?, hash=?, name=? WHERE id=?");
+    psync_sql_bind_uint(res, 1, fileid);
+    psync_sql_bind_uint(res, 2, hash);
+    psync_sql_bind_string(res, 3, newname);
+    psync_sql_bind_uint(res, 4, localfileid);
+    psync_sql_run_free(res);
+
+    res = psync_sql_prep_statement("UPDATE task SET name=? WHERE id=?");
+    psync_sql_bind_string(res, 1, newname);
+    psync_sql_bind_uint(res, 2, taskid);
+    psync_sql_run_free(res);
+
     psync_sql_commit_transaction();
+  }
+
   psync_free(newpath);
 }
 
@@ -644,6 +667,7 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   psync_sql_bind_uint(sres, 2, rsize);
   psync_sql_bind_lstring(sres, 3, hashhexsrv, PSYNC_HASH_DIGEST_HEXLEN);
   psync_sql_run_free(sres);
+
   if (psync_check_result(meta, "conflicted", PARAM_BOOL)){
     psync_sql_commit_transaction();
     set_local_file_conflicted(localfileid, fileid, hash, localpath, psync_find_result(meta, "name", PARAM_STR)->str, upload->taskid);
@@ -652,6 +676,7 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
     set_local_file_remote_id(localfileid, fileid, hash);
     psync_sql_commit_transaction();
   }
+
   psync_diff_unlock();
   if (rsize!=fsize || memcmp(hashhexsrv, hashhex, PSYNC_HASH_DIGEST_HEXLEN)){
     debug(D_WARNING, "uploaded file differs localsize=%lu, remotesize=%lu, localhash=%s, remotehash=%s",
@@ -811,15 +836,20 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
   uint32_t rid, respwait, id;
   psync_file_t fd;
   int ret;
+
   debug(D_NOTICE, "uploading file %s with repeating block inspection", localpath);
+
   if (uploadoffset){
     debug(D_NOTICE, "resuming from position %lu", (unsigned long)uploadoffset);
     upload->uploaded+=uploadoffset;
     add_bytes_uploaded(uploadoffset);
   }
+
   api=psync_apipool_get();
+
   if (unlikely(!api))
     return -1;
+
   if (!uploadid){
     binparam params[]={P_STR("auth", psync_my_auth), P_NUM("filesize", fsize)};
     res=send_command(api, "upload_create", params);
@@ -854,7 +884,9 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
     psync_sql_run_free(sql);
     psync_sql_commit_transaction();
   }
+
   psync_list_init(&rlist);
+
   if (likely(uploadoffset<fsize)){
     le=psync_new(psync_upload_range_list_t);
     le->uploadoffset=uploadoffset;
@@ -863,13 +895,16 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
     le->type=PSYNC_URANGE_UPLOAD;
     psync_list_add_tail(&rlist, &le->list);
   }
+
   fd=psync_file_open(localpath, P_O_RDONLY, 0);
+
   if (unlikely(fd==INVALID_HANDLE_VALUE)){
     debug(D_WARNING, "could not open local file %s", localpath);
     psync_apipool_release(api);
     psync_list_for_each_element_call(&rlist, psync_upload_range_list_t, list, psync_free);
     return -1;
   }
+
   if (likely(uploadoffset<fsize)){
     uint64_t fileid, hash;
     fileid=0;
@@ -885,6 +920,7 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
     }
     else
       psync_sql_free_result(sql);
+
     if (!fileid) {
       debug(D_NOTICE, "looking for folderid=%lu and name=%s in file", (unsigned long)folderid, name);
       sql=psync_sql_query_rdlock("SELECT id, hash FROM file WHERE parentfolderid=? AND name=?");
@@ -902,6 +938,7 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
         psync_sql_free_result(sql);
 
     }
+
     if (!fileid) {
       sql=psync_sql_query_rdlock("SELECT name FROM localfile WHERE id=?");
       psync_sql_bind_uint(sql, 1, localfileid);
@@ -929,18 +966,23 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
       else
         psync_sql_free_result(sql);
     }
+
     sql=psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 5");
     psync_sql_bind_uint(sql, 1, localfileid);
     fr=psync_sql_fetchall_int(sql);
+
     for (id=0; id<fr->rows; id++)
       if (psync_get_result_cell(fr, id, 0)!=uploadid && psync_net_scan_upload_for_blocks(api, &rlist, psync_get_result_cell(fr, id, 0), fd)==PSYNC_NET_TEMPFAIL){
         psync_free(fr);
         goto err1;
       }
+
     psync_free(fr);
   }
+
   rid=0;
   respwait=0;
+
   psync_list_for_each_element(le, &rlist, psync_upload_range_list_t, list)
     if ((le->type==PSYNC_URANGE_COPY_FILE || le->type==PSYNC_URANGE_COPY_UPLOAD) && le->len>PSYNC_MAX_COPY_FROM_REQ) {
       le2=psync_new(psync_upload_range_list_t);
@@ -950,9 +992,11 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
       le2->len-=PSYNC_MAX_COPY_FROM_REQ;
       psync_list_add_after(&le->list, &le2->list);
     }
+
   le=psync_new(psync_upload_range_list_t);
   le->type=PSYNC_URANGE_LAST;
   psync_list_add_tail(&rlist, &le->list);
+
   psync_list_for_each_element(le, &rlist, psync_upload_range_list_t, list){
     if (upload->stop)
       goto err1;
@@ -1297,6 +1341,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
       if (uploadid && memcmp(phashhex, uhashhex, PSYNC_HASH_DIGEST_HEXLEN))
         debug(D_WARNING, "restarting upload due to checksum mismatch up to offset %lu, expected: %."NTO_STR(PSYNC_HASH_DIGEST_HEXLEN)
                           "s, got: %."NTO_STR(PSYNC_HASH_DIGEST_HEXLEN)"s", (unsigned long)ufsize, phashhex, uhashhex);
+
       ret=upload_big_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, 0, 0, &st, pr);
     }
   }
@@ -1504,6 +1549,7 @@ static void upload_thread(){
       }
       else if (type!=PSYNC_UPLOAD_FILE)
         psync_milisleep(PSYNC_SLEEP_ON_FAILED_UPLOAD);
+
       psync_free(row);
       continue;
     }

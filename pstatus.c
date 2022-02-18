@@ -233,6 +233,11 @@ uint32_t psync_status_get(uint32_t statusid){
 
 
 void psync_set_status(uint32_t statusid, uint32_t status){
+
+  if (statusid == PSTATUS_TYPE_AUTH) {
+    debug(D_NOTICE, "STATUS: set auth status to: [%lu]", status);
+  }
+
   pthread_mutex_lock(&statusmutex);
   statuses[statusid]=status;
   if (status_waiters)
