@@ -424,7 +424,9 @@ int psync_sql_connect(const char *db){
     if (IS_DEBUG)
       sqlite3_config(SQLITE_CONFIG_LOG, psync_sql_err_callback, NULL);
     sqlite3_wal_hook(psync_db, psync_sql_wal_hook, NULL);
+
     psync_sql_statement(PSYNC_DATABASE_CONFIG);
+
     if (initdbneeded==1)
       return psync_sql_statement(PSYNC_DATABASE_STRUCTURE);
     else if (psync_sql_statement("DELETE FROM setting WHERE id='justcheckingiflocked'")){
@@ -457,15 +459,20 @@ int psync_sql_connect(const char *db){
 int psync_sql_close(){
   int code, tries;
   tries=0;
+
   while (1){
     code=sqlite3_close(psync_db);
     if (code==SQLITE_BUSY){
       psync_cache_clean_all();
       tries++;
+
       if (tries>100){
         psync_milisleep_nosqlcheck(tries-90);
         if (tries>200){
-          debug(D_ERROR, "failed to close database");
+          debug(D_ERROR, "Failed to close database. Dump all locks.");
+
+          psync_sql_dump_locks();
+
           break;
         }
       }
@@ -473,7 +480,9 @@ int psync_sql_close(){
     else
       break;
   }
+
   psync_db=NULL;
+
   if (unlikely(code!=SQLITE_OK)){
     debug(D_CRITICAL, "error when closing database: %d", code);
     code=sqlite3_close_v2(psync_db);
@@ -482,6 +491,7 @@ int psync_sql_close(){
       return -1;
     }
   }
+
   return 0;
 }
 
@@ -651,6 +661,8 @@ void psync_sql_do_lock(const char *file, unsigned line){
     psync_nanotime(&sqllockstart);
     record_wrlock(file, line);
   }
+
+  debug(D_WARNING, "BOBO: DB lock taken from File: [%s] Line: [%s]", file, line);
 }
 #else
 void psync_sql_lock(){
@@ -1488,8 +1500,10 @@ int psync_sql_run_free(psync_sql_res *res){
     sendtdebug("sqlite3_step returned error (in_transaction=%d): %s: %s", in_transaction, sqlite3_errmsg(psync_db), res->sql);
     sqlite3_finalize(res->stmt);
     transaction_failed=1;
+
     if (in_transaction)
       debug(D_BUG, "transaction query failed, this may lead to restarting transaction over and over");
+
     psync_sql_res_unlock(res);
     psync_free(res);
     return -1;

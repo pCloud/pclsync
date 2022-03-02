@@ -2790,6 +2790,11 @@ int psync_file_delete(const char *path){
   wpath=utf8_to_wchar_path(path);
   ret=psync_bool_to_zero(DeleteFileW(wpath));
   psync_free(wpath);
+
+  if (ret == 0) {
+    debug(D_WARNING, "Failed to delete the DB file! Error: [%d]", (int)GetLastError());
+  }
+
   return ret;
 #else
 #error "Function not implemented for your operating system"
