@@ -509,7 +509,7 @@ void psync_reset_apiserver()
 void psync_unlink(){
   psync_sql_res *res;
   char *deviceid;
-  int ret;
+  int ret, i;
   char* errMsg;
 
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
@@ -535,71 +535,52 @@ void psync_unlink(){
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_REQUIRED);
   psync_set_status(PSTATUS_TYPE_RUN, PSTATUS_RUN_STOP);
   psync_timer_notify_exception();
+
   psync_sql_lock();
+
   debug(D_NOTICE, "clearing database, locked");
   psync_cache_clean_all();
+
   ret=psync_sql_close();
-  psync_file_delete(psync_database);
+
   if (ret){
     psync_free(deviceid);
     debug(D_ERROR, "failed to close database, exiting");
     exit(1);
   }
+
+  for (i = 0; i < 5; i++) {
+    ret = psync_file_delete(psync_database);
+    if (ret == 0) {
+      debug(D_ERROR, "Failed to delete DB file.");
+      psync_milisleep_nosqlcheck(1000);
+    }
+    else {
+      debug(D_ERROR, "DB file deleted.");
+      break;
+    }
+  }
+
   psync_pagecache_clean_cache();
+
   psync_sql_connect(psync_database);
+
   if (deviceid){
     res=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('deviceid', ?)");
     psync_sql_bind_string(res, 1, deviceid);
     psync_sql_run_free(res);
     psync_free(deviceid);
   }
-  /*
-    psync_sql_res *res;
-    psync_variant_row row;
-    char *sql;
-    const char *str;
-    size_t len;
-    psync_list list;
-    string_list *le;
-    psync_list_init(&list);
-    res=psync_sql_query("SELECT name FROM sqlite_master WHERE type='index'");
-    while ((row=psync_sql_fetch_row(res))){
-      str=psync_get_lstring(row[0], &len);
-      le=(string_list *)psync_malloc(offsetof(string_list, str)+len+1);
-      memcpy(le->str, str, len+1);
-      psync_list_add_tail(&list, &le->list);
-    }
-    psync_sql_free_result(res);
-    psync_list_for_each_element(le, &list, string_list, list){
-      sql=psync_strcat("DROP INDEX ", le->str, NULL);
-      psync_sql_statement(sql);
-      psync_free(sql);
-    }
-    psync_list_for_each_element_call(&list, string_list, list, psync_free);
-    psync_list_init(&list);
-    res=psync_sql_query("SELECT name FROM sqlite_master WHERE type='table'");
-    while ((row=psync_sql_fetch_row(res))){
-      str=psync_get_lstring(row[0], &len);
-      le=(string_list *)psync_malloc(offsetof(string_list, str)+len+1);
-      memcpy(le->str, str, len+1);
-      psync_list_add_tail(&list, &le->list);
-    }
-    psync_sql_free_result(res);
-    psync_list_for_each_element(le, &list, string_list, list){
-      sql=psync_strcat("DROP TABLE ", le->str, NULL);
-      psync_sql_statement(sql);
-      psync_free(sql);
-    }
-    psync_list_for_each_element_call(&list, string_list, list, psync_free);
-    psync_sql_statement("VACUUM");
-  */
+
   pthread_mutex_lock(&psync_my_auth_mutex);
   memset(psync_my_auth, 0, sizeof(psync_my_auth));
   psync_my_user=NULL;
   psync_my_pass=NULL;
   psync_my_userid=0;
   pthread_mutex_unlock(&psync_my_auth_mutex);
+
   debug(D_NOTICE, "clearing database, finished");
+
   psync_fs_pause_until_login();
   psync_fs_clean_tasks();
   psync_path_status_init();
