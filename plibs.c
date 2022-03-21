@@ -661,8 +661,6 @@ void psync_sql_do_lock(const char *file, unsigned line){
     psync_nanotime(&sqllockstart);
     record_wrlock(file, line);
   }
-
-  debug(D_WARNING, "BOBO: DB lock taken from File: [%s] Line: [%u]", file, line);
 }
 #else
 void psync_sql_lock(){

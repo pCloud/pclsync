@@ -2792,7 +2792,7 @@ int psync_file_delete(const char *path){
   psync_free(wpath);
 
   if (ret == 0) {
-    debug(D_WARNING, "Failed to delete the DB file! Error: [%d]", (int)GetLastError());
+    debug(D_WARNING, "Failed to delete file [%s]! Error: [%d]", path, (int)GetLastError());
   }
 
   return ret;

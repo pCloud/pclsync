@@ -307,8 +307,15 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
   psync_process_api_error(result);
   switch (result){
     case 2005: /* folder does not exists */
+      debug(D_ERROR, "Folder does not exist. Set the task to stuck.");
+      set_task_to_stuck(taskid);
     case 2003: /* access denied */
+      debug(D_ERROR, "Access denied.");
     case 2075: /* are not a member of a business account */
+      debug(D_ERROR, "Are not a member of a business account.");
+    case 2120: /* Can not create encrypted file in non-encrypted folder. */
+      debug(D_ERROR,"Can not create encrypted file in non-encrypted folder. Set the task to stuck.");
+      set_task_to_stuck(taskid);
     case 2346: /* backup folder */
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);
@@ -1805,9 +1812,12 @@ static void clean_stuck_tasks(){
   char *filename;
   uint32_t i;
   char fileidhex[sizeof(psync_fsfileid_t)*2+2];
+
   cachepath=psync_setting_get_string(_PS(fscachepath));
+
   res=psync_sql_query_rdlock("SELECT f.id FROM fstask f LEFT JOIN pagecachetask p ON f.id=p.taskid WHERE f.status=3");
   fr=psync_sql_fetchall_int(res);
+
   for (i=0; i<fr->rows; i++){
     taskid=psync_get_result_cell(fr, i, 0);
     psync_binhex(fileidhex, &taskid, sizeof(psync_fsfileid_t));
@@ -1909,6 +1919,10 @@ static void psync_fsupload_thread(){
     if (waited)
       psync_milisleep(100);
     psync_fsupload_check_tasks();
+
+    //Clean up stuck tasks at every cycle.Bobo need to confirm if the is realy needed.
+    clean_stuck_tasks();
+
     pthread_mutex_lock(&upload_mutex);
     while (!upload_wakes){
       pthread_cond_wait(&upload_cond, &upload_mutex);
@@ -1931,3 +1945,16 @@ void psync_fsupload_wake(){
     pthread_cond_signal(&upload_cond);
   pthread_mutex_unlock(&upload_mutex);
 }
+
+/****************************************************************************************************/
+static void set_task_to_stuck(uint64_t taskid) {
+  psync_sql_res* res;
+
+  debug(D_NOTICE, "BOBO: Set task: [%llu] to Stuck.", taskid);
+
+  res = psync_sql_prep_statement("UPDATE fstask SET status=3 WHERE id=?");
+
+  psync_sql_bind_uint(res, 1, taskid);
+  psync_sql_run_free(res);
+}
+/****************************************************************************************************/
