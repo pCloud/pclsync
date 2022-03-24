@@ -1950,7 +1950,7 @@ void psync_fsupload_wake(){
 static void set_task_to_stuck(uint64_t taskid) {
   psync_sql_res* res;
 
-  debug(D_NOTICE, "BOBO: Set task: [%llu] to Stuck.", taskid);
+  debug(D_NOTICE, "Set task: [%llu] to Stuck.", taskid);
 
   res = psync_sql_prep_statement("UPDATE fstask SET status=3 WHERE id=?");
 

@@ -403,7 +403,9 @@ int psync_sql_connect(const char *db){
   assert(sqlite3_libversion_number()==SQLITE_VERSION_NUMBER);
   assert(!strcmp(sqlite3_sourceid(), SQLITE_SOURCE_ID));
   assert(!strcmp(sqlite3_libversion(), SQLITE_VERSION));
+
   debug(D_NOTICE, "Using sqlite version %s source %s", sqlite3_libversion(), sqlite3_sourceid());
+
   if (!sqlite3_threadsafe()){
     debug(D_CRITICAL, "sqlite is compiled without thread support");
     return -1;
@@ -469,10 +471,7 @@ int psync_sql_close(){
       if (tries>100){
         psync_milisleep_nosqlcheck(tries-90);
         if (tries>200){
-          debug(D_ERROR, "Failed to close database. Dump all locks.");
-
-          psync_sql_dump_locks();
-
+          debug(D_ERROR, "Failed to close database.");
           break;
         }
       }
