@@ -1820,6 +1820,9 @@ static void clean_stuck_tasks(){
 
   for (i=0; i<fr->rows; i++){
     taskid=psync_get_result_cell(fr, i, 0);
+
+    debug(D_NOTICE, "Clean up stuck task: [%llu]", taskid);
+
     psync_binhex(fileidhex, &taskid, sizeof(psync_fsfileid_t));
     fileidhex[sizeof(psync_fsfileid_t)]='d';
     fileidhex[sizeof(psync_fsfileid_t)+1]=0;
@@ -1839,6 +1842,15 @@ static void clean_stuck_tasks(){
     psync_sql_run_free(res);
     psync_sql_commit_transaction();
   }
+
+  //If there werte stuck tasks. Update the statuses.
+  if (fr->rows > 0) {
+    debug(D_NOTICE, "Stuck tasks detected and cleaned. Update the status.");
+
+    psync_status_recalc_to_upload_async();
+    psync_status_recalc_to_download_async();
+  }
+
   psync_free(fr);
 }
 
@@ -1911,16 +1923,19 @@ static void psync_fsupload_check_tasks(){
 
 static void psync_fsupload_thread(){
   int waited;
+
   clean_stuck_tasks();
   waited=0;
+
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatusesnooverquota, ARRAY_SIZE(requiredstatusesnooverquota));
     // it is better to sleep a bit to give a chance for events to accumulate
     if (waited)
       psync_milisleep(100);
+
     psync_fsupload_check_tasks();
 
-    //Clean up stuck tasks at every cycle.Bobo need to confirm if the is realy needed.
+    //Clean up stuck tasks at every cycle.Bobo: Need to confirm if the is realy needed.
     clean_stuck_tasks();
 
     pthread_mutex_lock(&upload_mutex);
