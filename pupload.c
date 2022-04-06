@@ -434,9 +434,7 @@ static void set_local_file_conflicted(psync_fileid_t localfileid, psync_fileid_t
 
   debug(D_NOTICE, "Conflict found with file [%s]", localpath);
 
-  newpath = strcat(psync_get_path_from_str(localpath), newname);
-
-  newpath = psync_strcat(newpath, newname);
+  newpath = psync_strcat(psync_get_path_from_str(localpath), newname);
 
   debug(D_NOTICE, "Conflict found, renaming [%s] to [%s]", localpath, newpath);
 
