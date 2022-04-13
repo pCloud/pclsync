@@ -453,9 +453,9 @@ psync_fsfolderid_t psync_get_folderid(psync_fsfolderid_t parent_fid, const char*
 
   if (row) {
     folder_id = row[0];
-
-    psync_sql_free_result(res);
   }
+
+  psync_sql_free_result(res);
 
   return folder_id;
 }
