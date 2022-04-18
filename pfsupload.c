@@ -106,10 +106,15 @@ static int psync_send_task_mkdir(psync_socket *api, fsupload_task_t *task){
 
 static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
   psync_sql_res *res;
+
   debug(D_ERROR, "createfolderifnotexists returned error %u", (unsigned)result);
+
   psync_process_api_error(result);
+
   switch (result){
     case 2002: /* parent does not exists */
+      debug(D_NOTICE, "Parent folder was deleted. Setting task to stuck.");
+      set_task_to_stuck(task->id);
     case 2003: /* access denied */
     case 2075: /* not a member of a business account */
     case 2344: /* can't create folders in backup folder */
@@ -134,6 +139,7 @@ static int psync_process_task_mkdir(fsupload_task_t *task){
   result=psync_find_result(task->res, "result", PARAM_NUM)->num;
   if (result){
     handle_mkdir_api_error(result, task);
+
     return -1;
   }
   meta=psync_find_result(task->res, "metadata", PARAM_HASH);
