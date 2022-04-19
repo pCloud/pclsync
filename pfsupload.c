@@ -113,8 +113,14 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
 
   switch (result){
     case 2002: /* parent does not exists */
-      debug(D_NOTICE, "Parent folder was deleted. Setting task to stuck.");
-      set_task_to_stuck(task->id);
+      debug(D_NOTICE, "Parent folder was deleted.");
+      if (strlen(task->text2)) {// Check if there is an encryption key associated with the task. If so, it's a crypto folder
+        debug(D_NOTICE, "Crypto folder detected. Setting task to stuck.");
+        set_task_to_stuck(task->id);
+      }
+      else {
+        debug(D_NOTICE, "Not a crypto folder. Do nothing.");
+      }
     case 2003: /* access denied */
     case 2075: /* not a member of a business account */
     case 2344: /* can't create folders in backup folder */
@@ -314,14 +320,27 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
   switch (result){
     case 2005: /* folder does not exists */
       debug(D_ERROR, "Folder does not exist. Set the task to stuck.");
-      set_task_to_stuck(taskid);
+
+      if (is_task_crypto(taskid)) {// Check if this is a crypto file.
+        debug(D_NOTICE, "Crypto file detected. Setting task to stuck.");
+        set_task_to_stuck(taskid);
+      }
+      else {
+        debug(D_NOTICE, "Not a crypto file. Do nothing.");
+      }
     case 2003: /* access denied */
       debug(D_ERROR, "Access denied.");
     case 2075: /* are not a member of a business account */
       debug(D_ERROR, "Are not a member of a business account.");
     case 2120: /* Can not create encrypted file in non-encrypted folder. */
-      debug(D_ERROR,"Can not create encrypted file in non-encrypted folder. Set the task to stuck.");
-      set_task_to_stuck(taskid);
+      debug(D_ERROR,"Can not create encrypted file in non-encrypted folder.");
+      if (is_task_crypto(taskid)) {// Check if this is a crypto file.
+        debug(D_NOTICE, "Crypto file detected. Setting task to stuck.");
+        set_task_to_stuck(taskid);
+      }
+      else {
+        debug(D_NOTICE, "Not a crypto file. Do nothing.");
+      }
     case 2346: /* backup folder */
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);
@@ -1977,5 +1996,35 @@ static void set_task_to_stuck(uint64_t taskid) {
 
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
+}
+/**********************************************************************************************************/
+int is_task_crypto(psync_fsfileid_t taskid) {
+  psync_sql_res* res;
+  psync_variant_row row;
+  fsupload_task_t* task;
+  size_t strLen;
+
+  res = psync_sql_query_rdlock("SELECT text2 FROM fstask WHERE id=?");
+  psync_sql_bind_uint(res, 1, taskid);
+
+  if ((row = psync_sql_fetch_row(res))) {
+    if (strLen > 0) {
+      debug(D_NOTICE, "Crypto file detected.");
+
+      psync_sql_free_result(res);
+
+      return 1;
+    }
+    else {
+      debug(D_NOTICE, "Not a crypto file.");
+    }
+  }
+  else {
+    debug(D_NOTICE, "Task not found.");
+  }
+
+  psync_sql_free_result(res);
+
+  return 0;
 }
 /****************************************************************************************************/
