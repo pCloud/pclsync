@@ -117,6 +117,7 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
       if (strlen(task->text2)) {// Check if there is an encryption key associated with the task. If so, it's a crypto folder
         debug(D_NOTICE, "Crypto folder detected. Setting task to stuck.");
         set_task_to_stuck(task->id);
+        break;
       }
       else {
         debug(D_NOTICE, "Not a crypto folder. Do nothing.");
@@ -317,24 +318,25 @@ static int large_upload_check_checksum(psync_socket *api, uint64_t uploadid, con
 static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
   psync_sql_res *res;
   psync_process_api_error(result);
+
   switch (result){
+    case 2120: /* Can not create encrypted file in non-encrypted folder. */
+      debug(D_ERROR,"Can not create encrypted file in non-encrypted folder.");
+      set_task_to_stuck(taskid);
+      return -1;
     case 2005: /* folder does not exists */
       debug(D_ERROR, "Folder does not exist.");
 
       if (is_task_crypto(taskid)) {// Check if this is a crypto file.
         debug(D_NOTICE, "Crypto file detected. Setting task to stuck.");
         set_task_to_stuck(taskid);
+        return -1;
       }
       else {
         debug(D_NOTICE, "Not a crypto file. Do nothing.");
       }
     case 2003: /* access denied */
-      debug(D_ERROR, "Access denied.");
     case 2075: /* are not a member of a business account */
-      debug(D_ERROR, "Are not a member of a business account.");
-    case 2120: /* Can not create encrypted file in non-encrypted folder. */
-      debug(D_ERROR,"Can not create encrypted file in non-encrypted folder.");
-      set_task_to_stuck(taskid);
     case 2346: /* backup folder */
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);
@@ -1995,29 +1997,14 @@ static void set_task_to_stuck(uint64_t taskid) {
 int is_task_crypto(psync_fsfileid_t taskid) {
   psync_sql_res* res;
   psync_variant_row row;
-  fsupload_task_t* task;
-  size_t strLen;
-  const char *encKey;
 
-  res = psync_sql_query_rdlock("SELECT text2 FROM fstask WHERE id=?");
+  res = psync_sql_query_rdlock("SELECT text2 FROM fstask WHERE id=? AND text2 IS NOT NULL");
   psync_sql_bind_uint(res, 1, taskid);
 
   if ((row = psync_sql_fetch_row(res))) {
-    encKey = psync_get_lstring(row[0], &strLen);
+    psync_sql_free_result(res);
 
-    if (strLen > 0) {
-      debug(D_NOTICE, "Crypto file detected.");
-
-      psync_sql_free_result(res);
-
-      return 1;
-    }
-    else {
-      debug(D_NOTICE, "Not a crypto file.");
-    }
-  }
-  else {
-    debug(D_NOTICE, "Task not found.");
+    return 1;
   }
 
   psync_sql_free_result(res);
