@@ -319,7 +319,7 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
   psync_process_api_error(result);
   switch (result){
     case 2005: /* folder does not exists */
-      debug(D_ERROR, "Folder does not exist. Set the task to stuck.");
+      debug(D_ERROR, "Folder does not exist.");
 
       if (is_task_crypto(taskid)) {// Check if this is a crypto file.
         debug(D_NOTICE, "Crypto file detected. Setting task to stuck.");
@@ -2003,11 +2003,14 @@ int is_task_crypto(psync_fsfileid_t taskid) {
   psync_variant_row row;
   fsupload_task_t* task;
   size_t strLen;
+  const char *encKey;
 
   res = psync_sql_query_rdlock("SELECT text2 FROM fstask WHERE id=?");
   psync_sql_bind_uint(res, 1, taskid);
 
   if ((row = psync_sql_fetch_row(res))) {
+    encKey = psync_get_lstring(row[0], &strLen);
+
     if (strLen > 0) {
       debug(D_NOTICE, "Crypto file detected.");
 
