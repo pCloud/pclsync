@@ -114,7 +114,7 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
   switch (result){
     case 2002: /* parent does not exists */
       debug(D_NOTICE, "Parent folder was deleted.");
-      if (strlen(task->text2)) {// Check if there is an encryption key associated with the task. If so, it's a crypto folder
+      if (is_task_crypto(task->id)) {
         debug(D_NOTICE, "Crypto folder detected. Setting task to stuck.");
         set_task_to_stuck(task->id);
         break;
