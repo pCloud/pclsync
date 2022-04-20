@@ -334,13 +334,7 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
       debug(D_ERROR, "Are not a member of a business account.");
     case 2120: /* Can not create encrypted file in non-encrypted folder. */
       debug(D_ERROR,"Can not create encrypted file in non-encrypted folder.");
-      if (is_task_crypto(taskid)) {// Check if this is a crypto file.
-        debug(D_NOTICE, "Crypto file detected. Setting task to stuck.");
-        set_task_to_stuck(taskid);
-      }
-      else {
-        debug(D_NOTICE, "Not a crypto file. Do nothing.");
-      }
+      set_task_to_stuck(taskid);
     case 2346: /* backup folder */
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);
