@@ -2649,15 +2649,21 @@ err1:
   wchar_t *wpath;
   WIN32_FIND_DATAW st;
   HANDLE dh;
+
   spath=psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR "*", NULL);
   wpath=utf8_to_wchar_path(spath);
   psync_free(spath);
+
   dh=FindFirstFileW(wpath, &st);
+
   psync_free(wpath);
+
   if (dh==INVALID_HANDLE_VALUE){
-    if (GetLastError()==ERROR_FILE_NOT_FOUND)
+    if (GetLastError() == ERROR_FILE_NOT_FOUND) {
       return 0;
+    }
     else{
+      debug(D_NOTICE, "Error reading folder [%ls] : [%d]", wpath, (int)GetLastError());
       psync_error=PERROR_LOCAL_FOLDER_NOT_FOUND;
       return -1;
     }
@@ -2669,7 +2675,9 @@ err1:
     callback(ptr, &pst);
     psync_free(name);
   } while (FindNextFileW(dh, &st));
+
   FindClose(dh);
+
   return 0;
 #else
 #error "Function not implemented for your operating system"

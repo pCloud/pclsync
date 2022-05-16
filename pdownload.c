@@ -1189,20 +1189,21 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   }
   minfree=psync_setting_get_uint(_PS(minlocalfreespace));
   freespace=psync_get_free_space_by_path(localpath);
-  debug(D_NOTICE, "free space is %llu, needed %llu+%llu", (unsigned long long)freespace, (unsigned long long)minfree, (unsigned long long)size);
+  
   if (likely(freespace!=-1)){
+    debug(D_NOTICE, "Free space is [%llu], needed [%llu+%llu]", (unsigned long long)freespace, (unsigned long long)minfree, (unsigned long long)size);
     if (freespace>=minfree+size)
       psync_set_local_full(0);
     else{
       free_download_task(dt);
       psync_set_local_full(1);
-      debug(D_NOTICE, "disk is full, sleeping 10 seconds");
+      debug(D_NOTICE, "Disk is full, sleeping 10 seconds");
       psync_milisleep(PSYNC_SLEEP_ON_DISK_FULL);
       return -1;
     }
   }
   else {
-    debug(D_WARNING, "could not get free space for %s, maybe it is locally deleted, sleeping a bit and failing task", localpath);
+    debug(D_WARNING, "Could not get free space for [%s], maybe it is locally deleted, sleeping a bit and failing task", localpath);
     free_download_task(dt);
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
     return -1;
