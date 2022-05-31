@@ -912,6 +912,8 @@ void psync_async_ui_callback(void* ptr);
 
 pfolder_list_t *psync_list_local_folder_by_path(const char *localpath, psync_listtype_t listtype);
 pfolder_list_t *psync_list_remote_folder_by_path(const char *remotepath, psync_listtype_t listtype);
+psync_folderid_t psync_get_folderid_by_remote_path(const char *remotepath);
+psync_fileid_t psync_get_fileid_by_path(const char *remotepath);
 pfolder_list_t *psync_list_remote_folder_by_folderid(psync_folderid_t folderid, psync_listtype_t listtype);
 pentry_t *psync_stat_path(const char *remotepath);
 psync_folderid_t psync_get_fsfolderid_by_path(const char *path, uint32_t *pflags, uint32_t *pPerm);

@@ -1023,6 +1023,29 @@ pfolder_list_t *psync_list_remote_folder_by_path(const char *remotepath, psync_l
     return NULL;
 }
 
+psync_folderid_t psync_get_folderid_by_remote_path(const char *remotepath){
+	return psync_get_folderid_by_path(remotepath);
+}
+
+psync_fileid_t psync_get_fileid_by_path(const char *remotepath){
+	psync_sql_res *res;
+	psync_uint_row row;
+	psync_fileid_t id = ((psync_fileid_t)-1);
+	psync_fspath_t* filep = psync_fsfolder_resolve_path(remotepath);
+	res = NULL;
+	if (filep) {
+		res = psync_sql_query_rdlock("SELECT id FROM file WHERE parentfolderid = ? and name = ?");
+		psync_sql_bind_uint(res, 1, filep->folderid);
+		psync_sql_bind_string(res, 2, filep->name);
+		row = psync_sql_fetch_rowint(res);
+		id = row[0];
+		if (res)
+		psync_sql_free_result(res);
+	}
+
+	return id;
+}
+
 pfolder_list_t *psync_list_remote_folder_by_folderid(psync_folderid_t folderid, psync_listtype_t listtype){
   return psync_list_remote_folder(folderid, listtype);
 }
@@ -2281,6 +2304,10 @@ int64_t psync_folder_updownlink_link(int canupload, unsigned long long folderid,
 
 int64_t psync_tree_public_link(const char *linkname, const char *root, char **folders, int numfolders, char **files, int numfiles, char **link /*OUT*/, char **err /*OUT*/) {
   return do_psync_tree_public_link(linkname, root, folders, numfolders, files, numfiles, link, err,  0, 0, 0);
+}
+
+int64_t psync_tree_public_link_by_ids(const char *linkname, const char *root, unsigned long long *folders, int numfolders, unsigned long long *files, int numfiles, char **link /*OUT*/, char **err /*OUT*/) {
+  return do_psync_tree_public_link_by_ids(linkname, root, folders, numfolders, files, numfiles, link, err, 0, 0, 0);
 }
 
 plink_info_list_t *psync_list_links(char **err /*OUT*/) {
