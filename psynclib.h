@@ -1624,6 +1624,11 @@ int psync_create_backend_event(const char* category, const char* action, const c
 * ptr - pointer to the data event handling function.
 */
 void psync_init_data_event_handler(void* ptr);
+
+//Bobo
+stuck_return_list* psync_get_stuck_list();
+//Bobo
+
 #ifdef __cplusplus
 }
 #endif

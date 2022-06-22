@@ -260,10 +260,17 @@ static void file_download_free(stream_t *s, uint32_t error){
 
 static int file_download_send_error(stream_t *s, async_thread_params_t *prms, file_download_add_t *fda, uint32_t error, uint32_t errorflags){
   psync_async_result_t r;
-  if (error)
+
+  if (error){
     debug(D_NOTICE, "got error %u(%u) for file %s", (unsigned)error, (unsigned)errorflags, fda->localpath);
-  else
+  }
+  else{
     debug(D_NOTICE, "download of %s finished", fda->localpath);
+    //Bobo
+    delete_element(fda->fileid);
+    //Bobo
+  }
+
   r.error=error;
   r.errorflags=errorflags;
   r.file.size=fda->size;
@@ -271,6 +278,7 @@ static int file_download_send_error(stream_t *s, async_thread_params_t *prms, fi
   memcpy(r.file.sha1hex, fda->sha1hex, PSYNC_SHA1_DIGEST_HEXLEN);
   s->cb(s->cbext, &r);
   close_stream(s, prms, error);
+
   return 0;
 }
 

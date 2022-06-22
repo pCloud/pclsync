@@ -502,13 +502,20 @@ void data_event_thread(void* ptr) {
   event_data_struct* data;
   char* path;
   int i;
+  //Bobo
+  stuck_return_list* list;
+  //Bobo
 
   while (1) {
     for (i = 0; i < 100000; i++) {
       data = pop_elem(event_list);
 
       if (data) {
-        //debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
+        //Bobo
+        debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
+
+        list = psync_get_stuck_list();
+        //Bobo
 
         data_event_fptr(data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 

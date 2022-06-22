@@ -45,6 +45,10 @@
 #include "pasyncnet.h"
 #include "ppathstatus.h"
 
+//Bobo
+#include "ptools.h"
+//Bobo
+
 typedef struct {
   psync_list list;
   psync_fileid_t fileid;
@@ -1310,6 +1314,7 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
   const char *ptr;
   char *vname;
   vname=NULL;
+
   if (name && type!=PSYNC_DELETE_LOCAL_FILE && type!=PSYNC_DELETE_LOCAL_FOLDER)
     for (ptr=name; *ptr; ptr++)
       if (psync_invalid_filename_chars[(unsigned char)*ptr]){
@@ -1317,10 +1322,12 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
           vname=psync_strdup(name);
         vname[ptr-name]=PSYNC_REPLACE_INV_CH_IN_FILENAMES;
       }
+
   if (vname){
     debug(D_NOTICE, "%u %s as %s", (unsigned)type, name, vname);
     name=vname;
   }
+
   switch (type) {
     case PSYNC_CREATE_LOCAL_FOLDER:
       res=call_func_for_folder(localitemid, itemid, syncid, PEVENT_LOCAL_FOLDER_CREATED, task_mkdir, 1, "local folder created");
@@ -1352,8 +1359,37 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
       debug(D_BUG, "invalid task type %u", (unsigned)type);
       res=0;
   }
-  if (res && type!=PSYNC_DOWNLOAD_FILE)
+
+  if (res && type!=PSYNC_DOWNLOAD_FILE){
     debug(D_WARNING, "task of type %u, syncid %u, id %lu localid %lu failed", (unsigned)type, (unsigned)syncid, (unsigned long)itemid, (unsigned long)localitemid);
+  }
+
+  //Bobo
+  if (res) {
+    stuck_item* elem;
+    int item_type;
+    char* path;
+
+    debug(D_WARNING, "BOBO: Create stuck element for local item id: [%lld]", localitemid);
+
+    if ((type == PSYNC_DOWNLOAD_FILE) || (type == PSYNC_DELETE_LOCAL_FILE) || (type == PSYNC_DOWNLOAD_FILE)) {
+      debug(D_WARNING, "BOBO: Element type FILE");
+      item_type = STUCK_ITEM_TYPE_FILE;
+      path = psync_local_path_for_local_file(localitemid, NULL);
+    }
+    else {
+      debug(D_WARNING, "BOBO: Element type FOLDER");
+      item_type = STUCK_ITEM_TYPE_FOLDER;
+      path = psync_local_path_for_local_folder(localitemid, syncid, NULL);
+    }
+
+    elem = create_stuck_elem(itemid, STUCK_MSG_NO_PERMISSION, item_type, 0, path, name);
+
+    debug(D_WARNING, "BOBO: Adding task to stuck task list.");
+    add_stuck_elem(elem);
+  }
+  //Bobo
+
   psync_free(vname);
   return res;
 }
@@ -1364,6 +1400,8 @@ static void download_thread(){
   uint32_t type;
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
+
+    debug(D_NOTICE, "BOBO: Query: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD));
 
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE "
                       "inprogress=0 AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD)" ORDER BY id LIMIT 1");
@@ -1377,7 +1415,9 @@ static void download_thread(){
                          psync_get_number_or_null(row[5]),
                          psync_get_string_or_null(row[6]),
                          psync_get_number_or_null(row[7]))){
+
         delete_task(taskid);
+
         if (type==PSYNC_DOWNLOAD_FILE){
           psync_status_recalc_to_download_async();
           psync_path_status_sync_folder_task_completed(psync_get_number(row[2]), psync_get_number(row[4]));

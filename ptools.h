@@ -52,7 +52,6 @@
 #if defined(P_OS_MACOSX)
 #define DELIM_DIR  '/'
 #endif
-
 typedef struct _eventParams {
   int paramCnt;
   binparam Params[100];
@@ -62,6 +61,36 @@ typedef struct _folderPath {
   int cnt;
   char* folders[50];
 } folderPath;
+
+//Bobo
+//Stuck sync tasks list.
+typedef struct stuck_item_type {
+  uint64_t id;
+  int      msg_id;
+  int      item_type;
+  int      retry_cnt;
+  uint64_t next_elem;
+  char* path;
+  char* name;
+} stuck_item;
+
+typedef struct stuck_item_list_type {
+  int stuck_cnt;
+  int total_cnt;
+  stuck_item* list;
+} stuck_list_type;
+
+typedef struct stuck_return_type {
+  int   msg_id;
+  char* path;
+  char* name;
+} stuck_return_item;
+
+typedef struct stuck_return_list_type {
+  int elem_count;
+  stuck_return_item items[];
+} stuck_return_list;
+//Bobo
 /**********************************************************************************************************/
 int create_backend_event(
   const char* binapi,
@@ -98,4 +127,32 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  char* get_sync_folder_by_syncid(uint64_t syncId);
  /**********************************************************************************************************/
  char* get_folder_name_from_path(char* path);
+ /**********************************************************************************************************/
+//Bobo
+#define STUCK_ITEM_RETRY_COUNT 3
+#define STUCK_ITEM_TOTAL_COUNT 100
+
+#define STUCK_ITEM_TYPE_FOLDER 1
+#define STUCK_ITEM_TYPE_FILE   2
+
+#define STUCK_MSG_NO_PERMISSION 1 //The app has no permition to read or write the file/folder.
+
+ void* log_list_elem(stuck_item* elem);
+
+ void* log_list(stuck_item* list);
+
+ stuck_item* get_last_element();
+
+ void add_stuck_elem(stuck_item* elem);
+
+ void* delete_element(uint64_t id);
+
+ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, const char* path, const char* name);
+
+ stuck_item* search_list(uint64_t id);
+
+ void* init_stuck_list();
+
+ stuck_return_list* get_stuck_list();
+ //Bobo
  /**********************************************************************************************************/

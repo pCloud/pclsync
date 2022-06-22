@@ -268,6 +268,10 @@ int psync_init(){
   if (PSYNC_SSL_DEBUG_LEVEL)
     psync_set_ssl_debug_callback(ssl_debug_cb);
 
+  //Bobo
+  init_stuck_list();
+  //Bobo
+
   return 0;
 }
 
@@ -2989,8 +2993,7 @@ void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId) {
   }
 }
 /***********************************************************************************************************************************************/
-userinfo_t* psync_get_userinfo()
-{
+userinfo_t* psync_get_userinfo() {
   if (psync_my_auth[0]) {
     size_t lemail, lcurrency, llanguage;
     const char* email, * currency, * language;
@@ -3072,5 +3075,22 @@ int psync_create_backend_event(const char* category, const char* action, const c
 /******************************************************************************************************************/
 void psync_init_data_event_handler(void* ptr) {
   psync_init_data_event(ptr);
+}
+/******************************************************************************************************************/
+stuck_return_list* psync_get_stuck_list() {
+  int i = 0;
+  stuck_return_list* list;
+
+  list = get_stuck_list();
+
+  if (!list) {
+    return NULL;
+  }
+
+  for (i = 0; i < list->elem_count; i++) {
+    debug(D_NOTICE, "BOBO: Element: [%d], Masg Id: [%d] Name: [%s], Path: [%s]", i, list->items[i].msg_id, list->items[i].name, list->items[i].path);
+  }
+
+  return list;
 }
 /******************************************************************************************************************/
