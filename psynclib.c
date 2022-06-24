@@ -3087,8 +3087,10 @@ stuck_return_list* psync_get_stuck_list() {
     return NULL;
   }
 
+  debug(D_NOTICE, "BOBO: Stuck list element count: [%d] ", list->elem_count);
+
   for (i = 0; i < list->elem_count; i++) {
-    debug(D_NOTICE, "BOBO: Element: [%d], Masg Id: [%d] Name: [%s], Path: [%s]", i, list->items[i].msg_id, list->items[i].name, list->items[i].path);
+    debug(D_NOTICE, "BOBO: Element: [%d], Masg Id: [%d] Item Type: [%d] Name: [%s], Path: [%s]", i, list->items[i].msg_id, list->items[i].type, list->items[i].name, list->items[i].path);
   }
 
   return list;

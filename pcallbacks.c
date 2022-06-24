@@ -553,7 +553,7 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
     add_elem(data, &data_event_elem_list);
   }
   else {
-    debug(D_ERROR, "Data event callback function not set.");
+    //debug(D_ERROR, "Data event callback function not set.");
   }
 }
 /**********************************************************************************************/

@@ -643,7 +643,7 @@ char* get_folder_name_from_path(char* path) {
 }
 /*************************************************************/
 //Bobo
-stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, const char* path, const char* name) {
+stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, char* path, char* name) {
   stuck_item* stuck_elem;
 
   stuck_elem = psync_malloc(sizeof(stuck_item));
@@ -656,6 +656,9 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
 
   stuck_elem->name = strdup(name);
   stuck_elem->path = strdup(path);
+
+  debug(D_NOTICE, "BOBO: Stuck element created:");
+  log_list_elem(stuck_elem);
 
   return stuck_elem;
 }
@@ -679,6 +682,7 @@ void* free_stuck_elem(stuck_item* elem) {
 }
 /***********************************************************************/
 void* log_list_elem(stuck_item* elem) {
+  debug(D_NOTICE, "**********************************");
   debug(D_NOTICE,"Item Id  : [%lld]", elem->id);
   debug(D_NOTICE,"Elem Type: [%d]", elem->item_type);
   debug(D_NOTICE,"Msg Id   : [%d]", elem->msg_id);
@@ -686,6 +690,7 @@ void* log_list_elem(stuck_item* elem) {
   debug(D_NOTICE,"Next Elem: [%lld]", elem->next_elem);
   debug(D_NOTICE,"Elem Name: [%s]", elem->name);
   debug(D_NOTICE,"Elem Path: [%s]", elem->path);
+  debug(D_NOTICE, "**********************************");
 }
 /***********************************************************************/
 void* log_list() {
@@ -759,7 +764,7 @@ void add_stuck_elem(stuck_item* elem) {
   if (!stuck_sync_tasks->list) {
     debug(D_NOTICE, "BOBO: List is empty. Init.");
     stuck_sync_tasks->list = elem;
-    stuck_sync_tasks->stuck_cnt++;
+    stuck_sync_tasks->total_cnt++;
 
     return;
   }
@@ -801,7 +806,7 @@ void add_stuck_elem(stuck_item* elem) {
     last_elem->next_elem = elem;
   }
 
-  stuck_sync_tasks->stuck_cnt++;
+  stuck_sync_tasks->total_cnt++;
 }
 /***********************************************************************/
 stuck_item* search_list(uint64_t id) {
@@ -921,6 +926,7 @@ stuck_return_list* get_stuck_list() {
   while (1) {
     if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
       list->items[i].msg_id = local_list->msg_id;
+      list->items[i].type   = local_list->item_type;
       list->items[i].name   = strdup(local_list->name);
       list->items[i].path   = strdup(local_list->path);
 
@@ -938,6 +944,15 @@ stuck_return_list* get_stuck_list() {
   list->elem_count = i;
 
   return list;
+}
+/*************************************************************/
+char* nvl_str(char* str, const char* def) {
+  if (str == NULL) {
+    debug(D_NOTICE, "BOBO: NULL string detected. Return: [%s]", def);
+    return def;
+  }
+
+  return str;
 }
 /*************************************************************/
 //Bobo

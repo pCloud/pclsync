@@ -82,6 +82,7 @@ typedef struct stuck_item_list_type {
 
 typedef struct stuck_return_type {
   int   msg_id;
+  int   type;
   char* path;
   char* name;
 } stuck_return_item;
@@ -135,7 +136,11 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 #define STUCK_ITEM_TYPE_FOLDER 1
 #define STUCK_ITEM_TYPE_FILE   2
 
+#define STUCK_MSG_UKNOWN        0 //Generic error, when we have nothing more specific.
 #define STUCK_MSG_NO_PERMISSION 1 //The app has no permition to read or write the file/folder.
+
+#define STUCK_ITEM_UNKNOWN_FILE   "UNKNOWN_FILE_NAME"
+#define STUCK_ITEM_UNKNOWN_FOLDER "UNKNOWN_FOLDER_NAME"
 
  void* log_list_elem(stuck_item* elem);
 
@@ -147,12 +152,14 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  void* delete_element(uint64_t id);
 
- stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, const char* path, const char* name);
+ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, char* path, char* name);
 
  stuck_item* search_list(uint64_t id);
 
  void* init_stuck_list();
 
  stuck_return_list* get_stuck_list();
+
+ char* nvl_str(char* str, const char* def);
  //Bobo
  /**********************************************************************************************************/
