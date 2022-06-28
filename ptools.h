@@ -70,8 +70,8 @@ typedef struct stuck_item_type {
   int      item_type;
   int      retry_cnt;
   uint64_t next_elem;
-  char* path;
-  char* name;
+  const char* path;
+  const char* name;
 } stuck_item;
 
 typedef struct stuck_item_list_type {

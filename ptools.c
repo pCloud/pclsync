@@ -679,6 +679,7 @@ void* free_stuck_elem(stuck_item* elem) {
   }
   
   psync_free(elem);
+  //And UI never knows when stuck elements are getting less
 }
 /***********************************************************************/
 void* log_list_elem(stuck_item* elem) {
@@ -717,7 +718,8 @@ stuck_item* get_last_element() {
   local_list = stuck_sync_tasks->list;
 
   if (local_list->next_elem == 0) {
-    return -1;
+    //return -1;
+    return NULL;
   }
 
   while (1) {
@@ -786,7 +788,7 @@ void add_stuck_elem(stuck_item* elem) {
 
     debug(D_NOTICE, "BOBO: Element alreay in list. Retry cnt: [%d]", last_elem->retry_cnt);
 
-    if ((last_elem->retry_cnt > STUCK_ITEM_RETRY_COUNT) && (last_elem->retry_cnt < STUCK_ITEM_RETRY_COUNT+2)) {
+    if ((last_elem->retry_cnt > STUCK_ITEM_RETRY_COUNT) && (last_elem->retry_cnt < STUCK_ITEM_RETRY_COUNT+2)) {//demek ==4
       stuck_sync_tasks->stuck_cnt++;
 
       psync_send_data_event(PEVENT_STUCK_OBJ_CNT, NULL, NULL, stuck_sync_tasks->stuck_cnt, 0);
@@ -802,7 +804,8 @@ void add_stuck_elem(stuck_item* elem) {
     stuck_sync_tasks->list->next_elem = elem;
   }
   else {
-    last_elem = get_last_element(stuck_sync_tasks);
+    last_elem = get_last_element(stuck_sync_tasks);// ???? if last_elem == -1
+    if(last_elem)
     last_elem->next_elem = elem;
   }
 
@@ -858,6 +861,7 @@ void* delete_element(uint64_t id) {
   }
 
   while (1) {
+    //What if local_list == NULL
     // In the middle of the list.
     if (local_list->id == id) {
       if ((last_element != 0) && (local_list->next_elem != 0)) {
