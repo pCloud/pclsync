@@ -979,6 +979,7 @@ stuck_return_list* get_stuck_list() {
     memcpy(str, items[i].path, l);
     psync_free(items[i].path);
     list->items[i].path = str;
+    str += l;
 
     list->items[i].msg_id = items[i].msg_id;
     list->items[i].type = items[i].type;
