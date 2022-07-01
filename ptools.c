@@ -944,12 +944,22 @@ stuck_return_list* get_stuck_list() {
       strlens += l;
       items[lastitem].name = str;
 
-      l = strlen(local_list->path) + 1;
-      str = (char*)psync_malloc(l);
-      memcpy(str, local_list->path, l);
+      if (local_list->path) {
+        l = strlen(local_list->path) + 1;
+        str = (char*)psync_malloc(l);
+        memcpy(str, local_list->path, l);
 
-      strlens += l;
-      items[lastitem].path = str;
+        strlens += l;
+        items[lastitem].path = str;
+      }
+      else { 
+        l = strlen(STUCK_ITEM_UNKNOWN_PATH) + 1;
+        str = (char*)psync_malloc(l);
+        memcpy(str, STUCK_ITEM_UNKNOWN_PATH, l);
+
+        strlens += l;
+        items[lastitem].path = str; 
+      }
 
       items[lastitem].msg_id = local_list->msg_id;
       items[lastitem].type   = local_list->item_type;
@@ -969,18 +979,23 @@ stuck_return_list* get_stuck_list() {
   str = ((char*)list) + l;
   list->elem_count = lastitem;
   for (i = 0; i < lastitem; i++) {
-    l = strlen(items[i].name) + 1;
-    memcpy(str, items[i].name, l);
-    psync_free(items[i].name);
-    list->items[i].name = str;
-    str += l;
+    if (items[i].name) {
+      l = strlen(items[i].name) + 1;
+      memcpy(str, items[i].name, l);
 
-    l = strlen(items[i].path) + 1;
-    memcpy(str, items[i].path, l);
-    psync_free(items[i].path);
-    list->items[i].path = str;
-    str += l;
+      psync_free(items[i].name);
+      list->items[i].name = str;
+      str += l;
+    }
 
+    if (items[i].path) {
+      l = strlen(items[i].path) + 1;
+      memcpy(str, items[i].path, l);
+
+      psync_free(items[i].path);
+      list->items[i].path = str;
+      str += l;
+    }
     list->items[i].msg_id = items[i].msg_id;
     list->items[i].type = items[i].type;
   }
