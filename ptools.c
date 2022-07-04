@@ -679,6 +679,7 @@ void* free_stuck_elem(stuck_item* elem) {
   }
   
   psync_free(elem);
+  //And UI never knows when stuck elements are getting less
 }
 /***********************************************************************/
 void* log_list_elem(stuck_item* elem) {
@@ -717,7 +718,8 @@ stuck_item* get_last_element() {
   local_list = stuck_sync_tasks->list;
 
   if (local_list->next_elem == 0) {
-    return -1;
+    //return -1;
+    return NULL;
   }
 
   while (1) {
@@ -757,9 +759,7 @@ int stuck_elem_count(int cnt_retry_flag) {
 }
 /***********************************************************************/
 void add_stuck_elem(stuck_item* elem) {
-  stuck_item* last_elem = NULL, *list;
-
-  list = stuck_sync_tasks->list;
+  stuck_item* last_elem = NULL;
 
   if (!stuck_sync_tasks->list) {
     debug(D_NOTICE, "BOBO: List is empty. Init.");
@@ -786,10 +786,10 @@ void add_stuck_elem(stuck_item* elem) {
 
     debug(D_NOTICE, "BOBO: Element alreay in list. Retry cnt: [%d]", last_elem->retry_cnt);
 
-    if ((last_elem->retry_cnt > STUCK_ITEM_RETRY_COUNT) && (last_elem->retry_cnt < STUCK_ITEM_RETRY_COUNT+2)) {
-      stuck_sync_tasks->stuck_cnt++;
-
-      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, NULL, NULL, stuck_sync_tasks->stuck_cnt, 0);
+    if ((last_elem->retry_cnt > STUCK_ITEM_RETRY_COUNT) && (last_elem->retry_cnt < STUCK_ITEM_RETRY_COUNT+2)) {//demek ==4
+       stuck_sync_tasks->stuck_cnt++;
+       uint64_t sc = stuck_sync_tasks->stuck_cnt;
+      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, NULL, NULL, sc, 0);
     }
 
     return;
@@ -802,7 +802,8 @@ void add_stuck_elem(stuck_item* elem) {
     stuck_sync_tasks->list->next_elem = elem;
   }
   else {
-    last_elem = get_last_element(stuck_sync_tasks);
+    last_elem = get_last_element(stuck_sync_tasks);// ???? if last_elem == -1
+    if(last_elem)
     last_elem->next_elem = elem;
   }
 
@@ -858,6 +859,7 @@ void* delete_element(uint64_t id) {
   }
 
   while (1) {
+    //What if local_list == NULL
     // In the middle of the list.
     if (local_list->id == id) {
       if ((last_element != 0) && (local_list->next_elem != 0)) {
@@ -911,9 +913,16 @@ void* delete_element(uint64_t id) {
 }
 /*************************************************************/
 stuck_return_list* get_stuck_list() {
-  int i = 0;
+  int i;
+  uint32_t alloced, lastitem;
   stuck_item* local_list;
   stuck_return_list* list;
+  stuck_return_item* items;
+  size_t strlens,l;
+  char* str;
+  alloced = lastitem = 0;
+  strlens = 0;
+  items = NULL;
 
   if (!stuck_sync_tasks->list) {
     debug(D_NOTICE, "BOBO: List not initialized. Return.");
@@ -921,16 +930,40 @@ stuck_return_list* get_stuck_list() {
 
   local_list = stuck_sync_tasks->list;
 
-  list = (stuck_return_list*)malloc(sizeof(stuck_return_list) * stuck_sync_tasks->stuck_cnt);
-
   while (1) {
-    if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
-      list->items[i].msg_id = local_list->msg_id;
-      list->items[i].type   = local_list->item_type;
-      list->items[i].name   = strdup(local_list->name);
-      list->items[i].path   = strdup(local_list->path);
+    if (alloced == lastitem) {
+      alloced = (alloced + 32) * 2;
+      items = (stuck_return_item *)psync_realloc(items, sizeof(stuck_return_item) * alloced);
+    }
 
-      i++;
+    if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
+      l = strlen(local_list->name) + 1;
+      str = (char*)psync_malloc(l);
+      memcpy(str, local_list->name, l);
+
+      strlens += l;
+      items[lastitem].name = str;
+
+      if (local_list->path) {
+        l = strlen(local_list->path) + 1;
+        str = (char*)psync_malloc(l);
+        memcpy(str, local_list->path, l);
+
+        strlens += l;
+        items[lastitem].path = str;
+      }
+      else { 
+        l = strlen(STUCK_ITEM_UNKNOWN_PATH) + 1;
+        str = (char*)psync_malloc(l);
+        memcpy(str, STUCK_ITEM_UNKNOWN_PATH, l);
+
+        strlens += l;
+        items[lastitem].path = str; 
+      }
+
+      items[lastitem].msg_id = local_list->msg_id;
+      items[lastitem].type   = local_list->item_type;
+      lastitem++;
     }
 
     if (local_list->next_elem == 0) {
@@ -941,7 +974,33 @@ stuck_return_list* get_stuck_list() {
     local_list = local_list->next_elem;
   }
 
-  list->elem_count = i;
+  l = offsetof(stuck_return_list, items) + sizeof(stuck_return_item) * lastitem;
+  list = (stuck_return_list*)psync_malloc(l + strlens);
+  str = ((char*)list) + l;
+  list->elem_count = lastitem;
+  for (i = 0; i < lastitem; i++) {
+    if (items[i].name) {
+      l = strlen(items[i].name) + 1;
+      memcpy(str, items[i].name, l);
+
+      psync_free(items[i].name);
+      list->items[i].name = str;
+      str += l;
+    }
+
+    if (items[i].path) {
+      l = strlen(items[i].path) + 1;
+      memcpy(str, items[i].path, l);
+
+      psync_free(items[i].path);
+      list->items[i].path = str;
+      str += l;
+    }
+    list->items[i].msg_id = items[i].msg_id;
+    list->items[i].type = items[i].type;
+  }
+
+  psync_free(items);
 
   return list;
 }

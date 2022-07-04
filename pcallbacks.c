@@ -503,7 +503,7 @@ void data_event_thread(void* ptr) {
   char* path;
   int i;
   //Bobo
-  stuck_return_list* list;
+  //stuck_return_list* list;
   //Bobo
 
   while (1) {

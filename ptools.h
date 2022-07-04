@@ -70,8 +70,8 @@ typedef struct stuck_item_type {
   int      item_type;
   int      retry_cnt;
   uint64_t next_elem;
-  char* path;
-  char* name;
+  const char* path;
+  const char* name;
 } stuck_item;
 
 typedef struct stuck_item_list_type {
@@ -141,6 +141,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
 #define STUCK_ITEM_UNKNOWN_FILE   "UNKNOWN_FILE_NAME"
 #define STUCK_ITEM_UNKNOWN_FOLDER "UNKNOWN_FOLDER_NAME"
+#define STUCK_ITEM_UNKNOWN_PATH "UNKNOWN_PATH"
 
  void* log_list_elem(stuck_item* elem);
 
