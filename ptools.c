@@ -769,7 +769,7 @@ void add_stuck_elem(stuck_item* elem) {
     return;
   }
 
-  debug(D_NOTICE, "BOBO: Number of elements in list: [%d]", stuck_sync_tasks->stuck_cnt);
+  debug(D_NOTICE, "BOBO: Total number of elements in list: [%d], Stuck element: [%d]", stuck_sync_tasks->total_cnt, stuck_sync_tasks->stuck_cnt);
 
   if (stuck_sync_tasks->stuck_cnt > STUCK_ITEM_TOTAL_COUNT) {
     debug(D_NOTICE, "BOBO: Too many stuck elements in the list. Skip adding more.");
