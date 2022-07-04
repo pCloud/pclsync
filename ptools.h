@@ -143,21 +143,21 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 #define STUCK_ITEM_UNKNOWN_FOLDER "UNKNOWN_FOLDER_NAME"
 #define STUCK_ITEM_UNKNOWN_PATH "UNKNOWN_PATH"
 
- void* log_list_elem(stuck_item* elem);
+ void log_list_elem(stuck_item* elem);
 
- void* log_list(stuck_item* list);
+ void log_list(stuck_item* list);
 
  stuck_item* get_last_element();
 
  void add_stuck_elem(stuck_item* elem);
 
- void* delete_element(uint64_t id);
+ void delete_element(uint64_t id);
 
  stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, char* path, char* name);
 
  stuck_item* search_list(uint64_t id);
 
- void* init_stuck_list();
+ void init_stuck_list();
 
  stuck_return_list* get_stuck_list();
 

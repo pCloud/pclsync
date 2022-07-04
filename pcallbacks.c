@@ -503,7 +503,7 @@ void data_event_thread(void* ptr) {
   char* path;
   int i;
   //Bobo
-  //stuck_return_list* list;
+  stuck_return_list* list;
   //Bobo
 
   while (1) {
@@ -514,7 +514,7 @@ void data_event_thread(void* ptr) {
         //Bobo
         debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
-        //list = psync_get_stuck_list();
+        list = psync_get_stuck_list();
         //Bobo
 
         data_event_fptr(data->eventid, data->str1, data->str2, data->uint1, data->uint2);
