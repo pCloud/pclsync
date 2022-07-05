@@ -804,7 +804,7 @@ void add_stuck_elem(stuck_item* elem) {
       stuck_sync_tasks->stuck_cnt++;
 
       uint64_t sc = stuck_sync_tasks->stuck_cnt;
-      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, NULL, NULL, sc, 0);
+      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", sc, 0);
     }
 
     return;
@@ -937,7 +937,7 @@ void delete_element(uint64_t id) {
   }
 
   //Notify new stuck element count
-  psync_send_data_event(PEVENT_STUCK_OBJ_CNT, NULL, NULL, stuck_sync_tasks->stuck_cnt, 0);
+  psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
 }
 /*************************************************************/
 stuck_return_list* get_stuck_list() {
