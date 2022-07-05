@@ -1370,7 +1370,7 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
     int item_type;
     char *path;
 
-    debug(D_WARNING, "BOBO: Create stuck element for local item id: [%lld]", localitemid);
+    debug(D_WARNING, "BOBO: Create stuck element for local item id: [%lld], Name: [%s]", localitemid, name);
 
     if ((type == PSYNC_DOWNLOAD_FILE) || (type == PSYNC_DELETE_LOCAL_FILE) || (type == PSYNC_DOWNLOAD_FILE)) {
       debug(D_WARNING, "BOBO: Element type FILE");
@@ -1400,8 +1400,6 @@ static void download_thread(){
   uint32_t type;
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
-
-    debug(D_NOTICE, "BOBO: Query: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD));
 
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE "
                       "inprogress=0 AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD)" ORDER BY id LIMIT 1");

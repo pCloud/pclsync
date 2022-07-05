@@ -12,7 +12,7 @@
 #include "pnetlibs.h"
 
 //Bobo
-#include <pcallbacks.h>
+#include "pcallbacks.h"
 //Bobo
 
 #if defined(P_OS_WINDOWS)
@@ -667,6 +667,9 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
   }
   
   if (path) {
+    stuck_elem->path = strdup(path);
+  }
+  else {
     stuck_elem->path = strdup(STUCK_ITEM_UNKNOWN_PATH);
   }
 
@@ -926,73 +929,42 @@ void delete_element(uint64_t id) {
 }
 /*************************************************************/
 stuck_return_list* get_stuck_list() {
-  int i;
-  uint32_t alloced, lastitem;
   stuck_item* local_list;
   stuck_return_list* list;
-  stuck_return_item* items;
-  size_t strlens,l;
-  char* str;
-  alloced = lastitem = 0;
-  strlens = 0;
-  items = NULL;
 
   if (!stuck_sync_tasks->list) {
     debug(D_NOTICE, "BOBO: List empty. Return.");
   }
 
+  list = (stuck_return_list*)psync_malloc(sizeof(stuck_return_list));
+
+  list->elem_count = 0;
+
   local_list = stuck_sync_tasks->list;
 
   while (1) {
-    if (alloced == lastitem) {
-      alloced = (alloced + 32) * 2;
-      items = (stuck_return_item *)psync_realloc(items, sizeof(stuck_return_item) * alloced);
-    }
-
     if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
-      items[lastitem].name = psync_strdup(local_list->name);
-      items[lastitem].path = psync_strdup(local_list->path);
 
-      items[lastitem].msg_id = local_list->msg_id;
-      items[lastitem].type   = local_list->item_type;
-      lastitem++;
+      list->items[list->elem_count].name = psync_strdup(local_list->name);
+      list->items[list->elem_count].path = psync_strdup(local_list->path);
+
+      list->items[list->elem_count].msg_id = local_list->msg_id;
+      list->items[list->elem_count].type   = local_list->item_type;
+      list->elem_count++;
+
+      if (list->elem_count >= STUCK_ITEM_RET_SIZE) {
+        debug(D_NOTICE, "BOBO: Maximum return list lements reached. Return.");
+        break;
+      }
     }
 
-    if (local_list->next_elem == 0) {
+    if (local_list->next_elem == NULL) {
       debug(D_NOTICE, "BOBO: Last element. Return.");
       break;
     }
 
     local_list = (stuck_item*)local_list->next_elem;
   }
-
-  l = offsetof(stuck_return_list, items) + sizeof(stuck_return_item) * lastitem;
-  list = (stuck_return_list*)psync_malloc(l + strlens);
-  str = ((char*)list) + l;
-  list->elem_count = lastitem;
-  for (i = 0; i < lastitem; i++) {
-    if (items[i].name) {
-      l = strlen(items[i].name) + 1;
-      memcpy(str, items[i].name, l);
-
-      psync_free(items[i].name);
-      list->items[i].name = str;
-      str += l;
-    }
-
-    if (items[i].path) {
-      l = strlen(items[i].path) + 1;
-      memcpy(str, items[i].path, l);
-
-      psync_free(items[i].path);
-      list->items[i].path = str;
-      str += l;
-    }
-    list->items[i].msg_id = items[i].msg_id;
-    list->items[i].type = items[i].type;
-  }
-
-  psync_free(items);
 
   return list;
 }
