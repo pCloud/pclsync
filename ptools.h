@@ -87,9 +87,11 @@ typedef struct stuck_return_type {
   char* name;
 } stuck_return_item;
 
+#define STUCK_ITEM_RET_SIZE 100
+
 typedef struct stuck_return_list_type {
   int elem_count;
-  stuck_return_item items[];
+  stuck_return_item items[STUCK_ITEM_RET_SIZE];
 } stuck_return_list;
 //Bobo
 /**********************************************************************************************************/
