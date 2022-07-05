@@ -680,22 +680,20 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
 }
 /***********************************************************************/
 void free_stuck_elem(stuck_item* elem) {
+  debug(D_NOTICE, "BOBO: Free element: [%lld]", elem->id);
+
+  /*
   psync_free(elem->id);
   psync_free(elem->msg_id);
   psync_free(elem->retry_cnt);
   psync_free(elem->item_type);
   psync_free(elem->next_elem);
+  */
 
-  if (elem->name) {
-    psync_free(elem->name);
-  }
-
-  if (elem->path) {
-    psync_free(elem->path);
-  }
+  psync_free(elem->name);
+  psync_free(elem->path);
   
   psync_free(elem);
-  //And UI never knows when stuck elements are getting less
 }
 /***********************************************************************/
 void log_list_elem(stuck_item* elem) {
@@ -803,8 +801,9 @@ void add_stuck_elem(stuck_item* elem) {
     debug(D_NOTICE, "BOBO: Element alreay in list. Retry cnt: [%d]", last_elem->retry_cnt);
 
     if ((last_elem->retry_cnt > STUCK_ITEM_RETRY_COUNT) && (last_elem->retry_cnt < STUCK_ITEM_RETRY_COUNT+2)) {//demek ==4
-       stuck_sync_tasks->stuck_cnt++;
-       uint64_t sc = stuck_sync_tasks->stuck_cnt;
+      stuck_sync_tasks->stuck_cnt++;
+
+      uint64_t sc = stuck_sync_tasks->stuck_cnt;
       psync_send_data_event(PEVENT_STUCK_OBJ_CNT, NULL, NULL, sc, 0);
     }
 
@@ -857,6 +856,8 @@ stuck_item* search_list(uint64_t id) {
 }
 /***********************************************************************/
 void init_stuck_list() {
+  debug(D_NOTICE, "BOBO: Init stuck list!");
+
   stuck_sync_tasks = (stuck_list_type*)psync_malloc(sizeof(stuck_list_type));
 
   stuck_sync_tasks->stuck_cnt = 0;
@@ -866,18 +867,53 @@ void init_stuck_list() {
 /***********************************************************************/
 void delete_element(uint64_t id) {
   stuck_item* local_list = stuck_sync_tasks->list;
-  stuck_item* last_element = 0;
+  stuck_item* last_element = NULL;
     
   debug(D_NOTICE, "BOBO: Delete element with Id: [%lld]", id);
 
-  if (!stuck_sync_tasks) {
+  if (stuck_sync_tasks == NULL) {
+    debug(D_NOTICE, "BOBO: List is empty. Return.");
     return;
   }
 
   while (1) {
-    //What if local_list == NULL
-    // In the middle of the list.
+    debug(D_NOTICE, "BOBO: Check element id: [%lld] ?= [%lld]", local_list->id, id);
+
+    //First element of the list.
+    if ((last_element == NULL) && (local_list->id == id)){
+      if (local_list->next_elem == NULL) {
+        debug(D_NOTICE, "BOBO: Last Element in the list.");
+        stuck_sync_tasks->list = NULL;
+      }
+      else {
+        stuck_sync_tasks = (stuck_item*)local_list->next_elem;
+      }
+
+      if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
+        stuck_sync_tasks->stuck_cnt--;
+      }
+
+      stuck_sync_tasks->total_cnt--;
+
+      free_stuck_elem(local_list);
+      break;
+    }
+
+    //Last element of the list.
+    if ((last_element != 0) && (local_list->next_elem == NULL) && (local_list->id == id)) {
+      debug(D_NOTICE, "BOBO: Last Element in the list.");
+      last_element->next_elem = NULL;
+
+      stuck_sync_tasks->stuck_cnt = 0;
+      stuck_sync_tasks->total_cnt = 0;
+
+      free_stuck_elem(local_list);
+      break;
+    }
+
+    //Element in the middle of the list.
     if (local_list->id == id) {
+      debug(D_NOTICE, "BOBO: Element in middle ot the list.");
       if ((last_element != 0) && (local_list->next_elem != NULL)) {
         last_element->next_elem = (stuck_item*)local_list->next_elem;
 
@@ -888,34 +924,7 @@ void delete_element(uint64_t id) {
         stuck_sync_tasks->total_cnt--;
 
         free_stuck_elem(local_list);
-
-        return;
-      }
-
-      //Last element of the list.
-      if ((last_element != 0) && (local_list->next_elem == NULL)) {
-        last_element->next_elem = NULL;
-
-        stuck_sync_tasks->stuck_cnt = 0;
-        stuck_sync_tasks->total_cnt = 0;
-
-        free_stuck_elem(local_list);
-        return;
-      }
-
-      //First element of the list.
-      if ((last_element == 0) && (local_list->next_elem != NULL)) {
-        stuck_sync_tasks = (stuck_item*)local_list->next_elem;
-
-        if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
-          stuck_sync_tasks->stuck_cnt--;
-        }
-
-        stuck_sync_tasks->total_cnt--;
-
-        free_stuck_elem(local_list);
-
-        return;
+        break;
       }
     }
 
@@ -926,6 +935,9 @@ void delete_element(uint64_t id) {
     last_element = local_list;
     local_list = (stuck_item*)local_list->next_elem;
   }
+
+  //Notify new stuck element count
+  psync_send_data_event(PEVENT_STUCK_OBJ_CNT, NULL, NULL, stuck_sync_tasks->stuck_cnt, 0);
 }
 /*************************************************************/
 stuck_return_list* get_stuck_list() {
@@ -934,6 +946,7 @@ stuck_return_list* get_stuck_list() {
 
   if (!stuck_sync_tasks->list) {
     debug(D_NOTICE, "BOBO: List empty. Return.");
+    return NULL;
   }
 
   list = (stuck_return_list*)psync_malloc(sizeof(stuck_return_list));
@@ -944,7 +957,6 @@ stuck_return_list* get_stuck_list() {
 
   while (1) {
     if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
-
       list->items[list->elem_count].name = psync_strdup(local_list->name);
       list->items[list->elem_count].path = psync_strdup(local_list->path);
 

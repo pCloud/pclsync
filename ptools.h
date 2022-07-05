@@ -143,7 +143,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
 #define STUCK_ITEM_UNKNOWN_FILE   "UNKNOWN_FILE_NAME"
 #define STUCK_ITEM_UNKNOWN_FOLDER "UNKNOWN_FOLDER_NAME"
-#define STUCK_ITEM_UNKNOWN_PATH "UNKNOWN_PATH"
+#define STUCK_ITEM_UNKNOWN_PATH   "UNKNOWN_PATH"
 
  void log_list_elem(stuck_item* elem);
 
