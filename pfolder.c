@@ -1035,8 +1035,6 @@ char* psync_get_path_from_str(char* fullPath) {
   char* path;
   int i = strlen(fullPath);
 
-  printf("Fullpath len: [%d]\n", i);
-
   if (i < 2) {
     return NULL;
   }

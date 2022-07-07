@@ -1368,22 +1368,30 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
   if (res) {
     stuck_item* elem;
     int item_type;
-    char *path;
+    char *path, *local_name;
+
+    local_name = name;
 
     debug(D_WARNING, "BOBO: Create stuck element for local item id: [%lld], Name: [%s]", localitemid, name);
 
     if ((type == PSYNC_DOWNLOAD_FILE) || (type == PSYNC_DELETE_LOCAL_FILE) || (type == PSYNC_DOWNLOAD_FILE)) {
       debug(D_WARNING, "BOBO: Element type FILE");
       item_type = STUCK_ITEM_TYPE_FILE;
-      path = psync_local_path_for_local_file(localitemid, NULL);
+      
+      path = psync_get_path_by_fileid(itemid, NULL);
+      //path = psync_local_path_for_local_file(localitemid, NULL);
     }
     else {
       debug(D_WARNING, "BOBO: Element type FOLDER");
       item_type = STUCK_ITEM_TYPE_FOLDER;
-      path = psync_local_path_for_local_folder(localitemid, syncid, NULL);
+
+      path = psync_get_path_by_folderid(itemid, NULL);
+
+      local_name = nvl_str(local_name, get_folder_name_from_path(path));
+      //path = psync_local_path_for_local_folder(localitemid, syncid, NULL);
     }
 
-    elem = create_stuck_elem(itemid, STUCK_MSG_NO_PERMISSION, item_type, 0, path, name);
+    elem = create_stuck_elem(itemid, STUCK_MSG_NO_PERMISSION, item_type, 0, path, local_name);
 
     debug(D_WARNING, "BOBO: Adding task to stuck task list.");
     add_stuck_elem(elem);
