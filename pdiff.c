@@ -935,11 +935,18 @@ static void process_modifyfolder(const binresult *entry){
     oldparentfolderid=psync_get_number(vrow[0]);
     oldname=psync_dup_string(vrow[1]);
     oldflags=psync_get_number(vrow[2]);
+
+    debug(D_ERROR, "BOBO: Send MOD OBJECT data event");
+    psync_send_data_event(PEVENT_FS_MOD_OBJ, "", "", folderid, 0);
   }
   else{
     debug(D_ERROR, "got modify for non-existing folder %lu (%s), processing as create", (unsigned long)folderid, name->str);
     psync_sql_free_result(res);
     process_createfolder(entry);
+
+    debug(D_ERROR, "BOBO: Send ADD OBJECT data event");
+    psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
+
     return;
   }
   psync_sql_free_result(res);
@@ -955,8 +962,6 @@ static void process_modifyfolder(const binresult *entry){
     psync_delete_backup_device(folderid);
   }
 
-  psync_send_data_event(PEVENT_FS_DEL_OBJ, "", "", folderid, 0);
-
   mtime=psync_find_result(meta, "modified", PARAM_NUM)->num;
   psync_sql_bind_uint(st, 1, parentfolderid);
   psync_sql_bind_uint(st, 2, userid);
@@ -967,8 +972,6 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_bind_uint(st, 7, flags);
   psync_sql_bind_uint(st, 8, folderid);
   psync_sql_run(st);
-
-  psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
 
   if (oldparentfolderid!=parentfolderid){
     res=psync_sql_prep_statement("UPDATE folder SET subdircnt=subdircnt-1, mtime=? WHERE id=?");
@@ -1368,7 +1371,15 @@ static void process_modifyfile(const binresult *entry){
   if (!row){
     debug(D_ERROR, "got modify for non-existing file %lu (%s), processing as create", (unsigned long)fileid, name->str);
     process_createfile(entry);
+
+    debug(D_ERROR, "BOBO: Send ADD OBJECT data event");
+    psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", 0, fileid);
+
     return;
+  }
+  else {
+    debug(D_ERROR, "BOBO: Send MOD OBJECT data event");
+    psync_send_data_event(PEVENT_FS_MOD_OBJ, "", "", 0, fileid);
   }
 
   oldsize=psync_get_number(row[2]);
@@ -1399,8 +1410,6 @@ static void process_modifyfile(const binresult *entry){
   }
   else
     userid=psync_find_result(meta, "userid", PARAM_NUM)->num;
-
-  psync_send_data_event(PEVENT_FS_DEL_OBJ, "", "", 0, fileid);
   
   check_for_deletedfileid(meta);
   psync_sql_bind_uint(st, 1, fileid);
@@ -1416,8 +1425,6 @@ static void process_modifyfile(const binresult *entry){
   insert_revision(fileid, hash, psync_find_result(meta, "modified", PARAM_NUM)->num, size);
   oldparentfolderid=psync_get_number(row[0]);
   oldsync=psync_is_folder_in_downloadlist(oldparentfolderid);
-
-  psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", 0, fileid);
 
   if (oldparentfolderid==parentfolderid)
     newsync=oldsync;
