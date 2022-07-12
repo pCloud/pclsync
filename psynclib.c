@@ -740,6 +740,7 @@ void psync_tfa_set_code(const char *code, int trusted, int is_recovery){
 
 psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotepath, psync_synctype_t synctype){
   psync_folderid_t folderid=psync_get_folderid_by_path(remotepath);
+
   if (likely_log(folderid!=PSYNC_INVALID_FOLDERID))
     return psync_add_sync_by_folderid(localpath, folderid, synctype);
   else

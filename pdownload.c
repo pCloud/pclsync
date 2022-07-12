@@ -1379,7 +1379,6 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
       item_type = STUCK_ITEM_TYPE_FILE;
       
       path = psync_get_path_by_fileid(itemid, NULL);
-      //path = psync_local_path_for_local_file(localitemid, NULL);
     }
     else {
       debug(D_WARNING, "BOBO: Element type FOLDER");
@@ -1388,7 +1387,6 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
       path = psync_get_path_by_folderid(itemid, NULL);
 
       local_name = nvl_str(local_name, get_folder_name_from_path(path));
-      //path = psync_local_path_for_local_folder(localitemid, syncid, NULL);
     }
 
     elem = create_stuck_elem(itemid, STUCK_MSG_NO_PERMISSION, item_type, 0, path, local_name);
@@ -1411,9 +1409,17 @@ static void download_thread(){
 
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE "
                       "inprogress=0 AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD)" ORDER BY id LIMIT 1");
+
+    debug(D_NOTICE, "BOBO: Get download task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_DOWNLOAD));
+
     if (row){
       taskid=psync_get_number(row[0]);
       type=psync_get_number(row[1]);
+
+      //Bobo
+      debug(D_NOTICE, "BOBO: Process download task. Name: [%s]. TaskId: [%lld]", psync_get_string_or_null(row[6]), taskid);
+      //Bobo
+
       if (!download_task(taskid, type,
                          psync_get_number_or_null(row[2]),
                          psync_get_number(row[3]),
