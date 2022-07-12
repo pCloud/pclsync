@@ -508,7 +508,7 @@ void data_event_thread(void* ptr) {
       data = pop_elem(event_list);
 
       if (data) {
-        //debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
+        debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
         data_event_fptr(data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 

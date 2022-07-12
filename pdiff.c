@@ -904,6 +904,7 @@ static void process_modifyfolder(const binresult *entry){
 
   if (!entry){
     process_createfolder(NULL);
+
     if (st){
       psync_sql_free_result(st);
       st=NULL;
@@ -931,12 +932,12 @@ static void process_modifyfolder(const binresult *entry){
   res=psync_sql_query("SELECT parentfolderid, name, flags FROM folder WHERE id=?");
   psync_sql_bind_uint(res, 1, folderid);
   vrow=psync_sql_fetch_row(res);
+
   if (likely(vrow)){
     oldparentfolderid=psync_get_number(vrow[0]);
     oldname=psync_dup_string(vrow[1]);
     oldflags=psync_get_number(vrow[2]);
 
-    debug(D_ERROR, "BOBO: Send MOD OBJECT data event");
     psync_send_data_event(PEVENT_FS_MOD_OBJ, "", "", folderid, 0);
   }
   else{
@@ -944,11 +945,11 @@ static void process_modifyfolder(const binresult *entry){
     psync_sql_free_result(res);
     process_createfolder(entry);
 
-    debug(D_ERROR, "BOBO: Send ADD OBJECT data event");
     psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
 
     return;
   }
+
   psync_sql_free_result(res);
 
   if ((oldflags & PSYNC_FOLDER_FLAG_BACKUP_ROOT) != 0 && (flags & PSYNC_FOLDER_FLAG_BACKUP_ROOT) == 0) {
@@ -1251,6 +1252,7 @@ static void process_createfile(const binresult *entry){
     insert_revision(0, 0, 0, 0);
     return;
   }
+
   if (!st)
     st=psync_sql_prep_statement("INSERT OR IGNORE INTO file (id, parentfolderid, userid, size, hash, name, ctime, mtime, category, thumb, icon, "
                                 "artist, album, title, genre, trackno, width, height, duration, fps, videocodec, audiocodec, videobitrate, "
@@ -1353,6 +1355,7 @@ static void process_modifyfile(const binresult *entry){
       st=NULL;
     }
     process_createfile(NULL);
+
     return;
   }
 
@@ -1372,13 +1375,11 @@ static void process_modifyfile(const binresult *entry){
     debug(D_ERROR, "got modify for non-existing file %lu (%s), processing as create", (unsigned long)fileid, name->str);
     process_createfile(entry);
 
-    debug(D_ERROR, "BOBO: Send ADD OBJECT data event");
     psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", 0, fileid);
 
     return;
   }
   else {
-    debug(D_ERROR, "BOBO: Send MOD OBJECT data event");
     psync_send_data_event(PEVENT_FS_MOD_OBJ, "", "", 0, fileid);
   }
 
