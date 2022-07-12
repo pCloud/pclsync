@@ -52,9 +52,11 @@ void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 //Event types to notify the UI of changes to the files/folders in order to update the search index.
 #define PEVENT_FS_ADD_OBJ 101
 #define PEVENT_FS_DEL_OBJ 102
+#define PEVENT_FS_MOD_OBJ 103
 //Bobo
 #define PEVENT_STUCK_OBJ_CNT 103
 //Bobo
+
 //Data event type constants. End.
 
 typedef struct {
