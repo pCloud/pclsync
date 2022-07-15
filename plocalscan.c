@@ -414,10 +414,14 @@ static void add_deleted_element(const sync_folderlist *e, psync_folderid_t folde
     add_element_to_scan_list(SCAN_LIST_DELFOLDERS, c);
   }
   else {
+    //Bobo
     //Send events only for backups, not for other syncs
+    /*
     if (synctype == 7) {
       psync_send_backup_del_event(c->remoteid);
     }
+    */
+    //Bobo
 
     add_element_to_scan_list(SCAN_LIST_DELFILES, c);
   }
@@ -436,6 +440,11 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   sync_folderlist *l, *fdisk, *fdb;
   char *subpath;
   int cmp;
+  //Bobo
+  uint64_t renamed_inode = 0;
+  //Bobo
+
+
   //debug(D_NOTICE, "scanning folder %s deviceid: %llu", localpath, deviceid);
   if (unlikely_log(scanner_local_folder_to_list(localpath, &disklist))){
     return;
@@ -453,12 +462,27 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     fdisk=psync_list_element(ldisk, sync_folderlist, list);
     fdb=psync_list_element(ldb, sync_folderlist, list);
     cmp=psync_filename_cmp(fdisk->name, fdb->name);
+
+    debug(D_NOTICE, "BOBO: Compare names: DISK[%s] ?= DB[%s], Inode DISK[%lld] = DB[%lld]", fdisk->name, fdb->name, fdisk->inode, fdb->inode);
+
+    if ((cmp != 0) && (fdisk->inode == fdb->inode)) {
+      debug(D_NOTICE, "BOBO: Renamed element found. Store INODE.");
+      renamed_inode = fdisk->inode;
+    }
+
     if (cmp==0){
+      debug(D_NOTICE, "BOBO: Same file names detected.");
+
       if (fdisk->isfolder==fdb->isfolder){
+        debug(D_NOTICE, "BOBO: Same file names Folder.");
         fdisk->localid=fdb->localid;
         fdisk->remoteid=fdb->remoteid;
-        if (!fdisk->isfolder && (fdisk->mtimenat!=fdb->mtimenat || fdisk->size!=fdb->size || fdisk->inode!=fdb->inode))
+
+        if (!fdisk->isfolder && (fdisk->mtimenat!=fdb->mtimenat || fdisk->size!=fdb->size || fdisk->inode!=fdb->inode)){
+          debug(D_NOTICE, "BOBO: Same file names add_modified_file.");
           add_modified_file(fdisk, fdb, folderid, localfolderid, syncid, synctype);
+        }
+
         if (fdisk->isfolder && psync_deviceid_short(fdisk->deviceid)!=fdb->deviceid && fdisk->inode!=fdb->inode){
           if (fdisk->deviceid==deviceid){
             debug(D_NOTICE, "deviceid of localfolder %s %lu is different, skipping", fdisk->name, (unsigned long)fdisk->localid);
@@ -467,6 +491,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
         }
       }
       else{
+        debug(D_NOTICE, "BOBO: Same file names File.");
         add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
         add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       }
@@ -474,10 +499,19 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
       ldb=ldb->next;
     }
     else if (cmp<0){ // new element on disk
+      debug(D_NOTICE, "BOBO: New element on disk.");
       add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       ldisk=ldisk->next;
     }
     else { // deleted element from disk
+      debug(D_NOTICE, "BOBO: Deleted element on disk.");
+
+      //Send events only for backups, not for other syncs
+      if ((synctype == 7) && (renamed_inode != fdb->inode)) {
+        debug(D_NOTICE, "BOBO: Diferent Inodes found. Send event.");
+        psync_send_backup_del_event(fdb->remoteid);
+      }
+
       add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
       ldb=ldb->next;
     }
@@ -490,6 +524,15 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   }
   while (ldb!=&dblist){
     fdb=psync_list_element(ldb, sync_folderlist, list);
+    //Bobo
+    debug(D_NOTICE, "BOBO: Deleted element left in DB list.");
+
+    if ((synctype == 7)) {
+      debug(D_NOTICE, "BOBO: BACKUP Detected. Send event.");
+      psync_send_backup_del_event(fdb->remoteid);
+    }
+
+    //Bobo
     add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
     ldb=ldb->next;
   }

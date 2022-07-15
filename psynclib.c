@@ -2919,6 +2919,8 @@ void psync_async_ui_callback(void* ptr) {
   int eventId = (int*)ptr;
   time_t currTime = psync_time();
 
+  debug(D_NOTICE, "BOBO: Send event to UI. Event id: [%d]", eventId);
+
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
     debug(D_NOTICE, "Send event to UI. Event id: [%d]", eventId);
 
@@ -2981,8 +2983,12 @@ int psync_delete_backup_device(psync_folderid_t fId) {
 /***********************************************************************************************************************************************/
 void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId) {
   time_t currTime = psync_time();
+
+  debug(D_NOTICE, "BOBO: ADD EVENT IF NOT TOO SOON.");
   
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
+    debug(D_NOTICE, "BOBO: ADD EVENT TO LIST.");
+
     if (remoteFId == 0) {
       psync_send_eventid(PEVENT_BKUP_F_DEL_NOTSYNCED);
     }
