@@ -1365,7 +1365,7 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
   }
 
   //Bobo
-  if (res) {
+  if (res && (type != PSYNC_DOWNLOAD_FILE)) {
     stuck_item* elem;
     int item_type;
     char *path, *local_name;

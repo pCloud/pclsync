@@ -322,6 +322,7 @@ static void event_thread(void *ptr){
     if (!psync_do_run)
       break;
 
+    debug(D_NOTICE, "BOBO: SEND EVENT!");
     callback(event->event, event->data);
 
     if (event->freedata)
