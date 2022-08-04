@@ -132,7 +132,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  char* get_folder_name_from_path(char* path);
  /**********************************************************************************************************/
 //Bobo
-#define STUCK_ITEM_RETRY_COUNT 3
+#define STUCK_ITEM_RETRY_COUNT 0
 #define STUCK_ITEM_TOTAL_COUNT 100
 
 #define STUCK_ITEM_TYPE_FOLDER 1
@@ -147,7 +147,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  void log_list_elem(stuck_item* elem);
 
- void log_list(stuck_item* list);
+ void log_list();
 
  stuck_item* get_last_element();
 

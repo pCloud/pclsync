@@ -1372,22 +1372,13 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
 
     local_name = name;
 
-    debug(D_WARNING, "BOBO: Create stuck element for local item id: [%lld], Name: [%s]", localitemid, name);
+    debug(D_WARNING, "BOBO: Create stuck element for stuck folder for local item id: [%lld], Name: [%s]", localitemid, name);
 
-    if ((type == PSYNC_DOWNLOAD_FILE) || (type == PSYNC_DELETE_LOCAL_FILE) || (type == PSYNC_DOWNLOAD_FILE)) {
-      debug(D_WARNING, "BOBO: Element type FILE");
-      item_type = STUCK_ITEM_TYPE_FILE;
-      
-      path = psync_get_path_by_fileid(itemid, NULL);
-    }
-    else {
-      debug(D_WARNING, "BOBO: Element type FOLDER");
-      item_type = STUCK_ITEM_TYPE_FOLDER;
+    item_type = STUCK_ITEM_TYPE_FOLDER;
 
-      path = psync_get_path_by_folderid(itemid, NULL);
+    path = psync_get_path_by_folderid(itemid, NULL);
 
-      local_name = nvl_str(local_name, get_folder_name_from_path(path));
-    }
+    local_name = nvl_str(local_name, get_folder_name_from_path(path));
 
     elem = create_stuck_elem(itemid, STUCK_MSG_NO_PERMISSION, item_type, 0, path, local_name);
 
@@ -1404,6 +1395,9 @@ static void download_thread(){
   psync_variant *row;
   uint64_t taskid;
   uint32_t type;
+
+FailedTasksReset:
+
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
 
@@ -1417,7 +1411,7 @@ static void download_thread(){
       type=psync_get_number(row[1]);
 
       //Bobo
-      debug(D_NOTICE, "BOBO: Process download task. Name: [%s]. TaskId: [%lld]", psync_get_string_or_null(row[6]), taskid);
+      debug(D_NOTICE, "BOBO: Process download task. Name: [%s]. TaskId: [%lld]", psync_get_string_or_null(row[7]), taskid);
       //Bobo
 
       if (!download_task(taskid, type,
@@ -1435,11 +1429,47 @@ static void download_thread(){
           psync_path_status_sync_folder_task_completed(psync_get_number(row[2]), psync_get_number(row[4]));
         }
       }
-      else if (type!=PSYNC_DOWNLOAD_FILE)
+      else if (type!=PSYNC_DOWNLOAD_FILE){
+        //Bobo
+        psync_sql_res* res;
+        debug(D_NOTICE, "BOBO: Download task failed. Update type.");
+
+        res = psync_sql_prep_statement("UPDATE task SET type=type+? WHERE id=?");
+
+        psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE_FAILED);
+        psync_sql_bind_uint(res, 2, taskid);
+        psync_sql_run_free(res);
+        //Bobo
+
         psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
+      }
+
       psync_free(row);
       continue;
     }
+    //Bobo
+    else {
+      psync_sql_res* res;
+
+      debug(D_NOTICE, "BOBO: No more DOWNLOAD tasks. Check for failed ones.");
+
+      row = psync_sql_row("SELECT 1 FROM task WHERE type > 200 AND type < 300");
+
+      if (row) {
+        psync_free(row);
+        debug(D_NOTICE, "BOBO: Failed DOWNLOAD tasks found. Reset them.");
+
+        res = psync_sql_prep_statement("UPDATE task SET type=type-? WHERE type > 200 AND type < 300");
+
+        psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE_FAILED);
+        psync_sql_run_free(res);
+
+        debug(D_NOTICE, "BOBO: Reset failed tasks. Done.");
+
+        goto FailedTasksReset;
+      }
+    }
+    //Bobo
 
     pthread_mutex_lock(&download_mutex);
     if (!download_wakes)

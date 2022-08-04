@@ -62,6 +62,13 @@
 #define PSYNC_DELETE_REMOTE_FILE   ((PSYNC_TASK_TYPE_DELETE<<PSYNC_TASK_TYPE_OFF)+PSYNC_TASK_FILE+PSYNC_TASK_UPLOAD)
 #define PSYNC_DELREC_REMOTE_FOLDER ((PSYNC_TASK_TYPE_DELREC<<PSYNC_TASK_TYPE_OFF)+PSYNC_TASK_FOLDER+PSYNC_TASK_UPLOAD)
 
+//Bobo
+#define PSYNC_UPLOAD_FILE_FAILED   101
+
+#define PSYNC_DOWNLOAD_FILE_FAILED 201
+//Bobo
+
+
 
 void psync_task_create_local_folder(psync_syncid_t syncid, psync_folderid_t folderid, psync_folderid_t localfolderid);
 void psync_task_delete_local_folder(psync_syncid_t syncid, psync_folderid_t folderid, psync_folderid_t localfolderid, const char *remotepath);
