@@ -828,11 +828,11 @@ stuck_item* search_list(uint64_t id) {
   debug(D_NOTICE, "BOBO: Looking for element id: [%lld]", id);
 
   while (1) {
-    debug(D_NOTICE, "BOBO: Check element:");
-    log_list_elem(local_list);
+    //debug(D_NOTICE, "BOBO: Check element:");
+    //log_list_elem(local_list);
     
     if (local_list->id == id) {
-      debug(D_NOTICE, "BOBO: Element found.");
+      //debug(D_NOTICE, "BOBO: Element found.");
       return local_list;
     }
 
@@ -956,7 +956,8 @@ stuck_return_list* get_stuck_list() {
   local_list = stuck_sync_tasks->list;
 
   while (1) {
-    if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
+    if (local_list->retry_cnt >= STUCK_ITEM_RETRY_COUNT) {
+      debug(D_NOTICE, "BOBO: Return element: Name: [%s], Path: [%s].", local_list->name, local_list->path);
       list->items[list->elem_count].name = psync_strdup(local_list->name);
       list->items[list->elem_count].path = psync_strdup(local_list->path);
 

@@ -1090,6 +1090,7 @@ psync_variant *psync_sql_row(const char *sql){
   int code, cnt;
   psync_sql_check_query_plan(sql);
   psync_sql_rdlock();
+
   code=sqlite3_prepare_v2(psync_db, sql, -1, &stmt, NULL);
   if (unlikely(code!=SQLITE_OK)){
     psync_sql_rdunlock();
@@ -1393,6 +1394,7 @@ psync_sql_res *psync_sql_prep_statement_nocache(const char *sql){
   sqlite3_stmt *stmt;
   psync_sql_res *res;
   int code;
+
   psync_sql_check_query_plan(sql);
 #if IS_DEBUG
   psync_sql_do_lock(file, line);
@@ -1427,6 +1429,7 @@ psync_sql_res *psync_sql_do_prep_statement(const char *sql, const char *file, un
 psync_sql_res *psync_sql_prep_statement(const char *sql){
 #endif
   psync_sql_res *ret;
+
   ret=psync_cache_get(sql);
   if (ret){
 //    debug(D_NOTICE, "got statement %s from cache", sql);

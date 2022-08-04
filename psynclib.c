@@ -294,20 +294,41 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
     pthread_mutex_unlock(&psync_libstate_mutex);
   }
   psync_apiserver_init();
-  if (status_callback)
+  debug(D_NOTICE, "API server init done.");
+
+  if (status_callback) {
     psync_set_status_callback(status_callback);
-  if (event_callback)
+    debug(D_NOTICE, "Status callback set.");
+  }
+    
+  if (event_callback) {
     psync_set_event_callback(event_callback);
+    debug(D_NOTICE, "Event callback set.");
+  }
+    
   psync_syncer_init();
+  debug(D_NOTICE, "Syncer init done.");
   psync_diff_init();
+  debug(D_NOTICE, "Diff init done.");
   psync_upload_init();
+  debug(D_NOTICE, "Upload init done.");
   psync_download_init();
+  debug(D_NOTICE, "Download init done.");
   psync_netlibs_init();
+  debug(D_NOTICE, "Netlibs init done.");
   psync_localscan_init();
+  debug(D_NOTICE, "Localscan init done.");
   psync_p2p_init();
-  if (psync_setting_get_bool(_PS(autostartfs)))
+  debug(D_NOTICE, "P2P init done.");
+
+  if (psync_setting_get_bool(_PS(autostartfs))){
     psync_fs_start();
+    debug(D_NOTICE, "FS start done.");
+  }
+
   psync_devmon_init();
+
+  debug(D_NOTICE, "Devmon init done.");
 }
 
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize){
@@ -2983,12 +3004,8 @@ int psync_delete_backup_device(psync_folderid_t fId) {
 /***********************************************************************************************************************************************/
 void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId) {
   time_t currTime = psync_time();
-
-  debug(D_NOTICE, "BOBO: ADD EVENT IF NOT TOO SOON.");
   
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
-    debug(D_NOTICE, "BOBO: ADD EVENT TO LIST.");
-
     if (remoteFId == 0) {
       psync_send_eventid(PEVENT_BKUP_F_DEL_NOTSYNCED);
     }

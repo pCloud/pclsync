@@ -263,6 +263,22 @@ static int file_download_send_error(stream_t *s, async_thread_params_t *prms, fi
 
   if (error){
     debug(D_NOTICE, "got error %u(%u) for file %s", (unsigned)error, (unsigned)errorflags, fda->localpath);
+    //Bobo
+    stuck_item* elem;
+    int item_type;
+    char* path, * local_name;
+
+    local_name = get_folder_name_from_path(fda->localpath);
+
+    debug(D_WARNING, "BOBO: Create stuck element for file. Path: [%s]", fda->localpath);
+
+    item_type = STUCK_ITEM_TYPE_FILE;
+
+    elem = create_stuck_elem(fda->fileid, STUCK_MSG_NO_PERMISSION, item_type, 0, fda->localpath, local_name);
+
+    debug(D_WARNING, "BOBO: Adding task to stuck task list.");
+    add_stuck_elem(elem);
+    //Bobo
   }
   else{
     debug(D_NOTICE, "download of %s finished", fda->localpath);
