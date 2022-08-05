@@ -767,6 +767,7 @@ void add_stuck_elem(stuck_item* elem) {
   }
 
   debug(D_NOTICE, "BOBO: Total number of elements in list: [%d], Stuck element: [%d]", stuck_sync_tasks->total_cnt, stuck_sync_tasks->stuck_cnt);
+  debug(D_NOTICE, "BOBO: Adding element. Name: [%s]", elem->name);
 
   if (stuck_sync_tasks->stuck_cnt > STUCK_ITEM_TOTAL_COUNT) {
     debug(D_NOTICE, "BOBO: Too many stuck elements in the list. Skip adding more.");
@@ -784,29 +785,31 @@ void add_stuck_elem(stuck_item* elem) {
     }
 
     debug(D_NOTICE, "BOBO: Element alreay in list. Retry cnt: [%d]", last_elem->retry_cnt);
-
-    if ((last_elem->retry_cnt >= STUCK_ITEM_RETRY_COUNT) && (last_elem->retry_cnt < STUCK_ITEM_RETRY_COUNT+2)) {//demek ==4
-      stuck_sync_tasks->stuck_cnt++;
-
-      uint64_t sc = stuck_sync_tasks->stuck_cnt;
-      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", sc, 0);
-    }
-
     pthread_mutex_unlock(&stuck_elem_list_mutex);
 
-    return;
+    
+  }
+  else{
+    debug(D_NOTICE, "BOBO: Add new element to the list.");
+    log_list_elem(elem);
+
+    if (stuck_sync_tasks->list->next_elem == NULL) { //Only one element in the list.
+      stuck_sync_tasks->list->next_elem = (stuck_item*)elem;
+    }
+    else {
+      last_elem = get_last_element(stuck_sync_tasks);// ???? if last_elem == -1
+      if(last_elem){
+        last_elem->next_elem = (stuck_item*)elem;
+      }
+    }
   }
 
-  debug(D_NOTICE, "BOBO: Add new element to the list.");
-  log_list_elem(elem);
+  if ((elem->retry_cnt >= STUCK_ITEM_RETRY_COUNT) && (elem->retry_cnt < STUCK_ITEM_RETRY_COUNT + 2)) {
+    stuck_sync_tasks->stuck_cnt++;
+    debug(D_NOTICE, "BOBO: Stuck element detected. Increment the global counter. [%d]", stuck_sync_tasks->stuck_cnt);
 
-  if (stuck_sync_tasks->list->next_elem == NULL) { //Only one element in the list.
-    stuck_sync_tasks->list->next_elem = (stuck_item*)elem;
-  }
-  else {
-    last_elem = get_last_element(stuck_sync_tasks);// ???? if last_elem == -1
-    if(last_elem)
-    last_elem->next_elem = (stuck_item*)elem;
+    uint64_t sc = stuck_sync_tasks->stuck_cnt;
+    psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", sc, 0);
   }
 
   stuck_sync_tasks->total_cnt++;
@@ -949,6 +952,8 @@ stuck_return_list* get_stuck_list() {
     return NULL;
   }
 
+  pthread_mutex_lock(&stuck_elem_list_mutex);
+
   list = (stuck_return_list*)psync_malloc(sizeof(stuck_return_list));
 
   list->elem_count = 0;
@@ -971,6 +976,8 @@ stuck_return_list* get_stuck_list() {
       }
     }
 
+    //debug(D_NOTICE, "BOBO: Next elemenmt in list: [%lld]", local_list->next_elem);
+
     if (local_list->next_elem == NULL) {
       debug(D_NOTICE, "BOBO: Last element. Return.");
       break;
@@ -978,6 +985,8 @@ stuck_return_list* get_stuck_list() {
 
     local_list = (stuck_item*)local_list->next_elem;
   }
+
+  pthread_mutex_unlock(&stuck_elem_list_mutex);
 
   return list;
 }
