@@ -455,7 +455,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   //Bobo
   else {
     debug(D_WARNING, "BOBO: Scan sucess. Delete element for path: [%s].", localpath);
-    delete_element(localfolderid);
+    //delete_element(localfolderid);
   }
   //Bobo
 
