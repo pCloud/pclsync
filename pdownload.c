@@ -1078,6 +1078,11 @@ static void task_run_download_file_thread(void *ptr){
     psync_wake_download();
   }
   else{
+    //Bobo
+    debug(D_NOTICE, "BOBO: File download finished. Delete list elemnt: [%lld].", dt->localfolderid);
+    delete_element(dt->localfolderid);
+    //Bobo
+
     delete_task(dt->taskid);
     psync_path_status_sync_folder_task_completed(dt->dwllist.syncid, dt->localfolderid);
   }
@@ -1208,6 +1213,22 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   }
   else {
     debug(D_WARNING, "Could not get free space for [%s], maybe it is locally deleted, sleeping a bit and failing task", localpath);
+    //Bobo
+    /*
+    stuck_item* elem;
+    int item_type;
+
+    debug(D_WARNING, "BOBO: Create stuck element for file. Path: [%s]", localpath);
+
+    item_type = STUCK_ITEM_TYPE_FILE;
+    
+    elem = create_stuck_elem(, STUCK_MSG_NO_PERMISSION, item_type, 0, localpath, dt->localname);
+
+    debug(D_WARNING, "BOBO: Adding task to stuck task list.");
+    add_stuck_elem(elem);
+    */
+    //Bobo
+
     free_download_task(dt);
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
     return -1;

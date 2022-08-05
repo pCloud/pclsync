@@ -785,9 +785,6 @@ void add_stuck_elem(stuck_item* elem) {
     }
 
     debug(D_NOTICE, "BOBO: Element alreay in list. Retry cnt: [%d]", last_elem->retry_cnt);
-    pthread_mutex_unlock(&stuck_elem_list_mutex);
-
-    
   }
   else{
     debug(D_NOTICE, "BOBO: Add new element to the list.");
@@ -859,6 +856,7 @@ void init_stuck_list() {
 /***********************************************************************/
 void delete_element(uint64_t id) {
   debug(D_NOTICE, "BOBO: delete_element. Mutex Lock.");
+
   pthread_mutex_lock(&stuck_elem_list_mutex);
 
   stuck_item* local_list = stuck_sync_tasks->list;
@@ -937,10 +935,10 @@ void delete_element(uint64_t id) {
     local_list = (stuck_item*)local_list->next_elem;
   }
 
-  pthread_mutex_unlock(&stuck_elem_list_mutex);
-
   //Notify new stuck element count
   psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
+
+  pthread_mutex_unlock(&stuck_elem_list_mutex);
 }
 /*************************************************************/
 stuck_return_list* get_stuck_list() {
@@ -951,8 +949,6 @@ stuck_return_list* get_stuck_list() {
     debug(D_NOTICE, "BOBO: List empty. Return.");
     return NULL;
   }
-
-  pthread_mutex_lock(&stuck_elem_list_mutex);
 
   list = (stuck_return_list*)psync_malloc(sizeof(stuck_return_list));
 
@@ -985,8 +981,6 @@ stuck_return_list* get_stuck_list() {
 
     local_list = (stuck_item*)local_list->next_elem;
   }
-
-  pthread_mutex_unlock(&stuck_elem_list_mutex);
 
   return list;
 }

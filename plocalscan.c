@@ -414,15 +414,6 @@ static void add_deleted_element(const sync_folderlist *e, psync_folderid_t folde
     add_element_to_scan_list(SCAN_LIST_DELFOLDERS, c);
   }
   else {
-    //Bobo
-    //Send events only for backups, not for other syncs
-    /*
-    if (synctype == 7) {
-      psync_send_backup_del_event(c->remoteid);
-    }
-    */
-    //Bobo
-
     add_element_to_scan_list(SCAN_LIST_DELFILES, c);
   }
 }
