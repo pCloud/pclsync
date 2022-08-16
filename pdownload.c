@@ -1080,7 +1080,7 @@ static void task_run_download_file_thread(void *ptr){
   else{
     //Bobo
     debug(D_NOTICE, "BOBO: File download finished. Delete list elemnt: [%lld].", dt->localfolderid);
-    delete_element(dt->localfolderid);
+    delete_element(dt->hash);
     //Bobo
 
     delete_task(dt->taskid);
@@ -1193,7 +1193,14 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   if (hastargetchecksum && dt->localexists && size==dt->localsize && !memcmp(dt->checksum, targetchecksum, PSYNC_HASH_DIGEST_HEXLEN)){
     debug(D_NOTICE, "file %s already exists and has correct checksum, not downloading", localname);
     ret=stat_and_create_local(dt->dwllist.syncid, dt->dwllist.fileid, dt->localfolderid, dt->filename, dt->localname, targetchecksum, size, hash);
+
+    //Bobo
+    debug(D_NOTICE, "BOBO: File downloaded successfuly. Delte the stuck element.");
+    delete_element(dt->hash);
+    //Bobo
+
     free_download_task(dt);
+
     return ret;
   }
   minfree=psync_setting_get_uint(_PS(minlocalfreespace));
@@ -1214,19 +1221,20 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   else {
     debug(D_WARNING, "Could not get free space for [%s], maybe it is locally deleted, sleeping a bit and failing task", localpath);
     //Bobo
-    /*
     stuck_item* elem;
     int item_type;
+    char* local_name;
 
-    debug(D_WARNING, "BOBO: Create stuck element for file. Path: [%s]", localpath);
+    debug(D_WARNING, "BOBO: Create stuck element for item. Path: [%s], Name: [%s], Local Folder Id: [%llu]", localpath, dt->localname, dt->localfolderid);
 
     item_type = STUCK_ITEM_TYPE_FILE;
-    
-    elem = create_stuck_elem(, STUCK_MSG_NO_PERMISSION, item_type, 0, localpath, dt->localname);
+
+    local_name = get_file_name_from_path(dt->localname);
+
+    elem = create_stuck_elem(dt->hash, STUCK_MSG_NO_PERMISSION, item_type, 0, localpath, local_name);
 
     debug(D_WARNING, "BOBO: Adding task to stuck task list.");
     add_stuck_elem(elem);
-    */
     //Bobo
 
     free_download_task(dt);
@@ -1387,7 +1395,7 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
 
   //Bobo
   if (res && (type != PSYNC_DOWNLOAD_FILE)) {
-    stuck_item* elem;
+    stuck_item *elem;
     int item_type;
     char *path, *local_name;
 
@@ -1395,11 +1403,18 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
 
     debug(D_WARNING, "BOBO: Create stuck element for stuck folder for local item id: [%lld], Name: [%s]", localitemid, name);
 
-    item_type = STUCK_ITEM_TYPE_FOLDER;
+    if ((type == PSYNC_DELETE_LOCAL_FILE) || (type == PSYNC_RENAME_LOCAL_FILE)) {
+      item_type = STUCK_ITEM_TYPE_FILE;
 
-    path = psync_get_path_by_folderid(itemid, NULL);
+      path = psync_get_path_by_fileid(itemid, NULL);
+    }
+    else {
+      item_type = STUCK_ITEM_TYPE_FOLDER;
 
-    local_name = nvl_str(local_name, get_folder_name_from_path(path));
+      path = psync_get_path_by_folderid(itemid, NULL);
+
+      local_name = nvl_str(local_name, get_folder_name_from_path(path));
+    }
 
     elem = create_stuck_elem(itemid, STUCK_MSG_NO_PERMISSION, item_type, 0, path, local_name);
 
@@ -1425,7 +1440,7 @@ FailedTasksReset:
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE "
                       "inprogress=0 AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD)" ORDER BY id LIMIT 1");
 
-    debug(D_NOTICE, "BOBO: Get download task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_DOWNLOAD));
+    //debug(D_NOTICE, "BOBO: Get download task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_DOWNLOAD));
 
     if (row){
       taskid=psync_get_number(row[0]);
@@ -1485,7 +1500,7 @@ FailedTasksReset:
         psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE_FAILED);
         psync_sql_run_free(res);
 
-        debug(D_NOTICE, "BOBO: Reset failed tasks. Done.");
+        debug(D_NOTICE, "BOBO: Download_thread. Reset failed tasks. Done.");
 
         goto FailedTasksReset;
       }

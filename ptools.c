@@ -629,10 +629,35 @@ char *get_sync_folder_by_syncid(uint64_t syncId) {
   return retName;
 }
 /*************************************************************/
+char* get_file_name_from_path(char* path){
+  char* name;
+
+  debug(D_NOTICE, "BOBO: Get name from path: [%s]", path);
+
+  if(!path) {
+    return NULL;
+  }
+
+  path = path + strlen(path)-1;
+
+  while (*path != NULL) {
+    if ((*path == '\\') || (*path == '/')) {
+      break;
+    }
+
+    name = path;
+    path--;
+  }
+
+  return strdup(name);
+}
+/*************************************************************/
 char* get_folder_name_from_path(char* path) {
   char* folder;
 
-  while (*path != 0) {
+  debug(D_NOTICE, "BOBO: Get folder name from path: [%s]", path);
+
+  while (*path != NULL) {
     if ((*path == '\\') || (*path == '/')) {
       folder = ++path;
     }
@@ -685,7 +710,7 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
 }
 /***********************************************************************/
 void free_stuck_elem(stuck_item* elem) {
-  debug(D_NOTICE, "BOBO: Free element: [%lld]", elem->id);
+  debug(D_NOTICE, "BOBO: Free element: [%llu]", elem->id);
 
   /*
   psync_free(elem->id);
@@ -703,11 +728,11 @@ void free_stuck_elem(stuck_item* elem) {
 /***********************************************************************/
 void log_list_elem(stuck_item* elem) {
   debug(D_NOTICE, "**********************************");
-  debug(D_NOTICE,"Item Id  : [%lld]", elem->id);
+  debug(D_NOTICE,"Item Id  : [%llu]", elem->id);
   debug(D_NOTICE,"Elem Type: [%d]", elem->item_type);
   debug(D_NOTICE,"Msg Id   : [%d]", elem->msg_id);
   debug(D_NOTICE,"Retry Cnt: [%d]", elem->retry_cnt);
-  debug(D_NOTICE,"Next Elem: [%lld]", elem->next_elem);
+  debug(D_NOTICE,"Next Elem: [%llu]", elem->next_elem);
   debug(D_NOTICE,"Elem Name: [%s]", elem->name);
   debug(D_NOTICE,"Elem Path: [%s]", elem->path);
   debug(D_NOTICE, "**********************************");
@@ -761,6 +786,14 @@ void add_stuck_elem(stuck_item* elem) {
     stuck_sync_tasks->list = elem;
     stuck_sync_tasks->total_cnt++;
 
+    if ((elem->retry_cnt >= STUCK_ITEM_RETRY_COUNT) && (elem->retry_cnt < STUCK_ITEM_RETRY_COUNT + 2)) {
+      stuck_sync_tasks->stuck_cnt++;
+      debug(D_NOTICE, "BOBO: Stuck element detected. Increment the global counter. [%d]", stuck_sync_tasks->stuck_cnt);
+
+      uint64_t sc = stuck_sync_tasks->stuck_cnt;
+      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", sc, 0);
+    }
+
     pthread_mutex_unlock(&stuck_elem_list_mutex);
 
     return;
@@ -799,17 +832,17 @@ void add_stuck_elem(stuck_item* elem) {
         last_elem->next_elem = (stuck_item*)elem;
       }
     }
+
+    if ((elem->retry_cnt >= STUCK_ITEM_RETRY_COUNT) && (elem->retry_cnt < STUCK_ITEM_RETRY_COUNT + 2)) {
+      stuck_sync_tasks->stuck_cnt++;
+      debug(D_NOTICE, "BOBO: Stuck element detected. Increment the global counter. [%d]", stuck_sync_tasks->stuck_cnt);
+
+      uint64_t sc = stuck_sync_tasks->stuck_cnt;
+      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", sc, 0);
+    }
+
+    stuck_sync_tasks->total_cnt++;
   }
-
-  if ((elem->retry_cnt >= STUCK_ITEM_RETRY_COUNT) && (elem->retry_cnt < STUCK_ITEM_RETRY_COUNT + 2)) {
-    stuck_sync_tasks->stuck_cnt++;
-    debug(D_NOTICE, "BOBO: Stuck element detected. Increment the global counter. [%d]", stuck_sync_tasks->stuck_cnt);
-
-    uint64_t sc = stuck_sync_tasks->stuck_cnt;
-    psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", sc, 0);
-  }
-
-  stuck_sync_tasks->total_cnt++;
 
   pthread_mutex_unlock(&stuck_elem_list_mutex);
 }
@@ -825,7 +858,7 @@ stuck_item* search_list(uint64_t id) {
 
   local_list = stuck_sync_tasks->list;
 
-  debug(D_NOTICE, "BOBO: Looking for element id: [%lld]", id);
+  debug(D_NOTICE, "BOBO: Looking for element id: [%llu]", id);
 
   while (1) {
     //debug(D_NOTICE, "BOBO: Check element:");
@@ -862,7 +895,7 @@ void delete_element(uint64_t id) {
   stuck_item* local_list = stuck_sync_tasks->list;
   stuck_item* last_element = NULL;
    
-  debug(D_NOTICE, "BOBO: Delete element with Id: [%lld]", id);
+  debug(D_NOTICE, "BOBO: Delete element with Id: [%llu]", id);
 
   if (local_list == NULL) {
     debug(D_NOTICE, "BOBO: List is empty. Return.");
@@ -871,7 +904,7 @@ void delete_element(uint64_t id) {
   }
 
   while (1) {
-    debug(D_NOTICE, "BOBO: Check element id: [%lld] ?= [%lld]", local_list->id, id);
+    debug(D_NOTICE, "BOBO: Check element id: [%llu] ?= [%llu]", local_list->id, id);
 
     //First element of the list.
     if ((last_element == NULL) && (local_list->id == id)) {

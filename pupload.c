@@ -1370,6 +1370,7 @@ static void task_run_upload_file_thread(void *ptr){
   upload_task_t *ut;
   psync_sql_res *res;
   ut=(upload_task_t *)ptr;
+
   if (task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist)){
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
     res=psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
@@ -1377,16 +1378,21 @@ static void task_run_upload_file_thread(void *ptr){
     psync_sql_run_free(res);
     psync_wake_upload();
   }
-  else
+  else {
+    debug(D_NOTICE, "BOBO: Task failed. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
     delete_upload_task(ut->upllist.taskid, ut->upllist.localfileid);
+  }
+
   pthread_mutex_lock(&current_uploads_mutex);
   psync_status.bytestouploadcurrent-=ut->upllist.filesize;
   psync_status.bytesuploaded-=ut->upllist.uploaded;
   psync_status.filesuploading--;
+
   if (!psync_status.filesuploading){
     psync_status.bytesuploaded=0;
     psync_status.bytestouploadcurrent=0;
   }
+
   psync_list_del(&ut->upllist.list);
   wake_upload_when_ready();
   pthread_mutex_unlock(&current_uploads_mutex);
@@ -1526,7 +1532,7 @@ static void upload_thread(){
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE type&"
                        NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_UPLOAD)" AND inprogress=0 ORDER BY id LIMIT 1");
 
-    debug(D_NOTICE, "BOBO: Got upload task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_UPLOAD));
+    //debug(D_NOTICE, "BOBO: Got upload task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_UPLOAD));
 
     if (row){
       taskid=psync_get_number(row[0]);
@@ -1577,7 +1583,7 @@ static void upload_thread(){
       psync_sql_bind_uint(res, 1, PSYNC_SLEEP_ON_FAILED_UPLOAD);
       psync_sql_run_free(res);
 
-      debug(D_NOTICE, "BOBO: Reset failed tasks. Done.");
+      debug(D_NOTICE, "BOBO: Upload_thread. Reset failed tasks. Done.");
     }
     //Bobo
 
