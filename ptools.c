@@ -779,7 +779,9 @@ stuck_item* get_last_element() {
 void add_stuck_elem(stuck_item* elem) {
   stuck_item* last_elem = NULL;
 
+  debug(D_NOTICE, "BOBO: add_stuck_elem. Take Lock.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: add_stuck_elem. Got Lock.");
 
   if (!stuck_sync_tasks->list) {
     debug(D_NOTICE, "BOBO: List is empty. Init.");
@@ -845,6 +847,8 @@ void add_stuck_elem(stuck_item* elem) {
   }
 
   pthread_mutex_unlock(&stuck_elem_list_mutex);
+
+  debug(D_NOTICE, "BOBO: add_stuck_elem. Release Lock.");
 }
 /***********************************************************************/
 stuck_item* search_list(uint64_t id) {
@@ -888,14 +892,15 @@ void init_stuck_list() {
 }
 /***********************************************************************/
 void delete_element(uint64_t id) {
-  debug(D_NOTICE, "BOBO: delete_element. Mutex Lock.");
 
+  debug(D_NOTICE, "BOBO: delete_element. Take Lock.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: delete_element. Got Lock.");
 
   stuck_item* local_list = stuck_sync_tasks->list;
   stuck_item* last_element = NULL;
    
-  debug(D_NOTICE, "BOBO: Delete element with Id: [%llu]", id);
+  debug(D_NOTICE, "BOBO: Delete element with Id: [%llu], Stuck Cnt: [%d], Total Cnt: [%d]", id, stuck_sync_tasks->stuck_cnt, stuck_sync_tasks->total_cnt);
 
   if (local_list == NULL) {
     debug(D_NOTICE, "BOBO: List is empty. Return.");
@@ -903,17 +908,21 @@ void delete_element(uint64_t id) {
     return;
   }
 
+  log_list();
+
   while (1) {
     debug(D_NOTICE, "BOBO: Check element id: [%llu] ?= [%llu]", local_list->id, id);
 
     //First element of the list.
     if ((last_element == NULL) && (local_list->id == id)) {
+      debug(D_NOTICE, "BOBO: First Element in the list.");
+
       if (local_list->next_elem == NULL) {
-        debug(D_NOTICE, "BOBO: First Element in the list.");
+        debug(D_NOTICE, "BOBO: This is the last element!");
         stuck_sync_tasks->list = NULL;
       }
       else {
-        stuck_sync_tasks = (stuck_item*)local_list->next_elem;
+        stuck_sync_tasks->list = (stuck_item*)local_list->next_elem;
       }
 
       if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
@@ -931,8 +940,11 @@ void delete_element(uint64_t id) {
       debug(D_NOTICE, "BOBO: Last Element in the list.");
       last_element->next_elem = NULL;
 
-      stuck_sync_tasks->stuck_cnt = 0;
-      stuck_sync_tasks->total_cnt = 0;
+      if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
+        stuck_sync_tasks->stuck_cnt--;
+      }
+
+      stuck_sync_tasks->total_cnt--;
 
       free_stuck_elem(local_list);
       break;
@@ -958,6 +970,7 @@ void delete_element(uint64_t id) {
     if (local_list->next_elem == NULL) {
       debug(D_NOTICE, "BOBO: Reached last element in the list.");
 
+      debug(D_NOTICE, "BOBO: delete_element. Release Lock.");
       pthread_mutex_unlock(&stuck_elem_list_mutex);
 
       return;
@@ -972,6 +985,7 @@ void delete_element(uint64_t id) {
   psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
 
   pthread_mutex_unlock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: delete_element. Release Lock.");
 }
 /*************************************************************/
 stuck_return_list* get_stuck_list() {

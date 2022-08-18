@@ -515,6 +515,10 @@ static int check_file_if_exists(const unsigned char *hashhex, uint64_t fsize, ps
 
         set_be_file_dates(fileid, psync_stat_ctime(st), psync_stat_mtime(st));
 
+        //Bobo
+        delete_element(hash);
+        //Bobo
+
         return 1;
       }
       else

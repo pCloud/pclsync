@@ -432,7 +432,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   char *subpath;
   int cmp;
 
-  //debug(D_NOTICE, "scanning folder %s deviceid: %llu", localpath, deviceid);
+  debug(D_NOTICE, "scanning folder %s deviceid: %llu", localpath, deviceid);
   if (unlikely_log(scanner_local_folder_to_list(localpath, &disklist))){
     //Bobo
     stuck_item* elem;

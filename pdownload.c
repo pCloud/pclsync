@@ -1465,7 +1465,8 @@ FailedTasksReset:
           psync_path_status_sync_folder_task_completed(psync_get_number(row[2]), psync_get_number(row[4]));
         }
       }
-      else if (type!=PSYNC_DOWNLOAD_FILE){
+      //else if (type!=PSYNC_DOWNLOAD_FILE){
+      else {
         //Bobo
         psync_sql_res* res;
         debug(D_NOTICE, "BOBO: Download task failed. Update type.");

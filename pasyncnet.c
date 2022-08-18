@@ -283,7 +283,7 @@ static int file_download_send_error(stream_t *s, async_thread_params_t *prms, fi
   else{
     debug(D_NOTICE, "download of %s finished", fda->localpath);
     //Bobo
-    delete_element(fda->fileid);
+    delete_element(fda->hash);
     //Bobo
   }
 
