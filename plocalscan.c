@@ -265,6 +265,8 @@ static void scanner_local_entry_to_list(void *ptr, psync_pstat *st){
   sync_folderlist *e;
   size_t l;
 
+  //debug(D_NOTICE, "BOBO: Scanner failed on item: ", );
+
   if (is_path_to_ignore(psync_stat_device_full(&st->stat), psync_stat_inode(&st->stat))) {
     return;
   }

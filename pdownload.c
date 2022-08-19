@@ -1432,7 +1432,7 @@ static void download_thread(){
   uint64_t taskid;
   uint32_t type;
 
-FailedTasksReset:
+FailedDwTasksReset:
 
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
@@ -1440,7 +1440,7 @@ FailedTasksReset:
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE "
                       "inprogress=0 AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD)" ORDER BY id LIMIT 1");
 
-    //debug(D_NOTICE, "BOBO: Get download task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_DOWNLOAD));
+    debug(D_NOTICE, "BOBO: Get download task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_DOWNLOAD));
 
     if (row){
       taskid=psync_get_number(row[0]);
@@ -1465,16 +1465,14 @@ FailedTasksReset:
           psync_path_status_sync_folder_task_completed(psync_get_number(row[2]), psync_get_number(row[4]));
         }
       }
-      //else if (type!=PSYNC_DOWNLOAD_FILE){
       else {
         //Bobo
         psync_sql_res* res;
         debug(D_NOTICE, "BOBO: Download task failed. Update type.");
 
-        res = psync_sql_prep_statement("UPDATE task SET type=type+? WHERE id=?");
+        res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=?");
 
-        psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE_FAILED);
-        psync_sql_bind_uint(res, 2, taskid);
+        psync_sql_bind_uint(res, 1, taskid);
         psync_sql_run_free(res);
         //Bobo
 
@@ -1490,20 +1488,19 @@ FailedTasksReset:
 
       debug(D_NOTICE, "BOBO: No more DOWNLOAD tasks. Check for failed ones.");
 
-      row = psync_sql_row("SELECT 1 FROM task WHERE type > 200 AND type < 300");
+      row = psync_sql_row("SELECT 1 FROM task WHERE inprogress = 3");
 
       if (row) {
         psync_free(row);
         debug(D_NOTICE, "BOBO: Failed DOWNLOAD tasks found. Reset them.");
 
-        res = psync_sql_prep_statement("UPDATE task SET type=type-? WHERE type > 200 AND type < 300");
+        res = psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE inprogress=3");
 
-        psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE_FAILED);
         psync_sql_run_free(res);
 
         debug(D_NOTICE, "BOBO: Download_thread. Reset failed tasks. Done.");
 
-        goto FailedTasksReset;
+        goto FailedDwTasksReset;
       }
     }
     //Bobo

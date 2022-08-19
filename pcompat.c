@@ -2572,8 +2572,17 @@ err1:
     spath=psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR, name, NULL);
     pst.name=name;
     pst.path=spath;
-    if (likely_log(!psync_stat(spath, &pst.stat)))
+
+    if (likely_log(!psync_stat(spath, &pst.stat))) {
+      debug(D_NOTICE, "BOBO: Scanner got stat for item. Callback. Path: [%s] Name: [%s]", spath, name);
       callback(ptr, &pst);
+    }
+    else {
+      //Bobo
+      debug(D_NOTICE, "BOBO: Scanner failed to stat item. Callback. Path: [%s] Name: [%s]", spath, name);
+      //Bobo
+    }
+
     psync_free(name);
     psync_free(spath);
   } while (FindNextFileW(dh, &st));

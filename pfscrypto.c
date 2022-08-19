@@ -1832,12 +1832,19 @@ static void psync_fs_crypto_check_file(void *ptr, psync_pstat_fast *st){
   size_t len;
   char *path;
   char ch;
+
+  debug(D_NOTICE, "BOBO: Scanner failed on crypto? item: [%s] Is folder: [%u]", st->name, st->isfolder);
+
   if (psync_stat_fast_isfolder(st))
     return;
+
   len=strlen(st->name);
+
   if (!len)
     return;
+
   ch=st->name[len-1];
+
   if (ch=='l' || ch=='f'){
     path=psync_strcat((const char *)ptr, PSYNC_DIRECTORY_SEPARATOR, st->name, NULL);
     psync_fs_crypto_check_log(path, st->name);
