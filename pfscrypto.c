@@ -1833,8 +1833,6 @@ static void psync_fs_crypto_check_file(void *ptr, psync_pstat_fast *st){
   char *path;
   char ch;
 
-  debug(D_NOTICE, "BOBO: Scanner failed on crypto? item: [%s] Is folder: [%u]", st->name, st->isfolder);
-
   if (psync_stat_fast_isfolder(st))
     return;
 
