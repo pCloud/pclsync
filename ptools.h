@@ -168,5 +168,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  char* get_file_name_from_path(char* path);
 
  uint64_t get_hash_from_string(char* str);
+
+ char* dns_lookup(const char* addr_host, int port);
  //Bobo
  /**********************************************************************************************************/

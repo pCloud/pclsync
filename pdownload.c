@@ -1072,6 +1072,7 @@ static void finish_async_download_existing(void *ptr, psync_async_result_t *res)
 static void task_run_download_file_thread(void *ptr){
   download_task_t *dt;
   dt=(download_task_t *)ptr;
+
   if (task_download_file(dt)){
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
     set_task_inprogress(dt->taskid, 0);
@@ -1081,11 +1082,13 @@ static void task_run_download_file_thread(void *ptr){
     //Bobo
     debug(D_NOTICE, "BOBO: File download finished. Delete list elemnt: [%lld].", dt->localfolderid);
     delete_element(dt->hash);
+    delete_element(dt->localfolderid); //Try again with the file/folder id. Since the element may be in the list with both id's.
     //Bobo
 
     delete_task(dt->taskid);
     psync_path_status_sync_folder_task_completed(dt->dwllist.syncid, dt->localfolderid);
   }
+
   free_download_task(dt);
   psync_status_recalc_to_download_async();
 }
@@ -1447,7 +1450,7 @@ FailedDwTasksReset:
       type=psync_get_number(row[1]);
 
       //Bobo
-      debug(D_NOTICE, "BOBO: Process download task. Name: [%s]. TaskId: [%lld]", psync_get_string_or_null(row[7]), taskid);
+      debug(D_NOTICE, "BOBO: Process download task. Name: [%s]. TaskId: [%lld]  Item Id: [%llu]", psync_get_string_or_null(row[6]), taskid, psync_get_number(row[3]));
       //Bobo
 
       if (!download_task(taskid, type,
@@ -1467,6 +1470,26 @@ FailedDwTasksReset:
       }
       else {
         //Bobo
+        stuck_item* elem;
+        int item_type;
+        char* path;
+
+        debug(D_NOTICE, "BOBO: Download task failed. Create stuck element. Name: [%s] Type: [%d] Item id: [%llu], Local Item id: [%llu]", psync_get_string_or_null(row[6]), type, psync_get_number(row[3]), psync_get_number_or_null(row[4]));
+
+        if (type != PSYNC_DOWNLOAD_FILE) {
+          path = psync_get_path_by_folderid(psync_get_number(row[3]), NULL);
+          item_type = STUCK_ITEM_TYPE_FOLDER;
+        }
+        else {
+          path = psync_get_path_by_fileid(psync_get_number(row[3]), NULL);
+          item_type = STUCK_ITEM_TYPE_FILE;
+        }
+
+        debug(D_WARNING, "BOBO: Create stuck element for file. Path: [%s]", path);
+
+        elem = create_stuck_elem(psync_get_number(row[3]), STUCK_MSG_NO_PERMISSION, item_type, 0, path, psync_get_string_or_null(row[6]));
+        add_stuck_elem(elem);
+
         psync_sql_res* res;
         debug(D_NOTICE, "BOBO: Download task failed. Update type.");
 

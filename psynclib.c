@@ -270,6 +270,8 @@ int psync_init(){
 
   //Bobo
   init_stuck_list();
+
+  //debug(D_NOTICE, "BOBO: Resolve DNS got IP: [%s]", psync_get_server_ip());
   //Bobo
 
   return 0;
@@ -3118,5 +3120,11 @@ stuck_return_list* psync_get_stuck_list() {
   }
 
   return list;
+}
+/******************************************************************************************************************/
+char* psync_get_server_ip() {
+  int usessl_local = psync_setting_get_bool(_PS(usessl));
+
+  return dns_lookup(psync_get_string_setting("api_server"), usessl_local ? PSYNC_API_PORT_SSL : PSYNC_API_PORT);
 }
 /******************************************************************************************************************/

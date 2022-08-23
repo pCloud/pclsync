@@ -12,6 +12,7 @@
 #include "pnetlibs.h"
 
 //Bobo
+#include <stdio.h>
 #include "pcallbacks.h"
 //Bobo
 
@@ -1040,5 +1041,51 @@ char* nvl_str(char* str, const char* def) {
 
   return str;
 }
-/*************************************************************/
+/***********************************************************************/
+char* dns_lookup(const char* addr_host, int port) {
+  int res;
+  struct addrinfo hints, * addr_list;
+  char port_str[6];
+  char ip[INET6_ADDRSTRLEN];;
+  WSADATA wsaData;
+
+  debug(D_NOTICE, "BOBO:  Resolve: [%s], Port: [%d]", addr_host, port);
+
+  if ((res = WSAStartup(MAKEWORD(2, 0), &wsaData)) != 0) {
+    debug(D_WARNING, "Error initializing socket: [%s]", res);
+    return NULL;
+  }
+
+  /* getaddrinfo expects port as a string */
+  memset(port_str, 0, sizeof(port_str));
+  snprintf(port_str, sizeof(port_str), "%d", port);
+
+  /* Bind to IPv6 and/or IPv4, but only in TCP */
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+  hints.ai_flags = AI_PASSIVE;
+
+  res = getaddrinfo(addr_host, port_str, &hints, &addr_list);
+
+  if (res != 0) {
+    debug(D_WARNING, "Error resolving URL - getaddrinfo: [%d]", res);
+
+    return NULL;
+  }
+
+  switch (addr_list->ai_family) {
+    case AF_INET:
+      inet_ntop(AF_INET, &((struct sockaddr_in*)addr_list->ai_addr)->sin_addr, ip, INET6_ADDRSTRLEN);
+      break;
+    case AF_INET6:
+      inet_ntop(AF_INET6, &((struct sockaddr_in6*)addr_list->ai_addr)->sin6_addr, ip, INET6_ADDRSTRLEN);
+      break;
+  }
+
+  debug(D_NOTICE, "BOBO: Resolved IP: [%s]", ip);
+
+  return psync_strdup(ip);
+}
 //Bobo
