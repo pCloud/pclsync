@@ -1461,6 +1461,9 @@ FailedDwTasksReset:
                          psync_get_string_or_null(row[6]),
                          psync_get_number_or_null(row[7]))){
 
+        debug(D_NOTICE, "BOBO: Download task finished. Delete element.");
+        delete_element(psync_get_number(row[3]));
+
         delete_task(taskid);
 
         if (type==PSYNC_DOWNLOAD_FILE){

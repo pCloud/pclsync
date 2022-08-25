@@ -989,6 +989,41 @@ void delete_element(uint64_t id) {
   debug(D_NOTICE, "BOBO: delete_element. Release Lock.");
 }
 /*************************************************************/
+void clean_stuck_list() {
+  stuck_item* local_list;
+  uint64_t next_elem;
+
+  debug(D_NOTICE, "BOBO: delete_element. Take Lock.");
+  pthread_mutex_lock(&stuck_elem_list_mutex);
+
+  local_list = stuck_sync_tasks->list;
+
+  if (local_list == NULL) {
+    return NULL;
+  }
+
+  while (1) {
+    next_elem = local_list->next_elem;
+
+    free_stuck_elem(local_list);
+
+    local_list = (stuck_item*)next_elem;
+
+    if (next_elem == NULL) {
+      break;
+    }
+  }
+
+  stuck_sync_tasks->stuck_cnt = 0;
+  stuck_sync_tasks->total_cnt = 0;
+  stuck_sync_tasks->list = NULL;
+
+  psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
+
+  pthread_mutex_unlock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: clean_stuck_list. Release Lock.");
+}
+/*************************************************************/
 stuck_return_list* get_stuck_list() {
   stuck_item* local_list;
   stuck_return_list* list;
@@ -1043,10 +1078,14 @@ char* nvl_str(char* str, const char* def) {
 }
 /***********************************************************************/
 char* dns_lookup(const char* addr_host, int port) {
+  char* ip[65];
+
+  memset(ip, 0, sizeof(ip));
+
+#if defined(P_OS_WINDOWS)
   int res;
   struct addrinfo hints, * addr_list;
   char port_str[6];
-  char ip[INET6_ADDRSTRLEN];;
   WSADATA wsaData;
 
   debug(D_NOTICE, "BOBO:  Resolve: [%s], Port: [%d]", addr_host, port);
@@ -1083,6 +1122,49 @@ char* dns_lookup(const char* addr_host, int port) {
       inet_ntop(AF_INET6, &((struct sockaddr_in6*)addr_list->ai_addr)->sin6_addr, ip, INET6_ADDRSTRLEN);
       break;
   }
+#endif
+#if defined(P_OS_LINUX)
+  char* cmd_str;
+  char* output;
+
+  cmd_str = malloc(sizeof(char) * (strlen(addr_host) + 100));
+
+  sprintf(cmd_str, "ping -q -c1 -t1 %s | tr -d '()' | awk '/^PING/{print $3}'", addr_host);
+
+  FILE* pipe = popen(cmd_str, "r");
+
+  if (!pipe) {
+    psync_free(cmd_str);
+    return 0;
+  }
+
+  debug(D_WARNING, "BOBO: Read output.");
+
+  output = fgets(ip, sizeof(ip), pipe);
+
+  ip[strlen(ip) - 1] = 0; //Overwrites the \n at the end.
+
+  psync_free(cmd_str);
+  pclose(pipe);
+#endif
+
+#if defined(P_OS_MACOSX)
+  char* cmd_str;
+  int   byteRead = 0;
+
+
+  cmd_str = malloc(sizeof(char) * (strlen(addr_host) + 100));
+
+  sprintf(cmd_str, "ping -q -c1 -t1 %s | tr -d '():' | awk '/^PING/{print $3}'", addr_host);
+
+  FILE* stream = popen(cmd, "r");
+
+  debug(D_WARNING, "BOBO: Read pipe.");
+
+  while (!feof(stream) && !ferror(stream)) {
+    byteRead = fread(ip, 1, sizeof(ip), stream);
+  }
+#endif
 
   debug(D_NOTICE, "BOBO: Resolved IP: [%s]", ip);
 

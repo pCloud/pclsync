@@ -1629,6 +1629,8 @@ void psync_init_data_event_handler(void* ptr);
 stuck_return_list* psync_get_stuck_list();
 
 char* psync_get_server_ip();
+
+void psync_clean_stuck_list();
 //Bobo
 
 #ifdef __cplusplus

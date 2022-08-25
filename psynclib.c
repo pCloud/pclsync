@@ -271,7 +271,7 @@ int psync_init(){
   //Bobo
   init_stuck_list();
 
-  //debug(D_NOTICE, "BOBO: Resolve DNS got IP: [%s]", psync_get_server_ip());
+  debug(D_NOTICE, "BOBO: Resolve DNS got IP: [%s]", psync_get_server_ip());
   //Bobo
 
   return 0;
@@ -3120,6 +3120,12 @@ stuck_return_list* psync_get_stuck_list() {
   }
 
   return list;
+}
+/******************************************************************************************************************/
+void psync_clean_stuck_list() {
+  debug(D_NOTICE, "BOBO: Clean stuck list.");
+  clean_stuck_list();
+  debug(D_NOTICE, "BOBO: Clean stuck list. Done.");
 }
 /******************************************************************************************************************/
 char* psync_get_server_ip() {
