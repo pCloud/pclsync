@@ -794,6 +794,14 @@ err1:
   psync_file_close(fd);
 //  psync_send_event_by_id(PEVENT_FILE_DOWNLOAD_FAILED, syncid, name, fileid);
 err0:
+  //Bobo
+  {
+    stuck_item* elem;
+    elem = create_stuck_elem(dt->hash, STUCK_MSG_NO_PERMISSION, STUCK_ITEM_TYPE_FILE, 0, dt->localpath, dt->filename);
+
+    add_stuck_elem(elem);
+  }
+  //Bobo
   psync_list_for_each_element_call(&ranges, psync_range_list_t, list, psync_free);
   if (tmpold){
     psync_file_delete(tmpold);
@@ -1482,24 +1490,20 @@ FailedDwTasksReset:
         if (type != PSYNC_DOWNLOAD_FILE) {
           path = psync_get_path_by_folderid(psync_get_number(row[3]), NULL);
           item_type = STUCK_ITEM_TYPE_FOLDER;
+
+          debug(D_WARNING, "BOBO: Create stuck element for folder. Path: [%s]", path);
+
+          elem = create_stuck_elem(psync_get_number(row[3]), STUCK_MSG_NO_PERMISSION, item_type, 0, path, psync_get_string_or_null(row[6]));
+          add_stuck_elem(elem);
+
+          psync_sql_res* res;
+          debug(D_NOTICE, "BOBO: Download task failed. Update type.");
+
+          res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=?");
+
+          psync_sql_bind_uint(res, 1, taskid);
+          psync_sql_run_free(res);
         }
-        else {
-          path = psync_get_path_by_fileid(psync_get_number(row[3]), NULL);
-          item_type = STUCK_ITEM_TYPE_FILE;
-        }
-
-        debug(D_WARNING, "BOBO: Create stuck element for file. Path: [%s]", path);
-
-        elem = create_stuck_elem(psync_get_number(row[3]), STUCK_MSG_NO_PERMISSION, item_type, 0, path, psync_get_string_or_null(row[6]));
-        add_stuck_elem(elem);
-
-        psync_sql_res* res;
-        debug(D_NOTICE, "BOBO: Download task failed. Update type.");
-
-        res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=?");
-
-        psync_sql_bind_uint(res, 1, taskid);
-        psync_sql_run_free(res);
         //Bobo
 
         psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);

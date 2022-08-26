@@ -994,12 +994,18 @@ void clean_stuck_list() {
   uint64_t next_elem;
 
   debug(D_NOTICE, "BOBO: delete_element. Take Lock.");
-  pthread_mutex_lock(&stuck_elem_list_mutex);
+  if (!pthread_mutex_trylock(&stuck_elem_list_mutex)) {
+    debug(D_NOTICE, "BOBO: delete_element. Lock already taken. Return.");
+
+    return;
+  }
+
+  debug(D_NOTICE, "BOBO: delete_element. Got Lock.");
 
   local_list = stuck_sync_tasks->list;
 
   if (local_list == NULL) {
-    return NULL;
+    return;
   }
 
   while (1) {
@@ -1157,7 +1163,7 @@ char* dns_lookup(const char* addr_host, int port) {
 
   sprintf(cmd_str, "ping -q -c1 -t1 %s | tr -d '():' | awk '/^PING/{print $3}'", addr_host);
 
-  FILE* stream = popen(cmd, "r");
+  FILE* stream = popen(cmd_str, "r");
 
   debug(D_WARNING, "BOBO: Read pipe.");
 
