@@ -993,20 +993,16 @@ void clean_stuck_list() {
   stuck_item* local_list;
   uint64_t next_elem;
 
-  debug(D_NOTICE, "BOBO: delete_element. Take Lock.");
-  if (!pthread_mutex_trylock(&stuck_elem_list_mutex)) {
-    debug(D_NOTICE, "BOBO: delete_element. Lock already taken. Return.");
-
+  if (stuck_sync_tasks->list == NULL) {
+    debug(D_NOTICE, "BOBO: List is empty. Return.");
     return;
   }
 
-  debug(D_NOTICE, "BOBO: delete_element. Got Lock.");
+  debug(D_NOTICE, "BOBO: clean_stuck_list. Check Lock.");
+  pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: clean_stuck_list. Got Lock.");
 
   local_list = stuck_sync_tasks->list;
-
-  if (local_list == NULL) {
-    return;
-  }
 
   while (1) {
     next_elem = local_list->next_elem;
@@ -1026,6 +1022,7 @@ void clean_stuck_list() {
 
   psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
 
+  debug(D_NOTICE, "BOBO: clean_stuck_list. Releasing Lock.");
   pthread_mutex_unlock(&stuck_elem_list_mutex);
   debug(D_NOTICE, "BOBO: clean_stuck_list. Release Lock.");
 }
@@ -1038,6 +1035,10 @@ stuck_return_list* get_stuck_list() {
     debug(D_NOTICE, "BOBO: List empty. Return.");
     return NULL;
   }
+
+  debug(D_NOTICE, "BOBO: get_stuck_list. Take Lock.");
+  pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: get_stuck_list. Got Lock.");
 
   list = (stuck_return_list*)psync_malloc(sizeof(stuck_return_list));
 
@@ -1070,6 +1071,9 @@ stuck_return_list* get_stuck_list() {
 
     local_list = (stuck_item*)local_list->next_elem;
   }
+
+  pthread_mutex_unlock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: get_stuck_list. Release Lock.");
 
   return list;
 }
