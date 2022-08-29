@@ -1082,17 +1082,17 @@ static void task_run_download_file_thread(void *ptr){
   dt=(download_task_t *)ptr;
 
   if (task_download_file(dt)){
-    psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
-    set_task_inprogress(dt->taskid, 0);
-    psync_wake_download();
-  }
-  else{
     //Bobo
     debug(D_NOTICE, "BOBO: File download finished. Delete list elemnt: [%lld].", dt->localfolderid);
     delete_element(dt->hash);
     delete_element(dt->localfolderid); //Try again with the file/folder id. Since the element may be in the list with both id's.
     //Bobo
 
+    psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
+    set_task_inprogress(dt->taskid, 0);
+    psync_wake_download();
+  }
+  else{
     delete_task(dt->taskid);
     psync_path_status_sync_folder_task_completed(dt->dwllist.syncid, dt->localfolderid);
   }
@@ -1261,11 +1261,23 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   }
   dt->lock=lock;
   set_task_inprogress(taskid, 1);
+
+  debug(D_WARNING, "BOBO: Task Id: [%llu] Inprogress set to 1.", taskid);
+
   if (size<=PSYNC_MAX_SIZE_FOR_ASYNC_DOWNLOAD){
-    if (dt->localexists)
+    debug(D_WARNING, "BOBO: Seize is suitable for async download.", taskid);
+
+    if (dt->localexists){
+      debug(D_WARNING, "BOBO: Local exists.");
       ret=psync_async_download_file_if_changed(fileid, dt->tmpname, dt->localsize, dt->checksum, finish_async_download_existing, dt);
-    else
+    }
+    else{
+      debug(D_WARNING, "BOBO: Local does not exist.");
       ret=psync_async_download_file(fileid, dt->tmpname, finish_async_download, dt);
+    }
+
+    debug(D_WARNING, "BOBO: Async download result: [%d]", ret);
+
     if (ret){
       debug(D_WARNING, "async download start failed for %s", dt->localname);
       free_download_task(dt);
@@ -1424,7 +1436,13 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
 
       path = psync_get_path_by_folderid(itemid, NULL);
 
-      local_name = nvl_str(local_name, get_folder_name_from_path(path));
+      if (!path) {
+        path = STUCK_ITEM_UNKNOWN_PATH;
+        local_name = STUCK_ITEM_UNKNOWN_FOLDER;
+      }
+      else {
+        local_name = nvl_str(local_name, get_folder_name_from_path(path));
+      }
     }
 
     elem = create_stuck_elem(itemid, STUCK_MSG_NO_PERMISSION, item_type, 0, path, local_name);
@@ -1448,8 +1466,7 @@ FailedDwTasksReset:
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
 
-    row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE "
-                      "inprogress=0 AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD)" ORDER BY id LIMIT 1");
+    row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD)" ORDER BY id LIMIT 1");
 
     debug(D_NOTICE, "BOBO: Get download task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_DOWNLOAD));
 
