@@ -926,7 +926,7 @@ void delete_element(uint64_t id) {
         stuck_sync_tasks->list = (stuck_item*)local_list->next_elem;
       }
 
-      if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
+      if (local_list->retry_cnt >= STUCK_ITEM_RETRY_COUNT) {
         stuck_sync_tasks->stuck_cnt--;
       }
 
@@ -941,7 +941,7 @@ void delete_element(uint64_t id) {
       debug(D_NOTICE, "BOBO: Last Element in the list.");
       last_element->next_elem = NULL;
 
-      if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
+      if (local_list->retry_cnt >= STUCK_ITEM_RETRY_COUNT) {
         stuck_sync_tasks->stuck_cnt--;
       }
 
@@ -957,7 +957,7 @@ void delete_element(uint64_t id) {
       if ((last_element != 0) && (local_list->next_elem != NULL)) {
         last_element->next_elem = (stuck_item*)local_list->next_elem;
 
-        if (local_list->retry_cnt > STUCK_ITEM_RETRY_COUNT) {
+        if (local_list->retry_cnt >= STUCK_ITEM_RETRY_COUNT) {
           stuck_sync_tasks->stuck_cnt--;
         }
 

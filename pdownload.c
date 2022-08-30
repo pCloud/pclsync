@@ -1082,17 +1082,26 @@ static void task_run_download_file_thread(void *ptr){
   dt=(download_task_t *)ptr;
 
   if (task_download_file(dt)){
-    //Bobo
-    debug(D_NOTICE, "BOBO: File download finished. Delete list elemnt: [%lld].", dt->localfolderid);
-    delete_element(dt->hash);
-    delete_element(dt->localfolderid); //Try again with the file/folder id. Since the element may be in the list with both id's.
-    //Bobo
+    // Bobo
+    stuck_item* elem;
+
+    debug(D_WARNING, "BOBO: Create stuck element for file. Path: [%s]", dt->localpath);
+
+    elem = create_stuck_elem(dt->hash, STUCK_MSG_NO_PERMISSION, STUCK_ITEM_TYPE_FILE, 0, dt->localpath, dt->filename);
+    add_stuck_elem(elem);
+    // Bobo
 
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
     set_task_inprogress(dt->taskid, 0);
     psync_wake_download();
   }
   else{
+    //Bobo
+    debug(D_NOTICE, "BOBO: File download finished. Delete list elemnt: [%lld].", dt->localfolderid);
+    delete_element(dt->hash);
+    delete_element(dt->localfolderid); //Try again with the file/folder id. Since the element may be in the list with both id's.
+    //Bobo
+
     delete_task(dt->taskid);
     psync_path_status_sync_folder_task_completed(dt->dwllist.syncid, dt->localfolderid);
   }
@@ -1502,9 +1511,9 @@ FailedDwTasksReset:
         int item_type;
         char* path;
 
-        debug(D_NOTICE, "BOBO: Download task failed. Create stuck element. Name: [%s] Type: [%d] Item id: [%llu], Local Item id: [%llu]", psync_get_string_or_null(row[6]), type, psync_get_number(row[3]), psync_get_number_or_null(row[4]));
-
         if (type != PSYNC_DOWNLOAD_FILE) {
+          debug(D_NOTICE, "BOBO: Download task failed. Create stuck element. Name: [%s] Type: [%d] Item id: [%llu], Local Item id: [%llu]", psync_get_string_or_null(row[6]), type, psync_get_number(row[3]), psync_get_number_or_null(row[4]));
+          /*
           path = psync_get_path_by_folderid(psync_get_number(row[3]), NULL);
           item_type = STUCK_ITEM_TYPE_FOLDER;
 
@@ -1512,15 +1521,17 @@ FailedDwTasksReset:
 
           elem = create_stuck_elem(psync_get_number(row[3]), STUCK_MSG_NO_PERMISSION, item_type, 0, path, psync_get_string_or_null(row[6]));
           add_stuck_elem(elem);
-
-          psync_sql_res* res;
-          debug(D_NOTICE, "BOBO: Download task failed. Update type.");
-
-          res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=?");
-
-          psync_sql_bind_uint(res, 1, taskid);
-          psync_sql_run_free(res);
+          */
         }
+        
+        psync_sql_res* res;
+
+        debug(D_NOTICE, "BOBO: Download task failed. Update type.");
+
+        res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=?");
+
+        psync_sql_bind_uint(res, 1, taskid);
+        psync_sql_run_free(res);
         //Bobo
 
         psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
