@@ -787,14 +787,16 @@ void add_stuck_elem(stuck_item* elem) {
   if (!stuck_sync_tasks->list) {
     debug(D_NOTICE, "BOBO: List is empty. Init.");
     stuck_sync_tasks->list = elem;
-    stuck_sync_tasks->total_cnt++;
+    stuck_sync_tasks->total_cnt = 1;
 
     if ((elem->retry_cnt >= STUCK_ITEM_RETRY_COUNT) && (elem->retry_cnt < STUCK_ITEM_RETRY_COUNT + 2)) {
-      stuck_sync_tasks->stuck_cnt++;
+      stuck_sync_tasks->stuck_cnt = 1;
       debug(D_NOTICE, "BOBO: Stuck element detected. Increment the global counter. [%d]", stuck_sync_tasks->stuck_cnt);
 
-      uint64_t sc = stuck_sync_tasks->stuck_cnt;
-      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", sc, 0);
+      psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
+    }
+    else {
+      stuck_sync_tasks->stuck_cnt = 0;
     }
 
     pthread_mutex_unlock(&stuck_elem_list_mutex);
