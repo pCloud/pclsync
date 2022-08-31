@@ -1092,7 +1092,10 @@ static void task_run_download_file_thread(void *ptr){
     // Bobo
 
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
-    set_task_inprogress(dt->taskid, 0);
+    //Bobo
+    //set_task_inprogress(dt->taskid, 0);
+      set_task_inprogress(dt->taskid, 3); // In progress set to 3 to let the rest of the waiting tasks process
+    //Bobo
     psync_wake_download();
   }
   else{
@@ -1210,6 +1213,7 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
     dt->localexists=1;
   else
     dt->localexists=0;
+
   if (hastargetchecksum && dt->localexists && size==dt->localsize && !memcmp(dt->checksum, targetchecksum, PSYNC_HASH_DIGEST_HEXLEN)){
     debug(D_NOTICE, "file %s already exists and has correct checksum, not downloading", localname);
     ret=stat_and_create_local(dt->dwllist.syncid, dt->dwllist.fileid, dt->localfolderid, dt->filename, dt->localname, targetchecksum, size, hash);
@@ -1223,6 +1227,7 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
 
     return ret;
   }
+
   minfree=psync_setting_get_uint(_PS(minlocalfreespace));
   freespace=psync_get_free_space_by_path(localpath);
   
@@ -1261,13 +1266,16 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
     return -1;
   }
+
   lock=psync_lock_file(localname);
+
   if (!lock){
     debug(D_NOTICE, "file %s is currently locked, skipping for now", localname);
     free_download_task(dt);
     psync_milisleep(PSYNC_SLEEP_ON_LOCKED_FILE);
     return -1;
   }
+
   dt->lock=lock;
   set_task_inprogress(taskid, 1);
 
@@ -1479,6 +1487,8 @@ FailedDwTasksReset:
 
     debug(D_NOTICE, "BOBO: Get download task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_DOWNLOAD));
 
+    psync_log_tasks();
+
     if (row){
       taskid=psync_get_number(row[0]);
       type=psync_get_number(row[1]);
@@ -1507,28 +1517,11 @@ FailedDwTasksReset:
       }
       else {
         //Bobo
-        stuck_item* elem;
-        int item_type;
-        char* path;
-
-        if (type != PSYNC_DOWNLOAD_FILE) {
-          debug(D_NOTICE, "BOBO: Download task failed. Create stuck element. Name: [%s] Type: [%d] Item id: [%llu], Local Item id: [%llu]", psync_get_string_or_null(row[6]), type, psync_get_number(row[3]), psync_get_number_or_null(row[4]));
-          /*
-          path = psync_get_path_by_folderid(psync_get_number(row[3]), NULL);
-          item_type = STUCK_ITEM_TYPE_FOLDER;
-
-          debug(D_WARNING, "BOBO: Create stuck element for folder. Path: [%s]", path);
-
-          elem = create_stuck_elem(psync_get_number(row[3]), STUCK_MSG_NO_PERMISSION, item_type, 0, path, psync_get_string_or_null(row[6]));
-          add_stuck_elem(elem);
-          */
-        }
-        
         psync_sql_res* res;
 
         debug(D_NOTICE, "BOBO: Download task failed. Update type.");
 
-        res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=?");
+        res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=? AND inprogress = 0");
 
         psync_sql_bind_uint(res, 1, taskid);
         psync_sql_run_free(res);

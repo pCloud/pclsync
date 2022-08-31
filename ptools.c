@@ -1182,4 +1182,23 @@ char* dns_lookup(const char* addr_host, int port) {
 
   return psync_strdup(ip);
 }
+/***********************************************************************/
+void psync_log_tasks() {
+  psync_sql_res* res;
+  psync_variant_row row;
+  uint64_t taskid;
+
+  debug(D_NOTICE, "BOBO: ************Log tasks!**************");
+
+  res = psync_sql_query("SELECT id, type, itemid, name, inprogress FROM task");
+
+  while (row = psync_sql_fetch_row(res)) {
+    debug(D_NOTICE, "BOBO: Task: [%lld], Type: [%d], ItemId: [%llu], Name: [%s], Inprogress: [%d]", psync_get_number(row[0]), psync_get_number(row[1]), psync_get_number(row[2]), psync_get_string_or_null(row[3]), psync_get_number(row[4]));
+  }
+
+  psync_sql_free_result(res);
+
+  debug(D_NOTICE, "BOBO: *************************************");
+}
+/***********************************************************************/
 //Bobo
