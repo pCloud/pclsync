@@ -10,7 +10,7 @@
 #include "string.h"
 #include "stdlib.h"
 #include "pnetlibs.h"
-#include <stdio.h>
+#include "stdio.h"
 #include "pcallbacks.h"
 
 #if defined(P_OS_WINDOWS)
