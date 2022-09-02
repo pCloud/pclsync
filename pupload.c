@@ -515,9 +515,7 @@ static int check_file_if_exists(const unsigned char *hashhex, uint64_t fsize, ps
 
         set_be_file_dates(fileid, psync_stat_ctime(st), psync_stat_mtime(st));
 
-        //Bobo
         delete_element(hash);
-        //Bobo
 
         return 1;
       }
@@ -1383,7 +1381,7 @@ static void task_run_upload_file_thread(void *ptr){
     psync_wake_upload();
   }
   else {
-    debug(D_NOTICE, "BOBO: Task failed. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
+    debug(D_NOTICE, "Task failed. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
     delete_upload_task(ut->upllist.taskid, ut->upllist.localfileid);
   }
 
@@ -1539,7 +1537,7 @@ static void upload_thread(){
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE type&"
                        NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_UPLOAD)" AND inprogress=0 ORDER BY id LIMIT 1");
 
-    debug(D_NOTICE, "BOBO: Got upload task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_UPLOAD));
+    debug(D_NOTICE, "Process upload task sql: [SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid FROM task WHERE inprogress=0 AND type&%s=%s ORDER BY id LIMIT 1]", NTO_STR(PSYNC_TASK_DWLUPL_MASK), NTO_STR(PSYNC_TASK_UPLOAD));
 
     if (row){
       taskid=psync_get_number(row[0]);
@@ -1562,43 +1560,35 @@ static void upload_thread(){
         }
       }
       else {
-        //Bobo
         psync_sql_res* res;
-        debug(D_NOTICE, "BOBO: Upload task failed. Update type.");
 
         res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=?");
 
         psync_sql_bind_uint(res, 1, taskid);
         psync_sql_run_free(res);
-        //Bobo
+
         psync_milisleep(PSYNC_SLEEP_ON_FAILED_UPLOAD);
       }
 
       psync_free(row);
       continue;
     }
-    //Bobo
     else {
       psync_sql_res* res;
-
-      debug(D_NOTICE, "BOBO: No more UPLOAD tasks. Check for failed ones.");
 
       row = psync_sql_row("SELECT 1 FROM task WHERE inprogress=3");
 
       if (row) {
         psync_free(row);
-        debug(D_NOTICE, "BOBO: Failed UPLOAD tasks found. Reset them.");
+        debug(D_NOTICE, "Failed UPLOAD tasks found. Reset them.");
 
         res = psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE inprogress=3");
 
         psync_sql_run_free(res);
 
-        debug(D_NOTICE, "BOBO: Download_thread. Reset failed tasks. Done.");
-
         goto FailedUpTasksReset;
       }
     }
-    //Bobo
 
     pthread_mutex_lock(&upload_mutex);
     if (!upload_wakes)

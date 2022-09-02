@@ -62,7 +62,6 @@ typedef struct _folderPath {
   char* folders[50];
 } folderPath;
 
-//Bobo
 //Stuck sync tasks list.
 typedef struct stuck_item_type {
   uint64_t id;
@@ -93,7 +92,6 @@ typedef struct stuck_return_list_type {
   int elem_count;
   stuck_return_item items[STUCK_ITEM_RET_SIZE];
 } stuck_return_list;
-//Bobo
 /**********************************************************************************************************/
 int create_backend_event(
   const char* binapi,
@@ -131,7 +129,6 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  /**********************************************************************************************************/
  char* get_folder_name_from_path(char* path);
  /**********************************************************************************************************/
-//Bobo
 #define STUCK_ITEM_RETRY_COUNT 0
 #define STUCK_ITEM_TOTAL_COUNT 100
 
@@ -174,5 +171,4 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  void clean_stuck_list();
 
  void psync_log_tasks();
- //Bobo
  /**********************************************************************************************************/

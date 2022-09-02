@@ -55,9 +55,7 @@ void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 #define PEVENT_FS_MOD_OBJ 103
 //Data event type constants. End.
 
-//Bobo
 #define PEVENT_STUCK_OBJ_CNT 201
-//Bobo
 
 typedef struct {
   int eventid;

@@ -258,6 +258,7 @@ int psync_init(){
   psync_status_init();
   psync_timer_sleep_handler(psync_stop_crypto_on_sleep);
   psync_path_status_init();
+
   if (IS_DEBUG){
     psync_libstate=1;
     pthread_mutex_unlock(&psync_libstate_mutex);
@@ -265,14 +266,13 @@ int psync_init(){
 
   psync_run_thread("Overlay main thread", overlay_main_loop);
   init_overlay_callbacks();
+
   if (PSYNC_SSL_DEBUG_LEVEL)
     psync_set_ssl_debug_callback(ssl_debug_cb);
 
-  //Bobo
   init_stuck_list();
 
-  debug(D_NOTICE, "BOBO: Resolve DNS got IP: [%s]", psync_get_server_ip());
-  //Bobo
+  debug(D_NOTICE, "Resolve DNS got IP: [%s]", psync_get_server_ip());
 
   return 0;
 }
@@ -2942,10 +2942,7 @@ void psync_async_ui_callback(void* ptr) {
   int eventId = (int*)ptr;
   time_t currTime = psync_time();
 
-  debug(D_NOTICE, "BOBO: Send event to UI. Event id: [%d]", eventId);
-
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
-    debug(D_NOTICE, "Send event to UI. Event id: [%d]", eventId);
 
     psync_send_eventid(eventId);
 
@@ -3113,19 +3110,12 @@ stuck_return_list* psync_get_stuck_list() {
     return NULL;
   }
 
-  debug(D_NOTICE, "BOBO: Stuck list element count: [%d] ", list->elem_count);
-
-  for (i = 0; i < list->elem_count; i++) {
-    debug(D_NOTICE, "BOBO: Element: [%d], Masg Id: [%d] Item Type: [%d] Name: [%s], Path: [%s]", i, list->items[i].msg_id, list->items[i].type, list->items[i].name, list->items[i].path);
-  }
-
   return list;
 }
 /******************************************************************************************************************/
 void psync_clean_stuck_list() {
-  debug(D_NOTICE, "BOBO: Clean stuck list.");
+  debug(D_NOTICE, "Clean stuck list.");
   clean_stuck_list();
-  debug(D_NOTICE, "BOBO: Clean stuck list. Done.");
 }
 /******************************************************************************************************************/
 char* psync_get_server_ip() {

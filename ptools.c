@@ -10,11 +10,8 @@
 #include "string.h"
 #include "stdlib.h"
 #include "pnetlibs.h"
-
-//Bobo
 #include <stdio.h>
 #include "pcallbacks.h"
-//Bobo
 
 #if defined(P_OS_WINDOWS)
 #define _CRT_SECURE_NO_WARNINGS
@@ -35,10 +32,8 @@
 #include <stdio.h>
 #endif
 
-//Bobo
 stuck_list_type* stuck_sync_tasks = NULL;
 static pthread_mutex_t stuck_elem_list_mutex = PTHREAD_MUTEX_INITIALIZER;
-//Bobo
 
 /*************************************************************/
 char* getMACaddr() {
@@ -633,8 +628,6 @@ char *get_sync_folder_by_syncid(uint64_t syncId) {
 char* get_file_name_from_path(char* path){
   char* name;
 
-  debug(D_NOTICE, "BOBO: Get name from path: [%s]", path);
-
   if(!path) {
     return NULL;
   }
@@ -656,8 +649,6 @@ char* get_file_name_from_path(char* path){
 char* get_folder_name_from_path(char* path) {
   char* folder;
 
-  debug(D_NOTICE, "BOBO: Get folder name from path: [%s]", path);
-
   while (*path != NULL) {
     if ((*path == '\\') || (*path == '/')) {
       folder = ++path;
@@ -669,7 +660,6 @@ char* get_folder_name_from_path(char* path) {
   return strdup(folder);
 }
 /*************************************************************/
-//Bobo
 stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, char* path, char* name) {
   stuck_item* stuck_elem;
 
@@ -702,8 +692,7 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
     stuck_elem->path = strdup(STUCK_ITEM_UNKNOWN_PATH);
   }
 
-  debug(D_NOTICE, "BOBO: Stuck element created:");
-  log_list_elem(stuck_elem);
+  //log_list_elem(stuck_elem);
 
   pthread_mutex_unlock(&stuck_elem_list_mutex);
 
@@ -711,16 +700,6 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
 }
 /***********************************************************************/
 void free_stuck_elem(stuck_item* elem) {
-  debug(D_NOTICE, "BOBO: Free element: [%llu]", elem->id);
-
-  /*
-  psync_free(elem->id);
-  psync_free(elem->msg_id);
-  psync_free(elem->retry_cnt);
-  psync_free(elem->item_type);
-  psync_free(elem->next_elem);
-  */
-
   psync_free(elem->name);
   psync_free(elem->path);
   
@@ -728,7 +707,7 @@ void free_stuck_elem(stuck_item* elem) {
 }
 /***********************************************************************/
 void log_list_elem(stuck_item* elem) {
-  debug(D_NOTICE, "**********************************");
+  debug(D_NOTICE, "****** Stuck llist element ********");
   debug(D_NOTICE,"Item Id  : [%llu]", elem->id);
   debug(D_NOTICE,"Elem Type: [%d]", elem->item_type);
   debug(D_NOTICE,"Msg Id   : [%d]", elem->msg_id);
@@ -744,7 +723,7 @@ void log_list() {
   stuck_item* list = stuck_sync_tasks->list;
 
   while (1) {
-    debug(D_NOTICE,"BOBO: *********************List element [%d]*********************", i);
+    debug(D_NOTICE,"********************* Stuck List element [%d] *********************", i);
     log_list_elem(list);
 
     if (list->next_elem == NULL) {
@@ -753,7 +732,7 @@ void log_list() {
 
     list = (stuck_item*)list->next_elem;
     i++;
-    debug(D_NOTICE, "BOBO: *********************Next elem item id**************************************");
+    debug(D_NOTICE, "******************** Stuck Next elem item id *********************");
   }
 }
 /***********************************************************************/
@@ -780,18 +759,14 @@ stuck_item* get_last_element() {
 void add_stuck_elem(stuck_item* elem) {
   stuck_item* last_elem = NULL;
 
-  debug(D_NOTICE, "BOBO: add_stuck_elem. Take Lock.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
-  debug(D_NOTICE, "BOBO: add_stuck_elem. Got Lock.");
 
   if (!stuck_sync_tasks->list) {
-    debug(D_NOTICE, "BOBO: List is empty. Init.");
     stuck_sync_tasks->list = elem;
     stuck_sync_tasks->total_cnt = 1;
 
     if ((elem->retry_cnt >= STUCK_ITEM_RETRY_COUNT) && (elem->retry_cnt < STUCK_ITEM_RETRY_COUNT + 2)) {
       stuck_sync_tasks->stuck_cnt = 1;
-      debug(D_NOTICE, "BOBO: Stuck element detected. Increment the global counter. [%d]", stuck_sync_tasks->stuck_cnt);
 
       psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
     }
@@ -804,11 +779,10 @@ void add_stuck_elem(stuck_item* elem) {
     return;
   }
 
-  debug(D_NOTICE, "BOBO: Total number of elements in list: [%d], Stuck element: [%d]", stuck_sync_tasks->total_cnt, stuck_sync_tasks->stuck_cnt);
-  debug(D_NOTICE, "BOBO: Adding element. Name: [%s]", elem->name);
+  debug(D_NOTICE, "Adding element. Name: [%s]. Total number of elements in list: [%d], Stuck element: [%d]", elem->name, stuck_sync_tasks->total_cnt, stuck_sync_tasks->stuck_cnt);
 
   if (stuck_sync_tasks->stuck_cnt > STUCK_ITEM_TOTAL_COUNT) {
-    debug(D_NOTICE, "BOBO: Too many stuck elements in the list. Skip adding more.");
+    debug(D_NOTICE, "Too many stuck elements in the list. Skip adding more.");
 
     pthread_mutex_unlock(&stuck_elem_list_mutex);
 
@@ -821,13 +795,8 @@ void add_stuck_elem(stuck_item* elem) {
     if(last_elem->retry_cnt < STUCK_ITEM_RETRY_COUNT + 2) {
       last_elem->retry_cnt++;
     }
-
-    debug(D_NOTICE, "BOBO: Element alreay in list. Retry cnt: [%d]", last_elem->retry_cnt);
   }
   else{
-    debug(D_NOTICE, "BOBO: Add new element to the list.");
-    log_list_elem(elem);
-
     if (stuck_sync_tasks->list->next_elem == NULL) { //Only one element in the list.
       stuck_sync_tasks->list->next_elem = (stuck_item*)elem;
     }
@@ -840,7 +809,6 @@ void add_stuck_elem(stuck_item* elem) {
 
     if ((elem->retry_cnt >= STUCK_ITEM_RETRY_COUNT) && (elem->retry_cnt < STUCK_ITEM_RETRY_COUNT + 2)) {
       stuck_sync_tasks->stuck_cnt++;
-      debug(D_NOTICE, "BOBO: Stuck element detected. Increment the global counter. [%d]", stuck_sync_tasks->stuck_cnt);
 
       uint64_t sc = stuck_sync_tasks->stuck_cnt;
       psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", sc, 0);
@@ -850,29 +818,19 @@ void add_stuck_elem(stuck_item* elem) {
   }
 
   pthread_mutex_unlock(&stuck_elem_list_mutex);
-
-  debug(D_NOTICE, "BOBO: add_stuck_elem. Release Lock.");
 }
 /***********************************************************************/
 stuck_item* search_list(uint64_t id) {
   stuck_item* local_list;
 
   if (!stuck_sync_tasks->list) {
-    debug(D_NOTICE, "BOBO: List is empty! Return.");
-
     return NULL;
   }
 
   local_list = stuck_sync_tasks->list;
 
-  debug(D_NOTICE, "BOBO: Looking for element id: [%llu]", id);
-
   while (1) {
-    //debug(D_NOTICE, "BOBO: Check element:");
-    //log_list_elem(local_list);
-    
     if (local_list->id == id) {
-      //debug(D_NOTICE, "BOBO: Element found.");
       return local_list;
     }
 
@@ -885,7 +843,7 @@ stuck_item* search_list(uint64_t id) {
 }
 /***********************************************************************/
 void init_stuck_list() {
-  debug(D_NOTICE, "BOBO: Init stuck list!");
+  debug(D_NOTICE, "Init stuck list!");
 
   stuck_sync_tasks = (stuck_list_type*)psync_malloc(sizeof(stuck_list_type));
 
@@ -895,33 +853,22 @@ void init_stuck_list() {
 }
 /***********************************************************************/
 void delete_element(uint64_t id) {
-
-  debug(D_NOTICE, "BOBO: delete_element. Take Lock.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
-  debug(D_NOTICE, "BOBO: delete_element. Got Lock.");
 
   stuck_item* local_list = stuck_sync_tasks->list;
   stuck_item* last_element = NULL;
    
-  debug(D_NOTICE, "BOBO: Delete element with Id: [%llu], Stuck Cnt: [%d], Total Cnt: [%d]", id, stuck_sync_tasks->stuck_cnt, stuck_sync_tasks->total_cnt);
+  debug(D_NOTICE, "Delete element with Id: [%llu], Stuck Cnt: [%d], Total Cnt: [%d]", id, stuck_sync_tasks->stuck_cnt, stuck_sync_tasks->total_cnt);
 
   if (local_list == NULL) {
-    debug(D_NOTICE, "BOBO: List is empty. Return.");
     pthread_mutex_unlock(&stuck_elem_list_mutex);
     return;
   }
 
-  log_list();
-
   while (1) {
-    debug(D_NOTICE, "BOBO: Check element id: [%llu] ?= [%llu]", local_list->id, id);
-
     //First element of the list.
     if ((last_element == NULL) && (local_list->id == id)) {
-      debug(D_NOTICE, "BOBO: First Element in the list.");
-
       if (local_list->next_elem == NULL) {
-        debug(D_NOTICE, "BOBO: This is the last element!");
         stuck_sync_tasks->list = NULL;
       }
       else {
@@ -940,7 +887,6 @@ void delete_element(uint64_t id) {
 
     //Last element of the list.
     if ((last_element != 0) && (local_list->next_elem == NULL) && (local_list->id == id)) {
-      debug(D_NOTICE, "BOBO: Last Element in the list.");
       last_element->next_elem = NULL;
 
       if (local_list->retry_cnt >= STUCK_ITEM_RETRY_COUNT) {
@@ -955,7 +901,6 @@ void delete_element(uint64_t id) {
 
     //Element in the middle of the list.
     if (local_list->id == id) {
-      debug(D_NOTICE, "BOBO: Element in middle ot the list.");
       if ((last_element != 0) && (local_list->next_elem != NULL)) {
         last_element->next_elem = (stuck_item*)local_list->next_elem;
 
@@ -971,15 +916,11 @@ void delete_element(uint64_t id) {
     }
 
     if (local_list->next_elem == NULL) {
-      debug(D_NOTICE, "BOBO: Reached last element in the list.");
-
-      debug(D_NOTICE, "BOBO: delete_element. Release Lock.");
       pthread_mutex_unlock(&stuck_elem_list_mutex);
 
       return;
     }
 
-    debug(D_NOTICE, "BOBO: Move to next element.");
     last_element = local_list;
     local_list = (stuck_item*)local_list->next_elem;
   }
@@ -988,7 +929,6 @@ void delete_element(uint64_t id) {
   psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
 
   pthread_mutex_unlock(&stuck_elem_list_mutex);
-  debug(D_NOTICE, "BOBO: delete_element. Release Lock.");
 }
 /*************************************************************/
 void clean_stuck_list() {
@@ -996,13 +936,10 @@ void clean_stuck_list() {
   uint64_t next_elem;
 
   if (stuck_sync_tasks->list == NULL) {
-    debug(D_NOTICE, "BOBO: List is empty. Return.");
     return;
   }
 
-  debug(D_NOTICE, "BOBO: clean_stuck_list. Check Lock.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
-  debug(D_NOTICE, "BOBO: clean_stuck_list. Got Lock.");
 
   local_list = stuck_sync_tasks->list;
 
@@ -1024,9 +961,7 @@ void clean_stuck_list() {
 
   psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
 
-  debug(D_NOTICE, "BOBO: clean_stuck_list. Releasing Lock.");
   pthread_mutex_unlock(&stuck_elem_list_mutex);
-  debug(D_NOTICE, "BOBO: clean_stuck_list. Release Lock.");
 }
 /*************************************************************/
 stuck_return_list* get_stuck_list() {
@@ -1034,13 +969,10 @@ stuck_return_list* get_stuck_list() {
   stuck_return_list* list;
 
   if (!stuck_sync_tasks->list) {
-    debug(D_NOTICE, "BOBO: List empty. Return.");
     return NULL;
   }
 
-  debug(D_NOTICE, "BOBO: get_stuck_list. Take Lock.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
-  debug(D_NOTICE, "BOBO: get_stuck_list. Got Lock.");
 
   list = (stuck_return_list*)psync_malloc(sizeof(stuck_return_list));
 
@@ -1050,7 +982,6 @@ stuck_return_list* get_stuck_list() {
 
   while (1) {
     if (local_list->retry_cnt >= STUCK_ITEM_RETRY_COUNT) {
-      debug(D_NOTICE, "BOBO: Return element: Name: [%s], Path: [%s].", local_list->name, local_list->path);
       list->items[list->elem_count].name = psync_strdup(local_list->name);
       list->items[list->elem_count].path = psync_strdup(local_list->path);
 
@@ -1059,15 +990,12 @@ stuck_return_list* get_stuck_list() {
       list->elem_count++;
 
       if (list->elem_count >= STUCK_ITEM_RET_SIZE) {
-        debug(D_NOTICE, "BOBO: Maximum return list lements reached. Return.");
+        debug(D_NOTICE, "Maximum return list elements reached. Return.");
         break;
       }
     }
 
-    //debug(D_NOTICE, "BOBO: Next elemenmt in list: [%lld]", local_list->next_elem);
-
     if (local_list->next_elem == NULL) {
-      debug(D_NOTICE, "BOBO: Last element. Return.");
       break;
     }
 
@@ -1075,14 +1003,12 @@ stuck_return_list* get_stuck_list() {
   }
 
   pthread_mutex_unlock(&stuck_elem_list_mutex);
-  debug(D_NOTICE, "BOBO: get_stuck_list. Release Lock.");
 
   return list;
 }
 /*************************************************************/
 char* nvl_str(char* str, const char* def) {
   if (str == NULL) {
-    debug(D_NOTICE, "BOBO: NULL string detected. Return: [%s]", def);
     return def;
   }
 
@@ -1100,7 +1026,7 @@ char* dns_lookup(const char* addr_host, int port) {
   char port_str[6];
   WSADATA wsaData;
 
-  debug(D_NOTICE, "BOBO:  Resolve: [%s], Port: [%d]", addr_host, port);
+  debug(D_NOTICE, "Resolve: [%s], Port: [%d]", addr_host, port);
 
   if ((res = WSAStartup(MAKEWORD(2, 0), &wsaData)) != 0) {
     debug(D_WARNING, "Error initializing socket: [%s]", res);
@@ -1150,8 +1076,6 @@ char* dns_lookup(const char* addr_host, int port) {
     return 0;
   }
 
-  debug(D_WARNING, "BOBO: Read output.");
-
   output = fgets(ip, sizeof(ip), pipe);
 
   ip[strlen(ip) - 1] = 0; //Overwrites the \n at the end.
@@ -1171,14 +1095,12 @@ char* dns_lookup(const char* addr_host, int port) {
 
   FILE* stream = popen(cmd_str, "r");
 
-  debug(D_WARNING, "BOBO: Read pipe.");
-
   while (!feof(stream) && !ferror(stream)) {
     byteRead = fread(ip, 1, sizeof(ip), stream);
   }
 #endif
 
-  debug(D_NOTICE, "BOBO: Resolved IP: [%s]", ip);
+  debug(D_NOTICE, "Resolved IP: [%s]", ip);
 
   return psync_strdup(ip);
 }
@@ -1188,17 +1110,16 @@ void psync_log_tasks() {
   psync_variant_row row;
   uint64_t taskid;
 
-  debug(D_NOTICE, "BOBO: ************Log tasks!**************");
+  debug(D_NOTICE, "************Log tasks!**************");
 
   res = psync_sql_query("SELECT id, type, itemid, name, inprogress FROM task");
 
   while (row = psync_sql_fetch_row(res)) {
-    debug(D_NOTICE, "BOBO: Task: [%lld], Type: [%d], ItemId: [%llu], Name: [%s], Inprogress: [%d]", psync_get_number(row[0]), psync_get_number(row[1]), psync_get_number(row[2]), psync_get_string_or_null(row[3]), psync_get_number(row[4]));
+    debug(D_NOTICE, "Task: [%lld], Type: [%d], ItemId: [%llu], Name: [%s], Inprogress: [%d]", psync_get_number(row[0]), psync_get_number(row[1]), psync_get_number(row[2]), psync_get_string_or_null(row[3]), psync_get_number(row[4]));
   }
 
   psync_sql_free_result(res);
 
-  debug(D_NOTICE, "BOBO: *************************************");
+  debug(D_NOTICE, "*************************************");
 }
 /***********************************************************************/
-//Bobo

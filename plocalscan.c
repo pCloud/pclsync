@@ -265,8 +265,6 @@ static void scanner_local_entry_to_list(void *ptr, psync_pstat *st){
   sync_folderlist *e;
   size_t l;
 
-  //debug(D_NOTICE, "BOBO: Scanner failed on item: ", );
-
   if (is_path_to_ignore(psync_stat_device_full(&st->stat), psync_stat_inode(&st->stat))) {
     return;
   }
@@ -435,8 +433,8 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   int cmp;
 
   debug(D_NOTICE, "scanning folder %s deviceid: %llu", localpath, deviceid);
+
   if (unlikely_log(scanner_local_folder_to_list(localpath, &disklist))){
-    //Bobo
     stuck_item* elem;
     int item_type;
     char* local_name;
@@ -446,20 +444,16 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
 
     local_name = get_folder_name_from_path(localpath);
 
-    debug(D_WARNING, "BOBO: Create stuck element for stuck folder for item id: [%lld], Name: [%s]", localfolderid, local_name);
-
     elem = create_stuck_elem(localfolderid, STUCK_MSG_NO_PERMISSION, item_type, 0, localpath, local_name);
 
     add_stuck_elem(elem);
-    //Bobo
+
     return;
   }
-  //Bobo
+
   else {
-    debug(D_WARNING, "BOBO: Scan sucess. Delete element for path: [%s].", localpath);
     delete_element(localfolderid);
   }
-  //Bobo
 
   scanner_db_folder_to_list(syncid, localfolderid, &dblist);
 
@@ -514,12 +508,12 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   }
   while (ldb!=&dblist){
     fdb=psync_list_element(ldb, sync_folderlist, list);
-    //Bobo
+
     if ((synctype == 7)) {
       debug(D_NOTICE, "Detected deleted object in a backup location. Send event.");
       psync_send_backup_del_event(fdb->remoteid);
     }
-    //Bobo
+
     add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
     ldb=ldb->next;
   }
