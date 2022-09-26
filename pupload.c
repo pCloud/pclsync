@@ -1371,17 +1371,38 @@ static void delete_upload_task(uint64_t taskid, psync_fileid_t localfileid) {
 static void task_run_upload_file_thread(void *ptr){
   upload_task_t *ut;
   psync_sql_res *res;
+
+  stuck_item* elem;
+  int item_type;
+  char* local_path;
+  uint64_t itemid;
+
   ut=(upload_task_t *)ptr;
 
   if (task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist)){
-    psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
+
+    debug(D_NOTICE, "BOBO: Upload Task success. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
+
     res=psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
     psync_sql_bind_uint(res, 1, ut->upllist.taskid);
     psync_sql_run_free(res);
     psync_wake_upload();
+
+    delete_element(ut->upllist.localfileid);
+
+    psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
   }
   else {
-    debug(D_NOTICE, "Task failed. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
+    debug(D_NOTICE, "BOBO: Upload Task failed. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
+
+    item_type = STUCK_ITEM_TYPE_FILE;
+
+    local_path = nvl_str(psync_get_path_by_fileid(ut->upllist.localfileid, NULL), STUCK_ITEM_UNKNOWN_PATH);
+
+    elem = create_stuck_elem(ut->upllist.localfileid, STUCK_MSG_NO_PERMISSION, item_type, 0, local_path, ut->filename);
+
+    add_stuck_elem(elem);
+
     delete_upload_task(ut->upllist.taskid, ut->upllist.localfileid);
   }
 
@@ -1518,8 +1539,13 @@ static int upload_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, ui
       res=0;
       break;
   }
-  if (res && type!=PSYNC_UPLOAD_FILE)
+  if (res && type != PSYNC_UPLOAD_FILE) {
     debug(D_WARNING, "task of type %u, syncid %u, id %lu localid %lu failed", (unsigned)type, (unsigned)syncid, (unsigned long)itemid, (unsigned long)localitemid);
+  }
+  else {
+
+  }
+
   return res;
 }
 
@@ -1542,6 +1568,7 @@ static void upload_thread(){
     if (row){
       taskid=psync_get_number(row[0]);
       type=psync_get_number(row[1]);
+
       if (!upload_task(taskid, type,
                          psync_get_number(row[2]),
                          psync_get_number(row[3]),
@@ -1549,6 +1576,13 @@ static void upload_thread(){
                          psync_get_number_or_null(row[5]),
                          psync_get_string_or_null(row[6]),
                          psync_get_number_or_null(row[7]))){
+
+        debug(D_NOTICE, "BOBO: Upload task sucess. Delete task.");
+
+        //Bobo
+        delete_element(psync_get_number(row[3]));
+        //Bobo
+
         if (type==PSYNC_UPLOAD_FILE){
           delete_upload_task(taskid, psync_get_number(row[3]));
           psync_status_recalc_to_upload_async();
@@ -1560,12 +1594,30 @@ static void upload_thread(){
         }
       }
       else {
+        //Bobo
         psync_sql_res* res;
+        stuck_item* elem;
+        int item_type;
+        char *local_name, *local_path;
+        uint64_t itemid;
+
+        debug(D_NOTICE, "BOBO: Upload task failed. Create stuck element.");
+
+        if (type != PSYNC_UPLOAD_FILE) {
+          item_type = STUCK_ITEM_TYPE_FOLDER;
+          local_name = nvl_str(psync_get_string_or_null(row[6]), STUCK_ITEM_UNKNOWN_FOLDER);
+          local_path = nvl_str(psync_get_path_by_folderid(psync_get_number(row[3]), NULL), STUCK_ITEM_UNKNOWN_PATH);
+
+          elem = create_stuck_elem(psync_get_number(row[3]), STUCK_MSG_NO_PERMISSION, item_type, 0, local_path, local_name);
+
+          add_stuck_elem(elem);
+        }
 
         res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=?");
 
         psync_sql_bind_uint(res, 1, taskid);
         psync_sql_run_free(res);
+        //Bobo
 
         psync_milisleep(PSYNC_SLEEP_ON_FAILED_UPLOAD);
       }

@@ -440,6 +440,8 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     char* local_name;
     uint64_t itemid;
 
+    debug(D_NOTICE, "BOBO: Scanner failed. Add the folder to the stuck list.");
+
     item_type = STUCK_ITEM_TYPE_FOLDER;
 
     local_name = get_folder_name_from_path(localpath);
@@ -449,10 +451,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     add_stuck_elem(elem);
 
     return;
-  }
-
-  else {
-    delete_element(localfolderid);
   }
 
   scanner_db_folder_to_list(syncid, localfolderid, &dblist);

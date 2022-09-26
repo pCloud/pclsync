@@ -761,6 +761,8 @@ void add_stuck_elem(stuck_item* elem) {
 
   pthread_mutex_lock(&stuck_elem_list_mutex);
 
+  log_list_elem(elem);
+
   if (!stuck_sync_tasks->list) {
     stuck_sync_tasks->list = elem;
     stuck_sync_tasks->total_cnt = 1;
@@ -1078,7 +1080,9 @@ char* dns_lookup(const char* addr_host, int port) {
 
   output = fgets(ip, sizeof(ip), pipe);
 
-  ip[strlen(ip) - 1] = 0; //Overwrites the \n at the end.
+  if (ip[0] != 0) {
+    ip[strlen(ip) - 1] = 0; //Overwrites the \n at the end.
+  }
 
   psync_free(cmd_str);
   pclose(pipe);

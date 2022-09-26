@@ -2541,11 +2541,13 @@ err1:
   wchar_t *wpath;
   WIN32_FIND_DATAW st;
   HANDLE dh;
+
   spath=psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR "*", NULL);
   wpath=utf8_to_wchar_path(spath);
   psync_free(spath);
   dh=FindFirstFileW(wpath, &st);
   psync_free(wpath);
+
   if (dh==INVALID_HANDLE_VALUE){
     if (GetLastError()==ERROR_FILE_NOT_FOUND)
       return 0;
@@ -2576,10 +2578,28 @@ err1:
     if (likely_log(!psync_stat(spath, &pst.stat))) {
       callback(ptr, &pst);
     }
+    else {
+      stuck_item* elem;
+      int item_type;
+
+      debug(D_NOTICE, "BOBO: psync_stat failed. Name: [%s], Parth: [%s], FileAttributes: [%ld]", name, path, st.dwFileAttributes);
+
+      if (st.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
+        item_type = STUCK_ITEM_TYPE_FOLDER;
+      }
+      else {
+        item_type = STUCK_ITEM_TYPE_FILE;
+      }
+
+      elem = create_stuck_elem(rand(), STUCK_MSG_NO_PERMISSION, item_type, 0, path, name);
+
+      add_stuck_elem(elem);
+    }
 
     psync_free(name);
     psync_free(spath);
   } while (FindNextFileW(dh, &st));
+
   FindClose(dh);
   return 0;
 #else
