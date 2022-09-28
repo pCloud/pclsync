@@ -1380,28 +1380,36 @@ static void task_run_upload_file_thread(void *ptr){
   ut=(upload_task_t *)ptr;
 
   if (task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist)){
+    //Bobo
+    debug(D_NOTICE, "BOBO: Upload Task failed. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
 
-    debug(D_NOTICE, "BOBO: Upload Task success. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
+    item_type = STUCK_ITEM_TYPE_FILE;
+
+    local_path = nvl_str(psync_local_path_for_local_file(ut->upllist.localfileid, NULL), STUCK_ITEM_UNKNOWN_PATH);
+
+    elem = create_stuck_elem(ut->upllist.localfileid, STUCK_MSG_NO_PERMISSION, item_type, 0, local_path, ut->filename);
+
+    add_stuck_elem(elem);
+    //Bobo
 
     res=psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
     psync_sql_bind_uint(res, 1, ut->upllist.taskid);
     psync_sql_run_free(res);
     psync_wake_upload();
 
-    delete_element(ut->upllist.localfileid);
-
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
   }
   else {
-    debug(D_NOTICE, "BOBO: Upload Task failed. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
+    //Bobo
+    char* full_path;
 
-    item_type = STUCK_ITEM_TYPE_FILE;
+    full_path = psync_local_path_for_local_file(ut->upllist.localfileid, NULL);
 
-    local_path = nvl_str(psync_get_path_by_fileid(ut->upllist.localfileid, NULL), STUCK_ITEM_UNKNOWN_PATH);
+    debug(D_NOTICE, "BOBO: Upload Task success. Task Id:[%llu] Local File Id:[%llu], Full Path: [%s]", ut->upllist.taskid, ut->upllist.localfileid, full_path);
+    delete_element(ut->upllist.localfileid);
 
-    elem = create_stuck_elem(ut->upllist.localfileid, STUCK_MSG_NO_PERMISSION, item_type, 0, local_path, ut->filename);
-
-    add_stuck_elem(elem);
+    delete_element(Hash64(full_path, strlen(full_path), psync_timer_time));
+    //Bobo
 
     delete_upload_task(ut->upllist.taskid, ut->upllist.localfileid);
   }

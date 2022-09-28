@@ -446,9 +446,13 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
 
     local_name = get_folder_name_from_path(localpath);
 
+    debug(D_NOTICE, "BOBO: Create stuck elem path: [%s] name:[%s]", localpath, local_name);
+
     elem = create_stuck_elem(localfolderid, STUCK_MSG_NO_PERMISSION, item_type, 0, localpath, local_name);
 
     add_stuck_elem(elem);
+
+    debug(D_NOTICE, "BOBO: Return.");
 
     return;
   }
@@ -697,13 +701,16 @@ static void scan_create_folder(sync_folderlist *fl){
     psync_sql_bind_uint(res, 1, fl->syncid);
     psync_sql_bind_uint(res, 2, fl->localparentfolderid);
     psync_sql_bind_string(res, 3, fl->name);
+
     if ((row=psync_sql_fetch_rowint(res))){
       localfolderid=row[0];
       debug(D_NOTICE, "folder created %s, exists in localfolder,  localid %lu", fl->name, (unsigned long)localfolderid);
     }
     else
       debug(D_NOTICE, "folder created %s, exists in localfolder", fl->name);
+    
     psync_sql_free_result(res);
+
     res=psync_sql_prep_statement("UPDATE localfolder SET inode=?, deviceid=?, mtime=?, mtimenative=?, flags=0 WHERE syncid=? AND localparentfolderid=? AND name=?");
     psync_sql_bind_uint(res, 1, fl->inode);
     psync_sql_bind_uint(res, 2, psync_deviceid_short(fl->deviceid));
@@ -749,6 +756,13 @@ static void scan_created_folder(sync_folderlist *fl){
   localpath=psync_local_path_for_local_folder(fl->localid, fl->syncid, NULL);
   if (likely_log(localpath)){
     debug(D_NOTICE, "scanning just created folder %s localid %lu name %s", localpath, (unsigned long)fl->localid, fl->name);
+
+    //Bobo
+    debug(D_NOTICE, "BOBO: Folder scanned. Delete from the Stuck list. Path: [%s]", localpath);
+
+    delete_element(Hash64(localpath, strlen(localpath), psync_timer_time));
+    //Bobo
+
     scanner_scan_folder(localpath, 0, fl->localid, fl->syncid, fl->synctype, fl->deviceid);
     psync_free(localpath);
   }

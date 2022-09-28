@@ -2581,8 +2581,9 @@ err1:
     else {
       stuck_item* elem;
       int item_type;
+      char* full_path;
 
-      debug(D_NOTICE, "BOBO: psync_stat failed. Name: [%s], Parth: [%s], FileAttributes: [%ld]", name, path, st.dwFileAttributes);
+      debug(D_NOTICE, "BOBO: psync_stat failed. Name: [%s], Parth: [%s], FileAttributes: [%ld]", name, path, st.dwFileAttributes); 
 
       if (st.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
         item_type = STUCK_ITEM_TYPE_FOLDER;
@@ -2591,7 +2592,11 @@ err1:
         item_type = STUCK_ITEM_TYPE_FILE;
       }
 
-      elem = create_stuck_elem(rand(), STUCK_MSG_NO_PERMISSION, item_type, 0, path, name);
+      full_path = psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR, name, NULL);
+
+      debug(D_NOTICE, "BOBO: Full path: : [%s]", full_path);
+      //BOBO HASH
+      elem = create_stuck_elem(Hash64(full_path, strlen(full_path), psync_timer_time), STUCK_MSG_NO_PERMISSION, item_type, 0, path, name);
 
       add_stuck_elem(elem);
     }
