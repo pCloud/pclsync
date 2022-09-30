@@ -663,7 +663,9 @@ char* get_folder_name_from_path(char* path) {
 stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, char* path, char* name) {
   stuck_item* stuck_elem;
 
+  debug(D_NOTICE, "BOBO: Take mutex.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Got mutex.");
 
   stuck_elem = psync_malloc(sizeof(stuck_item));
 
@@ -693,8 +695,9 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
   }
 
   //log_list_elem(stuck_elem);
-
+  debug(D_NOTICE, "BOBO: Release mutex.");
   pthread_mutex_unlock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Release done.");
 
   return stuck_elem;
 }
@@ -759,7 +762,9 @@ stuck_item* get_last_element() {
 void add_stuck_elem(stuck_item* elem) {
   stuck_item* last_elem = NULL;
 
+  debug(D_NOTICE, "BOBO: Take mutex.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Got mutex.");
 
   log_list_elem(elem);
 
@@ -776,7 +781,9 @@ void add_stuck_elem(stuck_item* elem) {
       stuck_sync_tasks->stuck_cnt = 0;
     }
 
+    debug(D_NOTICE, "BOBO: Release mutex.");
     pthread_mutex_unlock(&stuck_elem_list_mutex);
+    debug(D_NOTICE, "BOBO: First Element in the list. Return.");
 
     return;
   }
@@ -784,9 +791,9 @@ void add_stuck_elem(stuck_item* elem) {
   debug(D_NOTICE, "Adding element. Name: [%s]. Total number of elements in list: [%d], Stuck element: [%d]", elem->name, stuck_sync_tasks->total_cnt, stuck_sync_tasks->stuck_cnt);
 
   if (stuck_sync_tasks->stuck_cnt > STUCK_ITEM_TOTAL_COUNT) {
-    debug(D_NOTICE, "Too many stuck elements in the list. Skip adding more.");
-
+    debug(D_NOTICE, "BOBO: Release mutex.");
     pthread_mutex_unlock(&stuck_elem_list_mutex);
+    debug(D_NOTICE, "Too many stuck elements in the list. Skip adding more.");
 
     return;
   }
@@ -819,7 +826,9 @@ void add_stuck_elem(stuck_item* elem) {
     stuck_sync_tasks->total_cnt++;
   }
 
+  debug(D_NOTICE, "BOBO: Release mutex.");
   pthread_mutex_unlock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Element added.");
 }
 /***********************************************************************/
 stuck_item* search_list(uint64_t id) {
@@ -855,7 +864,9 @@ void init_stuck_list() {
 }
 /***********************************************************************/
 void delete_element(uint64_t id) {
+  debug(D_NOTICE, "BOBO: Take mutex.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Got mutex.");
 
   stuck_item* local_list = stuck_sync_tasks->list;
   stuck_item* last_element = NULL;
@@ -863,7 +874,10 @@ void delete_element(uint64_t id) {
   debug(D_NOTICE, "Delete element with Id: [%llu], Stuck Cnt: [%d], Total Cnt: [%d]", id, stuck_sync_tasks->stuck_cnt, stuck_sync_tasks->total_cnt);
 
   if (local_list == NULL) {
+    debug(D_NOTICE, "BOBO: Release mutex.");
     pthread_mutex_unlock(&stuck_elem_list_mutex);
+    debug(D_NOTICE, "BOBO: List is empty. Return.");
+
     return;
   }
 
@@ -918,7 +932,9 @@ void delete_element(uint64_t id) {
     }
 
     if (local_list->next_elem == NULL) {
+      debug(D_NOTICE, "BOBO: Release mutex.");
       pthread_mutex_unlock(&stuck_elem_list_mutex);
+      debug(D_NOTICE, "BOBO: Element not found. Return.");
 
       return;
     }
@@ -930,7 +946,9 @@ void delete_element(uint64_t id) {
   //Notify new stuck element count
   psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
 
+  debug(D_NOTICE, "BOBO: Release mutex.");
   pthread_mutex_unlock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Delete element Done.");
 }
 /*************************************************************/
 void clean_stuck_list() {
@@ -941,7 +959,9 @@ void clean_stuck_list() {
     return;
   }
 
+  debug(D_NOTICE, "BOBO: Take mutex.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Got mutex.");
 
   local_list = stuck_sync_tasks->list;
 
@@ -963,7 +983,9 @@ void clean_stuck_list() {
 
   psync_send_data_event(PEVENT_STUCK_OBJ_CNT, "", "", stuck_sync_tasks->stuck_cnt, 0);
 
+  debug(D_NOTICE, "BOBO: Release mutex.");
   pthread_mutex_unlock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Release done.");
 }
 /*************************************************************/
 stuck_return_list* get_stuck_list() {
@@ -974,7 +996,9 @@ stuck_return_list* get_stuck_list() {
     return NULL;
   }
 
+  debug(D_NOTICE, "BOBO: Take mutex.");
   pthread_mutex_lock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Got mutex.");
 
   list = (stuck_return_list*)psync_malloc(sizeof(stuck_return_list));
 
@@ -1004,7 +1028,9 @@ stuck_return_list* get_stuck_list() {
     local_list = (stuck_item*)local_list->next_elem;
   }
 
+  debug(D_NOTICE, "BOBO: Release mutex.");
   pthread_mutex_unlock(&stuck_elem_list_mutex);
+  debug(D_NOTICE, "BOBO: Release done.");
 
   return list;
 }
