@@ -749,11 +749,14 @@ hasfolder:
 
 static void scan_created_folder(sync_folderlist *fl){
   char *localpath;
+  
   if (fl->localid==0){
     debug(D_WARNING, "local folder %s does not have localid", fl->name);
     return;
   }
-  localpath=psync_local_path_for_local_folder(fl->localid, fl->syncid, NULL);
+
+  localpath = nvl_str(psync_local_path_for_local_folder(fl->localid, fl->syncid, NULL), STUCK_ITEM_UNKNOWN_PATH);
+
   if (likely_log(localpath)){
     debug(D_NOTICE, "scanning just created folder %s localid %lu name %s", localpath, (unsigned long)fl->localid, fl->name);
 

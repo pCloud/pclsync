@@ -1403,7 +1403,7 @@ static void task_run_upload_file_thread(void *ptr){
     //Bobo
     char* full_path;
 
-    full_path = psync_local_path_for_local_file(ut->upllist.localfileid, NULL);
+    full_path = nvl_str(psync_local_path_for_local_file(ut->upllist.localfileid, NULL), STUCK_ITEM_UNKNOWN_PATH);
 
     debug(D_NOTICE, "BOBO: Upload Task success. Task Id:[%llu] Local File Id:[%llu], Full Path: [%s]", ut->upllist.taskid, ut->upllist.localfileid, full_path);
     delete_element(ut->upllist.localfileid);
@@ -1585,9 +1585,8 @@ static void upload_thread(){
                          psync_get_string_or_null(row[6]),
                          psync_get_number_or_null(row[7]))){
 
-        debug(D_NOTICE, "BOBO: Upload task sucess. Delete task.");
-
         //Bobo
+        debug(D_NOTICE, "BOBO: Upload task sucess. Delete task.");
         delete_element(psync_get_number(row[3]));
         //Bobo
 
@@ -1609,9 +1608,9 @@ static void upload_thread(){
         char *local_name, *local_path;
         uint64_t itemid;
 
-        debug(D_NOTICE, "BOBO: Upload task failed. Create stuck element.");
-
         if (type != PSYNC_UPLOAD_FILE) {
+          debug(D_NOTICE, "BOBO: Upload task failed. Create stuck element.");
+
           item_type = STUCK_ITEM_TYPE_FOLDER;
           local_name = nvl_str(psync_get_string_or_null(row[6]), STUCK_ITEM_UNKNOWN_FOLDER);
           local_path = nvl_str(psync_get_path_by_folderid(psync_get_number(row[3]), NULL), STUCK_ITEM_UNKNOWN_PATH);
