@@ -1631,6 +1631,11 @@ char* psync_get_server_ip();
 
 void psync_clean_stuck_list();
 
+/*
+* currency - currency of the price. Excample: USD
+* return crypto price per month in cents
+*/
+int psync_get_crypto_price(char** currency);
 #ifdef __cplusplus
 }
 #endif

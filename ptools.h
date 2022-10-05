@@ -172,3 +172,4 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  void psync_log_tasks();
  /**********************************************************************************************************/
+ int do_get_crypto_price(char** currency);
