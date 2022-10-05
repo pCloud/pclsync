@@ -3124,3 +3124,8 @@ char* psync_get_server_ip() {
   return dns_lookup(psync_get_string_setting("api_server"), usessl_local ? PSYNC_API_PORT_SSL : PSYNC_API_PORT);
 }
 /******************************************************************************************************************/
+
+int psync_get_crypto_price(char** currency)
+{
+  return do_get_crypto_price(currency);
+}

@@ -174,3 +174,4 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  uint64_t Hash64(const void* key, int len, unsigned int seed);
  /**********************************************************************************************************/
+ int do_get_crypto_price(char** currency);
