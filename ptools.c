@@ -1199,7 +1199,6 @@ uint64_t Hash64(const void* key, int len, unsigned int seed) {
     return h;
   }
 /***********************************************************************/
-
 int do_get_crypto_price(char** currency)
 {
   int price = 0, err;
@@ -1229,3 +1228,4 @@ int do_get_crypto_price(char** currency)
   }
   return price;
 }
+/***********************************************************************/

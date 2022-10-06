@@ -1182,10 +1182,14 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
   unsigned char hashhex[PSYNC_HASH_DIGEST_HEXLEN], uhashhex[PSYNC_HASH_DIGEST_HEXLEN], phashhex[PSYNC_HASH_DIGEST_HEXLEN];
   binparam pr;
   int ret;
+
   psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
+
   if (upload->stop)
     return -1;
+
   localpath=psync_local_path_for_local_file(localfileid, NULL);
+
   if (unlikely(!localpath)){
     debug(D_WARNING, "could not find local file %s (id %lu)", name, (unsigned long)localfileid);
     return 0;
@@ -1195,6 +1199,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     debug(D_NOTICE, "file %s is too new, waiting for upload", localpath);
     ctime=psync_timer_time();
     psync_apipool_prepare();
+
     if (ctime<psync_stat_mtime(&st)-2)
       debug(D_NOTICE, "file %s has a modification time in the future, skipping waits", localpath);
     else{
@@ -1213,6 +1218,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
         }
         ctime=psync_timer_time();
       } while (psync_stat_mtime(&st)>=ctime-PSYNC_UPLOAD_OLDER_THAN_SEC && ++ret<=10);
+
       if (ret==10){
         debug(D_NOTICE, "file %s kept changing %d times, skipping for now", localpath, ret);
         psync_free(localpath);
@@ -1221,21 +1227,27 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
       debug(D_NOTICE, "file %s got old enough", localpath);
     }
   }
+
   lock=psync_lock_file(localpath);
+
   if (!lock){
     debug(D_NOTICE, "file %s is currently locked, skipping for now", localpath);
     psync_free(localpath);
     psync_milisleep(PSYNC_SLEEP_ON_LOCKED_FILE);
     return -1;
   }
+
   res=psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 1");
   psync_sql_bind_uint(res, 1, localfileid);
+
   if ((row=psync_sql_fetch_rowint(res)))
     uploadid=row[0];
   else
     uploadid=0;
+
   psync_sql_free_result(res);
   ufsize=0;
+
   if (uploadid){
     ret=psync_get_upload_checksum(uploadid, uhashhex, &ufsize);
     if (ret==PSYNC_NET_TEMPFAIL){
@@ -1246,17 +1258,32 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     else if (ret==PSYNC_NET_PERMFAIL)
       uploadid=0;
   }
+
   if (uploadid)
     ret=psync_get_local_file_checksum_part(localpath, hashhex, &fsize, phashhex, ufsize);
   else
     ret=psync_get_local_file_checksum(localpath, hashhex, &fsize);
+
   if (unlikely(ret)){
+    //Bobo Read only
+    stuck_item* elem;
+    uint64_t itemid;
+
+    if (strlen(localpath) > 0) {
+      elem = create_stuck_elem(Hash64(localpath, strlen(localpath), psync_timer_time), STUCK_MSG_NO_PERMISSION, STUCK_ITEM_TYPE_FILE, 0, localpath, name);
+
+      add_stuck_elem(elem);
+    }
+    //Bobo
+
     debug(D_WARNING, "could not open local file %s, deleting it from localfile", localpath);
+
     psync_unlock_file(lock);
     psync_free(localpath);
     delete_from_localfile(localfileid);
     return 0;
   }
+
   if (fsize!=upload->filesize){
     pthread_mutex_lock(&current_uploads_mutex);
     psync_status.bytestouploadcurrent-=upload->filesize;
@@ -1264,14 +1291,17 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     pthread_mutex_unlock(&current_uploads_mutex);
     upload->filesize=fsize;
   }
+
   res=psync_sql_prep_statement("UPDATE localfile SET size=?, checksum=? WHERE id=?");
   psync_sql_bind_uint(res, 1, fsize);
   psync_sql_bind_lstring(res, 2, (char *)hashhex, PSYNC_HASH_DIGEST_HEXLEN);
   psync_sql_bind_uint(res, 3, localfileid);
   psync_sql_run_free(res);
+
   res=psync_sql_query_rdlock("SELECT s.folderid FROM localfile f, syncedfolder s WHERE f.id=? AND f.localparentfolderid=s.localfolderid AND s.syncid=?");
   psync_sql_bind_uint(res, 1, localfileid);
   psync_sql_bind_uint(res, 2, syncid);
+
   if (likely_log(row=psync_sql_fetch_rowint(res)))
     folderid=row[0];
   else{
@@ -1281,18 +1311,23 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     psync_free(localpath);
     return 0;
   }
+
   psync_sql_free_result(res);
   nname=NULL;
+
   if (strchr(name, PSYNC_REPLACE_INV_CH_IN_FILENAMES)){
+
     res=psync_sql_query_rdlock("SELECT f.name FROM localfile lf, file f WHERE lf.id=? AND lf.fileid=f.id");
     psync_sql_bind_uint(res, 1, localfileid);
     srow=psync_sql_fetch_rowstr(res);
+
     if (srow && strcmp(srow[0], name)){
       const char *s1=srow[0], *s2=name;
       while (*s1 && *s2 && (*s1==*s2 || (psync_invalid_filename_chars[(unsigned char)*s1] && *s2==PSYNC_REPLACE_INV_CH_IN_FILENAMES))){
         s1++;
         s2++;
       }
+
       if (*s1==*s2){ //==0
         debug(D_NOTICE, "uploading %s as %s", name, srow[0]);
         nname=psync_strdup(srow[0]);
@@ -1314,9 +1349,11 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     psync_free(localpath);
     return ret==1?0:-1;
   }
+
   memcpy(upload->hash, hashhex, PSYNC_HASH_DIGEST_HEXLEN);
   res=psync_sql_query_rdlock("SELECT hash FROM localfile WHERE hash IS NOT NULL AND id=?");
   psync_sql_bind_uint(res, 1, localfileid);
+
   if ((row=psync_sql_fetch_rowint(res))){
     pr.paramtype=PARAM_NUM;
     pr.paramnamelen=6;
@@ -1330,8 +1367,10 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     pr.opts=3;
     pr.str="new";
   }
+
   psync_sql_free_result(res);
   debug(D_NOTICE, "uploading file %s", localpath);
+
   if (fsize<=PSYNC_MIN_SIZE_FOR_CHECKSUMS)
     ret=upload_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, &st, pr);
   else{
@@ -1345,11 +1384,14 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
       ret=upload_big_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, 0, 0, &st, pr);
     }
   }
+
   psync_unlock_file(lock);
   psync_free(nname);
   psync_free(localpath);
+
   if (!ret)
     delete_uploadids(localfileid);
+
   return ret;
 }
 
@@ -1374,7 +1416,7 @@ static void task_run_upload_file_thread(void *ptr){
 
   stuck_item* elem;
   int item_type;
-  char* local_path;
+  char* local_path = NULL;
   uint64_t itemid;
 
   ut=(upload_task_t *)ptr;
@@ -1382,7 +1424,7 @@ static void task_run_upload_file_thread(void *ptr){
   if (task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist)){
     //Bobo
     debug(D_NOTICE, "BOBO: Upload Task failed. Task Id:[%llu] Local File Id:[%llu]", ut->upllist.taskid, ut->upllist.localfileid);
-
+    /*
     item_type = STUCK_ITEM_TYPE_FILE;
 
     local_path = nvl_str(psync_local_path_for_local_file(ut->upllist.localfileid, NULL), STUCK_ITEM_UNKNOWN_PATH);
@@ -1390,6 +1432,7 @@ static void task_run_upload_file_thread(void *ptr){
     elem = create_stuck_elem(ut->upllist.localfileid, STUCK_MSG_NO_PERMISSION, item_type, 0, local_path, ut->filename);
 
     add_stuck_elem(elem);
+    */
     //Bobo
 
     res=psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
@@ -1401,16 +1444,18 @@ static void task_run_upload_file_thread(void *ptr){
   }
   else {
     //Bobo
-    char* full_path;
+    local_path = psync_local_path_for_local_file(ut->upllist.localfileid, NULL);
 
-    full_path = nvl_str(psync_local_path_for_local_file(ut->upllist.localfileid, NULL), STUCK_ITEM_UNKNOWN_PATH);
-
-    debug(D_NOTICE, "BOBO: Upload Task success. Task Id:[%llu] Local File Id:[%llu], Full Path: [%s]", ut->upllist.taskid, ut->upllist.localfileid, full_path);
-    delete_element(ut->upllist.localfileid);
-
-    delete_element(Hash64(full_path, strlen(full_path), psync_timer_time));
+    debug(D_NOTICE, "BOBO: Upload Task success? Task Id:[%llu] Local File Id:[%llu], File name: [%s]", ut->upllist.taskid, ut->upllist.localfileid, ut->filename);
+        
+    if (local_path > 0) {
+      debug(D_NOTICE, "BOBO: Local Path : [% s]", local_path);
+      delete_element(Hash64(local_path, strlen(local_path), psync_timer_time));
+    }
+    else {
+      debug(D_NOTICE, "BOBO: No local path. Skip stuck task deletion.");
+    }
     //Bobo
-
     delete_upload_task(ut->upllist.taskid, ut->upllist.localfileid);
   }
 
