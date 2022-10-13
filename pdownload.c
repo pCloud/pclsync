@@ -1484,15 +1484,12 @@ FailedDwTasksReset:
           psync_path_status_sync_folder_task_completed(psync_get_number(row[2]), psync_get_number(row[4]));
         }
       }
-      else {
+      else if (type != PSYNC_DOWNLOAD_FILE) {
         psync_sql_res* res;
 
         res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=? AND inprogress = 0");
-
         psync_sql_bind_uint(res, 1, taskid);
         psync_sql_run_free(res);
-
-        psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
       }
 
       psync_free(row);
