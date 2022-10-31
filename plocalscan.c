@@ -440,19 +440,13 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     char* local_name;
     uint64_t itemid;
 
-    debug(D_NOTICE, "BOBO: Scanner failed. Add the folder to the stuck list.");
-
     item_type = STUCK_ITEM_TYPE_FOLDER;
 
     local_name = get_folder_name_from_path(localpath);
 
-    debug(D_NOTICE, "BOBO: Create stuck elem path: [%s] name:[%s]", localpath, local_name);
-
     elem = create_stuck_elem(localfolderid, STUCK_MSG_NO_PERMISSION, item_type, 0, localpath, local_name);
 
     add_stuck_elem(elem);
-
-    debug(D_NOTICE, "BOBO: Return.");
 
     return;
   }
@@ -760,11 +754,7 @@ static void scan_created_folder(sync_folderlist *fl){
   if (likely_log(localpath)){
     debug(D_NOTICE, "scanning just created folder %s localid %lu name %s", localpath, (unsigned long)fl->localid, fl->name);
 
-    //Bobo
-    debug(D_NOTICE, "BOBO: Folder scanned. Delete from the Stuck list. Path: [%s]", localpath);
-
     delete_element(Hash64(localpath, strlen(localpath), psync_timer_time));
-    //Bobo
 
     scanner_scan_folder(localpath, 0, fl->localid, fl->syncid, fl->synctype, fl->deviceid);
     psync_free(localpath);

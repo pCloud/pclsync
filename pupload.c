@@ -1282,7 +1282,6 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     ret=psync_get_local_file_checksum(localpath, hashhex, &fsize);
 
   if (unlikely(ret)){
-    //Bobo Read only 
     stuck_item* elem;
     uint64_t itemid;
 
@@ -1291,7 +1290,6 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
 
       add_stuck_elem(elem);
     }
-    //Bobo
 
     debug(D_WARNING, "could not open local file %s, deleting it from localfile", localpath);
 
@@ -1453,13 +1451,12 @@ static void task_run_upload_file_thread(void *ptr){
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
   }
   else {
-    //Bobo
     local_path = psync_local_path_for_local_file(ut->upllist.localfileid, NULL);
         
     if (local_path > 0) {
       delete_element(Hash64(local_path, strlen(local_path), psync_timer_time));
     }
-    //Bobo
+
     delete_upload_task(ut->upllist.taskid, ut->upllist.localfileid);
   }
 
@@ -1642,9 +1639,7 @@ FailedUpTasksReset:
                          psync_get_string_or_null(row[6]),
                          psync_get_number_or_null(row[7]))){
 
-        //Bobo
         delete_element(psync_get_number(row[3]));
-        //Bobo
 
         if (type==PSYNC_UPLOAD_FILE){
           delete_upload_task(taskid, psync_get_number(row[3]));
@@ -1657,14 +1652,13 @@ FailedUpTasksReset:
         }
       }
       else {
-        //Bobo
-        psync_sql_res* res;
-        stuck_item* elem;
-        int item_type;
-        char *local_name, *local_path;
-        uint64_t itemid;
-
         if (type != PSYNC_UPLOAD_FILE) {
+          psync_sql_res* res;
+          stuck_item* elem;
+          int item_type;
+          char* local_name, * local_path;
+          uint64_t itemid;
+
           item_type = STUCK_ITEM_TYPE_FOLDER;
           local_name = nvl_str(psync_get_string_or_null(row[6]), STUCK_ITEM_UNKNOWN_FOLDER);
           local_path = nvl_str(psync_get_path_by_folderid(psync_get_number(row[3]), NULL), STUCK_ITEM_UNKNOWN_PATH);
@@ -1673,10 +1667,13 @@ FailedUpTasksReset:
 
           add_stuck_elem(elem);
 
+          res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=? AND inprogress = 0");
+          psync_sql_bind_uint(res, 1, taskid);
+          psync_sql_run_free(res);
+
           debug(D_NOTICE, "Sleep on failed UPLOAD.");
           psync_milisleep(PSYNC_SLEEP_ON_FAILED_UPLOAD);
         }
-        //Bobo
       }
 
       psync_free(row);

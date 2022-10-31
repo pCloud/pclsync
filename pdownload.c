@@ -1508,6 +1508,10 @@ FailedDwTasksReset:
 
         psync_sql_run_free(res);
 
+        //Sleep abefore retrying failed tasks.
+        debug(D_NOTICE, "Sleep abefore retrying failed tasks.");
+        psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
+
         goto FailedDwTasksReset;
       }
     }
