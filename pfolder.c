@@ -1052,6 +1052,8 @@ char* psync_get_path_from_str(char* fullPath) {
     i--;
   }
 
+  debug(D_NOTICE, "BOOB: Path extracted: [%s]", path);
+
   return path;
 }
 /**************************************************************************/

@@ -157,25 +157,39 @@ char *psync_strcat(const char *str, ...){
   char *ptr2, *ptr3;
   va_list ap;
   va_start(ap, str);
+
   strs[0]=str;
   len=strlen(str);
   lengths[0]=len;
   size=len+1;
   i=1;
+
   while ((ptr=va_arg(ap, const char *))){
     assert(i<ARRAY_SIZE(strs));
     len=strlen(ptr);
     lengths[i]=len;
     strs[i++]=ptr;
     size+=len;
+
+    debug(D_NOTICE, "BOBO: psync_strcat 1.");
   }
+
+  debug(D_NOTICE, "BOBO: psync_strcat 2.");
+
   va_end(ap);
   ptr2=ptr3=(char *)psync_malloc(size);
+
+  debug(D_NOTICE, "BOBO: psync_strcat 3.");
+
   for (size=0; size<i; size++){
     memcpy(ptr2, strs[size], lengths[size]);
     ptr2+=lengths[size];
   }
+
   *ptr2=0;
+
+  debug(D_NOTICE, "BOBO: psync_strcat Return: [%s]", ptr3);
+
   return ptr3;
 }
 

@@ -271,6 +271,7 @@ static psync_socket *get_connected_socket(){
     auth=psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'");
     user=psync_sql_cellstr("SELECT value FROM setting WHERE id='user'");
     pass=psync_sql_cellstr("SELECT value FROM setting WHERE id='pass'");
+
     if (user && !user[0]) user = NULL;
     if (pass && !pass[0]) pass = NULL;
     if (auth && !auth[0]) auth = NULL;
@@ -289,10 +290,13 @@ static psync_socket *get_connected_socket(){
 
     if (!auth && psync_my_auth[0])
       auth=psync_strdup(psync_my_auth);
+
     if (!user && psync_my_user)
       user=psync_strdup(psync_my_user);
+
     if (!pass && psync_my_pass)
       pass=psync_strdup(psync_my_pass);
+
     if (!auth && (!pass || !user)){
 #if defined(P_OS_LINUX)
       if(tfa){
@@ -351,8 +355,9 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getauth", 1),
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
-						 P_BOOL("getlastsubscription", 1),
+                         P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
+
         res=send_command(sock, "login", params);
       }
     }
@@ -366,11 +371,14 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getauth", 1),
                          P_BOOL("cryptokeyssign", 1),
                          P_BOOL("getapiserver", 1),
-						 P_BOOL("getlastsubscription", 1),
+                         P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
+
       res=send_command(sock, "userinfo", params);
     }
+
     psync_free(osversion);
+
     if (unlikely_log(!res)){
       psync_socket_close(sock);
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_OFFLINE);
@@ -378,8 +386,11 @@ static psync_socket *get_connected_socket(){
       psync_api_conn_fail_inc();
       continue;
     }
+
     psync_api_conn_fail_reset();
+
     result=psync_find_result(res, "result", PARAM_NUM)->num;
+
     if (unlikely(result)){
       debug(D_NOTICE, "userinfo returned error %lu %s", (unsigned long)result, psync_find_result(res, "error", PARAM_STR)->str);
       // here we only handle statuses that need to access the result
@@ -387,70 +398,80 @@ static psync_socket *get_connected_socket(){
         psync_free(psync_my_2fa_token);
         psync_my_2fa_token=psync_strdup(psync_find_result(res, "token", PARAM_STR)->str);
         psync_my_2fa_has_devices=psync_find_result(res, "hasdevices", PARAM_BOOL)->num;
-		psync_my_2fa_type=psync_find_result(res, "tfatype", PARAM_NUM)->num;
+        psync_my_2fa_type=psync_find_result(res, "tfatype", PARAM_NUM)->num;
         psync_my_2fa_code_type=0;
         psync_my_2fa_code[0]=0;
         psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_TFAREQ);
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-		psync_socket_close(sock);
-		psync_free(res);
+        psync_socket_close(sock);
+        psync_free(res);
+
         continue;
       }
-	  if (result==2306){
-		psync_free(psync_my_verify_token);
-		psync_my_verify_token = psync_strdup(psync_find_result(res, "verifytoken", PARAM_STR)->str);
-		psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_VERIFYREQ);
-		psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-		psync_socket_close(sock);
-		psync_free(res);
-		continue;
-	  }
-	  if (result==2321){
-		cres=psync_check_result(res, "location", PARAM_HASH);
-		if (cres){
-		  binapi=psync_strdup(psync_find_result(cres, "binapi", PARAM_STR)->str);
+      
+      if (result==2306){
+        psync_free(psync_my_verify_token);
+        psync_my_verify_token = psync_strdup(psync_find_result(res, "verifytoken", PARAM_STR)->str);
+        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_VERIFYREQ);
+        psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+        psync_socket_close(sock);
+        psync_free(res);
+        continue;
+      }
+      
+      if (result==2321){
+        cres=psync_check_result(res, "location", PARAM_HASH);
+        
+        if (cres){
+          binapi=psync_strdup(psync_find_result(cres, "binapi", PARAM_STR)->str);
           locationid=psync_find_result(cres, "id", PARAM_NUM)->num;
-		  psync_set_apiserver(binapi,locationid);
-		}
-		psync_socket_close(sock);
-		psync_free(res);
-		continue;
-	  }
-    if(result==2330){
-	    psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
-      psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATING);
-      psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-	    psync_socket_close(sock);
-	    psync_free(res);
-      continue;
-    }
-	psync_socket_close(sock);
-	psync_free(res);
-    if (result==2000 || result==2012 || result==2064 || result==2074 || result==2092){
-      psync_my_2fa_code_type=0;
-      psync_my_2fa_code[0]=0;
-      if (result==2012 || result==2064 || result==2074 || result==2092)
-        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
-	    else if (user && pass){
-	  	//Ugly fix, sorry :(
-	  	if (!strcmp(user, "pass") && !strcmp(pass, "dummy"))
-	  	{
-	  	  debug(D_NOTICE, "got %lu, for user=%s, not rising PSTATUS_AUTH_BADLOGIN", (unsigned long)result, user);
-	  	  psync_milisleep(1000);
-	  	  continue;
-	  	}
-	  	else {
-        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
-        psync_free(psync_my_pass);
-        psync_my_pass = NULL;
-	  	}
-	  }
-	  else {
-		psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADTOKEN);
-		psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
-	  }
-      psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-    }
+          psync_set_apiserver(binapi,locationid);
+        }
+        
+        psync_socket_close(sock);
+        psync_free(res);
+        continue;
+      }
+      
+      if(result==2330){
+        psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
+        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATING);
+        psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+        psync_socket_close(sock);
+        psync_free(res);
+        
+        continue;
+      }
+      
+      psync_socket_close(sock);
+      psync_free(res);
+      
+      if (result==2000 || result==2012 || result==2064 || result==2074 || result==2092){
+        psync_my_2fa_code_type=0;
+        psync_my_2fa_code[0]=0;
+        
+        if (result==2012 || result==2064 || result==2074 || result==2092)
+          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
+        else if (user && pass){
+          //Ugly fix, sorry :(
+          if (!strcmp(user, "pass") && !strcmp(pass, "dummy")){
+            debug(D_NOTICE, "got %lu, for user=%s, not rising PSTATUS_AUTH_BADLOGIN", (unsigned long)result, user);
+            psync_milisleep(1000);
+            continue;
+          }
+          else {
+            psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
+            psync_free(psync_my_pass);
+            psync_my_pass = NULL;
+          }
+        }
+        else {
+          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADTOKEN);
+          psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
+        }
+        
+        psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+      }
       else if (result==4000)
         psync_milisleep(5*60*1000);
       else if (result==2205 || result==2229){
@@ -464,6 +485,7 @@ static psync_socket *get_connected_socket(){
       }
       else
         psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
+
       continue;
     }
 
@@ -491,12 +513,15 @@ static psync_socket *get_connected_socket(){
           debug(D_NOTICE, "user mistmatch, db userid=%lu, connected userid=%lu", (unsigned long)luserid, (unsigned long)userid);
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_MISMATCH);
         }
-		psync_sql_rollback_transaction();
+        
+        psync_sql_rollback_transaction();
         psync_socket_close(sock);
         psync_free(res);
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+        
         continue;
       }
+      
       if (saveauth){
         q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('auth', ?)");
         psync_sql_bind_string(q, 1, psync_my_auth);
@@ -509,15 +534,15 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "userid");
       psync_sql_bind_uint(q, 2, userid);
       psync_sql_run(q);
-	  psync_sql_bind_string(q, 1, "last_logged_location_id");
-	  psync_sql_bind_uint(q, 2, lid);
-	  psync_sql_run(q);
+      psync_sql_bind_string(q, 1, "last_logged_location_id");
+      psync_sql_bind_uint(q, 2, lid);
+      psync_sql_run(q);
       psync_sql_bind_string(q, 1, "quota");
       psync_sql_bind_uint(q, 2, current_quota);
       psync_sql_run(q);
-	  psync_sql_bind_string(q, 1, "freequota");
-	  psync_sql_bind_uint(q, 2, free_quota);
-	  psync_sql_run(q);
+      psync_sql_bind_string(q, 1, "freequota");
+      psync_sql_bind_uint(q, 2, free_quota);
+      psync_sql_run(q);
       psync_sql_bind_string(q, 1, "usedquota");
       psync_sql_bind_uint(q, 2, 0);
       psync_sql_run(q);
@@ -525,10 +550,12 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "premium");
       psync_sql_bind_uint(q, 2, result);
       psync_sql_run(q);
+
       if (result)
         result=psync_find_result(res, "premiumexpires", PARAM_NUM)->num;
       else
         result=0;
+
       psync_sql_bind_string(q, 1, "premiumexpires");
       psync_sql_bind_uint(q, 2, result);
       psync_sql_run(q);
@@ -553,25 +580,30 @@ static psync_socket *get_connected_socket(){
 			psync_sql_bind_string(q, 1, "premiumlifetime");
 			psync_sql_bind_uint(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
 			psync_sql_run(q);
-			cres = psync_check_result(res, "vivapcloud", PARAM_BOOL);
+
+      cres = psync_check_result(res, "vivapcloud", PARAM_BOOL);
 			if (cres){
 				psync_sql_bind_string(q, 1, "vivapcloud");
 				psync_sql_bind_uint(q, 2, cres->num);
 				psync_sql_run(q);
 			}
-			cres = psync_check_result(res, "family", PARAM_HASH);
-			if (cres){
+
+      cres = psync_check_result(res, "family", PARAM_HASH);
+
+      if (cres){
 				psync_sql_bind_string(q, 1, "owner");
 				psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
 				psync_sql_run(q);
 			}
-			if (saveauth){
+
+      if (saveauth){
 				psync_sql_bind_string(q, 1, "auth");
 				psync_sql_bind_string(q, 2, psync_my_auth);
 				psync_sql_run(q);
 			}
 			psync_sql_free_result(q);
     }
+
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
       psync_sql_rollback_transaction();
       psync_socket_close(sock);
@@ -579,9 +611,11 @@ static psync_socket *get_connected_socket(){
       psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
       continue;
     }
+
     debug(D_NOTICE, "userid %lu", (unsigned long)userid);
     cres=psync_check_result(res, "account", PARAM_HASH);
     q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
+
     if (cres){
       psync_sql_bind_string(q, 1, "business");
       psync_sql_bind_uint(q, 2, 1);
@@ -602,25 +636,30 @@ static psync_socket *get_connected_socket(){
     }
 
     cres=psync_check_result(res, "cryptov2isactive", PARAM_BOOL);
+
     if (cres)
       psync_set_bool_setting("cryptov2isactive", cres->num);
     else
       psync_set_bool_setting("cryptov2isactive", 0);
+
     cryptosetup=psync_find_result(res, "cryptosetup", PARAM_BOOL)->num;
     psync_sql_bind_string(q, 1, "cryptosetup");
     psync_sql_bind_uint(q, 2, cryptosetup);
     psync_sql_run(q);
+
     if (cryptosetup){
       char *publicsha1=psync_sql_cellstr("SELECT value FROM setting WHERE id='crypto_public_sha1'");
       char *privatesha1=psync_sql_cellstr("SELECT value FROM setting WHERE id='crypto_private_sha1'");
-      if (!publicsha1 || !privatesha1 || strcmp(publicsha1, psync_find_result(res, "publicsha1", PARAM_STR)->str) ||
-                                         strcmp(privatesha1, psync_find_result(res, "privatesha1", PARAM_STR)->str))
+
+      if (!publicsha1 || !privatesha1 || strcmp(publicsha1, psync_find_result(res, "publicsha1", PARAM_STR)->str) || strcmp(privatesha1, psync_find_result(res, "privatesha1", PARAM_STR)->str))
         delete_cached_crypto_keys();
+
       psync_free(privatesha1);
       psync_free(publicsha1);
     }
     else
       delete_cached_crypto_keys();
+
     psync_sql_bind_string(q, 1, "cryptosubscription");
     psync_sql_bind_uint(q, 2, psync_find_result(res, "cryptosubscription", PARAM_BOOL)->num);
     psync_sql_run(q);
@@ -628,13 +667,16 @@ static psync_socket *get_connected_socket(){
     psync_sql_bind_string(q, 1, "cryptoexpires");
     psync_sql_bind_uint(q, 2, cres?cres->num:0);
     psync_sql_run(q);
-	int sub = check_active_subscribtion(res);
-	psync_sql_bind_string(q, 1, "hasactivesubscription");
-	psync_sql_bind_uint(q, 2, sub);
-	psync_sql_run(q);
+
+    int sub = check_active_subscribtion(res);
+
+    psync_sql_bind_string(q, 1, "hasactivesubscription");
+    psync_sql_bind_uint(q, 2, sub);
+    psync_sql_run(q);
     psync_sql_free_result(q);
     psync_sql_commit_transaction();
     pthread_mutex_lock(&psync_my_auth_mutex);
+
     if (psync_my_pass){
       memset(psync_my_pass, 'X', strlen(psync_my_pass));
       q=psync_sql_prep_statement("UPDATE setting SET value=? WHERE id='pass'");
@@ -643,14 +685,19 @@ static psync_socket *get_connected_socket(){
       psync_free(psync_my_pass);
       psync_my_pass=NULL;
     }
+
     pthread_mutex_unlock(&psync_my_auth_mutex);
+
     if (saveauth)
       psync_sql_statement("DELETE FROM setting WHERE id='pass'");
     else
       psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth')");
+
     cres=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
+
     if (cres->length)
       psync_apipool_set_server(cres->array[0]->str);
+
     psync_free(res);
 
     //If the flag is up, send a first login event to track the number of sucessful installs.
@@ -690,12 +737,16 @@ static psync_socket *get_connected_socket(){
     if (isbusiness){
       binparam params[]={P_STR("timeformat", "timestamp"),
                          P_STR("auth", psync_my_auth)};
+
       res=send_command(sock, "account_info", params);
+
       if (unlikely_log(!res)){
         psync_socket_close(sock);
         continue;
       }
+
       result=psync_find_result(res, "result", PARAM_NUM)->num;
+
       if (likely(result==0)){
         cres=psync_check_result(res, "account", PARAM_HASH);
         q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
@@ -707,6 +758,7 @@ static psync_socket *get_connected_socket(){
      }
       else
         debug(D_WARNING, "account_info returned %lu, continuing without business info", (unsigned long)result);
+
       psync_free(res);
       psync_sql_sync();
     }
