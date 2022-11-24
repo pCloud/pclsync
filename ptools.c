@@ -1201,3 +1201,109 @@ int do_get_crypto_price(char** currency)
   return price;
 }
 /***********************************************************************/
+int call_ebackend(const char* method, binparam* paramas, int param_cnt, binresult** resData) {
+  binresult*    res;
+  psync_socket* sock;
+  size_t resLen;
+
+  debug(D_NOTICE, "BOBO: Connect to EAPI server.");
+  sock = psync_api_connect(PSYNC_API_HOST, psync_setting_get_bool(0));
+
+  if (unlikely_log(!sock)) {
+    debug(D_NOTICE, "BOBO: Could not connect to the server.");
+
+    return -1;
+  }
+
+  debug(D_NOTICE, "BOBO: Send command [%s]", method);
+
+  res = do_send_command(sock, method, strlen(method), paramas, param_cnt, -1, 1);
+
+  psync_socket_close(sock);
+
+  *resData = (binresult*)malloc(res->length * sizeof(binresult));
+  memcpy(*resData, res, (res->length * sizeof(binresult)));
+
+  return 0;
+}
+/***********************************************************************/
+int get_login_req_id(char** reqId) {
+  int res = -1;
+  uint64_t result;
+  char* expireTime;
+
+  binresult* resData = NULL;
+
+  debug(D_NOTICE, "BOBO: get_login_req_id. Call backend.");
+
+  res = call_ebackend(WEB_LOGIN_GET_REQ_ID, NULL, 0, &resData);
+
+  debug(D_NOTICE, "BOBO: get_login_req_id. Call backend. Res: [%d], Response len: [%lu]", res, resData->length);
+
+  if (res != 0) {
+    return res;
+  }
+
+  result = psync_find_result(resData, "result", PARAM_NUM)->num;
+  debug(D_NOTICE, "BOBO: get_login_req_id. Result: [%llu]", result);
+
+  *reqId = psync_strdup(psync_find_result(resData, "request_id", PARAM_STR)->str);
+  debug(D_NOTICE, "BOBO: get_login_req_id. Request Id: [%s]", *reqId);
+
+  expireTime = psync_strdup(psync_find_result(resData, "expires", PARAM_STR)->str);
+  debug(D_NOTICE, "BOBO: get_login_req_id. Expires: [%s]", expireTime);
+
+  if (resData) {
+    psync_free(resData);
+  }
+
+  return result;
+}
+/***********************************************************************/
+int wait_auth_token(char* request_id) {
+  int res = -1, loc_id;
+  uint64_t result, userid;
+  char* token;
+  binresult* resData = NULL;
+
+  binparam params[] = {
+    P_NUM(EPARAM_LOGIN, 1), //Fixed paramaeter, so the backend can recognize the caller.
+    P_STR(EPARAM_REQ_ID, request_id),
+    P_NUM(EPARAM_TIMEOUT, 10) //Timeout. Optional.
+  };
+
+  debug(D_NOTICE, "BOBO: wait_auth_token. Call backend.");
+
+  res = call_ebackend(WEB_LOGIN_WAIT_AUTH, params, 3, &resData);
+
+  debug(D_NOTICE, "BOBO: wait_auth_token. Call backend.");
+
+  if (res != 0) {
+    return res;
+  }
+
+  result = psync_find_result(resData, "result", PARAM_NUM)->num;
+  debug(D_NOTICE, "BOBO: wait_auth_token. Result: [%llu]", result);
+
+  if (result != 0) {
+    debug(D_NOTICE, "BOBO: wait_auth_token. Backend returned error: [%llu]", result);
+
+    return result;
+  }
+
+  token = psync_strdup(psync_find_result(resData, EPARAM_TOKEN, PARAM_STR)->str);
+  debug(D_NOTICE, "BOBO: wait_auth_token. Request Id: [%s]", token);
+
+  loc_id = psync_find_result(resData, EPARAM_LOC_ID, PARAM_NUM)->num;
+  debug(D_NOTICE, "BOBO: wait_auth_token. Result: [%d]", loc_id);
+
+  userid = psync_find_result(resData, "result", PARAM_NUM)->num;
+  debug(D_NOTICE, "BOBO: wait_auth_token. Result: [%llu]", userid);
+
+  if (resData) {
+    psync_free(resData);
+  }
+
+  return result;
+}
+/***********************************************************************/

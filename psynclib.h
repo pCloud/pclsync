@@ -147,6 +147,12 @@ typedef struct {
 #define PSTATUS_ACCOUT_TFAERR          PSTATUS_TFA_REQUIRED
 #define PSTATUS_ACCOUT_EXPIRED         PSTATUS_ACCOUNT_EXPIRED
 
+
+//Bobo
+#define WEB_LOGIN_GET_REQ_ID "getrequestid"
+#define WEB_LOGIN_WAIT_AUTH  "pcloud_oauth2_token"
+//Bobo
+
 typedef struct pstatus_struct_ {
   const char *downloadstr; /* formatted string with the status of uploads */
   const char *uploadstr;   /* formatted string with the status of downloads */
@@ -1636,6 +1642,19 @@ void psync_clean_stuck_list();
 * return crypto price per month in cents
 */
 int psync_get_crypto_price(char** currency);
+
+/************************* Web login functions *********************************/
+/*
+* Get request id for web login process 
+*/
+int psync_get_login_req_id(char** reqId);
+
+/*
+* Wait until the login finishes
+*/
+int psync_wait_auth_token(char* request_id);
+/*******************************************************************************/
+
 #ifdef __cplusplus
 }
 #endif

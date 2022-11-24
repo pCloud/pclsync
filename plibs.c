@@ -170,16 +170,10 @@ char *psync_strcat(const char *str, ...){
     lengths[i]=len;
     strs[i++]=ptr;
     size+=len;
-
-    debug(D_NOTICE, "BOBO: psync_strcat 1.");
   }
-
-  debug(D_NOTICE, "BOBO: psync_strcat 2.");
 
   va_end(ap);
   ptr2=ptr3=(char *)psync_malloc(size);
-
-  debug(D_NOTICE, "BOBO: psync_strcat 3.");
 
   for (size=0; size<i; size++){
     memcpy(ptr2, strs[size], lengths[size]);
@@ -187,8 +181,6 @@ char *psync_strcat(const char *str, ...){
   }
 
   *ptr2=0;
-
-  debug(D_NOTICE, "BOBO: psync_strcat Return: [%s]", ptr3);
 
   return ptr3;
 }

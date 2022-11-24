@@ -41,6 +41,14 @@
 //Parser delimeter symbols
 #define DELIM_SEMICOLON ';'
 
+//Web login parameters
+#define EPARAM_LOGIN    "typelogin"
+#define EPARAM_EXPIRES  "expires"
+#define EPARAM_REQ_ID   "request_id"
+#define EPARAM_TIMEOUT  "timeout"
+#define EPARAM_TOKEN    "TOKEN"
+#define EPARAM_LOC_ID   "locationid"
+
 #if defined(P_OS_WINDOWS)
 #define DELIM_DIR   '\\'
 #endif
@@ -175,3 +183,10 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  uint64_t Hash64(const void* key, int len, unsigned int seed);
  /**********************************************************************************************************/
  int do_get_crypto_price(char** currency);
+
+
+ /**************************************** Web login functions *********************************************/
+ int get_login_req_id(char** reqId);
+
+ int wait_auth_token(char* request_id);
+ /**********************************************************************************************************/
