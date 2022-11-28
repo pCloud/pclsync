@@ -1322,7 +1322,7 @@ int wait_auth_token(char* request_id) {
   binparam params[] = {
     P_NUM(EPARAM_LOGIN, 1), //Fixed paramaeter, so the backend can recognize the caller.
     P_STR(EPARAM_REQ_ID, request_id),
-    P_NUM(EPARAM_TIMEOUT, 600) //Timeout. Optional.
+    P_NUM(EPARAM_TIMEOUT, 179) //Timeout. Optional.
   };
 
   debug(D_NOTICE, "BOBO: wait_auth_token. Call backend.");

@@ -275,10 +275,19 @@ int psync_init(){
   debug(D_NOTICE, "Resolve DNS got IP: [%s]", psync_get_server_ip());
 
   //Bobo
+  /*
+  char* device_string;
+  
+  device_string = psync_device_string();
+
+  debug(D_NOTICE, "BOBO: Get Device String: [%s]", device_string);
+
+
   debug(D_NOTICE, "BOBO: Get login req id");
 
   int res;
   char* reqId;
+
   res = psync_get_login_req_id(&reqId);
 
   debug(D_NOTICE, "BOBO: Get login req id. Res: [%d]", res);
@@ -288,8 +297,10 @@ int psync_init(){
   res = psync_wait_auth_token(reqId);
 
   debug(D_NOTICE, "BOBO: Wait login. Res:[%d]", res);
-  //Bobo
 
+
+  //Bobo
+  */
   return 0;
 }
 
