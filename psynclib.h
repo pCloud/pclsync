@@ -1654,7 +1654,7 @@ int psync_get_login_req_id(char** reqId);
 */
 int psync_wait_auth_token(char* request_id);
 /*******************************************************************************/
-char* psync_device_string();
+char* psync_get_device_string();
 
 /*******************************************************************************/
 

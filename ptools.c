@@ -1384,14 +1384,7 @@ int wait_auth_token(char* request_id) {
   psync_set_int_value("location_id", loc_id);
   psync_set_int_value("last_logged_location_id", loc_id);
 
-  if (rememberme != 0) {
-    psync_set_string_value("auth", token);
-    psync_setting_set_bool("saveauth", rememberme);
-  }
-
-  psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_AUTH_PROVIDED);
-
-  memccpy(psync_my_auth, token, strlen(token), sizeof(char));
+  psync_set_auth(token, rememberme);
 
   return result;
 }
