@@ -276,6 +276,11 @@ int psync_init(){
 
   //Bobo
   /*
+  char* device_id;
+  debug(D_NOTICE, "BOBO: Get device id");
+  device_id = psync_get_device_string();
+  debug(D_NOTICE, "BOBO: Got device id: [%s]", device_id);
+
   debug(D_NOTICE, "BOBO: Get login req id");
 
   int res;
@@ -3169,5 +3174,11 @@ int psync_wait_auth_token(char* request_id) {
   debug(D_NOTICE, "BOBO: psync_wait_auth_token. Got login token. Res: [%d]", res);
 
   return res;
+}
+/******************************************************************************************************************/
+char* psync_get_device_string() {
+  debug(D_NOTICE, "BOBO: psync_get_device_string.");
+
+  return psync_device_string();
 }
 /******************************************************************************************************************/
