@@ -12,6 +12,10 @@
 #include "pnetlibs.h"
 #include <stdio.h>
 #include "pcallbacks.h"
+//Bobo
+#include "pstatus.h"
+#include "psettings.h"
+//Bobo
 
 #if defined(P_OS_WINDOWS)
 #define _CRT_SECURE_NO_WARNINGS
@@ -35,6 +39,50 @@
 stuck_list_type* stuck_sync_tasks = NULL;
 static pthread_mutex_t stuck_elem_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/*************************************************************/
+/*
+int is_user_relocated(uint64_t olduserid, const char* auth) {
+  binresult* res;
+  const binresult* userids;
+  uint64_t result, userid;
+  int cnt, i, lid, clid;
+  binresult* id;
+
+  binparam params[] = { P_STR("timeformat", "timestamp"),
+                      P_STR("auth", auth) };
+
+  res = psync_api_run_command("getolduserids", params);
+
+  if (unlikely_log(!res)) return 0;
+
+  result = psync_find_result(res, "result", PARAM_NUM)->num;
+
+  if (result) {
+    debug(D_NOTICE, "getolduserids returned error %lu %s", (unsigned long)result, psync_find_result(res, "error", PARAM_STR)->str);
+    psync_free(res);
+    return 0;
+  }
+
+  userids = psync_find_result(res, "userids", PARAM_ARRAY);
+  cnt = userids->length;
+
+  if (!cnt) {
+    psync_free(res);
+    return 0;
+  }
+
+  clid = psync_sql_cellint("SELECT value FROM setting WHERE id='last_logged_location_id'", 1);
+
+  for (i = 0; i < cnt; ++i) {
+    id = userids->array[i];
+    userid = psync_find_result(id, "userid", PARAM_NUM)->num;
+    lid = psync_find_result(id, "locationid", PARAM_NUM)->num;
+    if (olduserid == userid && lid == clid) return 1;
+  }
+
+  return 0;
+}
+*/
 /*************************************************************/
 char* getMACaddr() {
   char  buffer[128];
@@ -1231,7 +1279,6 @@ int get_login_req_id(char** reqId) {
   int res = -1;
   uint64_t result;
   char* expireTime;
-
   binresult* resData = NULL;
 
   debug(D_NOTICE, "BOBO: get_login_req_id. Call backend.");
@@ -1247,6 +1294,12 @@ int get_login_req_id(char** reqId) {
   result = psync_find_result(resData, "result", PARAM_NUM)->num;
   debug(D_NOTICE, "BOBO: get_login_req_id. Result: [%llu]", result);
 
+  if (result != 0) {
+    debug(D_NOTICE, "BOBO: get_login_req_id. Backend returned error: [%llu]", result);
+
+    return result;
+  }
+
   *reqId = psync_strdup(psync_find_result(resData, "request_id", PARAM_STR)->str);
   debug(D_NOTICE, "BOBO: get_login_req_id. Request Id: [%s]", *reqId);
 
@@ -1257,29 +1310,29 @@ int get_login_req_id(char** reqId) {
     psync_free(resData);
   }
 
-  return result;
+  return 0;
 }
 /***********************************************************************/
 int wait_auth_token(char* request_id) {
-  int res = -1, loc_id;
-  uint64_t result, userid;
+  int res, loc_id;
+  uint64_t result, currentuserid, newuserid = 666, rememberme = 0;
   char* token;
   binresult* resData = NULL;
 
   binparam params[] = {
     P_NUM(EPARAM_LOGIN, 1), //Fixed paramaeter, so the backend can recognize the caller.
     P_STR(EPARAM_REQ_ID, request_id),
-    P_NUM(EPARAM_TIMEOUT, 10) //Timeout. Optional.
+    P_NUM(EPARAM_TIMEOUT, 600) //Timeout. Optional.
   };
 
   debug(D_NOTICE, "BOBO: wait_auth_token. Call backend.");
 
   res = call_ebackend(WEB_LOGIN_WAIT_AUTH, params, 3, &resData);
 
-  debug(D_NOTICE, "BOBO: wait_auth_token. Call backend.");
+  debug(D_NOTICE, "BOBO: wait_auth_token. Call backend returned.");
 
   if (res != 0) {
-    return res;
+    return -1;
   }
 
   result = psync_find_result(resData, "result", PARAM_NUM)->num;
@@ -1297,13 +1350,45 @@ int wait_auth_token(char* request_id) {
   loc_id = psync_find_result(resData, EPARAM_LOC_ID, PARAM_NUM)->num;
   debug(D_NOTICE, "BOBO: wait_auth_token. Result: [%d]", loc_id);
 
-  userid = psync_find_result(resData, "result", PARAM_NUM)->num;
-  debug(D_NOTICE, "BOBO: wait_auth_token. Result: [%llu]", userid);
+  newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
+  debug(D_NOTICE, "BOBO: wait_auth_token. userid: [%llu]", newuserid);
+
+  rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_NUM)->num;
+  debug(D_NOTICE, "BOBO: wait_auth_token. rememberme: [%llu]", rememberme);
 
   if (resData) {
     psync_free(resData);
   }
 
+  currentuserid = psync_get_uint_value("userid");
+
+  debug(D_NOTICE, "BOBO: wait_auth_token. Current User Id: [%llu], New user id: [%llu]", currentuserid, newuserid);
+
+  if (currentuserid) {
+    if (currentuserid != newuserid) {
+      if (!is_user_relocated(currentuserid, token)) {
+        debug(D_NOTICE, "BOBO: wait_auth_token. User is not relocated. Unlink.");
+        //Unlink current user
+        //psync_unlink();
+      }
+
+      psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
+      psync_set_int_value("userid", newuserid);
+    }
+  }
+
+  psync_set_int_value("location_id", loc_id);
+  psync_set_int_value("last_logged_location_id", loc_id);
+
+  if (rememberme != 0) {
+    psync_set_string_value("auth", token);
+    psync_setting_set_bool("saveauth", rememberme);
+  }
+
+  psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_AUTH_PROVIDED);
+
+  memccpy(psync_my_auth, token, strlen(token), sizeof(char));
+
   return result;
 }
-/***********************************************************************/
+/**********************************************************************/

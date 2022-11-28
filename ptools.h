@@ -42,12 +42,16 @@
 #define DELIM_SEMICOLON ';'
 
 //Web login parameters
-#define EPARAM_LOGIN    "typelogin"
-#define EPARAM_EXPIRES  "expires"
-#define EPARAM_REQ_ID   "request_id"
-#define EPARAM_TIMEOUT  "timeout"
-#define EPARAM_TOKEN    "TOKEN"
-#define EPARAM_LOC_ID   "locationid"
+#define EPARAM_LOGIN      "typelogin"
+#define EPARAM_EXPIRES    "expires"
+#define EPARAM_REQ_ID     "request_id"
+#define EPARAM_TIMEOUT    "timeout"
+#define EPARAM_TOKEN      "TOKEN"
+#define EPARAM_LOC_ID     "locationid"
+#define EPARAM_USER_ID    "userid"
+#define EPARAM_REMEMBERME "rememberme"
+
+rememberme
 
 #if defined(P_OS_WINDOWS)
 #define DELIM_DIR   '\\'

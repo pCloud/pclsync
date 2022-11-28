@@ -275,7 +275,6 @@ int psync_init(){
   debug(D_NOTICE, "Resolve DNS got IP: [%s]", psync_get_server_ip());
 
   //Bobo
-  /*
   debug(D_NOTICE, "BOBO: Get login req id");
 
   int res;
@@ -286,10 +285,9 @@ int psync_init(){
 
   debug(D_NOTICE, "BOBO: Wait login.");
 
-  res = psync_wait_auth_token(&reqId);
+  res = psync_wait_auth_token(reqId);
 
   debug(D_NOTICE, "BOBO: Wait login. Res:[%d]", res);
-  */
   //Bobo
 
   return 0;

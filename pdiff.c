@@ -255,8 +255,9 @@ static psync_socket *get_connected_socket(){
   psync_is_business=0;
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
 
-  if (!deviceid)
-    deviceid=generate_device_id();
+  if (!deviceid) {
+    deviceid = generate_device_id();
+  }
 
   debug(D_NOTICE, "using deviceid %s", deviceid);
   appversion=psync_appname();
@@ -266,6 +267,7 @@ static psync_socket *get_connected_socket(){
     psync_free(auth);
     psync_free(user);
     psync_free(pass);
+
     psync_wait_status(PSTATUS_TYPE_RUN, PSTATUS_RUN_RUN|PSTATUS_RUN_PAUSE);
 
     auth=psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'");
@@ -287,7 +289,6 @@ static psync_socket *get_connected_socket(){
       isFirstLogin = 0;
     }
 
-
     if (!auth && psync_my_auth[0])
       auth=psync_strdup(psync_my_auth);
 
@@ -308,6 +309,7 @@ static psync_socket *get_connected_socket(){
 #endif
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_REQUIRED);
       psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+
       continue;
     }
 
@@ -320,8 +322,10 @@ static psync_socket *get_connected_socket(){
     if (unlikely_log(!sock)){
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_OFFLINE);
       psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
+
       continue;
     }
+
     osversion=psync_deviceos();
 
     if (psync_my_2fa_token && psync_my_2fa_code_type && psync_my_2fa_code[0]){
@@ -384,6 +388,7 @@ static psync_socket *get_connected_socket(){
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_OFFLINE);
       psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
       psync_api_conn_fail_inc();
+
       continue;
     }
 
@@ -450,8 +455,9 @@ static psync_socket *get_connected_socket(){
         psync_my_2fa_code_type=0;
         psync_my_2fa_code[0]=0;
         
-        if (result==2012 || result==2064 || result==2074 || result==2092)
+        if (result == 2012 || result == 2064 || result == 2074 || result == 2092) {
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
+        }          
         else if (user && pass){
           //Ugly fix, sorry :(
           if (!strcmp(user, "pass") && !strcmp(pass, "dummy")){
@@ -472,8 +478,9 @@ static psync_socket *get_connected_socket(){
         
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
       }
-      else if (result==4000)
-        psync_milisleep(5*60*1000);
+      else if (result == 4000) {
+        psync_milisleep(5 * 60 * 1000);
+      }        
       else if (result==2205 || result==2229){
         psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
         psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_EXPIRED);
@@ -483,8 +490,9 @@ static psync_socket *get_connected_socket(){
         digest=0;
         continue;
       }
-      else
+      else {
         psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
+      }        
 
       continue;
     }
@@ -551,10 +559,12 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_uint(q, 2, result);
       psync_sql_run(q);
 
-      if (result)
-        result=psync_find_result(res, "premiumexpires", PARAM_NUM)->num;
-      else
-        result=0;
+      if (result) {
+        result = psync_find_result(res, "premiumexpires", PARAM_NUM)->num;
+      }        
+      else {
+        result = 0;
+      }
 
       psync_sql_bind_string(q, 1, "premiumexpires");
       psync_sql_bind_uint(q, 2, result);
@@ -651,14 +661,16 @@ static psync_socket *get_connected_socket(){
       char *publicsha1=psync_sql_cellstr("SELECT value FROM setting WHERE id='crypto_public_sha1'");
       char *privatesha1=psync_sql_cellstr("SELECT value FROM setting WHERE id='crypto_private_sha1'");
 
-      if (!publicsha1 || !privatesha1 || strcmp(publicsha1, psync_find_result(res, "publicsha1", PARAM_STR)->str) || strcmp(privatesha1, psync_find_result(res, "privatesha1", PARAM_STR)->str))
+      if (!publicsha1 || !privatesha1 || strcmp(publicsha1, psync_find_result(res, "publicsha1", PARAM_STR)->str) || strcmp(privatesha1, psync_find_result(res, "privatesha1", PARAM_STR)->str)) {
         delete_cached_crypto_keys();
+      }
 
       psync_free(privatesha1);
       psync_free(publicsha1);
     }
-    else
+    else {
       delete_cached_crypto_keys();
+    }
 
     psync_sql_bind_string(q, 1, "cryptosubscription");
     psync_sql_bind_uint(q, 2, psync_find_result(res, "cryptosubscription", PARAM_BOOL)->num);
@@ -688,15 +700,18 @@ static psync_socket *get_connected_socket(){
 
     pthread_mutex_unlock(&psync_my_auth_mutex);
 
-    if (saveauth)
+    if (saveauth) {
       psync_sql_statement("DELETE FROM setting WHERE id='pass'");
-    else
+    }      
+    else {
       psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth')");
+    }      
 
     cres=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
 
-    if (cres->length)
+    if (cres->length) {
       psync_apipool_set_server(cres->array[0]->str);
+    }
 
     psync_free(res);
 
@@ -728,10 +743,7 @@ static psync_socket *get_connected_socket(){
     }
     else {
       debug(D_NOTICE, "Not a first login. Run sync event.");
-
-      send_psyncs_event(
-        apiserver,
-        psync_my_auth);
+      send_psyncs_event(apiserver, psync_my_auth);
     }
 
     if (isbusiness){
@@ -755,9 +767,10 @@ static psync_socket *get_connected_socket(){
 				psync_sql_run_free(q);
 				cres=psync_check_result(cres, "owner", PARAM_HASH);
         psync_set_bool_setting("owner_cryptosetup", psync_find_result(cres, "cryptosetup", PARAM_BOOL)->num);
-     }
-      else
+      }
+      else {
         debug(D_WARNING, "account_info returned %lu, continuing without business info", (unsigned long)result);
+      }
 
       psync_free(res);
       psync_sql_sync();
@@ -773,6 +786,7 @@ static psync_socket *get_connected_socket(){
     psync_free(deviceid);
     psync_free(devicestring);
     psync_sql_sync();
+
     return sock;
   }
 }
@@ -2870,6 +2884,7 @@ static void psync_diff_thread(){
   int sel, ret=0;
   char ex;
   char *err=NULL;
+
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_send_status_update();
 restart:
@@ -2878,83 +2893,112 @@ restart:
   debug(D_NOTICE, "connected");
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
   ids.diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
+
   if (ids.diffid == 0) {
 	  initialdownload=1;
   }
+
   used_quota=psync_sql_cellint("SELECT value FROM setting WHERE id='usedquota'", 0);
+
   do{
     binparam diffparams[]={P_STR("timeformat", "timestamp"), P_NUM("limit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids.diffid)};
+
     if (!psync_do_run)
       break;
+
     res=send_command(sock, "diff", diffparams);
+
     if (!res){
       psync_socket_close(sock);
       goto restart;
     }
+
     result=psync_find_result(res, "result", PARAM_NUM)->num;
+
     if (unlikely(result)){
       debug(D_ERROR, "diff returned error %u: %s", (unsigned int)result, psync_find_result(res, "error", PARAM_STR)->str);
+
       psync_free(res);
       psync_socket_close(sock);
       psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
+
       goto restart;
     }
+
     entries=psync_find_result(res, "entries", PARAM_ARRAY);
+
     if (entries->length){
       newdiffid=psync_find_result(res, "diffid", PARAM_NUM)->num;
       debug(D_NOTICE, "processing diff with %u entries", (unsigned)entries->length);
       ids.diffid=process_entries(entries, newdiffid);
-      // psync_diff_refresh_fs(entries); -- don't do this for initial loading
       debug(D_NOTICE, "got diff with %u entries, new diffid %lu", (unsigned)entries->length, (unsigned long)ids.diffid);
     }
+
     result=entries->length;
     psync_free(res);
   } while (result);
+
   psync_fs_refresh_folder(0);
   debug(D_NOTICE, "initial sync finished");
+
   if (psync_diff_check_quota(sock)){
     psync_socket_close(sock);
     psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
+
     goto restart;
   }
+
   check_overquota();
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
   initialdownload=0;
   psync_run_analyze_if_needed();
   psync_syncer_check_delayed_syncs();
   exceptionsock=setup_exeptions();
+
   if (unlikely(exceptionsock==INVALID_SOCKET)){
     debug(D_ERROR, "could not create pipe");
     psync_socket_close(sock);
+
     return;
   }
+
   socks[0]=exceptionsock;
   socks[1]=sock->sock;
+
   psync_diff_adapter_hash(adapter_hash);
   psync_timer_register(psync_diff_adapter_timer, PSYNC_DIFF_CHECK_ADAPTER_CHANGE_SEC, NULL);
   send_diff_command(sock, ids);
   psync_milisleep(50);
+
   last_event=0;
+
   while (psync_do_run){
     if (unlinked){
       unlinked=0;
       initialdownload=1;
     }
+
     if(psync_recache_contacts){
       psync_cache_contacts();
       psync_recache_contacts=0;
     }
+
     if (psync_socket_pendingdata(sock))
       sel=1;
     else
       sel=psync_select_in(socks, 2, -1);
+
     if (sel==0){
       if (!psync_do_run)
         break;
+
       if (psync_pipe_read(exceptionsock, &ex, 1)!=1)
         continue;
+
       handle_exception(&sock, &ids, ex);
+
       while (psync_select_in(socks, 1, 0)==0 && psync_pipe_read(exceptionsock, &ex, 1)==1);
+
       socks[1]=sock->sock;
     }
     else if (sel==1){
@@ -2967,8 +3011,10 @@ restart:
         last_event=0;
         continue;
       }
+
       last_event=psync_timer_time();
       result=psync_find_result(res, "result", PARAM_NUM)->num;
+
       if (unlikely(result)){
         if (result==6003 || result==6002){ // timeout or cancel
           debug(D_NOTICE, "got \"%s\" from the socket", psync_find_result(res, "error", PARAM_STR)->str);
@@ -2982,21 +3028,28 @@ restart:
         socks[1]=sock->sock;
         continue;
       }
+
       entries=psync_check_result(res, "from", PARAM_STR);
+
       if (entries){
         if (entries->length==4 && !strcmp(entries->str, "diff")){
           entries=psync_find_result(res, "entries", PARAM_ARRAY);
+
           if (entries->length){
             newdiffid=psync_find_result(res, "diffid", PARAM_NUM)->num;
             ids.diffid=process_entries(entries, newdiffid);
+
             psync_diff_refresh_fs(entries);
             psync_diff_check_quota(sock);
             check_overquota();
+
             if (initialdownload)
               initialdownload=0;
           }
-          else
+          else{
             debug(D_NOTICE, "diff with 0 entries, did we send a nop recently?");
+          }
+
           psync_free(res);
         }
         else if (entries->length==13 && !strcmp(entries->str, "notifications")){
@@ -3007,19 +3060,24 @@ restart:
         else if (entries->length==8 && !strcmp(entries->str, "publinks")){
           ids.publinkid=psync_find_result(res, "publinkid", PARAM_NUM)->num;
           ret = cache_links(&err);
-          if (ret < 0)
+
+          if (ret < 0) {
             debug(D_ERROR, "Cacheing links faild with err %s", err);
-          else
+          }            
+          else {
             psync_notify_cache_change(PACCOUNT_CHANGE_LINKS);
+          }
         }
         else if (entries->length==11 && !strcmp(entries->str, "uploadlinks")){
           ids.uploadlinkid=psync_find_result(res, "uploadlinkid", PARAM_NUM)->num;
           ret = cache_upload_links(&err);
-          if (ret < 0)
-            debug(D_ERROR, "Cacheing upload links failed with err %s", err);
-          else
-            psync_notify_cache_change(PACCOUNT_CHANGE_LINKS);
 
+          if (ret < 0) {
+            debug(D_ERROR, "Cacheing upload links failed with err %s", err);
+          }            
+          else {
+            psync_notify_cache_change(PACCOUNT_CHANGE_LINKS);
+          }
         }
         else if (entries->length==5 && !strcmp(entries->str, "teams")){
           cache_account_teams();
