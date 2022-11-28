@@ -51,8 +51,6 @@
 #define EPARAM_USER_ID    "userid"
 #define EPARAM_REMEMBERME "rememberme"
 
-rememberme
-
 #if defined(P_OS_WINDOWS)
 #define DELIM_DIR   '\\'
 #endif
