@@ -1317,7 +1317,7 @@ int get_login_req_id(char** reqId) {
 /***********************************************************************/
 int wait_auth_token(char* request_id) {
   int res, loc_id;
-  uint64_t result, currentuserid, newuserid = 666, rememberme = 0;
+  uint64_t result, currentuserid, newuserid = 666, rememberme = 1;
   char* token;
   binresult* resData = NULL;
 
@@ -1350,7 +1350,7 @@ int wait_auth_token(char* request_id) {
   debug(D_NOTICE, "BOBO: wait_auth_token. Request Id: [%s]", token);
 
   loc_id = psync_find_result(resData, EPARAM_LOC_ID, PARAM_NUM)->num;
-  debug(D_NOTICE, "BOBO: wait_auth_token. Result: [%d]", loc_id);
+  debug(D_NOTICE, "BOBO: wait_auth_token. Location Id: [%d]", loc_id);
 
   newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
   debug(D_NOTICE, "BOBO: wait_auth_token. userid: [%llu]", newuserid);
@@ -1381,6 +1381,10 @@ int wait_auth_token(char* request_id) {
 
   psync_set_int_value("location_id", loc_id);
   psync_set_int_value("last_logged_location_id", loc_id);
+  
+  if (rememberme) {
+    psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));
+  }
 
   psync_set_auth(token, rememberme);
 
