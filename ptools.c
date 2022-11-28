@@ -1289,8 +1289,6 @@ int get_login_req_id(char** reqId) {
 
   res = call_ebackend(WEB_LOGIN_GET_REQ_ID, NULL, 0, &resData);
 
-  debug(D_NOTICE, "BOBO: get_login_req_id. Call backend. Res: [%d], Response len: [%lu]", res, resData->length);
-
   if (res != 0) {
     return res;
   }
