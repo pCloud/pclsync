@@ -253,6 +253,7 @@ static psync_socket *get_connected_socket(){
   psync_free(psync_my_2fa_token);
   auth=user=pass=psync_my_2fa_token=NULL;
   psync_is_business=0;
+
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
 
   if (!deviceid) {

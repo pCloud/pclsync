@@ -275,6 +275,18 @@ int psync_init(){
   debug(D_NOTICE, "Resolve DNS got IP: [%s]", psync_get_server_ip());
 
   //Bobo
+  char* deviceid;
+
+  debug(D_NOTICE, "BOBO: Check for device id.");
+  deviceid = psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
+
+  if (!deviceid) {
+    debug(D_NOTICE, "BOBO: No device id stored. Generate new one.");
+    deviceid = generate_device_id();
+  }
+
+  psync_free(deviceid);
+
   /*
   char* device_id;
   debug(D_NOTICE, "BOBO: Get device id");
