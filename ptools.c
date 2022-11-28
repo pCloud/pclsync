@@ -1269,6 +1269,10 @@ int call_ebackend(const char* method, binparam* paramas, int param_cnt, binresul
 
   psync_socket_close(sock);
 
+  if (!res) {
+    return 6002;//Backend code for timeout
+  }
+
   *resData = (binresult*)malloc(res->length * sizeof(binresult));
   memcpy(*resData, res, (res->length * sizeof(binresult)));
 
@@ -1322,7 +1326,7 @@ int wait_auth_token(char* request_id) {
   binparam params[] = {
     P_NUM(EPARAM_LOGIN, 1), //Fixed paramaeter, so the backend can recognize the caller.
     P_STR(EPARAM_REQ_ID, request_id),
-    P_NUM(EPARAM_TIMEOUT, 179) //Timeout. Optional.
+    P_NUM(EPARAM_TIMEOUT, 500) //Timeout. Optional.
   };
 
   debug(D_NOTICE, "BOBO: wait_auth_token. Call backend.");
@@ -1332,7 +1336,7 @@ int wait_auth_token(char* request_id) {
   debug(D_NOTICE, "BOBO: wait_auth_token. Call backend returned.");
 
   if (res != 0) {
-    return -1;
+    return res;
   }
 
   result = psync_find_result(resData, "result", PARAM_NUM)->num;

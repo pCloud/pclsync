@@ -46,7 +46,7 @@
 #define EPARAM_EXPIRES    "expires"
 #define EPARAM_REQ_ID     "request_id"
 #define EPARAM_TIMEOUT    "timeout"
-#define EPARAM_TOKEN      "TOKEN"
+#define EPARAM_TOKEN      "token"
 #define EPARAM_LOC_ID     "locationid"
 #define EPARAM_USER_ID    "userid"
 #define EPARAM_REMEMBERME "rememberme"
