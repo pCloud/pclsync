@@ -555,7 +555,32 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
 /**********************************************************************************************/
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
   debug(D_NOTICE, "Test Data event callback. eventid [%d]. String1: [%s], String2: [%s], uInt1: [%ul] uInt2: [%ul]", eventid, str1, str2, uint1, uint2);
+
   return;
+}
+/**********************************************************************************************/
+void wait_auth_token_async(void* data) {
+  int res;
+  char* req_token;
+  wait_login_async_cb callback;
+
+  debug(D_NOTICE, "BOBO: Test thread. 1.");
+
+  wait_token_cb_struct* local_data = (wait_token_cb_struct*)(data);
+ 
+  debug(D_NOTICE, "BOBO: Test thread. Start. Token: [%s]", local_data->req_id);
+
+  res = wait_auth_token(local_data->req_id);
+
+  debug(D_NOTICE, "BOBO: Test thread. Wait response. Res: [%d]", res);
+
+  callback = (wait_login_async_cb*)local_data->calb_ptr;
+
+  debug(D_NOTICE, "BOBO: Test thread. Callback.");
+
+  callback(res);
+
+  debug(D_NOTICE, "BOBO: Test thread. Wait response.");
 }
 /**********************************************************************************************/
 //Data event methods End.

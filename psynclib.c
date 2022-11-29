@@ -214,13 +214,21 @@ void psync_apiserver_init(){
     psync_set_apiserver(psync_setting_get_string(_PS(api_server)), psync_setting_get_uint(_PS(location_id)));
   }
 }
+//Bobo
+void test_callback(int eventid) {
+  debug(D_NOTICE, "Test Data event callback. Res [%d].", eventid);
 
+  return;
+}
+//Bobo
 int psync_init(){
   psync_thread_name="main app thread";
+
   debug(D_NOTICE, "initializing library version "PSYNC_LIB_VERSION);
   debug(D_NOTICE, "last commit time "GIT_COMMIT_DATE);
   debug(D_NOTICE, "previous commit time "GIT_PREV_COMMIT_DATE);
   debug(D_NOTICE, "previous commit id "GIT_PREV_COMMIT_ID);
+
   if (IS_DEBUG){
     pthread_mutex_lock(&psync_libstate_mutex);
     if (psync_libstate!=0){
@@ -287,7 +295,26 @@ int psync_init(){
 
   psync_free(deviceid);
 
-  /*
+/*
+  int res = 0;
+  void* test_ptr = (void*)test_callback;
+  char* req_id = "test_req_id";
+
+  debug(D_NOTICE, "BOBO: Test async wait token. Start.");
+
+  res = psync_wait_auth_token_async(req_id, test_ptr);
+
+  debug(D_NOTICE, "BOBO: Test async wait token. Done.");
+
+  char* appversion;
+
+  debug(D_NOTICE, "BOBO: Get app version.");
+  
+  appversion = psync_get_appversion();
+
+  debug(D_NOTICE, "BOBO: Got app version: [%s]", appversion);
+
+
   char* device_id;
   debug(D_NOTICE, "BOBO: Get device id");
   device_id = psync_get_device_string();
@@ -3192,5 +3219,30 @@ char* psync_get_device_string() {
   debug(D_NOTICE, "BOBO: psync_get_device_string.");
 
   return psync_device_string();
+}
+/******************************************************************************************************************/
+const char* psync_get_appversion() {
+  debug(D_NOTICE, "BOBO: psync_get_appversion.");
+
+  return psync_appname();
+}
+/******************************************************************************************************************/
+int psync_wait_auth_token_async(char* request_id, void* callb_ptr) {
+  wait_token_cb_struct* data;
+
+  debug(D_NOTICE, "BOBO: psync_wait_auth_token_async. Async call. 2");
+
+  data = psync_new(wait_token_cb_struct);
+
+  debug(D_NOTICE, "BOBO: psync_wait_auth_token_async. Async call. 3");
+
+  data->calb_ptr = callb_ptr;
+  data->req_id = request_id;
+
+  debug(D_NOTICE, "BOBO: psync_wait_auth_token_async. Async call. 4. Req Id: [%s]", data->req_id);
+
+  psync_run_thread1("Data Event", wait_auth_token_async, data);
+
+  debug(D_NOTICE, "BOBO: psync_wait_auth_token_async. Async call done.");
 }
 /******************************************************************************************************************/

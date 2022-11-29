@@ -1316,7 +1316,7 @@ int get_login_req_id(char** reqId) {
 }
 /***********************************************************************/
 int wait_auth_token(char* request_id) {
-  int res, loc_id;
+  int res, loc_id, last_loc_id = 0;
   uint64_t result, currentuserid, newuserid = 666, rememberme = 1;
   char* token;
   binresult* resData = NULL;
@@ -1379,8 +1379,14 @@ int wait_auth_token(char* request_id) {
     }
   }
 
+  last_loc_id = psync_get_uint_value("location_id");
+
+  if (last_loc_id != loc_id) {
+    debug(D_NOTICE, "BOBO: wait_auth_token. Set last location id.");
+    psync_set_int_value("last_logged_location_id", loc_id);
+  }
+
   psync_set_int_value("location_id", loc_id);
-  psync_set_int_value("last_logged_location_id", loc_id);
   
   if (rememberme) {
     psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));

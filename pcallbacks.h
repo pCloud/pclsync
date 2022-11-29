@@ -32,8 +32,12 @@
 
 #if defined(P_OS_LINUX)
 typedef void(/*_cdecl*/ *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
+
+typedef void(/*_cdecl*/ *wait_login_async_cb)(int result);
 #else
 typedef void(/*_cdecl*/__stdcall *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
+
+typedef void(/*_cdecl*/__stdcall *wait_login_async_cb)(int result);
 #endif
 
 void psync_callbacks_get_status(pstatus_t *status);
@@ -72,6 +76,14 @@ typedef struct _de_elem_list {
   uint64_t last;
 } de_elem_list;
 
+//Bobo
+typedef struct {
+  void* calb_ptr;
+  char* req_id;
+} wait_token_cb_struct;
+//Bobo
+
+
 void psync_init_data_event(void* ptr);
 
 void* free_data_event(event_data_struct* elem);
@@ -81,4 +93,6 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
 
 event_data_struct* pop_elem(de_elem_list* list);
+
+void wait_auth_token_async(void* data);
 #endif

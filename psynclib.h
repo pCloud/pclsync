@@ -1653,9 +1653,12 @@ int psync_get_login_req_id(char** reqId);
 * Wait until the login finishes
 */
 int psync_wait_auth_token(char* request_id);
+
+int psync_wait_auth_token_async(char* request_id, void* callb_ptr);
 /*******************************************************************************/
 char* psync_get_device_string();
 
+const char* psync_get_appversion();
 /*******************************************************************************/
 
 #ifdef __cplusplus
