@@ -1355,7 +1355,7 @@ int wait_auth_token(char* request_id) {
   newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
   debug(D_NOTICE, "BOBO: wait_auth_token. userid: [%llu]", newuserid);
 
-  rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_NUM)->num;
+  rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
   debug(D_NOTICE, "BOBO: wait_auth_token. rememberme: [%llu]", rememberme);
 
   if (resData) {
