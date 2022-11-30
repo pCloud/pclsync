@@ -1331,8 +1331,11 @@ int wait_auth_token(char* request_id) {
         //Unlink current user
         psync_unlink();
       }
+      else {
+        debug(D_NOTICE, "BOBO: wait_auth_token. User is relocated. Skip Unlink.");
+        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
+      }
 
-      psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
       psync_set_int_value("userid", newuserid);
     }
   }
