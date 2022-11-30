@@ -40,50 +40,6 @@ stuck_list_type* stuck_sync_tasks = NULL;
 static pthread_mutex_t stuck_elem_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*************************************************************/
-/*
-int is_user_relocated(uint64_t olduserid, const char* auth) {
-  binresult* res;
-  const binresult* userids;
-  uint64_t result, userid;
-  int cnt, i, lid, clid;
-  binresult* id;
-
-  binparam params[] = { P_STR("timeformat", "timestamp"),
-                      P_STR("auth", auth) };
-
-  res = psync_api_run_command("getolduserids", params);
-
-  if (unlikely_log(!res)) return 0;
-
-  result = psync_find_result(res, "result", PARAM_NUM)->num;
-
-  if (result) {
-    debug(D_NOTICE, "getolduserids returned error %lu %s", (unsigned long)result, psync_find_result(res, "error", PARAM_STR)->str);
-    psync_free(res);
-    return 0;
-  }
-
-  userids = psync_find_result(res, "userids", PARAM_ARRAY);
-  cnt = userids->length;
-
-  if (!cnt) {
-    psync_free(res);
-    return 0;
-  }
-
-  clid = psync_sql_cellint("SELECT value FROM setting WHERE id='last_logged_location_id'", 1);
-
-  for (i = 0; i < cnt; ++i) {
-    id = userids->array[i];
-    userid = psync_find_result(id, "userid", PARAM_NUM)->num;
-    lid = psync_find_result(id, "locationid", PARAM_NUM)->num;
-    if (olduserid == userid && lid == clid) return 1;
-  }
-
-  return 0;
-}
-*/
-/*************************************************************/
 char* getMACaddr() {
   char  buffer[128];
 
@@ -1367,11 +1323,13 @@ int wait_auth_token(char* request_id) {
   debug(D_NOTICE, "BOBO: wait_auth_token. Current User Id: [%llu], New user id: [%llu]", currentuserid, newuserid);
 
   if (currentuserid) {
+    debug(D_NOTICE, "BOBO: wait_auth_token. We have a logged user.");
     if (currentuserid != newuserid) {
+      debug(D_NOTICE, "BOBO: wait_auth_token. Current user is different from the last logged one.");
       if (!is_user_relocated(currentuserid, token)) {
         debug(D_NOTICE, "BOBO: wait_auth_token. User is not relocated. Unlink.");
         //Unlink current user
-        //psync_unlink();
+        psync_unlink();
       }
 
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
@@ -1380,15 +1338,17 @@ int wait_auth_token(char* request_id) {
   }
 
   last_loc_id = psync_get_uint_value("location_id");
+  debug(D_NOTICE, "BOBO: wait_auth_token. Last location id: [%d], New location id: [%d]", last_loc_id, loc_id);
 
-  if (last_loc_id != loc_id) {
-    debug(D_NOTICE, "BOBO: wait_auth_token. Set last location id.");
-    psync_set_int_value("last_logged_location_id", loc_id);
+  psync_set_int_value("last_logged_location_id", loc_id);
+  psync_set_int_value("location_id", loc_id);
+
+  if (loc_id = 1) {//User is located in US
+    psync_set_apiserver(PSYNC_API_HOST_US,loc_id);
   }
 
-  psync_set_int_value("location_id", loc_id);
-  
   if (rememberme) {
+    debug(D_NOTICE, "BOBO: wait_auth_token. Remember me set. Save the token to the global variable.");
     psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));
   }
 

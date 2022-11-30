@@ -476,6 +476,7 @@ void psync_set_pass(const char *password, int save){
 
 void psync_set_auth(const char *auth, int save){
   clear_db(save);
+
   if (save)
     psync_set_string_value("auth", auth);
   else

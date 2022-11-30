@@ -55,6 +55,8 @@
 #define PSYNC_API_APORT     8398
 #define PSYNC_API_APORT_SSL 8399
 
+#define PSYNC_API_HOST_US   "binapi.pcloud.com"
+#define PSYNC_API_AHOST_US  "api.pcloud.com"
 
 #define PSYNC_P2P_PORT 42420
 
