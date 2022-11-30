@@ -285,57 +285,17 @@ int psync_init(){
   //Bobo
   char* deviceid;
 
-  debug(D_NOTICE, "BOBO: Check for device id.");
+  debug(D_NOTICE, "Check for device id.");
   deviceid = psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
 
   if (!deviceid) {
-    debug(D_NOTICE, "BOBO: No device id stored. Generate new one.");
+    debug(D_NOTICE, "No device id stored. Generate new one.");
     deviceid = generate_device_id();
   }
 
   psync_free(deviceid);
-
-/*
-  int res = 0;
-  void* test_ptr = (void*)test_callback;
-  char* req_id = "test_req_id";
-
-  debug(D_NOTICE, "BOBO: Test async wait token. Start.");
-
-  res = psync_wait_auth_token_async(req_id, test_ptr);
-
-  debug(D_NOTICE, "BOBO: Test async wait token. Done.");
-
-  char* appversion;
-
-  debug(D_NOTICE, "BOBO: Get app version.");
-  
-  appversion = psync_get_appversion();
-
-  debug(D_NOTICE, "BOBO: Got app version: [%s]", appversion);
-
-
-  char* device_id;
-  debug(D_NOTICE, "BOBO: Get device id");
-  device_id = psync_get_device_string();
-  debug(D_NOTICE, "BOBO: Got device id: [%s]", device_id);
-
-  debug(D_NOTICE, "BOBO: Get login req id");
-
-  int res;
-  char* reqId;
-
-  res = psync_get_login_req_id(&reqId);
-
-  debug(D_NOTICE, "BOBO: Get login req id. Res: [%d]", res);
-
-  debug(D_NOTICE, "BOBO: Wait login.");
-
-  res = psync_wait_auth_token(reqId);
-
-  debug(D_NOTICE, "BOBO: Wait login. Res:[%d]", res);
-  */
   //Bobo
+
   return 0;
 }
 
