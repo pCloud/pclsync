@@ -1343,8 +1343,18 @@ int wait_auth_token(char* request_id) {
   psync_set_int_value("last_logged_location_id", loc_id);
   psync_set_int_value("location_id", loc_id);
 
-  if (loc_id = 1) {//User is located in US
-    psync_set_apiserver(PSYNC_API_HOST_US,loc_id);
+  if(last_loc_id != loc_id){
+    if (loc_id == 1) {//User is located in US
+      debug(D_CRITICAL, "BOBO: wait_auth_token. US location detected.");
+      psync_set_apiserver(PSYNC_API_HOST_US,loc_id);
+    }
+    else if((loc_id == 2) || (loc_id == 0)) {//EU user
+      debug(D_CRITICAL, "BOBO: wait_auth_token. EU location detected.");
+      psync_set_apiserver(PSYNC_API_HOST, loc_id);
+    }
+    else {
+      debug(D_CRITICAL, "BOBO: wait_auth_token. Unknown user location! [%d]", loc_id);
+    }
   }
 
   if (rememberme) {
