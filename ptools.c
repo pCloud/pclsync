@@ -1297,32 +1297,13 @@ int wait_auth_token(char* request_id) {
   loc_id = psync_find_result(resData, EPARAM_LOC_ID, PARAM_NUM)->num;
   newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
   rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
+
   debug(D_NOTICE, "wait_auth_token. rememberme: [%llu], userid: [%llu], Location Id: [%d], Request Id: [%s]", rememberme, newuserid, loc_id, token);
-
-  psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));
-
-  debug(D_NOTICE, "wait_auth_token. Auth set.");
-
-  if (loc_id == 1) {//User is located in US
-    debug(D_CRITICAL, "US location detected.");
-    psync_set_apiserver(PSYNC_API_HOST_US, loc_id);
-  }
-  else if ((loc_id == 2) || (loc_id == 0)) {//EU user
-    debug(D_CRITICAL, "EU location detected.");
-    psync_set_apiserver(PSYNC_API_HOST, loc_id);
-  }
-  else {
-    debug(D_CRITICAL, "Unknown user location! [%d]", loc_id);
-  }
-
-
-  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 
   if (resData) {
     psync_free(resData);
   }
 
-  /*
   currentuserid = psync_get_uint_value("userid");
 
   if (currentuserid) {
@@ -1365,8 +1346,7 @@ int wait_auth_token(char* request_id) {
   }
 
   psync_set_auth(token, rememberme);
-  */
-
+  
   return result;
 }
 /**********************************************************************/

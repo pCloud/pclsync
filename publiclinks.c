@@ -1138,7 +1138,9 @@ plink_contents_t *do_show_link(const char *code, char **err /*OUT*/) {
   *err = 0;
 
   binparam params[] = {P_STR("auth", psync_my_auth),P_STR("timeformat", "timestamp"), P_STR("iconformat","id"), P_STR("code", code)};
+
   api = psync_apipool_get();
+
   if (unlikely(!api)) {
     debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
     *err = psync_strndup("Can't gat api from the pool.", 29);
