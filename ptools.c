@@ -1326,7 +1326,7 @@ int wait_auth_token(char* request_id) {
   psync_set_int_value("last_logged_location_id", loc_id);
   psync_set_int_value("location_id", loc_id);
 
-  if(last_loc_id != loc_id){
+//  if(last_loc_id != loc_id){
     if (loc_id == 1) {//User is located in US
       debug(D_CRITICAL, "US location detected.");
       psync_set_apiserver(PSYNC_API_HOST_US,loc_id);
@@ -1338,7 +1338,7 @@ int wait_auth_token(char* request_id) {
     else {
       debug(D_CRITICAL, "Unknown user location! [%d]", loc_id);
     }
-  }
+//  }
 
   if (rememberme) {
     debug(D_NOTICE, "Remember me set. Save the token to the global variable.");
