@@ -598,8 +598,6 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   ssize_t rrd;
   psync_file_t fd;
 
-  debug(D_NOTICE, "BOBO: upload_file. 1.");
-
   fd=psync_file_open(localpath, P_O_RDONLY, 0);
 
   if (fd==INVALID_HANDLE_VALUE){
@@ -617,8 +615,6 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
 
   bw=0;
   buff=psync_malloc(PSYNC_COPY_BUFFER_SIZE);
-
-  debug(D_NOTICE, "BOBO: Upload file command sent.");
 
   while (bw<fsize){
     if (unlikely(upload->stop)){
@@ -685,10 +681,7 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   psync_sql_run_free(sres);
 
   if (psync_check_result(meta, "conflicted", PARAM_BOOL)){
-
-    debug(D_WARNING, "BOBO: Commit transaction.");
     psync_sql_commit_transaction();
-    debug(D_WARNING, "BOBO: Commit done.");
 
     set_local_file_conflicted(localfileid, fileid, hash, localpath, psync_find_result(meta, "name", PARAM_STR)->str, upload->taskid);
   }
@@ -1398,20 +1391,16 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
   debug(D_NOTICE, "uploading file %s", localpath);
 
   if (fsize<=PSYNC_MIN_SIZE_FOR_CHECKSUMS){
-    debug(D_NOTICE, "BOBO: upload_file");
     ret=upload_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, &st, pr);
   }
   else{
     if (uploadid && !memcmp(phashhex, uhashhex, PSYNC_HASH_DIGEST_HEXLEN)){
-      debug(D_NOTICE, "BOBO: upload_big_file. 1.");
       ret=upload_big_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, uploadid, ufsize, &st, pr);
     }
     else{
       if (uploadid && memcmp(phashhex, uhashhex, PSYNC_HASH_DIGEST_HEXLEN)){
         debug(D_WARNING, "restarting upload due to checksum mismatch up to offset %lu, expected: %."NTO_STR(PSYNC_HASH_DIGEST_HEXLEN)"s, got: %."NTO_STR(PSYNC_HASH_DIGEST_HEXLEN)"s", (unsigned long)ufsize, phashhex, uhashhex);
       }
-
-      debug(D_NOTICE, "BOBO: upload_big_file. 2.");
       ret=upload_big_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, 0, 0, &st, pr);
     }
   }

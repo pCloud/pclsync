@@ -564,23 +564,15 @@ void wait_auth_token_async(void* data) {
   char* req_token;
   wait_login_async_cb callback;
 
-  debug(D_NOTICE, "BOBO: Test thread. 1.");
-
   wait_token_cb_struct* local_data = (wait_token_cb_struct*)(data);
- 
-  debug(D_NOTICE, "BOBO: Test thread. Start. Token: [%s]", local_data->req_id);
+  callback = (wait_login_async_cb*)local_data->calb_ptr;
 
   res = wait_auth_token(local_data->req_id);
 
-  debug(D_NOTICE, "BOBO: Test thread. Wait response. Res: [%d]", res);
-
-  callback = (wait_login_async_cb*)local_data->calb_ptr;
-
-  debug(D_NOTICE, "BOBO: Test thread. Callback.");
+  debug(D_NOTICE, "wait_auth_token_async. Result:[%d]", res);
+  psync_free(local_data);
 
   callback(res);
-
-  debug(D_NOTICE, "BOBO: Test thread. Wait response.");
 }
 /**********************************************************************************************/
 //Data event methods End.

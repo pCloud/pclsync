@@ -147,11 +147,9 @@ typedef struct {
 #define PSTATUS_ACCOUT_TFAERR          PSTATUS_TFA_REQUIRED
 #define PSTATUS_ACCOUT_EXPIRED         PSTATUS_ACCOUNT_EXPIRED
 
-
-//Bobo
+//Web login commands
 #define WEB_LOGIN_GET_REQ_ID "getrequestid"
 #define WEB_LOGIN_WAIT_AUTH  "pcloud_oauth2_token"
-//Bobo
 
 typedef struct pstatus_struct_ {
   const char *downloadstr; /* formatted string with the status of uploads */

@@ -12,10 +12,9 @@
 #include "pnetlibs.h"
 #include <stdio.h>
 #include "pcallbacks.h"
-//Bobo
+
 #include "pstatus.h"
 #include "psettings.h"
-//Bobo
 
 #if defined(P_OS_WINDOWS)
 #define _CRT_SECURE_NO_WARNINGS
@@ -1210,16 +1209,15 @@ int call_ebackend(const char* method, binparam* paramas, int param_cnt, binresul
   psync_socket* sock;
   size_t resLen;
 
-  debug(D_NOTICE, "BOBO: Connect to EAPI server.");
   sock = psync_api_connect(PSYNC_API_HOST, psync_setting_get_bool(0));
 
   if (unlikely_log(!sock)) {
-    debug(D_NOTICE, "BOBO: Could not connect to the server.");
+    debug(D_ERROR, "Could not connect to the server.");
 
     return -1;
   }
 
-  debug(D_NOTICE, "BOBO: Send command [%s]", method);
+  debug(D_NOTICE, "call_ebackend. Send command [%s]", method);
 
   res = do_send_command(sock, method, strlen(method), paramas, param_cnt, -1, 1);
 
@@ -1241,8 +1239,6 @@ int get_login_req_id(char** reqId) {
   char* expireTime;
   binresult* resData = NULL;
 
-  debug(D_NOTICE, "BOBO: get_login_req_id. Call backend.");
-
   res = call_ebackend(WEB_LOGIN_GET_REQ_ID, NULL, 0, &resData);
 
   if (res != 0) {
@@ -1250,19 +1246,17 @@ int get_login_req_id(char** reqId) {
   }
 
   result = psync_find_result(resData, "result", PARAM_NUM)->num;
-  debug(D_NOTICE, "BOBO: get_login_req_id. Result: [%llu]", result);
 
   if (result != 0) {
-    debug(D_NOTICE, "BOBO: get_login_req_id. Backend returned error: [%llu]", result);
+    debug(D_ERROR, "get_login_req_id. Backend returned error: [%llu]", result);
 
     return result;
   }
 
   *reqId = psync_strdup(psync_find_result(resData, "request_id", PARAM_STR)->str);
-  debug(D_NOTICE, "BOBO: get_login_req_id. Request Id: [%s]", *reqId);
+  debug(D_NOTICE, "get_login_req_id. Request Id: [%s]", *reqId);
 
   expireTime = psync_strdup(psync_find_result(resData, "expires", PARAM_STR)->str);
-  debug(D_NOTICE, "BOBO: get_login_req_id. Expires: [%s]", expireTime);
 
   if (resData) {
     psync_free(resData);
@@ -1283,56 +1277,62 @@ int wait_auth_token(char* request_id) {
     P_NUM(EPARAM_TIMEOUT, 500) //Timeout. Optional.
   };
 
-  debug(D_NOTICE, "BOBO: wait_auth_token. Call backend.");
+  debug(D_NOTICE, "wait_auth_token. Wait login token.");
 
   res = call_ebackend(WEB_LOGIN_WAIT_AUTH, params, 3, &resData);
-
-  debug(D_NOTICE, "BOBO: wait_auth_token. Call backend returned.");
 
   if (res != 0) {
     return res;
   }
 
   result = psync_find_result(resData, "result", PARAM_NUM)->num;
-  debug(D_NOTICE, "BOBO: wait_auth_token. Result: [%llu]", result);
 
   if (result != 0) {
-    debug(D_NOTICE, "BOBO: wait_auth_token. Backend returned error: [%llu]", result);
+    debug(D_NOTICE, "wait_auth_token. Backend returned error: [%llu]", result);
 
     return result;
   }
 
   token = psync_strdup(psync_find_result(resData, EPARAM_TOKEN, PARAM_STR)->str);
-  debug(D_NOTICE, "BOBO: wait_auth_token. Request Id: [%s]", token);
-
   loc_id = psync_find_result(resData, EPARAM_LOC_ID, PARAM_NUM)->num;
-  debug(D_NOTICE, "BOBO: wait_auth_token. Location Id: [%d]", loc_id);
-
   newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
-  debug(D_NOTICE, "BOBO: wait_auth_token. userid: [%llu]", newuserid);
-
   rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
-  debug(D_NOTICE, "BOBO: wait_auth_token. rememberme: [%llu]", rememberme);
+  debug(D_NOTICE, "wait_auth_token. rememberme: [%llu], userid: [%llu], Location Id: [%d], Request Id: [%s]", rememberme, newuserid, loc_id, token);
+
+  psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));
+
+  debug(D_NOTICE, "wait_auth_token. Auth set.");
+
+  if (loc_id == 1) {//User is located in US
+    debug(D_CRITICAL, "US location detected.");
+    psync_set_apiserver(PSYNC_API_HOST_US, loc_id);
+  }
+  else if ((loc_id == 2) || (loc_id == 0)) {//EU user
+    debug(D_CRITICAL, "EU location detected.");
+    psync_set_apiserver(PSYNC_API_HOST, loc_id);
+  }
+  else {
+    debug(D_CRITICAL, "Unknown user location! [%d]", loc_id);
+  }
+
+
+  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 
   if (resData) {
     psync_free(resData);
   }
 
+  /*
   currentuserid = psync_get_uint_value("userid");
 
-  debug(D_NOTICE, "BOBO: wait_auth_token. Current User Id: [%llu], New user id: [%llu]", currentuserid, newuserid);
-
   if (currentuserid) {
-    debug(D_NOTICE, "BOBO: wait_auth_token. We have a logged user.");
     if (currentuserid != newuserid) {
-      debug(D_NOTICE, "BOBO: wait_auth_token. Current user is different from the last logged one.");
       if (!is_user_relocated(currentuserid, token)) {
-        debug(D_NOTICE, "BOBO: wait_auth_token. User is not relocated. Unlink.");
-        //Unlink current user
+        debug(D_NOTICE, "User is not relocated. Unlink.");
         psync_unlink();
       }
       else {
-        debug(D_NOTICE, "BOBO: wait_auth_token. User is relocated. Skip Unlink.");
+        debug(D_NOTICE, "User is relocated. Skip Unlink.");
         psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
       }
 
@@ -1341,31 +1341,31 @@ int wait_auth_token(char* request_id) {
   }
 
   last_loc_id = psync_get_uint_value("location_id");
-  debug(D_NOTICE, "BOBO: wait_auth_token. Last location id: [%d], New location id: [%d]", last_loc_id, loc_id);
 
   psync_set_int_value("last_logged_location_id", loc_id);
   psync_set_int_value("location_id", loc_id);
 
   if(last_loc_id != loc_id){
     if (loc_id == 1) {//User is located in US
-      debug(D_CRITICAL, "BOBO: wait_auth_token. US location detected.");
+      debug(D_CRITICAL, "US location detected.");
       psync_set_apiserver(PSYNC_API_HOST_US,loc_id);
     }
     else if((loc_id == 2) || (loc_id == 0)) {//EU user
-      debug(D_CRITICAL, "BOBO: wait_auth_token. EU location detected.");
+      debug(D_CRITICAL, "EU location detected.");
       psync_set_apiserver(PSYNC_API_HOST, loc_id);
     }
     else {
-      debug(D_CRITICAL, "BOBO: wait_auth_token. Unknown user location! [%d]", loc_id);
+      debug(D_CRITICAL, "Unknown user location! [%d]", loc_id);
     }
   }
 
   if (rememberme) {
-    debug(D_NOTICE, "BOBO: wait_auth_token. Remember me set. Save the token to the global variable.");
+    debug(D_NOTICE, "Remember me set. Save the token to the global variable.");
     psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));
   }
 
   psync_set_auth(token, rememberme);
+  */
 
   return result;
 }

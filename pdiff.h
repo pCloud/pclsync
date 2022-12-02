@@ -45,8 +45,5 @@ void do_register_account_events_callback(paccount_cache_callback_t callback);
 
 void psync_delete_cached_crypto_keys();
 
-//Bobo
 char* generate_device_id();
-//Bobo
-
 #endif

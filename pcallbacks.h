@@ -76,13 +76,11 @@ typedef struct _de_elem_list {
   uint64_t last;
 } de_elem_list;
 
-//Bobo
+//Used for asynchronous web login call
 typedef struct {
   void* calb_ptr;
   char* req_id;
 } wait_token_cb_struct;
-//Bobo
-
 
 void psync_init_data_event(void* ptr);
 
