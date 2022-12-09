@@ -50,86 +50,130 @@ static psync_uint_t status_waiters=0;
 
 static uint32_t psync_calc_status(){
   if (statuses[PSTATUS_TYPE_AUTH]!=PSTATUS_AUTH_PROVIDED && statuses[PSTATUS_TYPE_AUTH]!=PSTATUS_INVALID){
-    if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_REQUIRED)
+    if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_REQUIRED){
+      debug(D_BUG, "Calc status to: PSTATUS_LOGIN_REQUIRED");
       return PSTATUS_LOGIN_REQUIRED;
-    else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_MISMATCH)
+    }
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_MISMATCH) {
+      debug(D_BUG, "Calc status to: PSTATUS_USER_MISMATCH");
       return PSTATUS_USER_MISMATCH;
-    else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_BADLOGIN)
+    }
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_BADLOGIN) {
+      debug(D_BUG, "Calc status to: PSTATUS_BAD_LOGIN_DATA");
       return PSTATUS_BAD_LOGIN_DATA;
-    else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_BADTOKEN)
+    }
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_BADTOKEN) {
+      debug(D_BUG, "Calc status to: PSTATUS_BAD_LOGIN_TOKEN");
       return PSTATUS_BAD_LOGIN_TOKEN;
-    else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_EXPIRED)
+    }      
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_EXPIRED) {
+      debug(D_BUG, "Calc status to: PSTATUS_ACCOUNT_EXPIRED");
       return PSTATUS_ACCOUNT_EXPIRED;
-    else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_TFAREQ)
+    }
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_TFAREQ) {
+      debug(D_BUG, "Calc status to: PSTATUS_TFA_REQUIRED");
       return PSTATUS_TFA_REQUIRED;
-	  else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_VERIFYREQ)
-		  return PSTATUS_VERIFY_REQUIRED;
-    else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_BADCODE)
+    }
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_VERIFYREQ) {
+      debug(D_BUG, "Calc status to: PSTATUS_VERIFY_REQUIRED");
+      return PSTATUS_VERIFY_REQUIRED;
+    }
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_BADCODE) {
+      debug(D_BUG, "Calc status to: PSTATUS_BAD_TFA_CODE");
       return PSTATUS_BAD_TFA_CODE;
-    else if (statuses[PSTATUS_TYPE_AUTH]==PSTATUS_AUTH_RELOCATING)
+    }
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_RELOCATING) {
+      debug(D_BUG, "Calc status to: PSTATUS_RELOCATION");
       return PSTATUS_RELOCATION;
-    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_RELOCATED)
+    }
+    else if (statuses[PSTATUS_TYPE_AUTH] == PSTATUS_AUTH_RELOCATED) {
+      debug(D_BUG, "Calc status to: PSTATUS_RELOCATED");
       return PSTATUS_RELOCATED;
+    }
     else {
       debug(D_BUG, "invalid PSTATUS_TYPE_AUTH %d", statuses[PSTATUS_TYPE_AUTH]);
       return -1;
     }
   }
   if (statuses[PSTATUS_TYPE_RUN]!=PSTATUS_RUN_RUN){
-    if (statuses[PSTATUS_TYPE_RUN]==PSTATUS_RUN_PAUSE)
+    if (statuses[PSTATUS_TYPE_RUN] == PSTATUS_RUN_PAUSE) {
+      debug(D_BUG, "Calc status to: PSTATUS_PAUSED");
       return PSTATUS_PAUSED;
-    else if (statuses[PSTATUS_TYPE_RUN]==PSTATUS_RUN_STOP)
+    }
+    else if (statuses[PSTATUS_TYPE_RUN] == PSTATUS_RUN_STOP) {
+      debug(D_BUG, "Calc status to: PSTATUS_STOPPED");
       return PSTATUS_STOPPED;
+    }
     else {
       debug(D_BUG, "invalid PSTATUS_TYPE_RUN %d", statuses[PSTATUS_TYPE_RUN]);
       return -1;
     }
   }
   if (statuses[PSTATUS_TYPE_ONLINE]!=PSTATUS_ONLINE_ONLINE){
-    if (statuses[PSTATUS_TYPE_ONLINE]==PSTATUS_ONLINE_CONNECTING)
+    if (statuses[PSTATUS_TYPE_ONLINE] == PSTATUS_ONLINE_CONNECTING) {
+      debug(D_BUG, "Calc status to: PSTATUS_CONNECTING");
       return PSTATUS_CONNECTING;
-    else if (statuses[PSTATUS_TYPE_ONLINE]==PSTATUS_ONLINE_SCANNING)
+    }
+    else if (statuses[PSTATUS_TYPE_ONLINE] == PSTATUS_ONLINE_SCANNING) {
+      debug(D_BUG, "Calc status to: PSTATUS_SCANNING");
       return PSTATUS_SCANNING;
-    else if (statuses[PSTATUS_TYPE_ONLINE]==PSTATUS_ONLINE_OFFLINE)
+    }
+    else if (statuses[PSTATUS_TYPE_ONLINE] == PSTATUS_ONLINE_OFFLINE) {
+      debug(D_BUG, "Calc status to: PSTATUS_OFFLINE");
       return PSTATUS_OFFLINE;
+    }
     else {
       debug(D_BUG, "invalid PSTATUS_TYPE_ONLINE %d", statuses[PSTATUS_TYPE_ONLINE]);
       return -1;
     }
   }
   if (statuses[PSTATUS_TYPE_LOCALSCAN]!=PSTATUS_LOCALSCAN_READY){
-    if (statuses[PSTATUS_TYPE_LOCALSCAN]==PSTATUS_LOCALSCAN_SCANNING)
+    if (statuses[PSTATUS_TYPE_LOCALSCAN] == PSTATUS_LOCALSCAN_SCANNING) {
+      debug(D_BUG, "Calc status to: PSTATUS_SCANNING");
       return PSTATUS_SCANNING;
+    }
     else {
       debug(D_BUG, "invalid PSTATUS_TYPE_LOCALSCAN %d", statuses[PSTATUS_TYPE_LOCALSCAN]);
       return -1;
     }
   }
   if (statuses[PSTATUS_TYPE_ACCFULL]!=PSTATUS_ACCFULL_QUOTAOK){
-    if (statuses[PSTATUS_TYPE_ACCFULL]==PSTATUS_ACCFULL_OVERQUOTA)
+    if (statuses[PSTATUS_TYPE_ACCFULL] == PSTATUS_ACCFULL_OVERQUOTA) {
+      debug(D_BUG, "Calc status to: PSTATUS_ACCOUNT_FULL");
       return PSTATUS_ACCOUNT_FULL;
+    }
     else {
       debug(D_BUG, "invalid PSTATUS_TYPE_ACCFULL %d", statuses[PSTATUS_TYPE_ACCFULL]);
       return -1;
     }
   }
   if (statuses[PSTATUS_TYPE_DISKFULL]!=PSTATUS_DISKFULL_OK){
-    if (statuses[PSTATUS_TYPE_DISKFULL]==PSTATUS_DISKFULL_FULL)
+    if (statuses[PSTATUS_TYPE_DISKFULL] == PSTATUS_DISKFULL_FULL) {
+      debug(D_BUG, "Calc status to: PSTATUS_DISK_FULL");
       return PSTATUS_DISK_FULL;
+    }
     else {
       debug(D_BUG, "invalid PSTATUS_TYPE_DISKFULL %d", statuses[PSTATUS_TYPE_DISKFULL]);
       return -1;
     }
   }
 
-  if ((psync_status.filesdownloading || psync_status.filestodownload) && (psync_status.filesuploading || psync_status.filestoupload))
+  if ((psync_status.filesdownloading || psync_status.filestodownload) && (psync_status.filesuploading || psync_status.filestoupload)) {
+    debug(D_BUG, "Calc status to: PSTATUS_DOWNLOADINGANDUPLOADING");
     return PSTATUS_DOWNLOADINGANDUPLOADING;
-  else if (psync_status.filesdownloading || psync_status.filestodownload)
+  }
+  else if (psync_status.filesdownloading || psync_status.filestodownload) {
+    debug(D_BUG, "Calc status to: PSTATUS_DOWNLOADING");
     return PSTATUS_DOWNLOADING;
-  else if (psync_status.filesuploading || psync_status.filestoupload)
+  }
+  else if (psync_status.filesuploading || psync_status.filestoupload) {
+    debug(D_BUG, "Calc status to: PSTATUS_UPLOADING");
     return PSTATUS_UPLOADING;
-  else
+  }
+  else {
+    debug(D_BUG, "Calc status to: PSTATUS_READY");
     return PSTATUS_READY;
+  }
 }
 
 void psync_status_init(){

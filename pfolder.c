@@ -681,18 +681,23 @@ static pfolder_list_t *folder_list_finalize(folder_list *list){
   pfolder_list_t *ret;
   char *name;
   uint32_t i;
-  debug(D_NOTICE, "allocating %u bytes for folder list, %u of which for names",
-        (unsigned)(offsetof(pfolder_list_t, entries)+sizeof(pentry_t)*list->entriescnt+list->nameoff), (unsigned)list->nameoff);
+
+  //debug(D_NOTICE, "allocating %u bytes for folder list, %u of which for names", (unsigned)(offsetof(pfolder_list_t, entries)+sizeof(pentry_t)*list->entriescnt+list->nameoff), (unsigned)list->nameoff);
+
   ret=(pfolder_list_t *)psync_malloc(offsetof(pfolder_list_t, entries)+sizeof(pentry_t)*list->entriescnt+list->nameoff);
   name=((char *)ret)+offsetof(pfolder_list_t, entries)+sizeof(pentry_t)*list->entriescnt;
   ret->entrycnt=list->entriescnt;
+
   memcpy(ret->entries, list->entries, sizeof(pentry_t)*list->entriescnt);
   memcpy(name, list->namebuff, list->nameoff);
+
   for (i=0; i<list->entriescnt; i++){
     ret->entries[i].name=name;
     name+=list->entries[i].namelen+1;
   }
+
   folder_list_free(list);
+
   return ret;
 }
 

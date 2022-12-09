@@ -1277,7 +1277,7 @@ int wait_auth_token(char* request_id) {
     P_NUM(EPARAM_TIMEOUT, 500) //Timeout. Optional.
   };
 
-  debug(D_NOTICE, "wait_auth_token. Wait login token.");
+  debug(D_NOTICE, "Wait login token.");
 
   res = call_ebackend(WEB_LOGIN_WAIT_AUTH, params, 3, &resData);
 
@@ -1288,7 +1288,7 @@ int wait_auth_token(char* request_id) {
   result = psync_find_result(resData, "result", PARAM_NUM)->num;
 
   if (result != 0) {
-    debug(D_NOTICE, "wait_auth_token. Backend returned error: [%llu]", result);
+    debug(D_NOTICE, "Backend returned error: [%llu]", result);
 
     return result;
   }
@@ -1298,7 +1298,7 @@ int wait_auth_token(char* request_id) {
   newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
   rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
 
-  debug(D_NOTICE, "wait_auth_token. rememberme: [%llu], userid: [%llu], Location Id: [%d], Request Id: [%s]", rememberme, newuserid, loc_id, token);
+  debug(D_NOTICE, "Login result parameters: RememberMe: [%llu], UserId: [%llu], Location Id: [%d], Token: [%s]", rememberme, newuserid, loc_id, token);
 
   if (resData) {
     psync_free(resData);
@@ -1317,7 +1317,7 @@ int wait_auth_token(char* request_id) {
         psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
       }
 
-      psync_set_int_value("userid", newuserid);
+      //psync_set_int_value("userid", newuserid);
     }
   }
 
@@ -1326,22 +1326,20 @@ int wait_auth_token(char* request_id) {
   psync_set_int_value("last_logged_location_id", loc_id);
   psync_set_int_value("location_id", loc_id);
 
-//  if(last_loc_id != loc_id){
-    if (loc_id == 1) {//User is located in US
-      debug(D_CRITICAL, "US location detected.");
-      psync_set_apiserver(PSYNC_API_HOST_US,loc_id);
-    }
-    else if((loc_id == 2) || (loc_id == 0)) {//EU user
-      debug(D_CRITICAL, "EU location detected.");
-      psync_set_apiserver(PSYNC_API_HOST, loc_id);
-    }
-    else {
-      debug(D_CRITICAL, "Unknown user location! [%d]", loc_id);
-    }
-//  }
+
+  if (loc_id == 1) {//User is located in US
+    debug(D_NOTICE, "US location detected.");
+    psync_set_apiserver(PSYNC_API_HOST_US,loc_id);
+  }
+  else if((loc_id == 2) || (loc_id == 0)) {//EU user
+    debug(D_NOTICE, "EU location detected.");
+    psync_set_apiserver(PSYNC_API_HOST, loc_id);
+  }
+  else {
+    debug(D_CRITICAL, "Unknown user location! [%d]", loc_id);
+  }
 
   if (rememberme) {
-    debug(D_NOTICE, "Remember me set. Save the token to the global variable.");
     psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));
   }
 

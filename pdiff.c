@@ -347,8 +347,9 @@ static psync_socket *get_connected_socket(){
       res=send_command(sock, method, params);
     }
     else if (user && pass && pass[0]){
-      if (digest)
+      if (digest){
         res=get_userinfo_user_pass(sock, user, pass, osversion, appversion, deviceid, devicestring);
+      }
       else{
         binparam params[]={P_STR("timeformat", "timestamp"),
                          P_STR("username", user),
@@ -362,6 +363,8 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getapiserver", 1),
                          P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
+
+        debug(D_NOTICE, "Send login command.");
 
         res=send_command(sock, "login", params);
       }
@@ -378,6 +381,8 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getapiserver", 1),
                          P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
+
+      debug(D_NOTICE, "Send userinfo command.");
 
       res=send_command(sock, "userinfo", params);
     }
@@ -513,6 +518,7 @@ static psync_socket *get_connected_socket(){
     psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
 
     if (luserid){
+      debug(D_NOTICE, "There is already logged user.");
       if (unlikely_log(luserid!=userid)){
         if(check_user_relocated(luserid, sock)){
 		      debug(D_NOTICE, "setting PSTATUS_AUTH_RELOCATED");
@@ -538,6 +544,8 @@ static psync_socket *get_connected_socket(){
       }
     }
     else{
+      debug(D_NOTICE, "Save user data in DB.");
+
       used_quota=0;
       q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
       psync_sql_bind_string(q, 1, "userid");
@@ -613,6 +621,8 @@ static psync_socket *get_connected_socket(){
 				psync_sql_run(q);
 			}
 			psync_sql_free_result(q);
+
+      debug(D_NOTICE, "Save user data in DB. Done.");
     }
 
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
@@ -2907,9 +2917,12 @@ restart:
     if (!psync_do_run)
       break;
 
+    debug(D_NOTICE, "Send initial diff command.");
     res=send_command(sock, "diff", diffparams);
+    debug(D_NOTICE, "Got response from command returned.");
 
     if (!res){
+      debug(D_NOTICE, "Initial Diff error. Restart.");
       psync_socket_close(sock);
       goto restart;
     }
@@ -2975,6 +2988,7 @@ restart:
 
   while (psync_do_run){
     if (unlinked){
+      debug(D_NOTICE, "Diff. Unlinked DB detected.");
       unlinked=0;
       initialdownload=1;
     }

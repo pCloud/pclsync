@@ -214,14 +214,10 @@ void psync_apiserver_init(){
     psync_set_apiserver(psync_setting_get_string(_PS(api_server)), psync_setting_get_uint(_PS(location_id)));
   }
 }
-//Bobo
-void test_callback(int eventid) {
-  debug(D_NOTICE, "Test Data event callback. Res [%d].", eventid);
 
-  return;
-}
-//Bobo
 int psync_init(){
+  char* deviceid;
+
   psync_thread_name="main app thread";
 
   debug(D_NOTICE, "initializing library version "PSYNC_LIB_VERSION);
@@ -282,10 +278,6 @@ int psync_init(){
 
   debug(D_NOTICE, "Resolve DNS got IP: [%s]", psync_get_server_ip());
 
-  //Bobo
-  char* deviceid;
-
-  debug(D_NOTICE, "Check for device id.");
   deviceid = psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
 
   if (!deviceid) {
@@ -294,7 +286,6 @@ int psync_init(){
   }
 
   psync_free(deviceid);
-  //Bobo
 
   return 0;
 }
@@ -464,8 +455,12 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
   tfa=0;
   debug(D_NOTICE, "logout");
   psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth', 'saveauth')");
-  if (doinvauth)
+
+  if (doinvauth) {
+    debug(D_NOTICE, "Logout Invalidate auth!");
     psync_invalidate_auth(psync_my_auth);
+  }
+
   memset(psync_my_auth, 0, sizeof(psync_my_auth));
   psync_cloud_crypto_stop();
   pthread_mutex_lock(&psync_my_auth_mutex);
