@@ -95,11 +95,9 @@ static void psync_notify_cache_change(psync_changetype_t event) {
   callback = psync_cache_callback;
 
   if (callback) {
-    debug(D_NOTICE, "BOBO: Notify chabge callback. Event Id: [%lu]", event);
     psync_run_thread1("cache start callback", callback, chtype);
   }
   else {
-    debug(D_NOTICE, "BOBO: Notify chabge callback not Set.");
     psync_free(chtype);
   }
 }
@@ -2842,10 +2840,10 @@ static int psync_diff_check_quota(psync_socket *sock){
 }
 
 static void psync_cache_contacts(){
-  debug(D_NOTICE, "BOBO: Cache contacts data.");
+  debug(D_NOTICE, "Cache contacts data.");
 
   if (psync_is_business){
-    debug(D_NOTICE, "BOBO: Cache business contacts data.");
+    debug(D_NOTICE, "Cache business contacts data.");
     cache_account_emails();
     cache_account_teams();
     cache_ba_my_teams();
@@ -3003,17 +3001,10 @@ restart:
       initialdownload=1;
     }
 
-    debug(D_NOTICE, "BOBO: Recache contacts: [%d]", psync_recache_contacts);
-
     if(psync_recache_contacts){
       debug(D_NOTICE, "Diff. Recache contacts.");
       psync_cache_contacts();
-
-      //Bobo
-      //Send reload all shares.
-      debug(D_NOTICE, "BOBO: Send reaload all shares event.");
       psync_send_eventid(PEVENT_SHARE_RELOAD_ALL);
-      //Bobo
 
       psync_recache_contacts=0;
     }
