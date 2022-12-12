@@ -485,6 +485,8 @@ void cache_account_emails() {
     }
     psync_sql_commit_transaction();
   }
+
+  debug(D_NOTICE, "BOBO: cache_account_emails. Return.");
 end_close:
   psync_free(bres);
 }
@@ -543,8 +545,10 @@ void cache_account_teams() {
     psync_sql_commit_transaction();
   }
   psync_free(bres);
+
+  debug(D_NOTICE, "BOBO: cache_account_teams. Return.");
+
   return;
- 
 }
 
 static void cache_my_team(const binresult *team1) {
@@ -603,12 +607,15 @@ void cache_ba_my_teams() {
 
 int api_error_result(binresult* res) {
   uint64_t result;
+
   result=psync_find_result(res, "result", PARAM_NUM)->num;
+
   if (result){
     psync_free(res);
     psync_process_api_error(result);
     return 1;
   }
+
   return 0;
 }
 

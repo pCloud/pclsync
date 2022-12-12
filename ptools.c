@@ -1317,6 +1317,7 @@ int wait_auth_token(char* request_id) {
         psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
       }
 
+      psync_recache_contacts = 1;
       //psync_set_int_value("userid", newuserid);
     }
   }

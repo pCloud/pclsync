@@ -1932,13 +1932,16 @@ void *psync_list_builder_finalize(psync_list_builder_t *builder){
   psync_uint_t i;
   uint32_t j, scnt, offset, length;
   size_t sz;
+
   sz=builder->elements_offset+builder->element_size*builder->cnt+builder->stringalloc;
-  debug(D_NOTICE, "allocating %lu bytes, %lu of which for strings", (unsigned long)sz, (unsigned long)builder->stringalloc);
+  //debug(D_NOTICE, "allocating %lu bytes, %lu of which for strings", (unsigned long)sz, (unsigned long)builder->stringalloc);
   ret=psync_new_cnt(char, sz);
+
   if (builder->elements_offset<=sizeof(builder->cnt))
     memcpy(ret, &builder->cnt, builder->elements_offset);
   else
     memcpy(ret, &builder->cnt, sizeof(builder->cnt));
+
   elem=ret+builder->elements_offset;
   str=elem+builder->element_size*builder->cnt;
 

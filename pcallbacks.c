@@ -402,6 +402,8 @@ void psync_send_eventid(psync_eventtype_t eventid){
   if (eventthreadrunning){
     event_list_t *event;
 
+    debug(D_WARNING, "BOBO: Send event Id. EventId: [%lu]", eventid);
+
     event=psync_new(event_list_t);
     event->data.ptr=NULL;
     event->event=eventid;
@@ -417,6 +419,8 @@ void psync_send_eventid(psync_eventtype_t eventid){
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata){
   if (eventthreadrunning){
     event_list_t *event;
+
+    debug(D_WARNING, "BOBO: Send event data. EventId: [%lu]", eventid);
 
     event=psync_new(event_list_t);
     event->data.ptr=eventdata;

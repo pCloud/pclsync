@@ -2837,14 +2837,19 @@ static int psync_diff_check_quota(psync_socket *sock){
 }
 
 static void psync_cache_contacts(){
+  debug(D_NOTICE, "BOBO: Cache contacts data.");
+
   if (psync_is_business){
+    debug(D_NOTICE, "BOBO: Cache business contacts data.");
     cache_account_emails();
     cache_account_teams();
     cache_ba_my_teams();
   }
+
   cache_links_all();
   cache_contacts();
   cache_shares();
+
   psync_notify_cache_change(PACCOUNT_CHANGE_ALL);
 }
 
@@ -2993,7 +2998,10 @@ restart:
       initialdownload=1;
     }
 
+    debug(D_NOTICE, "BOBO: Recache contacts: [%d]", psync_recache_contacts);
+
     if(psync_recache_contacts){
+      debug(D_NOTICE, "Diff. Recache contacts.");
       psync_cache_contacts();
       psync_recache_contacts=0;
     }
