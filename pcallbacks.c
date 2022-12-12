@@ -322,6 +322,8 @@ static void event_thread(void *ptr){
     if (!psync_do_run)
       break;
 
+    debug(D_NOTICE, "BOBO: Event callback. Event Id: [%lu]", event->event);
+
     callback(event->event, event->data);
 
     if (event->freedata)
@@ -335,6 +337,24 @@ void psync_set_event_callback(pevent_callback_t callback){
   pthread_mutex_lock(&statusmutex);
   eventthreadrunning=1;
   pthread_mutex_unlock(&statusmutex);
+
+  debug(D_NOTICE, "BOBO: PEVENT_USERINFO_CHANGED  [%lu]", PEVENT_USERINFO_CHANGED);
+  debug(D_NOTICE, "BOBO: PEVENT_USEDQUOTA_CHANGED [%lu]", PEVENT_USEDQUOTA_CHANGED);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_REQUESTIN   [%lu]", PEVENT_SHARE_REQUESTIN);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_REQUESTOUT  [%lu]", PEVENT_SHARE_REQUESTOUT);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_ACCEPTIN    [%lu]", PEVENT_SHARE_ACCEPTIN);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_ACCEPTOUT   [%lu]", PEVENT_SHARE_ACCEPTOUT);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_DECLINEIN   [%lu]", PEVENT_SHARE_DECLINEIN);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_DECLINEOUT  [%lu]", PEVENT_SHARE_DECLINEOUT);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_CANCELIN    [%lu]", PEVENT_SHARE_CANCELIN);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_CANCELOUT   [%lu]", PEVENT_SHARE_CANCELOUT);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_REMOVEIN    [%lu]", PEVENT_SHARE_REMOVEIN);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_REMOVEOUT   [%lu]", PEVENT_SHARE_REMOVEOUT);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_MODIFYIN    [%lu]", PEVENT_SHARE_MODIFYIN);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_MODIFYOUT   [%lu]", PEVENT_SHARE_MODIFYOUT);
+  debug(D_NOTICE, "BOBO: PEVENT_SHARE_RENAME_F    [%lu]", PEVENT_SHARE_RENAME_F);
+
+
   psync_list_init(&eventlist);
   psync_run_thread1("event", event_thread, callback);
 }

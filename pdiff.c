@@ -88,15 +88,20 @@ void do_register_account_events_callback(paccount_cache_callback_t callback){
   psync_cache_callback=callback;
 }
 
-static void psync_notify_cache_change(psync_changetype_t event){
+static void psync_notify_cache_change(psync_changetype_t event) {
   paccount_cache_callback_t callback;
-  psync_changetype_t *chtype=psync_new(psync_changetype_t);
-  *chtype=event;
-  callback=psync_cache_callback;
-  if (callback)
+  psync_changetype_t* chtype = psync_new(psync_changetype_t);
+  *chtype = event;
+  callback = psync_cache_callback;
+
+  if (callback) {
+    debug(D_NOTICE, "BOBO: Notify chabge callback. Event Id: [%lu]", event);
     psync_run_thread1("cache start callback", callback, chtype);
-  else
+  }
+  else {
+    debug(D_NOTICE, "BOBO: Notify chabge callback not Set.");
     psync_free(chtype);
+  }
 }
 
 
@@ -3003,6 +3008,13 @@ restart:
     if(psync_recache_contacts){
       debug(D_NOTICE, "Diff. Recache contacts.");
       psync_cache_contacts();
+
+      //Bobo
+      //Send reload all shares.
+      debug(D_NOTICE, "BOBO: Send reaload all shares event.");
+      psync_send_eventid(PEVENT_SHARE_RELOAD_ALL);
+      //Bobo
+
       psync_recache_contacts=0;
     }
 
