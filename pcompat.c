@@ -3464,19 +3464,41 @@ const char *psync_appname(){
 char *psync_deviceid(){
   char *device;
 #if defined(P_OS_WINDOWS)
-  SYSTEM_POWER_STATUS bat;
-  const char *hardware, *ver;
-  char versbuff[32];
   DWORD vers, vmajor, vminor;
+  SYSTEM_POWER_STATUS bat;
+  const char* hardware, * ver;
+  char versbuff[32];
+
+  typedef NTSTATUS(WINAPI fRtlGetVersion) (PRTL_OSVERSIONINFOEXW);
+  fRtlGetVersion* RtlGetVersion;
+  HMODULE hmodule;
+  hmodule = LoadLibraryW(L"ntdll.dll");
+  if(hmodule!=NULL)
+  {
+    RTL_OSVERSIONINFOW osvx = { 0 };
+    RtlGetVersion = (fRtlGetVersion*)GetProcAddress(hmodule, "RtlGetVersion");
+    if (RtlGetVersion == NULL) goto gv;
+    osvx.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOW);
+    RtlGetVersion(&osvx);
+    vmajor = (DWORD)osvx.dwMajorVersion;
+    vminor = (DWORD)osvx.dwMinorVersion;
+    FreeLibrary(hmodule);
+  }
+  else
+  {
+    gv:
+    vers = GetVersion();
+    vmajor=(DWORD)(LOBYTE(LOWORD(vers)));
+    vminor=(DWORD)(HIBYTE(LOWORD(vers)));
+  }
+  
   if (GetSystemMetrics(SM_TABLETPC))
     hardware="Tablet";
   else if (GetSystemPowerStatus(&bat) || (bat.BatteryFlag&128))
     hardware="Desktop";
   else
-    hardware="Laptop";
-  vers=GetVersion();
-  vmajor=(DWORD)(LOBYTE(LOWORD(vers)));
-  vminor=(DWORD)(HIBYTE(LOWORD(vers)));
+    hardware="Laptop";  
+
   if (vmajor==6){
     switch (vminor){
       case 3: ver="8.1"; break;
