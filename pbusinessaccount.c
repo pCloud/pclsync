@@ -486,7 +486,6 @@ void cache_account_emails() {
     psync_sql_commit_transaction();
   }
 
-  debug(D_NOTICE, "BOBO: cache_account_emails. Return.");
 end_close:
   psync_free(bres);
 }
@@ -545,8 +544,6 @@ void cache_account_teams() {
     psync_sql_commit_transaction();
   }
   psync_free(bres);
-
-  debug(D_NOTICE, "BOBO: cache_account_teams. Return.");
 
   return;
 }

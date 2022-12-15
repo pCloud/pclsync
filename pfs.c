@@ -441,6 +441,7 @@ static void psync_row_to_folder_stat(psync_variant_row row, struct FUSE_STAT *st
 
 static void psync_row_to_file_stat(psync_variant_row row, struct FUSE_STAT *stbuf, uint32_t flags){
   uint64_t size;
+
   stbuf->st_ino=fileid_to_inode(psync_get_number(row[4]));
   size=psync_get_number(row[1]);
   if (flags&PSYNC_FOLDER_FLAG_ENCRYPTED)
@@ -450,6 +451,9 @@ static void psync_row_to_file_stat(psync_variant_row row, struct FUSE_STAT *stbu
   stbuf->st_birthtime=psync_get_number(row[2]);
 #endif
   stbuf->st_ctime=psync_get_number(row[3]);
+
+  debug(D_NOTICE, "BOBO: st_ctime: [%lld]", stbuf->st_ctime);
+
   stbuf->st_mtime=stbuf->st_ctime;
   stbuf->st_atime=stbuf->st_ctime;
   stbuf->st_mode=S_IFREG | 0644;
