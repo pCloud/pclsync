@@ -452,7 +452,7 @@ static void psync_row_to_file_stat(psync_variant_row row, struct FUSE_STAT *stbu
 #endif
   stbuf->st_ctime=psync_get_number(row[3]);
 
-  debug(D_NOTICE, "BOBO: st_ctime: [%lld]", stbuf->st_ctime);
+  //debug(D_NOTICE, "BOBO: st_ctime: [%lld], st_birthtime: [%llu]", stbuf->st_ctime, stbuf->st_birthtime);
 
   stbuf->st_mtime=stbuf->st_ctime;
   stbuf->st_atime=stbuf->st_ctime;
@@ -500,13 +500,17 @@ static void psync_mkdir_to_folder_stat(psync_fstask_mkdir_t *mk, struct FUSE_STA
 static int psync_creat_db_to_file_stat(psync_fileid_t fileid, struct FUSE_STAT *stbuf, uint32_t flags){
   psync_sql_res *res;
   psync_variant_row row;
+
   res=psync_sql_query_rdlock("SELECT name, size, ctime, mtime, id, parentfolderid FROM file WHERE id=?");
   psync_sql_bind_uint(res, 1, fileid);
+
   if ((row=psync_sql_fetch_row(res)))
     psync_row_to_file_stat(row, stbuf, flags);
   else
     debug(D_NOTICE, "fileid %lu not found in database", (unsigned long)fileid);
+
   psync_sql_free_result(res);
+
   return row?0:-1;
 }
 
@@ -634,7 +638,13 @@ static int psync_creat_local_to_file_stat(psync_fstask_creat_t *cr, struct FUSE_
 #ifdef FUSE_STAT_HAS_BIRTHTIME
   stbuf->st_birthtime=psync_stat_birthtime(&st);
 #endif
+
+  //debug(D_NOTICE, "BOBO: ftCreationTime: [%lu], ftLastAccessTime: [%lu], ftLastWriteTime: [%lu] ", st.ftCreationTime, st.ftLastAccessTime, st.ftLastWriteTime);
+
   stbuf->st_mtime=psync_stat_mtime(&st);
+
+  //debug(D_NOTICE, "BOBO: Converted time: [%lld]", stbuf->st_mtime);
+
   stbuf->st_ctime=stbuf->st_mtime;
   stbuf->st_atime=stbuf->st_mtime;
   stbuf->st_mode=S_IFREG | 0644;
@@ -741,7 +751,9 @@ static int psync_fs_getattr(const char *path, struct FUSE_STAT *stbuf){
   psync_fstask_creat_t *cr;
   int crr;
   psync_fs_set_thread_name();
-//  debug(D_NOTICE, "getattr %s", path);
+
+  //debug(D_NOTICE, "BOBO: getattr %s", path);
+
   if (path[1]==0 && path[0]=='/')
     return psync_fs_getrootattr(stbuf);
   psync_sql_rdlock();
@@ -807,9 +819,14 @@ static int psync_fs_getattr(const char *path, struct FUSE_STAT *stbuf){
     crr=-1;
   psync_sql_rdunlock();
   psync_free(fpath);
+
+  //debug(D_NOTICE, "BOBO: st_atime [%llu], st_birthtime [%llu], st_ctime [%llu], st_mtime [%llu]",  stbuf->st_atime, stbuf->st_birthtime, stbuf->st_ctime, stbuf->st_mtime);
+
   if (row || !crr)
     return 0;
+
   debug(D_NOTICE, "returning ENOENT for %s", path);
+
   return -ENOENT;
 }
 

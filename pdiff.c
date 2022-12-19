@@ -510,8 +510,11 @@ static psync_socket *get_connected_socket(){
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
 	  cres = psync_check_result(res, "freequota", PARAM_NUM);
 
+    debug(D_NOTICE, "Got Current Quota: [%llu]", current_quota);
+
     if (cres){
 	    free_quota=cres->num;
+      debug(D_NOTICE, "Got Free Quota: [%llu]", free_quota);
 	  }
 
     luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
@@ -1465,8 +1468,9 @@ static void process_modifyfile(const binresult *entry){
 
   oldsize=psync_get_number(row[2]);
 
-  if (psync_get_number(row[1])==psync_my_userid)
-    used_quota-=oldsize;
+  if (psync_get_number(row[1]) == psync_my_userid) {
+    used_quota -= oldsize;
+  }
 
   if (!st)
     st=psync_sql_prep_statement("UPDATE file SET id=?, parentfolderid=?, userid=?, size=?, hash=?, name=?, ctime=?, mtime=?, category=?, thumb=?, icon=?, "
@@ -1624,8 +1628,10 @@ static void process_deletefile(const binresult *entry){
   psync_sql_run(st);
 
   if (psync_sql_affected_rows()){
-    if (psync_find_result(meta, "ismine", PARAM_BOOL)->num)
-      used_quota-=psync_find_result(meta, "size", PARAM_NUM)->num;
+    if (psync_find_result(meta, "ismine", PARAM_BOOL)->num) {
+      used_quota -= psync_find_result(meta, "size", PARAM_NUM)->num;
+    }
+
     psync_fs_file_deleted(fileid);
   }
 }
@@ -1739,10 +1745,13 @@ static void process_modifyuserinfo(const binresult *entry){
   current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
   psync_sql_bind_uint(q, 2, current_quota);
   psync_sql_run(q);
+
   cres = psync_check_result(res, "freequota", PARAM_NUM);
+
   if (cres){
-	free_quota = cres->num;
+    free_quota = cres->num;
   }
+
   psync_sql_bind_string(q, 1, "freequota");
   psync_sql_bind_uint(q, 2, free_quota);
   psync_sql_run(q);
@@ -1750,10 +1759,12 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_string(q, 1, "premium");
   psync_sql_bind_uint(q, 2, u);
   psync_sql_run(q);
+
   if (u)
     u=psync_find_result(res, "premiumexpires", PARAM_NUM)->num;
   else
     u=0;
+
   psync_sql_bind_string(q, 1, "premiumexpires");
   psync_sql_bind_uint(q, 2, u);
   psync_sql_run(q);
@@ -2513,14 +2524,19 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   uint32_t i, j;
   oused_quota=used_quota;
   needdownload=0;
+
   psync_diff_lock();
+
   if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
     psync_diff_unlock();
     return psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
   }
+
   psync_sql_start_transaction();
+
   if (entries->length>=10000)
     psync_sql_statement("DELETE FROM setting WHERE id='lastanalyze'");
+
   for (i=0; i<entries->length; i++){
     entry=entries->array[i];
     etype=psync_find_result(entry, "event", PARAM_STR);
@@ -2530,9 +2546,11 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
         event_list[j].used=1;
       }
   }
+
   for (j=0; j<event_list_size; j++)
     if (event_list[j].used)
       event_list[j].process(NULL);
+
   psync_set_uint_value("diffid", newdiffid);
   psync_set_uint_value("usedquota", used_quota);
   //update_ba_emails();
@@ -2540,21 +2558,28 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   psync_path_status_clear_path_cache();
   psync_sql_commit_transaction();
   psync_diff_unlock();
+
   if (needdownload){
     psync_wake_download();
     psync_status_recalc_to_download();
     psync_send_status_update();
     needdownload=0;
   }
+
   used_quota=psync_sql_cellint("SELECT value FROM setting WHERE id='usedquota'", 0);
+
   if (oused_quota!=used_quota)
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
+
   return psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
 }
 
 static void check_overquota(){
   static int lisover=0;
   int isover=(used_quota>=current_quota);
+
+  debug(D_NOTICE, "Check Account Full: Used Quota: [%llu], Current Quota: [%llu]", used_quota, current_quota);
+
   if (isover!=lisover){
     lisover=isover;
     if (isover) {
@@ -2827,6 +2852,7 @@ static int psync_diff_check_quota(psync_socket *sock){
     if (likely_log(uq))
       used_quota=uq->num;
   }
+
   if (used_quota!=oused_quota){
     debug(D_WARNING, "corrected locally calculated quota from %lu to %lu", (unsigned long)oused_quota, (unsigned long)used_quota);
     psync_set_uint_value("usedquota", used_quota);
@@ -2969,6 +2995,8 @@ restart:
 
     goto restart;
   }
+
+
 
   check_overquota();
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
