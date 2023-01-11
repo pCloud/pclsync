@@ -577,12 +577,15 @@ static int psync_creat_local_to_file_stat(psync_fstask_creat_t *cr, struct FUSE_
 //  psync_file_t fd;
   char fileidhex[sizeof(psync_fsfileid_t)*2+2];
   int stret;
+
   if (unlikely(psync_fs_need_per_folder_refresh_const() && cr->fileid<psync_fake_fileid))
     return psync_creat_stat_fake_file(stbuf);
+
   fl=NULL;
   fileid=-cr->fileid;
   psync_sql_rdlock();
   tr=openfiles;
+
   while (tr){
     d=cr->fileid-psync_tree_element(tr, psync_openfile_t, tree)->fileid;
     if (d<0)
@@ -595,10 +598,13 @@ static int psync_creat_local_to_file_stat(psync_fstask_creat_t *cr, struct FUSE_
       break;
     }
   }
+
   psync_sql_rdunlock();
+
   if (fl && fl->datafile!=INVALID_HANDLE_VALUE){
     stret=psync_fstat(fl->datafile, &st);
     pthread_mutex_unlock(&fl->mutex);
+
     if (stret)
       debug(D_NOTICE, "could not stat open file %ld", (long)cr->fileid);
     else
@@ -607,14 +613,17 @@ static int psync_creat_local_to_file_stat(psync_fstask_creat_t *cr, struct FUSE_
   else{
     if (fl)
       pthread_mutex_unlock(&fl->mutex);
+
     psync_binhex(fileidhex, &fileid, sizeof(psync_fsfileid_t));
     fileidhex[sizeof(psync_fsfileid_t)]='d';
     fileidhex[sizeof(psync_fsfileid_t)+1]=0;
     cachepath=psync_setting_get_string(_PS(fscachepath));
     filename=psync_strcat(cachepath, PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
     stret=psync_stat(filename, &st);
+
     if (stret)
       debug(D_NOTICE, "could not stat file %s", filename);
+
     psync_free(filename);
   }
   if (stret)
@@ -1092,12 +1101,14 @@ static int open_write_files(psync_openfile_t *of, int trunc){
   char fileidhex[sizeof(psync_fsfileid_t)*2+2];
   int64_t fs;
   int ret;
+
   debug(D_NOTICE, "opening write files of %s, trunc=%d", of->currentname, trunc!=0);
   fileid=-of->fileid;
   psync_binhex(fileidhex, &fileid, sizeof(psync_fsfileid_t));
   fileidhex[sizeof(psync_fsfileid_t)]='d';
   fileidhex[sizeof(psync_fsfileid_t)+1]=0;
   cachepath=psync_setting_get_string(_PS(fscachepath));
+
   if (of->datafile==INVALID_HANDLE_VALUE){
     filename=psync_strcat(cachepath, PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
     of->datafile=psync_file_open(filename, P_O_RDWR, P_O_CREAT|(trunc?P_O_TRUNC:0));
@@ -1121,6 +1132,7 @@ static int open_write_files(psync_openfile_t *of, int trunc){
     else
       return 0;
   }
+
   if (!of->newfile && of->indexfile==INVALID_HANDLE_VALUE){
     fileidhex[sizeof(psync_fsfileid_t)]='i';
     filename=psync_strcat(cachepath, PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
@@ -1135,6 +1147,7 @@ static int open_write_files(psync_openfile_t *of, int trunc){
       return -EIO;
     }
   }
+
   if (of->encrypted){
     if (of->logfile==INVALID_HANDLE_VALUE){
       fileidhex[sizeof(psync_fsfileid_t)]='l';
@@ -2309,7 +2322,9 @@ static int psync_fs_write(const char *path, const char *buf, size_t size, fuse_o
   psync_openfile_t *of;
   int ret;
   psync_fs_set_thread_name();
-//  debug(D_NOTICE, "write to %s of %lu at %lu", path, (unsigned long)size, (unsigned long)offset);
+
+  debug(D_NOTICE, "BOBO: Write to [%s] of [%lu] at [%lu]", path, (unsigned long)size, (unsigned long)offset);
+
   of=fh_to_openfile(fi->fh);
   psync_fs_lock_file(of);
   ret=psync_fs_check_write_space(of, size, offset);
@@ -2318,6 +2333,8 @@ static int psync_fs_write(const char *path, const char *buf, size_t size, fuse_o
   psync_fs_inc_writeid_locked(of);
 retry:
   if (of->newfile){
+    debug(D_NOTICE, "BOBO: Write to new file.");
+
     if (of->encrypted)
       return psync_fs_crypto_write_newfile_locked(of, buf, size, offset);
     else
@@ -2338,6 +2355,9 @@ retry:
         return ret;
       }
     }
+    
+    debug(D_NOTICE, "BOBO: Write 1.");
+
     if (of->encrypted)
       return psync_fs_crypto_write_modified_locked(of, buf, size, offset);
     else{
@@ -2355,6 +2375,9 @@ retry:
         ret=psync_fs_write_modified(of, buf, size, offset);
     }
     pthread_mutex_unlock(&of->mutex);
+
+    debug(D_NOTICE, "BOBO: Write Return: [%d]", ret);
+
     return ret;
   }
 }
@@ -3206,6 +3229,7 @@ static char *psync_fuse_get_mountpoint(){
       mp[0] = stored[0];
       goto ready;
   }
+
   if (is_mountable('P')){
       goto ready;
   }

@@ -431,7 +431,7 @@ static void set_local_file_conflicted(psync_fileid_t localfileid, psync_fileid_t
   psync_sql_res *res;
   char *newpath;
 
-  debug(D_NOTICE, "Conflict found with file [%s]", localpath);
+  debug(D_NOTICE, "Conflict found with file [%s], New name: [%s]", localpath, newname);
 
   newpath = psync_strcat(psync_get_path_from_str(localpath), newname);
 
