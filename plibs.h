@@ -57,6 +57,9 @@
 #define IS_DEBUG (DEBUG_LEVEL>=D_WARNING)
 
 #define DEBUG_FILE "/tmp/psync_err.log"
+#define CBFS_LOG_FILE "/tmp/cbfs_log.log"
+#define WFPFP_LOG_FILE "/tmp/wpfp.log"
+#define LOGS_FOLDER "pSync_logs"
 
 #if defined(assert)
 #undef assert

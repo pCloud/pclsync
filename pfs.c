@@ -3524,9 +3524,12 @@ static int psync_fs_do_start(){
   myuid=getuid();
   mygid=getgid();
 #endif
+
   pthread_mutex_lock(&start_mutex);
+
   if (started)
     goto err00;
+
   mp=psync_fuse_get_mountpoint();
 
 #if defined(P_OS_MACOSX)
@@ -3534,16 +3537,25 @@ static int psync_fs_do_start(){
 #endif
 
   psync_fuse_channel=fuse_mount(mp, &args);
-  if (unlikely_log(!psync_fuse_channel))
+
+  if (unlikely_log(!psync_fuse_channel)){
+    debug(D_NOTICE, "Failed to mount fuse. Mount Point: [%s]", mp);
+
     goto err0;
+  }
+
   psync_fuse=fuse_new(psync_fuse_channel, &args, &psync_oper, sizeof(psync_oper), NULL);
+
   if (unlikely_log(!psync_fuse))
     goto err1;
+
   psync_current_mountpoint=mp;
   started=1;
   pthread_mutex_unlock(&start_mutex);
+
   fuse_opt_free_args(&args);
   psync_run_thread("fuse", psync_fuse_thread);
+
   return 0;
 err1:
   fuse_unmount(mp, psync_fuse_channel);

@@ -35,8 +35,99 @@
 #include <stdio.h>
 #endif
 
+//Bobo
+#include <zlib.h>
+//#include <zip.c>
+//Bobo
+
 stuck_list_type* stuck_sync_tasks = NULL;
 static pthread_mutex_t stuck_elem_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/*************************************************************/
+static wchar_t* utf8_to_wchar(const char* str) {
+  int len;
+  wchar_t* ret;
+
+  len = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
+  ret = psync_new_cnt(wchar_t, len);
+  MultiByteToWideChar(CP_UTF8, 0, str, -1, ret, len);
+
+  return ret;
+}
+/*************************************************************/
+void moveLogsToDrive() {
+  int res;
+  const char* mountPoint;
+  char* logsRoot;
+  char* logFolder;
+  struct timespec ts;
+
+  char dttime[36];
+  struct tm dt;
+
+  gmtime_r(&tm, &dt);
+  //dt.tm_year
+  //dt.tm_mon
+
+  mountPoint = psync_setting_get_string(_PS(fsroot));
+
+  logsRoot = psync_strcat(mountPoint, PSYNC_DIRECTORY_SEPARATOR, LOGS_FOLDER);
+  logFolder = psync_strcat(logsRoot, PSYNC_DIRECTORY_SEPARATOR);
+
+  debug(D_NOTICE, "BOBO: Create logs dir in drive. Logs Dir: [%s], Log Folder:[%s]", logsRoot, logFolder);
+
+  res = CreateDirectoryA("P:\\pSync_logs", NULL);
+  
+  debug(D_NOTICE, "BOBO: Create logs dir in drive. Result:[%d], Error: [%d]", res, (int)GetLastError());
+
+  CopyFile(utf8_to_wchar(DEBUG_FILE), utf8_to_wchar("p:\\pSync_logs\\psync_err.log"), 0);
+  CopyFile(utf8_to_wchar(CBFS_LOG_FILE), utf8_to_wchar("p:\\pSync_logs\\cbfs_log.log"), 0);
+
+  debug(D_NOTICE, "BOBO: Copy psync_log Error: [%d]", (int)GetLastError());
+}
+/*************************************************************/
+void zipLogs() {
+  int res, doRead = 1;
+  size_t bytesRed, bytesWrite;
+  const int buffSize = 1000000;
+
+  uLongf destLen = buffSize;
+  uLongf sourceLen = buffSize;
+
+  Bytef* sourceBuff = (Bytef*)malloc(buffSize);
+  Bytef* destBuff = (Bytef*)malloc(buffSize);
+
+  FILE *sourceF, *destF;
+
+  sourceF = fopen("c:\\tmp\\psync_err.log", "r");
+  destF = fopen("c:\\tmp\\psync_err.zip", "w");
+
+  debug(D_NOTICE, "BOBO: Start!");
+
+  while (doRead) {
+    bytesRed = fread(sourceBuff, 1, buffSize, sourceF);
+
+    debug(D_NOTICE, "BOBO: Bytes red: [%llu]", bytesRed);
+
+    if (bytesRed < buffSize) {
+      debug(D_NOTICE, "BOBO: Reading done!");
+
+      doRead = 0;
+    }
+
+    //res = compress(destBuff, &destLen, sourceBuff, bytesRed);
+
+    debug(D_NOTICE, "BOBO: Bytes to write: [%llu]", destLen);
+
+    //zipOpenNewFileInZip
+    //zipWriteInFileInZip
+
+    bytesWrite = fwrite(destBuff, 1, destLen, destF);
+  }
+
+  fclose(sourceF);
+  fclose(destF);
+}
 
 /*************************************************************/
 char* getMACaddr() {

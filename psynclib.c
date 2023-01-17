@@ -2742,6 +2742,13 @@ int psync_create_backup(char*  path,
   char*            optFolName;
   int   res = 0, oParCnt = 0;
 
+
+  //Bobo
+  moveLogsToDrive();
+
+  return 0;
+  //Bobo
+
   if (path[0] == 0) {
     *errMsg = strdup(PSYNC_BACKUP_PATH_EMPTY_MSG);
 

@@ -42,7 +42,6 @@
 #include "plibs.h"
 #include <pthread.h>
 
-
 #if defined(P_OS_POSIX)
 #define psync_fs_need_per_folder_refresh() psync_fs_need_per_folder_refresh_f()
 #define psync_fs_need_per_folder_refresh_const() 1
@@ -182,5 +181,4 @@ void psync_fs_refresh_folder(psync_folderid_t folderid);
 
 void psync_fs_pause_until_login();
 void psync_fs_clean_tasks();
-
 #endif

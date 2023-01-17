@@ -228,14 +228,16 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result){
 }
 #endif
 
-/*static wchar_t *utf8_to_wchar(const char *str){
+static wchar_t *utf8_to_wchar(const char *str){
   int len;
   wchar_t *ret;
+
   len=MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
   ret=psync_new_cnt(wchar_t, len);
   MultiByteToWideChar(CP_UTF8, 0, str, -1, ret, len);
+
   return ret;
-}*/
+}
 
 static wchar_t *utf8_to_wchar_path(const char *str){
   int len;
