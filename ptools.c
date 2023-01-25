@@ -37,7 +37,8 @@
 
 //Bobo
 #include <zlib.h>
-//#include <zip.c>
+
+#define CHUNK 1024*1024 //Chunk size for gzip compression buffer.
 //Bobo
 
 stuck_list_type* stuck_sync_tasks = NULL;
@@ -55,35 +56,57 @@ static wchar_t* utf8_to_wchar(const char* str) {
   return ret;
 }
 /*************************************************************/
-void moveLogsToDrive() {
-  int res;
-  const char* mountPoint;
-  char* logsRoot;
-  char* logFolder;
-  struct timespec ts;
+int def(FILE* source, FILE* dest, int level)
+{
+  int ret, flush;
+  unsigned have;
+  z_stream strm;
+  unsigned char in[CHUNK];
+  unsigned char out[CHUNK];
 
-  char dttime[36];
-  struct tm dt;
+  /* allocate deflate state */
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
 
-  gmtime_r(&tm, &dt);
-  //dt.tm_year
-  //dt.tm_mon
+  ret = deflateInit(&strm, level);
+  //ret = deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, (15+16), 8,       Z_DEFAULT_STRATEGY);
+  if (ret != Z_OK)
+    return ret;
 
-  mountPoint = psync_setting_get_string(_PS(fsroot));
+  /* compress until end of file */
+  do {
+    strm.avail_in = fread(in, 1, CHUNK, source);
+    debug(D_NOTICE, "BOBO: Available In: [%u]", strm.avail_in);
+    if (ferror(source)) {
+      (void)deflateEnd(&strm);
+      return Z_ERRNO;
+    }
+    flush = feof(source) ? Z_FINISH : Z_NO_FLUSH;
+    strm.next_in = in;
 
-  logsRoot = psync_strcat(mountPoint, PSYNC_DIRECTORY_SEPARATOR, LOGS_FOLDER);
-  logFolder = psync_strcat(logsRoot, PSYNC_DIRECTORY_SEPARATOR);
+    /* run deflate() on input until output buffer not full, finish
+       compression if all of source has been read in */
+    do {
+      strm.avail_out = CHUNK;
+      strm.next_out = out;
+      ret = deflate(&strm, flush);    /* no bad return value */
+      assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
+      have = CHUNK - strm.avail_out;
+      if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
+        (void)deflateEnd(&strm);
+        return Z_ERRNO;
+      }
+    } while (strm.avail_out == 0);
+    assert(strm.avail_in == 0);     /* all input will be used */
 
-  debug(D_NOTICE, "BOBO: Create logs dir in drive. Logs Dir: [%s], Log Folder:[%s]", logsRoot, logFolder);
+    /* done when last data in file processed */
+  } while (flush != Z_FINISH);
+  assert(ret == Z_STREAM_END);        /* stream will be complete */
 
-  res = CreateDirectoryA("P:\\pSync_logs", NULL);
-  
-  debug(D_NOTICE, "BOBO: Create logs dir in drive. Result:[%d], Error: [%d]", res, (int)GetLastError());
-
-  CopyFile(utf8_to_wchar(DEBUG_FILE), utf8_to_wchar("p:\\pSync_logs\\psync_err.log"), 0);
-  CopyFile(utf8_to_wchar(CBFS_LOG_FILE), utf8_to_wchar("p:\\pSync_logs\\cbfs_log.log"), 0);
-
-  debug(D_NOTICE, "BOBO: Copy psync_log Error: [%d]", (int)GetLastError());
+  /* clean up and return */
+  (void)deflateEnd(&strm);
+  return Z_OK;
 }
 /*************************************************************/
 void zipLogs() {
@@ -99,36 +122,25 @@ void zipLogs() {
 
   FILE *sourceF, *destF;
 
-  sourceF = fopen("c:\\tmp\\psync_err.log", "r");
-  destF = fopen("c:\\tmp\\psync_err.zip", "w");
+  sourceF = fopen("c:\\tmp\\psync_err_test.log", "rb");
+  destF = fopen("c:\\tmp\\psync_err.gz", "wb");
 
   debug(D_NOTICE, "BOBO: Start!");
 
-  while (doRead) {
-    bytesRed = fread(sourceBuff, 1, buffSize, sourceF);
+  res = def(sourceF, destF, Z_DEFAULT_COMPRESSION);
 
-    debug(D_NOTICE, "BOBO: Bytes red: [%llu]", bytesRed);
-
-    if (bytesRed < buffSize) {
-      debug(D_NOTICE, "BOBO: Reading done!");
-
-      doRead = 0;
-    }
-
-    //res = compress(destBuff, &destLen, sourceBuff, bytesRed);
-
-    debug(D_NOTICE, "BOBO: Bytes to write: [%llu]", destLen);
-
-    //zipOpenNewFileInZip
-    //zipWriteInFileInZip
-
-    bytesWrite = fwrite(destBuff, 1, destLen, destF);
-  }
+  debug(D_NOTICE, "BOBO: Done. Res: [%d]", res);
 
   fclose(sourceF);
   fclose(destF);
 }
+/*************************************************************/
+void moveLogsToDrive() {
+  int res, ret;
+  psync_socket* api;
 
+  zipLogs();
+}
 /*************************************************************/
 char* getMACaddr() {
   char  buffer[128];
@@ -1389,7 +1401,7 @@ int wait_auth_token(char* request_id) {
   newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
   rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
 
-  debug(D_NOTICE, "Login result parameters: RememberMe: [%llu], UserId: [%llu], Location Id: [%d], Token: [%s]", rememberme, newuserid, loc_id, token);
+  debug(D_NOTICE, "Login result parameters: RememberMe: [%llu], UserId: [%llu], Location Id: [%d]", rememberme, newuserid, loc_id);
 
   if (resData) {
     psync_free(resData);
@@ -1439,4 +1451,7 @@ int wait_auth_token(char* request_id) {
   
   return result;
 }
+/**********************************************************************/
+
+
 /**********************************************************************/

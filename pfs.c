@@ -1197,7 +1197,7 @@ static void psync_fs_del_creat(psync_fspath_t *fpath, psync_openfile_t *of){
   psync_free(fpath);
 }
 
-static int psync_fs_open(const char *path, struct fuse_file_info *fi){
+int psync_fs_open(const char *path, struct fuse_file_info *fi){
   psync_sql_res *res;
   psync_uint_row row;
   psync_fsfileid_t fileid;
@@ -1519,7 +1519,7 @@ static int psync_fs_creat_fake_locked(psync_fspath_t *fpath, struct fuse_file_in
   return 0;
 }
 
-static int psync_fs_creat(const char *path, mode_t mode, struct fuse_file_info *fi){
+int psync_fs_creat(const char *path, mode_t mode, struct fuse_file_info *fi){
   psync_fspath_t *fpath;
   psync_fstask_folder_t *folder;
   psync_fstask_creat_t *cr;
@@ -1529,11 +1529,14 @@ static int psync_fs_creat(const char *path, mode_t mode, struct fuse_file_info *
   size_t encsymkeylen;
   psync_openfile_t *of;
   int ret;
+
   psync_fs_set_thread_name();
-  debug(D_NOTICE, "creat %s", path);
+  debug(D_NOTICE, "creat [%s]", path);
   psync_sql_lock();
   CHECK_LOGIN_LOCKED();
+
   fpath=psync_fsfolder_resolve_path(path);
+
   if (!fpath){
     psync_sql_unlock();
     ret=psync_fsfolder_crypto_error();
@@ -1546,14 +1549,18 @@ static int psync_fs_creat(const char *path, mode_t mode, struct fuse_file_info *
       return -ENOENT;
     }
   }
+
   if (unlikely(psync_fs_need_per_folder_refresh_const() && !strncmp(psync_fake_prefix, fpath->name, psync_fake_prefix_len)))
     return psync_fs_creat_fake_locked(fpath, fi);
+
   if (!(fpath->permissions&PSYNC_PERM_CREATE) || (fpath->flags&(PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST|PSYNC_FOLDER_FLAG_BACKUP_DEVICE))){
     psync_sql_unlock();
     psync_free(fpath);
     return -EACCES;
   }
+
   folder=psync_fstask_get_or_create_folder_tasks_locked(fpath->folderid);
+
   if (psync_fs_file_exists_in_folder(folder, fpath->name)){
     psync_fstask_release_folder_tasks_locked(folder);
     debug(D_NOTICE, "file %s already exists, processing as open", path);
@@ -1562,6 +1569,7 @@ static int psync_fs_creat(const char *path, mode_t mode, struct fuse_file_info *
     psync_free(fpath);
     return ret;
   }
+
   if (fpath->flags&PSYNC_FOLDER_FLAG_ENCRYPTED){
     if (psync_crypto_isexpired()){
       psync_fstask_release_folder_tasks_locked(folder);
@@ -1591,15 +1599,19 @@ static int psync_fs_creat(const char *path, mode_t mode, struct fuse_file_info *
     encsymkey=NULL;
     encsymkeylen=0;
   }
+
   cr=psync_fstask_add_creat(folder, fpath->name, 0, encsymkey, encsymkeylen);
+
   if (encsymkey)
     psync_free(encsymkey);
+
   if (unlikely_log(!cr)){
     psync_fstask_release_folder_tasks_locked(folder);
     psync_sql_unlock();
     psync_free(fpath);
     return -EIO;
   }
+
   of=psync_fs_create_file(cr->fileid, 0, 0, 0, 1, 0, psync_fstask_get_ref_locked(folder), fpath->name, encoder);
   psync_fstask_release_folder_tasks_locked(folder);
   psync_sql_unlock();
@@ -1607,12 +1619,15 @@ static int psync_fs_creat(const char *path, mode_t mode, struct fuse_file_info *
   of->modified=1;
   ret=open_write_files(of, 1);
   pthread_mutex_unlock(&of->mutex);
+
   if (unlikely_log(ret)){
     psync_fs_del_creat(fpath, of);
     return ret;
   }
+
   psync_free(fpath);
   fi->fh=openfile_to_fh(of);
+
   return 0;
 }
 
