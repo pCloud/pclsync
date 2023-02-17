@@ -3199,3 +3199,9 @@ int psync_wait_auth_token_async(char* request_id, void* callb_ptr) {
   debug(D_NOTICE, "Async call done.");
 }
 /******************************************************************************************************************/
+int psync_get_isdebug()
+{
+  if (DEBUG_LEVEL > D_ERROR)
+    return 0;
+  else return 1;
+}

@@ -1659,7 +1659,7 @@ char* psync_get_device_string();
 
 const char* psync_get_appversion();
 /*******************************************************************************/
-
+int psync_get_isdebug();
 #ifdef __cplusplus
 }
 #endif
