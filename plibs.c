@@ -406,6 +406,8 @@ int psync_sql_connect(const char *db){
   int initdbneeded=0;
   int code;
 
+  debug(D_NOTICE, "sqlite C version [%d] h version [%d]", sqlite3_libversion_number(), SQLITE_VERSION_NUMBER);
+
   assert(sqlite3_libversion_number()==SQLITE_VERSION_NUMBER);
   assert(!strcmp(sqlite3_sourceid(), SQLITE_SOURCE_ID));
   assert(!strcmp(sqlite3_libversion(), SQLITE_VERSION));

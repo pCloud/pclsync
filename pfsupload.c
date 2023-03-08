@@ -103,7 +103,25 @@ static int psync_send_task_mkdir(psync_socket *api, fsupload_task_t *task){
       return -1;
   }
 }
+/**********************************************************************************************************/
+int is_task_crypto(psync_fsfileid_t taskid) {
+  psync_sql_res* res;
+  psync_variant_row row;
 
+  res = psync_sql_query_rdlock("SELECT text2 FROM fstask WHERE id=? AND text2 IS NOT NULL");
+  psync_sql_bind_uint(res, 1, taskid);
+
+  if ((row = psync_sql_fetch_row(res))) {
+    psync_sql_free_result(res);
+
+    return 1;
+  }
+
+  psync_sql_free_result(res);
+
+  return 0;
+}
+/**********************************************************************************************************/
 static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
   psync_sql_res *res;
 
@@ -2024,23 +2042,5 @@ static void set_task_to_stuck(uint64_t taskid) {
 
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
-}
-/**********************************************************************************************************/
-int is_task_crypto(psync_fsfileid_t taskid) {
-  psync_sql_res* res;
-  psync_variant_row row;
-
-  res = psync_sql_query_rdlock("SELECT text2 FROM fstask WHERE id=? AND text2 IS NOT NULL");
-  psync_sql_bind_uint(res, 1, taskid);
-
-  if ((row = psync_sql_fetch_row(res))) {
-    psync_sql_free_result(res);
-
-    return 1;
-  }
-
-  psync_sql_free_result(res);
-
-  return 0;
 }
 /****************************************************************************************************/

@@ -110,29 +110,42 @@ int def(FILE* source, FILE* dest, int level)
 }
 /*************************************************************/
 void zipLogs() {
-  int res, doRead = 1;
-  size_t bytesRed, bytesWrite;
-  const int buffSize = 1000000;
+  int res;
+  mz_bool status;
+  mz_zip_archive zip_archive;
 
-  uLongf destLen = buffSize;
-  uLongf sourceLen = buffSize;
+  static const char* zipFname = "C:\\zip_test\\psync_err.zip";
+  static const char* srcFname1 = "C:\\zip_test\\psync_err\\psync_err_test_1.log";
+  static const char* srcFname2 = "C:\\zip_test\\psync_err\\psync_err_test_2.log";
+  static const char* srcFname3 = "C:\\zip_test\\psync_err\\psync_err_test_3.log";
 
-  Bytef* sourceBuff = (Bytef*)malloc(buffSize);
-  Bytef* destBuff = (Bytef*)malloc(buffSize);
+  FILE* srcFile;
 
-  FILE *sourceF, *destF;
+  remove(zipFname);
 
-  sourceF = fopen("c:\\tmp\\psync_err_test.log", "rb");
-  destF = fopen("c:\\tmp\\psync_err.gz", "wb");
+  mz_zip_zero_struct(&zip_archive);
 
-  debug(D_NOTICE, "BOBO: Start!");
+  status = mz_zip_writer_init_file(&zip_archive, zipFname, 0);
 
-  res = def(sourceF, destF, Z_DEFAULT_COMPRESSION);
+  srcFile = fopen(srcFname1, "r");
+
+  status = mz_zip_writer_add_cfile(&zip_archive, "psync_err_test_1.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+  srcFile = fopen(srcFname2, "r");
+
+  status = mz_zip_writer_add_cfile(&zip_archive, "psync_err_test_2.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+  srcFile = fopen(srcFname3, "r");
+
+  status = mz_zip_writer_add_cfile(&zip_archive, "psync_err_test_3.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+  status = mz_zip_writer_finalize_archive(&zip_archive);
+
+  status = mz_zip_writer_end(&zip_archive);
+
+  printf("Success.\n");
 
   debug(D_NOTICE, "BOBO: Done. Res: [%d]", res);
-
-  fclose(sourceF);
-  fclose(destF);
 }
 /*************************************************************/
 void moveLogsToDrive() {
