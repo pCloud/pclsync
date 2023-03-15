@@ -13,6 +13,11 @@
 #include <stdio.h>
 #include "pcallbacks.h"
 
+ //Bobo
+#include <pupload.h>
+#include <miniz.h>
+//Bobo
+
 #include "pstatus.h"
 #include "psettings.h"
 
@@ -35,12 +40,6 @@
 #include <stdio.h>
 #endif
 
-//Bobo
-#include <zlib.h>
-
-#define CHUNK 1024*1024 //Chunk size for gzip compression buffer.
-//Bobo
-
 stuck_list_type* stuck_sync_tasks = NULL;
 static pthread_mutex_t stuck_elem_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -56,103 +55,107 @@ static wchar_t* utf8_to_wchar(const char* str) {
   return ret;
 }
 /*************************************************************/
-int def(FILE* source, FILE* dest, int level)
-{
-  int ret, flush;
-  unsigned have;
-  z_stream strm;
-  unsigned char in[CHUNK];
-  unsigned char out[CHUNK];
+char* get_zipLogsFile() {
+  char* zipFile;
+  char tmp[36];
 
-  /* allocate deflate state */
-  strm.zalloc = Z_NULL;
-  strm.zfree = Z_NULL;
-  strm.opaque = Z_NULL;
+  struct timespec ts;
+  struct tm dt;
 
-  ret = deflateInit(&strm, level);
-  //ret = deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, (15+16), 8,       Z_DEFAULT_STRATEGY);
-  if (ret != Z_OK)
-    return ret;
+  psync_nanotime(&ts);
 
-  /* compress until end of file */
-  do {
-    strm.avail_in = fread(in, 1, CHUNK, source);
-    debug(D_NOTICE, "BOBO: Available In: [%u]", strm.avail_in);
-    if (ferror(source)) {
-      (void)deflateEnd(&strm);
-      return Z_ERRNO;
-    }
-    flush = feof(source) ? Z_FINISH : Z_NO_FLUSH;
-    strm.next_in = in;
+  gmtime_r(&ts.tv_sec, &dt);
 
-    /* run deflate() on input until output buffer not full, finish
-       compression if all of source has been read in */
-    do {
-      strm.avail_out = CHUNK;
-      strm.next_out = out;
-      ret = deflate(&strm, flush);    /* no bad return value */
-      assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
-      have = CHUNK - strm.avail_out;
-      if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
-        (void)deflateEnd(&strm);
-        return Z_ERRNO;
-      }
-    } while (strm.avail_out == 0);
-    assert(strm.avail_in == 0);     /* all input will be used */
+  sprintf_s(tmp, 36, "%llu_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year+1900, dt.tm_mon+1, dt.tm_mday, dt.tm_hour, dt.tm_min);
 
-    /* done when last data in file processed */
-  } while (flush != Z_FINISH);
-  assert(ret == Z_STREAM_END);        /* stream will be complete */
+#if defined(P_OS_WINDOWS)
+  zipFile = psync_strcat("c:\\tmp\\", tmp, "_logs.zip", NULL);
+#endif
 
-  /* clean up and return */
-  (void)deflateEnd(&strm);
-  return Z_OK;
+#if defined(P_OS_LINUX)
+  zipFile = psync_strcat("/tmp/", tmp, "_logs.zip", NULL);
+#endif
+
+  return zipFile;
 }
 /*************************************************************/
-void zipLogs() {
-  int res;
+int zipLogs(char* zipLogsFname) {
+  int res = 0;
   mz_bool status;
   mz_zip_archive zip_archive;
 
-  static const char* zipFname = "C:\\zip_test\\psync_err.zip";
-  static const char* srcFname1 = "C:\\zip_test\\psync_err\\psync_err_test_1.log";
-  static const char* srcFname2 = "C:\\zip_test\\psync_err\\psync_err_test_2.log";
-  static const char* srcFname3 = "C:\\zip_test\\psync_err\\psync_err_test_3.log";
+  char* srcFname1 = DEBUG_FILE;
+  char* srcFname2 = CBFS_LOG_FILE;
+  char* srcFname3;
 
   FILE* srcFile;
 
-  remove(zipFname);
+  srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);
+
+  debug(D_NOTICE, "Create Zip file: [%s]", zipLogsFname);
+
+  res = psync_file_delete(zipLogsFname);
 
   mz_zip_zero_struct(&zip_archive);
 
-  status = mz_zip_writer_init_file(&zip_archive, zipFname, 0);
+  status = mz_zip_writer_init_file(&zip_archive, zipLogsFname, 0);
 
   srcFile = fopen(srcFname1, "r");
 
-  status = mz_zip_writer_add_cfile(&zip_archive, "psync_err_test_1.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+  if (srcFile) {
+    status = mz_zip_writer_add_cfile(&zip_archive, "psync_err.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+  }
+  else {
+    debug(D_NOTICE, "BOBO: Failed to open: [%s]", srcFname1);
+  }
 
   srcFile = fopen(srcFname2, "r");
 
-  status = mz_zip_writer_add_cfile(&zip_archive, "psync_err_test_2.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+  if (srcFile) {
+    status = mz_zip_writer_add_cfile(&zip_archive, "cbfs_log.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+  }
+  else {
+    debug(D_NOTICE, "BOBO: Failed to open: [%s]", srcFname2);
+  }
 
   srcFile = fopen(srcFname3, "r");
 
-  status = mz_zip_writer_add_cfile(&zip_archive, "psync_err_test_3.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+  if (srcFile) {
+    status = mz_zip_writer_add_cfile(&zip_archive, "wpflog.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+  }
+  else {
+    debug(D_NOTICE, "BOBO: Failed to open: [%s]", srcFname3);
+  }
 
   status = mz_zip_writer_finalize_archive(&zip_archive);
 
   status = mz_zip_writer_end(&zip_archive);
 
-  printf("Success.\n");
+  debug(D_NOTICE, "BOBO: Done. Res: [%d] Status: [%d]", res, status);
 
-  debug(D_NOTICE, "BOBO: Done. Res: [%d]", res);
+  return status;
 }
 /*************************************************************/
-void moveLogsToDrive() {
-  int res, ret;
-  psync_socket* api;
+int uploadLogsToDrive() {
+  int res;
+  char* zipLogsFname;
 
-  zipLogs();
+  zipLogsFname = get_zipLogsFile();
+
+  res = zipLogs(zipLogsFname);
+
+  if (!res) {
+    debug(D_NOTICE, "BOBO: Failed to zip logs. Res: [%d]", res);
+  }
+  else {
+    res = upload_logs(zipLogsFname);
+  }
+
+  debug(D_NOTICE, "BOBO: Done uploading logs. Send the data event. Res: [%d]", res);
+
+  psync_send_data_event(PEVENT_UPLOAD_LOGS_DONE, "", "", res, 0);
+
+  return res;
 }
 /*************************************************************/
 char* getMACaddr() {
@@ -1465,6 +1468,39 @@ int wait_auth_token(char* request_id) {
   return result;
 }
 /**********************************************************************/
+int deleteLogs() {
+  int res;
+  FILE* srcFile;
 
+#if defined(P_OS_LINUX)
+  char* srcFname1 = DEBUG_FILE;
 
+  res = psync_file_delete(srcFname1);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
+#endif
+
+#if defined(P_OS_MACOSX)
+  char* srcFname1 = DEBUG_FILE;
+
+  res = psync_file_delete(srcFname1);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
+#endif
+
+#if defined(P_OS_WINDOWS)
+  char* srcFname1 = "c:\\tmp\\psync_err.log";
+  char* srcFname2 = "c:\\tmp\\cbfs_log.log";
+  char* srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);;
+
+  res = psync_file_delete(srcFname1);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
+
+  res = psync_file_delete(srcFname2);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname2, res);
+
+  res = psync_file_delete(srcFname3);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname3, res);
+#endif
+
+  return res;
+}
 /**********************************************************************/

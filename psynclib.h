@@ -1659,6 +1659,10 @@ char* psync_get_device_string();
 
 const char* psync_get_appversion();
 /*******************************************************************************/
+int psync_uploadLogsAsync();
+
+int deleteLogFiles();
+/*******************************************************************************/
 
 #ifdef __cplusplus
 }

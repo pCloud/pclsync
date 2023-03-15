@@ -57,9 +57,11 @@ void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 #define PEVENT_FS_ADD_OBJ 101
 #define PEVENT_FS_DEL_OBJ 102
 #define PEVENT_FS_MOD_OBJ 103
-//Data event type constants. End.
 
 #define PEVENT_STUCK_OBJ_CNT 201
+
+#define PEVENT_UPLOAD_LOGS_DONE 301
+//Data event type constants. End.
 
 typedef struct {
   int eventid;

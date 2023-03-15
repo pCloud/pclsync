@@ -2744,9 +2744,10 @@ int psync_create_backup(char*  path,
 
 
   //Bobo
-  moveLogsToDrive();
+  //psync_uploadLogsAsync();
+  //deleteLogFiles();
 
-  return 0;
+  //return 0;
   //Bobo
 
   if (path[0] == 0) {
@@ -3204,5 +3205,19 @@ int psync_wait_auth_token_async(char* request_id, void* callb_ptr) {
   psync_run_thread1("Data Event", wait_auth_token_async, data);
 
   debug(D_NOTICE, "Async call done.");
+}
+/******************************************************************************************************************/
+int psync_uploadLogsAsync() {
+  debug(D_NOTICE, "Upload logs. Start.");
+
+  psync_run_thread1("Upload Logs", uploadLogsToDrive, NULL);
+
+  debug(D_NOTICE, "Upload logs. done.");
+
+  return 0;
+}
+/******************************************************************************************************************/
+int deleteLogFiles() {
+  return deleteLogs();
 }
 /******************************************************************************************************************/
