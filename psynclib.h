@@ -762,7 +762,7 @@ void psync_set_alloc(psync_malloc_t malloc_call, psync_realloc_t realloc_call, p
 void psync_set_software_string(const char *str);
 void psync_set_os_string(const char *str);
 
-int psync_init();
+int psync_init(char* appDrive);
 void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback_t event_callback);
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize);
 psync_notification_list_t *psync_get_notifications();

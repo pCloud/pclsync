@@ -215,8 +215,14 @@ void psync_apiserver_init(){
   }
 }
 
-int psync_init(){
+int psync_init(char* appDrive){
   char* deviceid;
+
+  //Bobo
+  setDriveLetter(appDrive);
+  //char* appDrv = "c:\\";
+  //setDriveLetter(appDrv);
+  //Bobo
 
   psync_thread_name="main app thread";
 

@@ -69,7 +69,7 @@ char* get_zipLogsFile() {
   sprintf_s(tmp, 36, "%llu_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year+1900, dt.tm_mon+1, dt.tm_mday, dt.tm_hour, dt.tm_min);
 
 #if defined(P_OS_WINDOWS)
-  zipFile = psync_strcat("c:\\tmp\\", tmp, "_logs.zip", NULL);
+  zipFile = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, tmp, "_logs.zip", NULL);
 #endif
 
 #if defined(P_OS_LINUX)
@@ -84,13 +84,15 @@ int zipLogs(char* zipLogsFname) {
   mz_bool status;
   mz_zip_archive zip_archive;
 
-  char* srcFname1 = DEBUG_FILE;
+#if defined(P_OS_WINDOWS)
+  char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);;
   char* srcFname2 = CBFS_LOG_FILE;
-  char* srcFname3;
+  char* srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);
+#else
+  char* srcFname1 = DEBUG_FILE;
+#endif
 
   FILE* srcFile;
-
-  srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);
 
   debug(D_NOTICE, "Create Zip file: [%s]", zipLogsFname);
 
@@ -109,6 +111,7 @@ int zipLogs(char* zipLogsFname) {
     debug(D_NOTICE, "BOBO: Failed to open: [%s]", srcFname1);
   }
 
+#if defined(P_OS_WINDOWS)
   srcFile = fopen(srcFname2, "r");
 
   if (srcFile) {
@@ -126,6 +129,7 @@ int zipLogs(char* zipLogsFname) {
   else {
     debug(D_NOTICE, "BOBO: Failed to open: [%s]", srcFname3);
   }
+#endif
 
   status = mz_zip_writer_finalize_archive(&zip_archive);
 

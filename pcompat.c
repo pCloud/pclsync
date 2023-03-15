@@ -3868,3 +3868,11 @@ int psync_munlock(void *ptr, size_t size){
 int psync_get_page_size(){
   return psync_page_size;
 }
+/***************************************************************/
+void setDriveLetter(char* appDrive) {
+#if defined(P_OS_WINDOWS)
+  debug(D_NOTICE, "Setting appDrive to: [%s]", appDrive);
+  appDriveLetter = psync_strdup(appDrive);
+#endif
+}
+/***************************************************************/

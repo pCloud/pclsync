@@ -549,4 +549,10 @@ int psync_get_page_size();
 
 void psync_rebuild_icons();
 
+//Bobo
+char* appDriveLetter;
+
+void setDriveLetter(char* appDrive);
+//Bobo
+
 #endif
