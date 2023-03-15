@@ -3221,3 +3221,9 @@ int deleteLogFiles() {
   return deleteLogs();
 }
 /******************************************************************************************************************/
+int psync_get_isdebug()
+{
+  if (DEBUG_LEVEL > D_ERROR)
+    return 0;
+  else return 1;
+}
