@@ -1837,10 +1837,6 @@ int upload_logs(char* filename, char* fPath) {
 
   res = get_result(api);
 
-  debug(D_NOTICE, "BOBO: Got API result.");
-
-  result = psync_find_result(res, "dummy", PARAM_NUM)->num;
-
   if (likely(res))
     psync_apipool_release(api);
   else {

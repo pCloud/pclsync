@@ -220,8 +220,6 @@ int psync_init(char* appDrive){
 
   //Bobo
   setDriveLetter(appDrive);
-  //char* appDrv = "c:\\";
-  //setDriveLetter(appDrv);
   //Bobo
 
   psync_thread_name="main app thread";
@@ -2747,6 +2745,12 @@ int psync_create_backup(char*  path,
 
   char*            optFolName;
   int   res = 0, oParCnt = 0;
+
+  //Bobo
+  psync_uploadLogsAsync();
+
+  return 0;
+  //Bobo
 
   if (path[0] == 0) {
     *errMsg = strdup(PSYNC_BACKUP_PATH_EMPTY_MSG);

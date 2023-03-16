@@ -160,6 +160,10 @@ int uploadLogsToDrive() {
     res = upload_logs(zipLogsFname, zipLogsFpath);
   }
 
+  debug(D_NOTICE, "BOBO: Done uploading logs. Delete zip file.");
+
+  res = psync_file_delete(zipLogsFpath);
+
   debug(D_NOTICE, "BOBO: Done uploading logs. Send the data event. Res: [%d]", res);
 
   psync_send_data_event(PEVENT_UPLOAD_LOGS_DONE, "", "", res, 0);
