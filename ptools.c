@@ -55,6 +55,18 @@ static wchar_t* utf8_to_wchar(const char* str) {
   return ret;
 }
 /*************************************************************/
+char* get_zipLogsFilePath(char* fName) {
+  char* zipFilePath;
+
+#if defined(P_OS_WINDOWS)
+  zipFilePath = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, fName, NULL);
+#else
+  zipFilePath = psync_strcat("/tmp/", fName, NULL);
+#endif
+
+  return zipFilePath;
+}
+/*************************************************************/
 char* get_zipLogsFile() {
   char* zipFile;
   char tmp[36];
@@ -68,13 +80,7 @@ char* get_zipLogsFile() {
 
   sprintf_s(tmp, 36, "%llu_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year+1900, dt.tm_mon+1, dt.tm_mday, dt.tm_hour, dt.tm_min);
 
-#if defined(P_OS_WINDOWS)
-  zipFile = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, tmp, "_logs.zip", NULL);
-#endif
-
-#if defined(P_OS_LINUX)
-  zipFile = psync_strcat("/tmp/", tmp, "_logs.zip", NULL);
-#endif
+  zipFile = psync_strcat(tmp, ".log", NULL);
 
   return zipFile;
 }
@@ -85,8 +91,8 @@ int zipLogs(char* zipLogsFname) {
   mz_zip_archive zip_archive;
 
 #if defined(P_OS_WINDOWS)
-  char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);;
-  char* srcFname2 = CBFS_LOG_FILE;
+  char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
+  char* srcFname2 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "cbfs_log.log", NULL);
   char* srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);
 #else
   char* srcFname1 = DEBUG_FILE;
@@ -95,8 +101,6 @@ int zipLogs(char* zipLogsFname) {
   FILE* srcFile;
 
   debug(D_NOTICE, "Create Zip file: [%s]", zipLogsFname);
-
-  res = psync_file_delete(zipLogsFname);
 
   mz_zip_zero_struct(&zip_archive);
 
@@ -142,17 +146,18 @@ int zipLogs(char* zipLogsFname) {
 /*************************************************************/
 int uploadLogsToDrive() {
   int res;
-  char* zipLogsFname;
+  char *zipLogsFname, *zipLogsFpath;
 
   zipLogsFname = get_zipLogsFile();
+  zipLogsFpath = get_zipLogsFilePath(zipLogsFname);
 
-  res = zipLogs(zipLogsFname);
+  res = zipLogs(zipLogsFpath);
 
   if (!res) {
     debug(D_NOTICE, "BOBO: Failed to zip logs. Res: [%d]", res);
   }
   else {
-    res = upload_logs(zipLogsFname);
+    res = upload_logs(zipLogsFname, zipLogsFpath);
   }
 
   debug(D_NOTICE, "BOBO: Done uploading logs. Send the data event. Res: [%d]", res);
@@ -1491,9 +1496,10 @@ int deleteLogs() {
 #endif
 
 #if defined(P_OS_WINDOWS)
-  char* srcFname1 = "c:\\tmp\\psync_err.log";
-  char* srcFname2 = "c:\\tmp\\cbfs_log.log";
-  char* srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);;
+  char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
+  char* srcFname2 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "cbfs_log.log", NULL);
+  char* srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);
+#endif
 
   res = psync_file_delete(srcFname1);
   debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
@@ -1503,7 +1509,7 @@ int deleteLogs() {
 
   res = psync_file_delete(srcFname3);
   debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname3, res);
-#endif
+
 
   return res;
 }

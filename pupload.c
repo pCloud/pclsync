@@ -1761,24 +1761,23 @@ void psync_stop_all_upload(){
   pthread_mutex_unlock(&current_uploads_mutex);
 }
 /*************************************************************/
-int upload_logs(char* filename) {
+int upload_logs(char* filename, char* fPath) {
   psync_socket* api;
   void* buff;
   binresult* res;
   uint64_t bw, result, fsize;
   size_t rd;
   ssize_t rrd;
-  //psync_file_t fd;
   FILE* fd;
   psync_stat_t st;
   int ret = 0;
 
-  debug(D_NOTICE, "BOBO: Upload zipped logs file: [%s]", filename);
+  debug(D_NOTICE, "BOBO: Upload zipped logs file: [%s]", fPath);
 
-  fd = psync_file_open(filename, P_O_RDONLY, 0);
+  fd = psync_file_open(fPath, P_O_RDONLY, 0);
 
   if (fd == INVALID_HANDLE_VALUE) {
-    debug(D_NOTICE, "Could not open local file [%s]", filename);
+    debug(D_NOTICE, "Could not open local file [%s]", fPath);
     return -1;
   }
 
@@ -1788,7 +1787,7 @@ int upload_logs(char* filename) {
     return -1;
   }
 
-  ret = psync_stat(filename, &st);
+  ret = psync_stat(fPath, &st);
   fsize = psync_stat_size(&st);
 
   binparam params[] = {
