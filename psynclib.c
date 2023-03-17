@@ -2748,9 +2748,9 @@ int psync_create_backup(char*  path,
   int   res = 0, oParCnt = 0;
 
   //Bobo
-  psync_uploadLogsAsync();
+  //psync_uploadLogsAsync();
 
-  return 0;
+  //return 0;
   //Bobo
 
   if (path[0] == 0) {
