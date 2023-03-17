@@ -1659,6 +1659,8 @@ char* psync_get_device_string();
 
 const char* psync_get_appversion();
 /*******************************************************************************/
+#define FAIL_TO_ZIP_LOGS 101
+
 int psync_uploadLogsAsync();
 
 int deleteLogFiles();

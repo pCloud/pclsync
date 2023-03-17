@@ -80,7 +80,7 @@ char* get_zipLogsFile() {
 
   sprintf_s(tmp, 36, "%llu_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year+1900, dt.tm_mon+1, dt.tm_mday, dt.tm_hour, dt.tm_min);
 
-  zipFile = psync_strcat(tmp, ".log", NULL);
+  zipFile = psync_strcat(tmp, ".zip", NULL);
 
   return zipFile;
 }
@@ -145,7 +145,7 @@ int zipLogs(char* zipLogsFname) {
 }
 /*************************************************************/
 int uploadLogsToDrive() {
-  int res;
+  int res = 0;
   char *zipLogsFname, *zipLogsFpath;
 
   zipLogsFname = get_zipLogsFile();
@@ -155,6 +155,8 @@ int uploadLogsToDrive() {
 
   if (!res) {
     debug(D_NOTICE, "BOBO: Failed to zip logs. Res: [%d]", res);
+
+    res = FAIL_TO_ZIP_LOGS;
   }
   else {
     res = upload_logs(zipLogsFname, zipLogsFpath);
