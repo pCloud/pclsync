@@ -3428,6 +3428,14 @@ static void psync_fuse_thread(){
   }
   pthread_mutex_unlock(&start_mutex);
   debug(D_NOTICE, "running fuse_loop_mt");
+
+  //Bobo
+  logsDrive = (char*)malloc(sizeof(char) * strlen(appDriveLetter)+1);
+  strncpy(logsDrive, appDriveLetter, strlen(appDriveLetter)+1);
+
+  debug(D_NOTICE, "App Drive Letter: [%s]", logsDrive);
+  //Bobo
+
   fr=fuse_loop_mt(psync_fuse);
   debug(D_NOTICE, "fuse_loop_mt exited with code %d, running fuse_destroy", fr);
   pthread_mutex_lock(&start_mutex);

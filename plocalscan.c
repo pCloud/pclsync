@@ -463,8 +463,8 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     fdisk=psync_list_element(ldisk, sync_folderlist, list);
     fdb=psync_list_element(ldb, sync_folderlist, list);
 
-    //cmp=psync_filename_cmp(fdisk->name, fdb->name);
-    cmp = strcmp(fdisk->name, fdb->name);
+    cmp=psync_filename_cmp(fdisk->name, fdb->name);
+    //cmp = strcmp(fdisk->name, fdb->name); //Bobo
 
     if (cmp==0){
       if (fdisk->isfolder==fdb->isfolder){

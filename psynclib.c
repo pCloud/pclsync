@@ -219,6 +219,7 @@ int psync_init(char* appDrive){
   char* deviceid;
 
   //Bobo
+  //appDrive = psync_strdup("C:\\");
   setDriveLetter(appDrive);
   //Bobo
 
