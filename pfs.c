@@ -451,9 +451,6 @@ static void psync_row_to_file_stat(psync_variant_row row, struct FUSE_STAT *stbu
   stbuf->st_birthtime=psync_get_number(row[2]);
 #endif
   stbuf->st_ctime=psync_get_number(row[3]);
-
-  //debug(D_NOTICE, "BOBO: st_ctime: [%lld], st_birthtime: [%llu]", stbuf->st_ctime, stbuf->st_birthtime);
-
   stbuf->st_mtime=stbuf->st_ctime;
   stbuf->st_atime=stbuf->st_ctime;
   stbuf->st_mode=S_IFREG | 0644;
@@ -647,13 +644,7 @@ static int psync_creat_local_to_file_stat(psync_fstask_creat_t *cr, struct FUSE_
 #ifdef FUSE_STAT_HAS_BIRTHTIME
   stbuf->st_birthtime=psync_stat_birthtime(&st);
 #endif
-
-  //debug(D_NOTICE, "BOBO: ftCreationTime: [%lu], ftLastAccessTime: [%lu], ftLastWriteTime: [%lu] ", st.ftCreationTime, st.ftLastAccessTime, st.ftLastWriteTime);
-
   stbuf->st_mtime=psync_stat_mtime(&st);
-
-  //debug(D_NOTICE, "BOBO: Converted time: [%lld]", stbuf->st_mtime);
-
   stbuf->st_ctime=stbuf->st_mtime;
   stbuf->st_atime=stbuf->st_mtime;
   stbuf->st_mode=S_IFREG | 0644;
@@ -761,8 +752,6 @@ static int psync_fs_getattr(const char *path, struct FUSE_STAT *stbuf){
   int crr;
   psync_fs_set_thread_name();
 
-  //debug(D_NOTICE, "BOBO: getattr %s", path);
-
   if (path[1]==0 && path[0]=='/')
     return psync_fs_getrootattr(stbuf);
   psync_sql_rdlock();
@@ -828,8 +817,6 @@ static int psync_fs_getattr(const char *path, struct FUSE_STAT *stbuf){
     crr=-1;
   psync_sql_rdunlock();
   psync_free(fpath);
-
-  //debug(D_NOTICE, "BOBO: st_atime [%llu], st_birthtime [%llu], st_ctime [%llu], st_mtime [%llu]",  stbuf->st_atime, stbuf->st_birthtime, stbuf->st_ctime, stbuf->st_mtime);
 
   if (row || !crr)
     return 0;
@@ -2338,8 +2325,6 @@ static int psync_fs_write(const char *path, const char *buf, size_t size, fuse_o
   int ret;
   psync_fs_set_thread_name();
 
-  debug(D_NOTICE, "BOBO: Write to [%s] of [%lu] at [%lu]", path, (unsigned long)size, (unsigned long)offset);
-
   of=fh_to_openfile(fi->fh);
   psync_fs_lock_file(of);
   ret=psync_fs_check_write_space(of, size, offset);
@@ -2348,8 +2333,6 @@ static int psync_fs_write(const char *path, const char *buf, size_t size, fuse_o
   psync_fs_inc_writeid_locked(of);
 retry:
   if (of->newfile){
-    debug(D_NOTICE, "BOBO: Write to new file.");
-
     if (of->encrypted)
       return psync_fs_crypto_write_newfile_locked(of, buf, size, offset);
     else
@@ -2370,8 +2353,6 @@ retry:
         return ret;
       }
     }
-    
-    debug(D_NOTICE, "BOBO: Write 1.");
 
     if (of->encrypted)
       return psync_fs_crypto_write_modified_locked(of, buf, size, offset);
@@ -2390,8 +2371,6 @@ retry:
         ret=psync_fs_write_modified(of, buf, size, offset);
     }
     pthread_mutex_unlock(&of->mutex);
-
-    debug(D_NOTICE, "BOBO: Write Return: [%d]", ret);
 
     return ret;
   }

@@ -152,6 +152,10 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 #define STUCK_ITEM_UNKNOWN_FOLDER "UNKNOWN_FOLDER_NAME"
 #define STUCK_ITEM_UNKNOWN_PATH   "UNKNOWN_PATH"
 
+#define CANT_FIND_LOG_FILE 10001
+#define CANT_CREATE_ZIP_FILE 10002
+
+
  void log_list_elem(stuck_item* elem);
 
  void log_list();

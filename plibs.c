@@ -37,6 +37,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stddef.h>
+//Bobo
+#include <pcompat.h>
+//Bobo
 
 #define return_error(err) do {psync_error=err; return -1;} while (0)
 
@@ -2503,7 +2506,15 @@ int psync_debug(const char *file, const char *function, int unsigned line, int u
       break;
     }
   if (unlikely(!log)){
-    log=fopen(DEBUG_FILE, "a+");
+#if defined(P_OS_WINDOWS)
+    //if (!psyncLogPath) {
+      //psyncLogPath = psync_strdup("C:\\tmp\\psync_err.log");
+    //}
+
+    log=fopen(psyncLogPath, "a+");
+#else
+    log = fopen(DEBUG_FILE, "a+");
+#endif
     if (!log)
       return 1;
   }

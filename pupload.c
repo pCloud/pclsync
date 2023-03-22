@@ -1772,7 +1772,7 @@ int upload_logs(char* filename, char* fPath) {
   psync_stat_t st;
   int ret = 0;
 
-  debug(D_NOTICE, "BOBO: Upload zipped logs file: [%s]", fPath);
+  debug(D_NOTICE, "Upload zipped logs file: [%s]", fPath);
 
   fd = psync_file_open(fPath, P_O_RDONLY, 0);
 
@@ -1799,7 +1799,7 @@ int upload_logs(char* filename, char* fPath) {
     P_BOOL("frompdrive", 1)
   };
 
-  debug(D_NOTICE, "BOBO: Uploading file size: [%llu]", fsize);
+  debug(D_NOTICE, "Uploading file size: [%llu]", fsize);
 
   res = do_send_command(api, "uploadclientdiagnostic", strlen("uploadclientdiagnostic"), params, ARRAY_SIZE(params), fsize, 0);
 
@@ -1829,7 +1829,7 @@ int upload_logs(char* filename, char* fPath) {
     add_bytes_uploaded(rrd);
   }
 
-  debug(D_NOTICE, "BOBO: Upload Done.");
+  debug(D_NOTICE, "Upload Done.");
 
   psync_free(buff);
   psync_file_close(fd);

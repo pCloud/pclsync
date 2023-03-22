@@ -167,12 +167,10 @@ void psync_set_alloc(psync_malloc_t malloc_call, psync_realloc_t realloc_call, p
 }
 
 void psync_set_software_string(const char *str){
-  debug(D_NOTICE, "setting software name to %s", str);
   psync_set_software_name(str);
 }
 
 void psync_set_os_string(const char *str){
-  debug(D_NOTICE, "setting os name to %s", str);
   psync_set_os_name(str);
 }
 
@@ -217,12 +215,9 @@ void psync_apiserver_init(){
 
 int psync_init(char* appDrive){
   char* deviceid;
-
   //Bobo
-  //appDrive = psync_strdup("C:\\");
   setDriveLetter(appDrive);
   //Bobo
-
   psync_thread_name="main app thread";
 
   debug(D_NOTICE, "initializing library version "PSYNC_LIB_VERSION);

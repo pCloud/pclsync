@@ -552,6 +552,8 @@ void psync_rebuild_icons();
 //Bobo
 char* appDriveLetter;
 
+char* psyncLogPath;
+
 void setDriveLetter(char* appDrive);
 //Bobo
 

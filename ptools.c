@@ -106,13 +106,19 @@ int zipLogs(char* zipLogsFname) {
 
   status = mz_zip_writer_init_file(&zip_archive, zipLogsFname, 0);
 
+  if (status == MZ_FALSE) {
+    return CANT_CREATE_ZIP_FILE;
+  }
+
   srcFile = fopen(srcFname1, "r");
 
   if (srcFile) {
     status = mz_zip_writer_add_cfile(&zip_archive, "psync_err.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
   }
   else {
-    debug(D_NOTICE, "BOBO: Failed to open: [%s]", srcFname1);
+    debug(D_NOTICE, "Failed to open: [%s]", srcFname1);
+
+    return CANT_FIND_LOG_FILE;
   }
 
 #if defined(P_OS_WINDOWS)
@@ -122,7 +128,7 @@ int zipLogs(char* zipLogsFname) {
     status = mz_zip_writer_add_cfile(&zip_archive, "cbfs_log.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
   }
   else {
-    debug(D_NOTICE, "BOBO: Failed to open: [%s]", srcFname2);
+    debug(D_NOTICE, "Failed to open: [%s]", srcFname2);
   }
 
   srcFile = fopen(srcFname3, "r");
@@ -131,7 +137,7 @@ int zipLogs(char* zipLogsFname) {
     status = mz_zip_writer_add_cfile(&zip_archive, "wpflog.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
   }
   else {
-    debug(D_NOTICE, "BOBO: Failed to open: [%s]", srcFname3);
+    debug(D_NOTICE, "Failed to open: [%s]", srcFname3);
   }
 #endif
 
@@ -139,7 +145,7 @@ int zipLogs(char* zipLogsFname) {
 
   status = mz_zip_writer_end(&zip_archive);
 
-  debug(D_NOTICE, "BOBO: Done. Res: [%d] Status: [%d]", res, status);
+  debug(D_NOTICE, "Done. Res: [%d] Status: [%d]", res, status);
 
   return status;
 }
@@ -153,21 +159,19 @@ int uploadLogsToDrive() {
 
   res = zipLogs(zipLogsFpath);
 
-  if (!res) {
-    debug(D_NOTICE, "BOBO: Failed to zip logs. Res: [%d]", res);
+  if (res == MZ_TRUE) {
+    res = upload_logs(zipLogsFname, zipLogsFpath);
+
+    debug(D_NOTICE, "Done uploading logs. Delete zip file.");
+    psync_file_delete(zipLogsFpath);
+  }
+  else {
+    debug(D_NOTICE, "Failed to zip logs. Res: [%d]", res);
 
     res = FAIL_TO_ZIP_LOGS;
   }
-  else {
-    res = upload_logs(zipLogsFname, zipLogsFpath);
-  }
 
-  debug(D_NOTICE, "BOBO: Done uploading logs. Delete zip file.");
-
-  res = psync_file_delete(zipLogsFpath);
-
-  debug(D_NOTICE, "BOBO: Done uploading logs. Send the data event. Res: [%d]", res);
-
+  debug(D_NOTICE, "Done uploading logs. Send the data event. Res: [%d]", res);
   psync_send_data_event(PEVENT_UPLOAD_LOGS_DONE, "", "", res, 0);
 
   return res;
