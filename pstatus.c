@@ -171,7 +171,7 @@ static uint32_t psync_calc_status(){
     return PSTATUS_UPLOADING;
   }
   else {
-    debug(D_BUG, "Calc status to: PSTATUS_READY");
+    debug(D_NOTICE, "Calc status to: PSTATUS_READY");
     return PSTATUS_READY;
   }
 }
