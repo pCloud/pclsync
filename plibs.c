@@ -37,9 +37,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stddef.h>
-//Bobo
-#include <pcompat.h>
-//Bobo
+#include "pcompat.h"
 
 #define return_error(err) do {psync_error=err; return -1;} while (0)
 

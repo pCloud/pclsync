@@ -12,11 +12,9 @@
 #include "pnetlibs.h"
 #include <stdio.h>
 #include "pcallbacks.h"
-
- //Bobo
-#include <pupload.h>
-#include <miniz.h>
-//Bobo
+ 
+#include "pupload.h"
+#include "miniz.h"
 
 #include "pstatus.h"
 #include "psettings.h"
@@ -1489,7 +1487,6 @@ int wait_auth_token(char* request_id) {
 /**********************************************************************/
 int deleteLogs() {
   int res;
-  FILE* srcFile;
 
 #if defined(P_OS_LINUX)
   char* srcFname1 = DEBUG_FILE;
@@ -1509,17 +1506,16 @@ int deleteLogs() {
   char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
   char* srcFname2 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "cbfs_log.log", NULL);
   char* srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);
-#endif
-
-  res = psync_file_delete(srcFname1);
-  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
 
   res = psync_file_delete(srcFname2);
   debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname2, res);
 
   res = psync_file_delete(srcFname3);
   debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname3, res);
+#endif
 
+  res = psync_file_delete(srcFname1);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
 
   return res;
 }
