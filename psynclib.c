@@ -213,11 +213,17 @@ void psync_apiserver_init(){
   }
 }
 
-int psync_init(char* appDrive){
+#if defined(P_OS_WINDOWS)
+int psync_init(char* appDrive) {
+#else
+int psync_init() {
+#endif
   char* deviceid;
-  //Bobo
+
+#if defined(P_OS_WINDOWS)
   setDriveLetter(appDrive);
-  //Bobo
+#endif
+
   psync_thread_name="main app thread";
 
   debug(D_NOTICE, "initializing library version "PSYNC_LIB_VERSION);

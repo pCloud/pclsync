@@ -2532,10 +2532,6 @@ int psync_debug(const char *file, const char *function, int unsigned line, int u
     }
   if (unlikely(!log)){
 #if defined(P_OS_WINDOWS)
-    //if (!psyncLogPath) {
-      //psyncLogPath = psync_strdup("C:\\tmp\\psync_err.log");
-    //}
-
     log=fopen(psyncLogPath, "a+");
 #else
     log = fopen(DEBUG_FILE, "a+");
@@ -2543,6 +2539,7 @@ int psync_debug(const char *file, const char *function, int unsigned line, int u
     if (!log)
       return 1;
   }
+
   psync_nanotime(&ts);
   time_format(ts.tv_sec, ts.tv_nsec, dttime);
   threadid=pthread_self();
