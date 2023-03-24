@@ -42,17 +42,6 @@ stuck_list_type* stuck_sync_tasks = NULL;
 static pthread_mutex_t stuck_elem_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*************************************************************/
-static wchar_t* utf8_to_wchar(const char* str) {
-  int len;
-  wchar_t* ret;
-
-  len = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
-  ret = psync_new_cnt(wchar_t, len);
-  MultiByteToWideChar(CP_UTF8, 0, str, -1, ret, len);
-
-  return ret;
-}
-/*************************************************************/
 char* get_zipLogsFilePath(char* fName) {
   char* zipFilePath;
 
