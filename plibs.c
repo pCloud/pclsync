@@ -515,7 +515,7 @@ int psync_sql_close(){
       break;
   }
 
-  psync_db=NULL;
+  psync_sql_dump_locks();
 
   if (unlikely(code!=SQLITE_OK)){
     debug(D_CRITICAL, "error when closing database: %d", code);
@@ -526,6 +526,8 @@ int psync_sql_close(){
       return -1;
     }
   }
+
+  psync_db = NULL;
 
   return 0;
 }

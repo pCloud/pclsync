@@ -531,6 +531,14 @@ char *psync_deviceid();
 
 #if defined(P_OS_WINDOWS) && !defined(gmtime_r)
 struct tm *gmtime_r(const time_t *timep, struct tm *result);
+
+//Bobo
+char* appDriveLetter;
+char* psyncLogPath;
+
+void setDriveLetter(char* appDrive);
+//Bobo
+
 #endif
 
 int psync_run_update_file(const char *path);
@@ -548,13 +556,4 @@ int psync_munlock(void *ptr, size_t size);
 int psync_get_page_size();
 
 void psync_rebuild_icons();
-
-//Bobo
-char* appDriveLetter;
-
-char* psyncLogPath;
-
-void setDriveLetter(char* appDrive);
-//Bobo
-
 #endif
