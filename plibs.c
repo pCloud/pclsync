@@ -523,6 +523,9 @@ int psync_sql_close(){
 
     if (unlikely(code!=SQLITE_OK)){
       debug(D_CRITICAL, "error when closing database even with sqlite3_close_v2: %d", code);
+
+      psync_db = NULL;
+
       return -1;
     }
   }
