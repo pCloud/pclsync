@@ -613,6 +613,7 @@ void psync_sql_dump_locks(){
   }
   pthread_mutex_unlock(&rdmutex);
 }
+#endif
 
 int psync_sql_close() {
   int code, tries;
@@ -636,7 +637,9 @@ int psync_sql_close() {
       break;
   }
 
+#if IS_DEBUG
   psync_sql_dump_locks();
+#endif
 
   if (unlikely(code != SQLITE_OK)) {
     debug(D_CRITICAL, "error when closing database: %d", code);
@@ -655,8 +658,6 @@ int psync_sql_close() {
 
   return 0;
 }
-
-#endif
 
 #if IS_DEBUG
 int psync_sql_do_trylock(const char *file, unsigned line){
