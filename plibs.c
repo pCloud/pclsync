@@ -493,48 +493,6 @@ int psync_sql_connect(const char *db){
   }
 }
 
-int psync_sql_close(){
-  int code, tries;
-  tries=0;
-
-  while (1){
-    code=sqlite3_close(psync_db);
-    if (code==SQLITE_BUSY){
-      psync_cache_clean_all();
-      tries++;
-
-      if (tries>100){
-        psync_milisleep_nosqlcheck(tries-90);
-        if (tries>200){
-          debug(D_ERROR, "Failed to close database.");
-          break;
-        }
-      }
-    }
-    else
-      break;
-  }
-
-  psync_sql_dump_locks();
-
-  if (unlikely(code!=SQLITE_OK)){
-    debug(D_CRITICAL, "error when closing database: %d", code);
-    code=sqlite3_close_v2(psync_db);
-
-    if (unlikely(code!=SQLITE_OK)){
-      debug(D_CRITICAL, "error when closing database even with sqlite3_close_v2: %d", code);
-
-      psync_db = NULL;
-
-      return -1;
-    }
-  }
-
-  psync_db = NULL;
-
-  return 0;
-}
-
 int psync_sql_reopen(const char *path){
   sqlite3 *db;
   int code;
@@ -654,6 +612,48 @@ void psync_sql_dump_locks(){
     senddebug("read lock taken by thread %s from %s:%u at %s", lock->thread, lock->file, lock->line, dttime);
   }
   pthread_mutex_unlock(&rdmutex);
+}
+
+int psync_sql_close() {
+  int code, tries;
+  tries = 0;
+
+  while (1) {
+    code = sqlite3_close(psync_db);
+    if (code == SQLITE_BUSY) {
+      psync_cache_clean_all();
+      tries++;
+
+      if (tries > 100) {
+        psync_milisleep_nosqlcheck(tries - 90);
+        if (tries > 200) {
+          debug(D_ERROR, "Failed to close database.");
+          break;
+        }
+      }
+    }
+    else
+      break;
+  }
+
+  psync_sql_dump_locks();
+
+  if (unlikely(code != SQLITE_OK)) {
+    debug(D_CRITICAL, "error when closing database: %d", code);
+    code = sqlite3_close_v2(psync_db);
+
+    if (unlikely(code != SQLITE_OK)) {
+      debug(D_CRITICAL, "error when closing database even with sqlite3_close_v2: %d", code);
+
+      psync_db = NULL;
+
+      return -1;
+    }
+  }
+
+  psync_db = NULL;
+
+  return 0;
 }
 
 #endif
