@@ -1833,7 +1833,6 @@ int upload_logs(char* filename, char* fPath) {
 
   psync_free(buff);
   psync_file_close(fd);
-  psync_set_default_sendbuf(api);
 
   res = get_result(api);
 

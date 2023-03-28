@@ -101,6 +101,8 @@ int zipLogs(char* zipLogsFname) {
 
   if (srcFile) {
     status = mz_zip_writer_add_cfile(&zip_archive, "psync_err.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+    res = fclose(srcFile);
   }
   else {
     debug(D_NOTICE, "Failed to open: [%s]", srcFname1);
@@ -108,30 +110,28 @@ int zipLogs(char* zipLogsFname) {
     return CANT_FIND_LOG_FILE;
   }
 
-  res = fclose(srcFile);
-
 #if defined(P_OS_WINDOWS)
   srcFile = fopen(srcFname2, "r");
 
   if (srcFile) {
     status = mz_zip_writer_add_cfile(&zip_archive, "cbfs_log.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+    res = fclose(srcFile);
   }
   else {
     debug(D_NOTICE, "Failed to open: [%s]", srcFname2);
   }
 
-  res = fclose(srcFname2);
-
   srcFile = fopen(srcFname3, "r");
 
   if (srcFile) {
     status = mz_zip_writer_add_cfile(&zip_archive, "wpflog.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+    res = fclose(srcFile);
   }
   else {
     debug(D_NOTICE, "Failed to open: [%s]", srcFname3);
   }
-
-  res = fclose(srcFname3);
 #endif
 
   status = mz_zip_writer_finalize_archive(&zip_archive);
