@@ -3894,9 +3894,9 @@ int psync_get_page_size(){
 void setDriveLetter(char* appDrive) {
 #if defined(P_OS_WINDOWS)
   appDriveLetter = psync_strdup(appDrive);
-  //Bobo
+
   psyncLogPath = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
-  //Bobo
+
   debug(D_NOTICE, "Setting Drive Letter to: [%s]", appDrive);
 #endif
   debug(D_NOTICE, "Setting OS name to %s", psync_os_name);
