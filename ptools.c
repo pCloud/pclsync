@@ -1427,7 +1427,10 @@ int wait_auth_token(char* request_id) {
   token = psync_strdup(psync_find_result(resData, EPARAM_TOKEN, PARAM_STR)->str);
   loc_id = psync_find_result(resData, EPARAM_LOC_ID, PARAM_NUM)->num;
   newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
-  rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
+
+  if (psync_check_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)) {
+    rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
+  }
 
   debug(D_NOTICE, "Login result parameters: RememberMe: [%llu], UserId: [%llu], Location Id: [%d]", rememberme, newuserid, loc_id);
 

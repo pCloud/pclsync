@@ -260,13 +260,17 @@ static int psync_send_task_creat_upload_small(psync_socket *api, fsupload_task_t
     psync_free(data);
     return -1;
   }
+
   size+=len;
+
   if (unlikely_log(psync_socket_writeall_upload(api, data, size)!=size)){
     psync_free(data);
+
     return -1;
   }
   else{
     psync_free(data);
+
     return 0;
   }
 }
@@ -1176,11 +1180,15 @@ static int psync_sent_task_creat_upload_large(fsupload_task_t *task){
 
 void psync_fsupload_stop_upload_locked(uint64_t taskid){
   psync_sql_res *res;
+
   if (current_upload_taskid==taskid)
     stop_current_upload=1;
+
   res=psync_sql_prep_statement("UPDATE fstask SET status=1 WHERE id=?");
+
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
+
   assertw(psync_sql_affected_rows());
 }
 
@@ -1220,19 +1228,23 @@ static int psync_send_task_creat(psync_socket *api, fsupload_task_t *task){
     uint64_t size;
     psync_file_t fd;
     int ret;
+
     psync_binhex(fileidhex, &task->id, sizeof(psync_fsfileid_t));
     fileidhex[sizeof(psync_fsfileid_t)]='d';
     fileidhex[sizeof(psync_fsfileid_t)+1]=0;
     filename=psync_strcat(psync_setting_get_string(_PS(fscachepath)), PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
     fd=psync_file_open(filename, P_O_RDONLY, 0);
     psync_free(filename);
+
     if (unlikely_log(fd==INVALID_HANDLE_VALUE) || unlikely_log(psync_fstat(fd, &st))){
       if (fd!=INVALID_HANDLE_VALUE)
         psync_file_close(fd);
       perm_fail_upload_task(task->id);
       return -1;
     }
+
     size=psync_stat_size(&st);
+
     if (size>PSYNC_FS_DIRECT_UPLOAD_LIMIT){
       psync_file_close(fd);
       debug(D_NOTICE, "defering upload of %lu/%s due to size of %lu", (unsigned long)task->folderid, task->text1, (unsigned long)size);
@@ -1240,17 +1252,23 @@ static int psync_send_task_creat(psync_socket *api, fsupload_task_t *task){
     }
     else{
       debug(D_NOTICE, "uploading file %lu/%s pipelined due to size of %lu", (unsigned long)task->folderid, task->text1, (unsigned long)size);
+
       ret=psync_send_task_creat_upload_small(api, task, fd, &st);
       psync_file_close(fd);
+
       if (!ret){
+        debug(D_NOTICE, "BOBO: Small upload failed. Ret: [%d]", ret);
+
         psync_upload_inc_uploads();
         task->ccreat=1;
       }
+
       return ret;
     }
   }
-  else
+  else{
     return psync_sent_task_creat_upload_large(task);
+  }
 }
 
 static int psync_send_task_modify(psync_socket *api, fsupload_task_t *task){
@@ -1465,13 +1483,19 @@ static int handle_rename_file_api_error(uint64_t result, fsupload_task_t *task){
 static int psync_process_task_rename_file(fsupload_task_t *task){
   uint64_t result;
   const binresult *meta;
+
   result=psync_find_result(task->res, "result", PARAM_NUM)->num;
+
   if (result && result!=2049)
     return handle_rename_file_api_error(result, task);
+
   meta=psync_find_result(task->res, "metadata", PARAM_HASH);
+
   psync_ops_update_file_in_db(meta);
   psync_fstask_file_renamed(task->folderid, task->id, task->text1, task->int1);
+
   debug(D_NOTICE, "file %lu/%s renamed", (unsigned long)task->folderid, task->text1);
+
   return 0;
 }
 

@@ -2902,20 +2902,27 @@ static void psync_pagecache_new_upload_to_cache(uint64_t taskid, uint64_t hash, 
   time_t tm;
   psync_file_t fd;
   char fileidhex[sizeof(psync_fsfileid_t)*2+2];
+
   psync_binhex(fileidhex, &taskid, sizeof(psync_fsfileid_t));
   fileidhex[sizeof(psync_fsfileid_t)]='d';
   fileidhex[sizeof(psync_fsfileid_t)+1]=0;
+
   tm=psync_timer_time();
+
   filename=psync_strcat(psync_setting_get_string(_PS(fscachepath)), PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
+
   fd=psync_file_open(filename, P_O_RDONLY, 0);
+
   if (fd==INVALID_HANDLE_VALUE){
     debug(D_ERROR, "could not open cache file %s for taskid %lu, skipping", filename, (unsigned long)taskid);
     psync_file_delete(filename);
     psync_free(filename);
     return;
   }
-  debug(D_NOTICE, "adding file %s to cache for hash %lu (%ld) size %ld", filename, (unsigned long)hash, (long)hash, (long)psync_file_size(fd));
+
+  debug(D_NOTICE, "adding file [%s] to cache for hash [%lu] (%ld) size [%ld]", filename, (unsigned long)hash, (long)hash, (long)psync_file_size(fd));
   pageid=0;
+
   while (1){
     page=psync_pagecache_get_free_page(1);
     rd=psync_file_read(fd, page->page, PSYNC_FS_PAGE_SIZE);
@@ -2939,6 +2946,7 @@ static void psync_pagecache_new_upload_to_cache(uint64_t taskid, uint64_t hash, 
       psync_milisleep(10);
     }
   }
+
   psync_file_close(fd);
   psync_file_delete(filename);
   debug(D_NOTICE, "finished adding file %s to cache for hash %lu (%ld)", filename, (unsigned long)hash, (long)hash);

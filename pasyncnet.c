@@ -165,6 +165,9 @@ static int flush_pending_data(async_thread_params_t *prms){
 
 static int socket_t_readall(psync_socket_t sock, void *buff, size_t len){
   ssize_t rd;
+
+  debug(D_NOTICE, "BOBO: socket_t_readall.");
+
   while (len){
     if (psync_wait_socket_read_timeout(sock))
       return -1;
@@ -180,11 +183,15 @@ static int socket_t_readall(psync_socket_t sock, void *buff, size_t len){
       return -1;
     }
   }
+
   return 0;
 }
 
 static int socket_t_writeall(psync_socket_t sock, const void *buff, size_t len){
   ssize_t wr;
+
+  debug(D_NOTICE, "BOBO: socket_t_writeall.");
+
   while (len){
     if (psync_wait_socket_write_timeout(sock))
       return -1;
@@ -200,6 +207,7 @@ static int socket_t_writeall(psync_socket_t sock, const void *buff, size_t len){
       return -1;
     }
   }
+
   return 0;
 }
 
@@ -278,7 +286,7 @@ static int file_download_send_error(stream_t *s, async_thread_params_t *prms, fi
     add_stuck_elem(elem);
   }
   else{
-    debug(D_NOTICE, "download of %s finished", fda->localpath);
+    debug(D_NOTICE, "download of [%s] finished", fda->localpath);
 
     delete_element(fda->hash);
   }
@@ -289,6 +297,7 @@ static int file_download_send_error(stream_t *s, async_thread_params_t *prms, fi
   r.file.hash=fda->hash;
   memcpy(r.file.sha1hex, fda->sha1hex, PSYNC_SHA1_DIGEST_HEXLEN);
   s->cb(s->cbext, &r);
+
   close_stream(s, prms, error);
 
   return 0;
@@ -296,8 +305,12 @@ static int file_download_send_error(stream_t *s, async_thread_params_t *prms, fi
 
 static int file_download_checksum(file_download_add_t *fda){
   unsigned char sha1b[PSYNC_SHA1_DIGEST_LEN], sha1h[PSYNC_SHA1_DIGEST_HEXLEN];
+
+  debug(D_NOTICE, "BOBO: file_download_checksum. 1.");
+
   psync_sha1_final(sha1b, &fda->sha1ctx);
   psync_binhex(sha1h, sha1b, PSYNC_SHA1_DIGEST_LEN);
+
   if (memcmp(sha1h, fda->sha1hex, PSYNC_SHA1_DIGEST_HEXLEN)){
     debug(D_WARNING, "checksum verification for file %s failed, expected %40s got %40s", fda->localpath, (char *)fda->sha1hex, (char *)sha1h);
     return -1;
@@ -310,26 +323,36 @@ static int process_file_download_data(stream_t *s, async_thread_params_t *prms, 
   file_download_add_t *fda;
   ssize_t wr;
   int err;
+
   fda=(file_download_add_t *)(s+1);
+
+  debug(D_NOTICE, "BOBO: process_file_download_data. File: [%s]", fda->localpath);
+
   if (datalen>fda->remsize){
     debug(D_ERROR, "got packed of size %u for stream %u file %s when the remaining data is %lu",
           (unsigned)datalen, (unsigned)s->streamid, fda->localpath, (unsigned long)fda->remsize);
     file_download_send_error(s, prms, fda, PSYNC_ASYNC_ERROR_NET, PSYNC_ASYNC_ERR_FLAG_RETRY_AS_IS);
     return -1;
   }
+
   fda->remsize-=datalen;
   psync_account_downloaded_bytes(datalen);
   psync_sha1_update(&fda->sha1ctx, buff, datalen);
+
   while (datalen){
     wr=psync_file_write(fda->fd, buff, datalen);
     if (wr==-1){
       err=(int)psync_fs_err();
       debug(D_WARNING, "writing to file %s failed, errno %d", fda->localpath, err);
+
       return file_download_send_error(s, prms, fda, err==P_NOSPC?PSYNC_ASYNC_ERROR_DISK_FULL:PSYNC_ASYNC_ERROR_IO, 0);
     }
     datalen-=wr;
     buff+=wr;
   }
+
+  debug(D_NOTICE, "BOBO: process_file_download_data. 1.");
+
   if (fda->remsize==0){
     if (file_download_checksum(fda))
       return file_download_send_error(s, prms, fda, PSYNC_ASYNC_ERROR_CHECKSUM, 0);
@@ -344,23 +367,29 @@ static int process_file_download_headers(stream_t *s, async_thread_params_t *prm
   task_file_download_resp_t r;
   file_download_add_t *fda;
   psync_sql_res *res;
+
   if (unlikely(datalen<sizeof(task_file_download_resp_t))){
     debug(D_ERROR, "got packet of size %u while expecting at least %u, disconnecting", (unsigned)datalen, (unsigned)sizeof(task_file_download_resp_t));
     return -1;
   }
+
   memcpy(&r, buff, sizeof(task_file_download_resp_t));
   fda=(file_download_add_t *)(s+1);
   fda->size=r.size;
   fda->hash=r.hash;
   memcpy(fda->sha1hex, r.sha1hex, PSYNC_SHA1_DIGEST_HEXLEN);
+
   if (r.error)
     return file_download_send_error(s, prms, fda, r.error+100, r.errorflags);
+
   debug(D_NOTICE, "got headers for file %s size %"P_PRI_U64" hash %"P_PRI_U64" sha1 %.40s", fda->localpath, fda->size, fda->hash, fda->sha1hex);
+
   psync_sql_start_transaction();
   res=psync_sql_prep_statement("REPLACE INTO hashchecksum (hash, size, checksum) VALUES (?, ?, ?)");
   psync_sql_bind_uint(res, 1, r.hash);
   psync_sql_bind_uint(res, 2, r.size);
   psync_sql_bind_lstring(res, 3, (const char *)r.sha1hex, PSYNC_SHA1_DIGEST_HEXLEN);
+
   if (r.oldmtime){
     psync_sql_run(res);
     psync_sql_bind_uint(res, 1, r.oldhash);
@@ -370,11 +399,13 @@ static int process_file_download_headers(stream_t *s, async_thread_params_t *prm
   }
   else
     psync_sql_run_free(res);
+
   res=psync_sql_prep_statement("REPLACE INTO filerevision (fileid, hash, ctime, size) VALUES (?, ?, ?, ?)");
   psync_sql_bind_uint(res, 1, fda->fileid);
   psync_sql_bind_uint(res, 2, r.hash);
   psync_sql_bind_uint(res, 3, r.mtime);
   psync_sql_bind_uint(res, 4, r.size);
+
   if (r.oldmtime){
     psync_sql_run(res);
     psync_sql_bind_uint(res, 1, fda->fileid);
@@ -385,21 +416,38 @@ static int process_file_download_headers(stream_t *s, async_thread_params_t *prm
   }
   else
     psync_sql_run_free(res);
+
   psync_sql_commit_transaction();
+
+  debug(D_NOTICE, "BOBO: Transaction commited.");
+
   fda->fd=psync_file_open(fda->localpath, P_O_WRONLY, P_O_CREAT|P_O_TRUNC);
+
   if (fda->fd==INVALID_HANDLE_VALUE){
     debug(D_WARNING, "could not open file %s, errno %d", fda->localpath, (int)psync_fs_err());
     return file_download_send_error(s, prms, fda, PSYNC_ASYNC_ERROR_FILE, 0);
   }
+
   fda->remsize=fda->size;
-  if (!fda->remsize)
+
+  if (!fda->remsize){
+    debug(D_NOTICE, "BOBO: process_file_download_headers. File Size: [%llu]", fda->remsize);
+
     return file_download_send_error(s, prms, fda, 0, 0);
+  }
+
+  debug(D_NOTICE, "BOBO: process_file_download_data. 1.");
   s->process_data=process_file_download_data;
   psync_sha1_init(&fda->sha1ctx);
-  if (datalen>sizeof(task_file_download_resp_t))
+
+  if (datalen>sizeof(task_file_download_resp_t)){
+    debug(D_NOTICE, "BOBO: process_file_download_data. 2.");
+
     return process_file_download_data(s, prms, buff+sizeof(task_file_download_resp_t), datalen-sizeof(task_file_download_resp_t));
-  else
+  }
+  else{
     return 0;
+  }
 }
 
 static int handle_file_download(async_thread_params_t *prms, task_file_download_t *dwl){
@@ -407,6 +455,9 @@ static int handle_file_download(async_thread_params_t *prms, task_file_download_
   stream_t *s;
   file_download_add_t *fda;
   int len;
+
+  debug(D_NOTICE, "BOBO: handle_file_download!");
+
   s=create_stream(prms, sizeof(file_download_add_t));
   fda=(file_download_add_t *)(s+1);
   fda->fileid=dwl->fileid;
@@ -417,12 +468,17 @@ static int handle_file_download(async_thread_params_t *prms, task_file_download_
   fda->localpath=dwl->localpath;
   fda->fd=INVALID_HANDLE_VALUE;
   len=psync_slprintf(buff, sizeof(buff), "act=dwl,strm=%"P_PRI_U64",fileid=%"P_PRI_U64"\n", (uint64_t)s->streamid, (uint64_t)dwl->fileid);
+
+  debug(D_NOTICE, "BOBO: handle_file_download. Send command.");
+
   if (send_data(prms, buff, len)){
     debug(D_WARNING, "failed to send request for fileid %lu", (unsigned long)dwl->fileid);
     return -1;
   }
+
   s->flags|=STREAM_FLAG_ACTIVE;
   debug(D_NOTICE, "requested data of fileid %lu to be saved in %s", (unsigned long)dwl->fileid, dwl->localpath);
+
   return 0;
 }
 
@@ -431,6 +487,9 @@ static int handle_file_download_nm(async_thread_params_t *prms, task_file_downlo
   stream_t *s;
   file_download_add_t *fda;
   int len;
+
+  debug(D_NOTICE, "BOBO: handle_file_download_nm!");
+
   s=create_stream(prms, sizeof(file_download_add_t));
   fda=(file_download_add_t *)(s+1);
   fda->fileid=dwl->fileid;
@@ -443,12 +502,17 @@ static int handle_file_download_nm(async_thread_params_t *prms, task_file_downlo
   fda->localpath=dwl->localpath;
   fda->fd=INVALID_HANDLE_VALUE;
   len=psync_slprintf(buff, sizeof(buff), "act=dwlnm,strm=%"P_PRI_U64",fileid=%"P_PRI_U64",sha1=%.40s\n", (uint64_t)s->streamid, (uint64_t)dwl->fileid, dwl->sha1hex);
+
+  debug(D_NOTICE, "BOBO: handle_file_download_nm. Send command.");
+
   if (send_data(prms, buff, len)){
     debug(D_WARNING, "failed to send request for fileid %lu", (unsigned long)dwl->fileid);
     return -1;
   }
+
   s->flags|=STREAM_FLAG_ACTIVE;
   debug(D_NOTICE, "requested data of fileid %lu to be saved in %s", (unsigned long)dwl->fileid, dwl->localpath);
+
   return 0;
 }
 
@@ -461,6 +525,9 @@ static int handle_file_download_nm(async_thread_params_t *prms, task_file_downlo
   } while (0)
 
 static int handle_command_data(async_thread_params_t *prms, char *data, uint32_t type, uint32_t len){
+
+  debug(D_NOTICE, "BOBO: handle_command. 1. Type: [%lu]", type);
+
   switch (type) {
     case TASK_TYPE_EXIT:
       CHECK_LEN(0);
@@ -483,19 +550,26 @@ static int handle_command(async_thread_params_t *prms){
   task_header_t hdr;
   int ret;
   unsigned char r;
+
+  debug(D_NOTICE, "BOBO: handle_command. 1.");
+
   if (socket_t_readall(prms->privsock, &hdr, sizeof(hdr))){
     debug(D_WARNING, "could not read header from socket pair");
     return -1;
   }
+
   if (hdr.len>sizeof(buff)){
     debug(D_WARNING, "too large length of packet %u provided, maximum supported is %u", (unsigned)hdr.len, (unsigned)sizeof(buff));
     return -1;
   }
+
   if (socket_t_readall(prms->privsock, buff, hdr.len)){
     debug(D_WARNING, "could not read %u bytes of data from socket pair", (unsigned)hdr.len);
     return -1;
   }
+
   ret=handle_command_data(prms, buff, hdr.type, hdr.len);
+
   if (ret<0){
     r=255;
     ret=-1;
@@ -504,10 +578,12 @@ static int handle_command(async_thread_params_t *prms){
     r=(unsigned char)ret;
     ret=0;
   }
+
   if (socket_t_writeall(prms->privsock, &r, sizeof(r))){
     debug(D_WARNING, "failed to write response to socket pair");
     return -1;
   }
+
   return ret;
 }
 
@@ -534,15 +610,19 @@ static int handle_incoming_data(async_thread_params_t *prms){
   char buff[4096];
   char *ptr;
   int rdsock, wrdecomp;
+
   while (1){
     rdsock=psync_socket_read_noblock(prms->api, buff, sizeof(buff));
+
     if (rdsock==PSYNC_SOCKET_WOULDBLOCK)
       return 0;
     else if (rdsock<=0){
       debug(D_WARNING, "read from socket returned %d", rdsock);
       return -1;
     }
+
     ptr=buff;
+
     while (rdsock){
       wrdecomp=psync_deflate_write(prms->dec, ptr, rdsock, PSYNC_DEFLATE_FLUSH);
       if (wrdecomp==PSYNC_DEFLATE_ERROR){
@@ -621,24 +701,34 @@ static void psync_async_thread(void *ptr){
   async_thread_params_t *prms=(async_thread_params_t *)ptr;
   psync_socket_t sel[2];
   int ret;
+
   sel[0]=prms->api->sock;
   sel[1]=prms->privsock;
+
+  debug(D_NOTICE, "BOBO: psync_async_thread. 1.");
+
   read_stream_header_setup(prms);
+
   while (1){
     if (prms->pendingrequests){
-      if ((prms->pendingrequests>=PSYNC_ASYNC_MAX_GROUPED_REQUESTS || prms->datapendingsince+PSYNC_ASYNC_GROUP_REQUESTS_FOR<psync_millitime()) &&
-          flush_pending_data(prms))
+      if ((prms->pendingrequests>=PSYNC_ASYNC_MAX_GROUPED_REQUESTS || prms->datapendingsince+PSYNC_ASYNC_GROUP_REQUESTS_FOR<psync_millitime()) && flush_pending_data(prms)){
         break;
+      }
+
       ret=psync_select_in(sel, 2, PSYNC_ASYNC_GROUP_REQUESTS_FOR/4);
+
       if (ret==-1)
         continue;
     }
     else{
-      if (psync_socket_pendingdata(prms->api))
+      if (psync_socket_pendingdata(prms->api)){
         ret=0;
-      else
+      }
+      else{
         ret=psync_select_in(sel, 2, PSYNC_ASYNC_THREAD_TIMEOUT);
+      }
     }
+
     if (ret==0){
       if (handle_incoming_data(prms))
         break;
@@ -652,18 +742,27 @@ static void psync_async_thread(void *ptr){
       break;
     }
   }
+
+  debug(D_NOTICE, "BOBO: psync_async_thread. 2.");
+
   // close prms->privsock before locking as there might be somebody who keeps the mutex locked while waiting for us to reply
   psync_close_socket(prms->privsock);
   pthread_mutex_lock(&amutex);
   psync_close_socket(at_sock);
+
   at_sock=INVALID_SOCKET;
   running--;
+
   pthread_mutex_unlock(&amutex);
   psync_apipool_release_bad(prms->api);
   psync_deflate_destroy(prms->enc);
   psync_deflate_destroy(prms->dec);
+
   psync_tree_for_each_element_call_safe(prms->streams, stream_t, tree, free_stream);
+
   psync_free(prms);
+
+  debug(D_NOTICE, "BOBO: psync_async_thread. 3. Return");
 }
 
 static int psync_async_start_thread_locked(){
@@ -677,7 +776,9 @@ static int psync_async_start_thread_locked(){
   psync_socket *api;
   psync_socket_t pair[2];
   int tries;
+
   tries=0;
+
   while (1) {
     api=psync_apipool_get();
     if (!api){
@@ -693,6 +794,7 @@ static int psync_async_start_thread_locked(){
       goto err0;
     }
   }
+
   if (psync_find_result(res, "result", PARAM_NUM)->num){
     debug(D_WARNING, "asynctransfer returned error %d: %s", (int)psync_find_result(res, "result", PARAM_NUM)->num, psync_find_result(res, "error", PARAM_STR)->str);
     psync_process_api_error(psync_find_result(res, "result", PARAM_NUM)->num);
@@ -700,21 +802,28 @@ static int psync_async_start_thread_locked(){
     psync_apipool_release(api);
     goto err0;
   }
+
   psync_free(res);
+
   if (psync_socket_pair(pair)){
     debug(D_NOTICE, "psync_socket_pair() failed");
     goto err1;
   }
+
   enc=psync_deflate_init(PSYNC_DEFLATE_COMP_FAST);
+
   if (!enc){
     debug(D_NOTICE, "psync_deflate_init() failed");
     goto err2;
   }
+
   dec=psync_deflate_init(PSYNC_DEFLATE_DECOMPRESS);
+
   if (!dec){
     debug(D_NOTICE, "psync_deflate_init() failed");
     goto err3;
   }
+
   tparams=psync_new(async_thread_params_t);
   memset(tparams, 0, sizeof(async_thread_params_t));
   tparams->enc=enc;
@@ -724,6 +833,7 @@ static int psync_async_start_thread_locked(){
   at_sock=pair[0];
   psync_run_thread1("async transfer", psync_async_thread, tparams);
   running++;
+
   return 0;
 err3:
   psync_deflate_destroy(enc);
@@ -738,14 +848,17 @@ err0:
 
 static int psync_async_send_task_locked(const void *task, size_t len){
   unsigned char ch;
+
   if (socket_t_writeall(at_sock, task, len)){
     debug(D_WARNING, "failed to write %lu bytes of task to socket", (unsigned long)len);
     return -1;
   }
+
   if (socket_t_readall(at_sock, &ch, 1)){
     debug(D_WARNING, "failed to read response from socket");
     return -1;
   }
+
   if (ch==0)
     return 0;
   else{
@@ -756,15 +869,25 @@ static int psync_async_send_task_locked(const void *task, size_t len){
 
 static int psync_async_send_task(const void *task, size_t len){
   int ret;
+
   pthread_mutex_lock(&amutex);
-  if (running)
+
+  if (running){
+    debug(D_NOTICE, "BOBO: Send task async. 1.");
     ret=psync_async_send_task_locked(task, len);
-  else{
-    ret=psync_async_start_thread_locked();
-    if (!ret)
-      ret=psync_async_send_task_locked(task, len);
   }
+  else{
+    debug(D_NOTICE, "BOBO: Send task async. 2.");
+    ret=psync_async_start_thread_locked();
+
+    if (!ret){
+      debug(D_NOTICE, "BOBO: Send task async. 3.");
+      ret=psync_async_send_task_locked(task, len);
+    }
+  }
+
   pthread_mutex_unlock(&amutex);
+
   return ret;
 }
 
@@ -780,12 +903,16 @@ void psync_async_stop(){
 
 int psync_async_download_file(psync_fileid_t fileid, const char *localpath, psync_async_callback_t cb, void *cbext){
   task_hdr_file_download_t task;
+
+  debug(D_NOTICE, "BOBO: psync_async_download_file. LocalPath: [%s]", localpath);
+
   task.head.type=TASK_TYPE_FILE_DWL;
   task.head.len=get_len(task_hdr_file_download_t);
   task.task.fileid=fileid;
   task.task.localpath=localpath;
   task.task.cb=cb;
   task.task.cbext=cbext;
+
   return psync_async_send_task(&task, sizeof(task));
 }
 

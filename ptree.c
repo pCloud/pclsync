@@ -236,7 +236,11 @@ up:
 
 static psync_tree *psync_tree_replace_me_with(psync_tree *tree, psync_tree *node, psync_tree *repl){
   psync_tree *parent;
+
   parent=node->parent;
+
+  debug(D_WARNING, "BOBO: Lock Delete Node.");
+
   if (!parent){
     assert(tree==node);
     tree=repl;
@@ -247,8 +251,10 @@ static psync_tree *psync_tree_replace_me_with(psync_tree *tree, psync_tree *node
     assert(node==parent->right);
     parent->right=repl;
   }
+
   if (repl)
     repl->parent=parent;
+
   if (parent)
     return psync_tree_go_up_rebalance_del(tree, parent);
   else if (!tree)

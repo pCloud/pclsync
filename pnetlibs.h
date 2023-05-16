@@ -158,4 +158,8 @@ int psync_send_debug(int thread, const char *file, const char *function, int uns
 
 int psync_do_run_command_res(const char *cmd, size_t cmdlen, const binparam *params, size_t paramscnt, char **err);
 
+//Bobo
+void psync_unlock_file_by_path(const char* path);
+//Bobo
+
 #endif

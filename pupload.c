@@ -1248,7 +1248,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
   lock=psync_lock_file(localpath);
 
   if (!lock){
-    debug(D_NOTICE, "file %s is currently locked, skipping for now", localpath);
+    debug(D_NOTICE, "Upload file [%s] is currently locked, skipping for now", localpath);
     psync_free(localpath);
     psync_milisleep(PSYNC_SLEEP_ON_LOCKED_FILE);
     return -1;
@@ -1442,6 +1442,8 @@ static void task_run_upload_file_thread(void *ptr){
   ut=(upload_task_t *)ptr;
 
   if (task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist)){
+    debug(D_WARNING, "BOBO: task_run_upload_file_thread. Task Id: [%llu] Set Inprogress = 0", ut->upllist.taskid);
+
     res=psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
     psync_sql_bind_uint(res, 1, ut->upllist.taskid);
     psync_sql_run_free(res);
@@ -1501,6 +1503,7 @@ static int task_run_uploadfile(uint64_t taskid, psync_syncid_t syncid, psync_fol
     return 0;
   }
 
+  debug(D_WARNING, "BOBO: task_run_uploadfile. Task Id: [%llu] Set Inprogress = 1", taskid);
   res=psync_sql_prep_statement("UPDATE task SET inprogress=1 WHERE id=?");
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
@@ -1540,6 +1543,9 @@ static int task_run_uploadfile(uint64_t taskid, psync_syncid_t syncid, psync_fol
 
   if (stop){
     psync_free(ut);
+
+    debug(D_WARNING, "BOBO: task_run_uploadfile. Task Id: [%llu] Set Inprogress = 1", taskid);
+
     res=psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
     psync_sql_bind_uint(res, 1, taskid);
     psync_sql_run_free(res);
@@ -1630,6 +1636,8 @@ FailedUpTasksReset:
       taskid=psync_get_number(row[0]);
       type=psync_get_number(row[1]);
 
+      debug(D_NOTICE, "Process upload task. Name: [%s]. Type: [%lu], TaskId: [%lld]  Item Id: [%llu]", psync_get_string_or_null(row[6]), type, taskid, psync_get_number(row[3]));
+
       if (!upload_task(taskid, type,
                          psync_get_number(row[2]),
                          psync_get_number(row[3]),
@@ -1666,6 +1674,8 @@ FailedUpTasksReset:
 
           add_stuck_elem(elem);
 
+          debug(D_WARNING, "BOBO: upload_thread. Task Id: [%llu] Set Inprogress = 0", taskid);
+
           res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=? AND inprogress = 0");
           psync_sql_bind_uint(res, 1, taskid);
           psync_sql_run_free(res);
@@ -1687,6 +1697,7 @@ FailedUpTasksReset:
         psync_free(row);
         debug(D_NOTICE, "Failed UPLOAD tasks found. Reset them.");
 
+        debug(D_WARNING, "BOBO: upload_thread. Task Id: [%llu] Set Inprogress = 0", taskid);
         res = psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE inprogress=3");
 
         psync_sql_run_free(res);

@@ -255,8 +255,12 @@ int psync_init() {
       pthread_mutex_unlock(&psync_libstate_mutex);
     return_error(PERROR_DATABASE_OPEN);
   }
+  
+  debug(D_WARNING, "BOBO: psync_apiserver_init. Stop all inprogress tasks. Set Inprogress = 0.");
   psync_sql_statement("UPDATE task SET inprogress=0 WHERE inprogress=1");
+  
   psync_timer_init();
+  
   if (unlikely_log(psync_ssl_init())){
     if (IS_DEBUG)
       pthread_mutex_unlock(&psync_libstate_mutex);
