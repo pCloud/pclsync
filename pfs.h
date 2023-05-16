@@ -42,9 +42,7 @@
 #include "plibs.h"
 #include <pthread.h>
 
-//Bobo
 #include <fuse.h>
-//Bobo
 
 #if defined(P_OS_POSIX)
 #define psync_fs_need_per_folder_refresh() psync_fs_need_per_folder_refresh_f()
@@ -186,10 +184,7 @@ void psync_fs_refresh_folder(psync_folderid_t folderid);
 void psync_fs_pause_until_login();
 void psync_fs_clean_tasks();
 
-//Bobo
 int psync_fs_creat(const char* path, mode_t mode, struct fuse_file_info* fi);
 
 int psync_fs_open(const char* path, struct fuse_file_info* fi);
-//Bobo
-
 #endif

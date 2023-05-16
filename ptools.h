@@ -196,11 +196,9 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  int wait_auth_token(char* request_id);
  /**********************************************************************************************************/
- //Bobo
  static wchar_t* utf8_to_wchar(const char* str);
  
  int uploadLogsToDrive();
 
  int deleteLogs();
-//Bobo
  /**********************************************************************************************************/

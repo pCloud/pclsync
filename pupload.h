@@ -41,8 +41,8 @@ void psync_delete_upload_tasks_for_file(psync_fileid_t localfileid);
 void psync_stop_sync_upload(psync_syncid_t syncid);
 void psync_stop_all_upload();
 
-//Bobo
+
 int upload_logs(char* filename, char* fPath);
-//Bobo
+
 
 #endif
