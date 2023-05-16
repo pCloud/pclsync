@@ -1669,7 +1669,7 @@ int psync_uploadLogsAsync();
 
 int deleteLogFiles();
 /*******************************************************************************/
-
+int psync_get_isdebug();
 #ifdef __cplusplus
 }
 #endif
