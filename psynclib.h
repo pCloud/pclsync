@@ -762,7 +762,11 @@ void psync_set_alloc(psync_malloc_t malloc_call, psync_realloc_t realloc_call, p
 void psync_set_software_string(const char *str);
 void psync_set_os_string(const char *str);
 
+#if defined(P_OS_WINDOWS)
+int psync_init(char* appDrive);
+#else
 int psync_init();
+#endif
 void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback_t event_callback);
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize);
 psync_notification_list_t *psync_get_notifications();
@@ -1659,7 +1663,13 @@ char* psync_get_device_string();
 
 const char* psync_get_appversion();
 /*******************************************************************************/
+#define FAIL_TO_ZIP_LOGS 101
 
+int psync_uploadLogsAsync();
+
+int deleteLogFiles();
+/*******************************************************************************/
+int psync_get_isdebug();
 #ifdef __cplusplus
 }
 #endif
