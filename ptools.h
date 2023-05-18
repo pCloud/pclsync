@@ -152,6 +152,10 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 #define STUCK_ITEM_UNKNOWN_FOLDER "UNKNOWN_FOLDER_NAME"
 #define STUCK_ITEM_UNKNOWN_PATH   "UNKNOWN_PATH"
 
+#define CANT_FIND_LOG_FILE 10001
+#define CANT_CREATE_ZIP_FILE 10002
+
+
  void log_list_elem(stuck_item* elem);
 
  void log_list();
@@ -191,4 +195,10 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  int get_login_req_id(char** reqId);
 
  int wait_auth_token(char* request_id);
+ /**********************************************************************************************************/
+ static wchar_t* utf8_to_wchar(const char* str);
+ 
+ int uploadLogsToDrive();
+
+ int deleteLogs();
  /**********************************************************************************************************/

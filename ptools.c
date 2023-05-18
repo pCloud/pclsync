@@ -12,6 +12,9 @@
 #include "pnetlibs.h"
 #include <stdio.h>
 #include "pcallbacks.h"
+ 
+#include "pupload.h"
+#include "miniz.h"
 
 #include "pstatus.h"
 #include "psettings.h"
@@ -38,6 +41,134 @@
 stuck_list_type* stuck_sync_tasks = NULL;
 static pthread_mutex_t stuck_elem_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/*************************************************************/
+char* get_zipLogsFilePath(char* fName) {
+  char* zipFilePath;
+
+#if defined(P_OS_WINDOWS)
+  zipFilePath = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, fName, NULL);
+#else
+  zipFilePath = psync_strcat("/tmp/", fName, NULL);
+#endif
+
+  return zipFilePath;
+}
+/*************************************************************/
+char* get_zipLogsFile() {
+  char* zipFile;
+  char tmp[36];
+
+  struct timespec ts;
+  struct tm dt;
+
+  psync_nanotime(&ts);
+
+  gmtime_r(&ts.tv_sec, &dt);
+
+  sprintf(tmp, "%llu_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year + 1900, dt.tm_mon + 1, dt.tm_mday, dt.tm_hour, dt.tm_min);
+
+  zipFile = psync_strcat(tmp, ".zip", NULL);
+
+  return zipFile;
+}
+/*************************************************************/
+int zipLogs(char* zipLogsFname) {
+  int res = 0;
+  mz_bool status;
+  mz_zip_archive zip_archive;
+
+#if defined(P_OS_WINDOWS)
+  char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
+  char* srcFname2 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "cbfs_log.log", NULL);
+  char* srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);
+#else
+  char* srcFname1 = DEBUG_FILE;
+#endif
+
+  FILE* srcFile;
+
+  debug(D_NOTICE, "Create Zip file: [%s]", zipLogsFname);
+
+  mz_zip_zero_struct(&zip_archive);
+
+  status = mz_zip_writer_init_file(&zip_archive, zipLogsFname, 0);
+
+  if (status == MZ_FALSE) {
+    return CANT_CREATE_ZIP_FILE;
+  }
+
+  srcFile = fopen(srcFname1, "r");
+
+  if (srcFile) {
+    status = mz_zip_writer_add_cfile(&zip_archive, "psync_err.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+    res = fclose(srcFile);
+  }
+  else {
+    debug(D_NOTICE, "Failed to open: [%s]", srcFname1);
+
+    return CANT_FIND_LOG_FILE;
+  }
+
+#if defined(P_OS_WINDOWS)
+  srcFile = fopen(srcFname2, "r");
+
+  if (srcFile) {
+    status = mz_zip_writer_add_cfile(&zip_archive, "cbfs_log.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+    res = fclose(srcFile);
+  }
+  else {
+    debug(D_NOTICE, "Failed to open: [%s]", srcFname2);
+  }
+
+  srcFile = fopen(srcFname3, "r");
+
+  if (srcFile) {
+    status = mz_zip_writer_add_cfile(&zip_archive, "wpflog.log", srcFile, MZ_UINT32_MAX, 0, NULL, 0, MZ_DEFAULT_COMPRESSION, NULL, 0, NULL, 0);
+
+    res = fclose(srcFile);
+  }
+  else {
+    debug(D_NOTICE, "Failed to open: [%s]", srcFname3);
+  }
+#endif
+
+  status = mz_zip_writer_finalize_archive(&zip_archive);
+
+  status = mz_zip_writer_end(&zip_archive);
+
+  debug(D_NOTICE, "Done. Res: [%d] Status: [%d]", res, status);
+
+  return status;
+}
+/*************************************************************/
+int uploadLogsToDrive() {
+  int res = 0;
+  char *zipLogsFname, *zipLogsFpath;
+
+  zipLogsFname = get_zipLogsFile();
+  zipLogsFpath = get_zipLogsFilePath(zipLogsFname);
+
+  res = zipLogs(zipLogsFpath);
+
+  if (res == MZ_TRUE) {
+    res = upload_logs(zipLogsFname, zipLogsFpath);
+
+    debug(D_NOTICE, "Done uploading logs. Delete zip file.");
+    psync_file_delete(zipLogsFpath);
+  }
+  else {
+    debug(D_NOTICE, "Failed to zip logs. Res: [%d]", res);
+
+    res = FAIL_TO_ZIP_LOGS;
+  }
+
+  debug(D_NOTICE, "Done uploading logs. Send the data event. Res: [%d]", res);
+  psync_send_data_event(PEVENT_UPLOAD_LOGS_DONE, "", "", res, 0);
+
+  return res;
+}
 /*************************************************************/
 char* getMACaddr() {
   char  buffer[128];
@@ -1296,9 +1427,12 @@ int wait_auth_token(char* request_id) {
   token = psync_strdup(psync_find_result(resData, EPARAM_TOKEN, PARAM_STR)->str);
   loc_id = psync_find_result(resData, EPARAM_LOC_ID, PARAM_NUM)->num;
   newuserid = psync_find_result(resData, EPARAM_USER_ID, PARAM_NUM)->num;
-  rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
 
-  debug(D_NOTICE, "Login result parameters: RememberMe: [%llu], UserId: [%llu], Location Id: [%d], Token: [%s]", rememberme, newuserid, loc_id, token);
+  if (psync_check_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)) {
+    rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
+  }
+
+  debug(D_NOTICE, "Login result parameters: RememberMe: [%llu], UserId: [%llu], Location Id: [%d]", rememberme, newuserid, loc_id);
 
   if (resData) {
     psync_free(resData);
@@ -1347,5 +1481,40 @@ int wait_auth_token(char* request_id) {
   psync_set_auth(token, rememberme);
   
   return result;
+}
+/**********************************************************************/
+int deleteLogs() {
+  int res;
+
+#if defined(P_OS_LINUX)
+  char* srcFname1 = DEBUG_FILE;
+
+  res = psync_file_delete(srcFname1);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
+#endif
+
+#if defined(P_OS_MACOSX)
+  char* srcFname1 = DEBUG_FILE;
+
+  res = psync_file_delete(srcFname1);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
+#endif
+
+#if defined(P_OS_WINDOWS)
+  char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
+  char* srcFname2 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "cbfs_log.log", NULL);
+  char* srcFname3 = psync_strcat(psync_get_pcloud_path(), PSYNC_DIRECTORY_SEPARATOR, "wpflog.log", NULL);
+
+  res = psync_file_delete(srcFname2);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname2, res);
+
+  res = psync_file_delete(srcFname3);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname3, res);
+#endif
+
+  res = psync_file_delete(srcFname1);
+  debug(D_NOTICE, "Deleting log file [%s]. Res: [%d]", srcFname1, res);
+
+  return res;
 }
 /**********************************************************************/
