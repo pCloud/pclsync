@@ -256,7 +256,7 @@ int psync_init() {
     return_error(PERROR_DATABASE_OPEN);
   }
   
-  debug(D_WARNING, "BOBO: psync_apiserver_init. Stop all inprogress tasks. Set Inprogress = 0.");
+  debug(D_WARNING, "psync_apiserver_init. Stop all inprogress tasks. Set Inprogress = 0.");
   psync_sql_statement("UPDATE task SET inprogress=0 WHERE inprogress=1");
   
   psync_timer_init();
