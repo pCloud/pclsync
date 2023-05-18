@@ -314,6 +314,7 @@ static HANDLE pipe_read, pipe_write, *handles;
 static psync_syncid_t *syncids=NULL;
 static DWORD handlecnt;
 
+
 static wchar_t *utf8_to_wchar(const char *str){
   int len;
   wchar_t *ret;

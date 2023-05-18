@@ -598,27 +598,35 @@ psync_fstask_creat_t *psync_fstask_add_creat(psync_fstask_folder_t *folder, cons
   psync_sql_start_transaction();
   res=psync_sql_prep_statement("INSERT INTO fstask (type, status, folderid, fileid, sfolderid, text1, text2, int1) "
                                            "VALUES ("NTO_STR(PSYNC_FS_TASK_CREAT)", 1, ?, ?, ?, ?, ?, 0)");
+
   psync_sql_bind_int(res, 1, folder->folderid);
   psync_sql_bind_int(res, 2, fileid);
   psync_sql_bind_int(res, 3, folder->folderid);
   psync_sql_bind_lstring(res, 4, name, len);
+
   if (encsymkey)
     psync_sql_bind_lstring(res, 5, encsymkey, encsymkeylen);
   else
     psync_sql_bind_null(res, 5);
+
   psync_sql_run_free(res);
   taskid=psync_sql_insertid();
+
   if (folder->folderid<0)
     psync_fstask_depend(taskid, -folder->folderid);
+
   psync_fstask_depend_on_name(taskid, folder->folderid, name, len);
+
   if (unlikely_log(psync_sql_commit_transaction()))
     return NULL;
+
   len++;
   un=(psync_fstask_unlink_t *)psync_malloc(offsetof(psync_fstask_unlink_t, name)+len);
   un->fileid=-(psync_fsfileid_t)taskid;
   un->taskid=taskid;
   memcpy(un->name, name, len);
   psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_unlink_t, name), &un->tree);
+
   task=(psync_fstask_creat_t *)psync_malloc(offsetof(psync_fstask_creat_t, name)+len);
   task->fileid=-(psync_fsfileid_t)taskid;
   task->rfileid=fileid;
@@ -626,8 +634,10 @@ psync_fstask_creat_t *psync_fstask_add_creat(psync_fstask_folder_t *folder, cons
   memcpy(task->name, name, len);
   psync_fstask_insert_into_tree(&folder->creats, offsetof(psync_fstask_creat_t, name), &task->tree);
   folder->taskscnt+=2;
+
   if (folder->folderid>=0)
     psync_path_status_drive_folder_changed(folder->folderid);
+
   return task;
 }
 
@@ -1373,25 +1383,32 @@ static void psync_fstask_look_for_creat_in_db(psync_folderid_t parentfolderid, u
   psync_sql_res *res;
   psync_uint_row row;
   psync_fsfolderid_t sfolderid;
+
   debug(D_NOTICE, "could not find creat (taskid %lu) for uploaded file %s in folder %lu", (unsigned long)taskid, name, (unsigned long)parentfolderid);
+
   res=psync_sql_query("SELECT sfolderid FROM fstask WHERE id=?");
   psync_sql_bind_uint(res, 1, taskid);
   row=psync_sql_fetch_rowint(res);
+
   if (unlikely_log(!row)){
     psync_sql_free_result(res);
     return;
   }
+
   sfolderid=row[0];
   psync_sql_free_result(res);
   folder=psync_fstask_get_folder_tasks_locked(sfolderid);
+
   if (folder){
     cr=psync_fstask_find_creat_by_fileid(folder, -(psync_fsfileid_t)taskid);
     if (cr){
       debug(D_NOTICE, "found taskid %lu in folderid %ld as %s", (unsigned long)taskid, (long)sfolderid, cr->name);
       cr->fileid=fileid;
     }
-    else
+    else {
       debug(D_NOTICE, "could not find creat (taskid %lu) for uploaded file %s in folder %lu even after looking in db", (unsigned long)taskid, name, (unsigned long)parentfolderid);
+    }
+
     psync_fstask_release_folder_tasks_locked(folder);
   }
 }

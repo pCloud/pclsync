@@ -1048,6 +1048,7 @@ char* psync_get_path_from_str(char* fullPath) {
     if (fullPath[i] == PSYNC_DIRECTORY_SEPARATORC) {
       path = (char*)malloc((i + 1) * sizeof(char));
       strncpy(path, fullPath, i + 1);
+      //strncpy_s(path, i + 1, fullPath, i + 1);
 
       path[i + 1] = 0;
 
@@ -1056,8 +1057,6 @@ char* psync_get_path_from_str(char* fullPath) {
 
     i--;
   }
-
-  debug(D_NOTICE, "BOOB: Path extracted: [%s]", path);
 
   return path;
 }

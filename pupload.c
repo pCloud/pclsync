@@ -431,7 +431,7 @@ static void set_local_file_conflicted(psync_fileid_t localfileid, psync_fileid_t
   psync_sql_res *res;
   char *newpath;
 
-  debug(D_NOTICE, "Conflict found with file [%s]", localpath);
+  debug(D_NOTICE, "Conflict found with file [%s], New name: [%s]", localpath, newname);
 
   newpath = psync_strcat(psync_get_path_from_str(localpath), newname, NULL);
 
@@ -1752,7 +1752,7 @@ void psync_stop_sync_upload(psync_syncid_t syncid){
 
   psync_status_recalc_to_upload_async();
 }
-
+/*************************************************************/
 void psync_stop_all_upload(){
   upload_list_t *upl;
   pthread_mutex_lock(&current_uploads_mutex);
@@ -1760,3 +1760,102 @@ void psync_stop_all_upload(){
     upl->stop=1;
   pthread_mutex_unlock(&current_uploads_mutex);
 }
+/*************************************************************/
+int upload_logs(char* filename, char* fPath) {
+  psync_socket* api;
+  void* buff;
+  binresult* res;
+  uint64_t bw, result, fsize;
+  size_t rd;
+  ssize_t rrd;
+  FILE* fd;
+  psync_stat_t st;
+  int ret = 0;
+
+  debug(D_NOTICE, "Upload zipped logs file: [%s]", fPath);
+
+  fd = psync_file_open(fPath, P_O_RDONLY, 0);
+
+  if (fd == INVALID_HANDLE_VALUE) {
+    debug(D_NOTICE, "Could not open local file [%s]", fPath);
+    return -1;
+  }
+
+  api = psync_apipool_get();
+
+  if (unlikely(!api)) {
+    return -1;
+  }
+
+  ret = psync_stat(fPath, &st);
+  fsize = psync_stat_size(&st);
+
+  binparam params[] = {
+    P_STR("auth", psync_my_auth),
+    P_STR("filename", filename),
+    P_BOOL("nopartial", 1),
+    P_STR("timeformat", "timestamp"),
+    P_NUM("mtime", psync_stat_mtime(&st)),
+    P_BOOL("frompdrive", 1)
+  };
+
+  debug(D_NOTICE, "Uploading file size: [%llu]", fsize);
+
+  res = do_send_command(api, "uploadclientdiagnostic", strlen("uploadclientdiagnostic"), params, ARRAY_SIZE(params), fsize, 0);
+
+  bw = 0;
+  buff = psync_malloc(PSYNC_COPY_BUFFER_SIZE);
+
+  while (bw < fsize) {
+    psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
+
+    if (fsize - bw > PSYNC_COPY_BUFFER_SIZE)
+      rd = PSYNC_COPY_BUFFER_SIZE;
+    else
+      rd = fsize - bw;
+
+    rrd = psync_file_read(fd, buff, rd);
+
+    if (unlikely_log(rrd <= 0)){
+      return -1;
+    }
+
+    if (unlikely_log(psync_socket_writeall_upload(api, buff, rrd) != rrd)){
+      return -1;
+    }
+
+    bw += rrd;
+
+    add_bytes_uploaded(rrd);
+  }
+
+  debug(D_NOTICE, "Upload Done.");
+
+  psync_free(buff);
+  psync_file_close(fd);
+
+  res = get_result(api);
+
+  if (likely(res))
+    psync_apipool_release(api);
+  else {
+    psync_apipool_release_bad(api);
+    return -1;
+  }
+
+  result = psync_find_result(res, "result", PARAM_NUM)->num;
+
+  if (unlikely(result)) {
+    psync_free(res);
+    debug(D_WARNING, "command uploadfile returned code %u", (unsigned)result);
+    psync_process_api_error(result);
+    if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+      return -1;
+    else {
+      return 0;
+    }
+  }
+
+  return 0;
+}
+/*************************************************************/

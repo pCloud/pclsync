@@ -228,14 +228,16 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result){
 }
 #endif
 
-/*static wchar_t *utf8_to_wchar(const char *str){
+static wchar_t *utf8_to_wchar(const char *str){
   int len;
   wchar_t *ret;
+
   len=MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
   ret=psync_new_cnt(wchar_t, len);
   MultiByteToWideChar(CP_UTF8, 0, str, -1, ret, len);
+
   return ret;
-}*/
+}
 
 static wchar_t *utf8_to_wchar_path(const char *str){
   int len;
@@ -3888,3 +3890,16 @@ int psync_munlock(void *ptr, size_t size){
 int psync_get_page_size(){
   return psync_page_size;
 }
+/***************************************************************/
+void setDriveLetter(char* appDrive) {
+#if defined(P_OS_WINDOWS)
+  appDriveLetter = psync_strdup(appDrive);
+
+  psyncLogPath = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
+
+  debug(D_NOTICE, "Setting Drive Letter to: [%s]", appDrive);
+#endif
+  debug(D_NOTICE, "Setting OS name to %s", psync_os_name);
+  debug(D_NOTICE, "Setting Software name to %s", psync_software_name);
+}
+/***************************************************************/
