@@ -991,7 +991,9 @@ static void free_download_task(download_task_t *dt){
   }
 
   if (dt->lock){
+    log_file_lock_tree();
     psync_unlock_file(dt->lock);
+    log_file_lock_tree();
   }
 
   psync_free(dt->localpath);
@@ -1086,6 +1088,9 @@ static void rename_create_timer(psync_timer_t timer, void *ptr){
 static void finish_async_download(void *ptr, psync_async_result_t *res){
   download_task_t *dt=(download_task_t *)ptr;
 
+
+  debug(D_NOTICE, "BOBO: Finish async download.  File: [%s]", dt->filename);
+
   if (res->error){
     debug(D_NOTICE, "BOBO: Async download error: [%lu]", res->error);
     handle_async_error(dt, res);
@@ -1140,6 +1145,8 @@ static void finish_async_download_existing(void *ptr, psync_async_result_t *res)
 static void task_run_download_file_thread(void *ptr){
   download_task_t *dt;
   dt=(download_task_t *)ptr;
+
+  debug(D_NOTICE, "BOBO: Download file. Thread. File: [%lu]", dt->filename);
 
   if (task_download_file(dt)){
     stuck_item* elem;
@@ -1351,9 +1358,10 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   }
 
   //Bobo
+  log_file_lock_tree();
   lock=psync_lock_file(localname);
 
-  if (!lock){
+  if (!lock) {
     debug(D_NOTICE, "Download file [%s] is currently locked, skipping for now", localname);
     free_download_task(dt);
     psync_milisleep(PSYNC_SLEEP_ON_LOCKED_FILE);

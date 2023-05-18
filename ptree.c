@@ -242,36 +242,55 @@ static psync_tree *psync_tree_replace_me_with(psync_tree *tree, psync_tree *node
   debug(D_WARNING, "BOBO: Lock Delete Node.");
 
   if (!parent){
+    debug(D_WARNING, "BOBO: No parent node found. Replace the first one.");
     assert(tree==node);
     tree=repl;
   }
-  else if (node==parent->left)
-    parent->left=repl;
+  else if (node == parent->left) {
+    debug(D_WARNING, "BOBO: Left parent node found. Replace it.");
+    parent->left = repl;
+  }
   else{
     assert(node==parent->right);
+    debug(D_WARNING, "BOBO: Right parent node found. Replace it.");
     parent->right=repl;
   }
 
   if (repl)
     repl->parent=parent;
 
-  if (parent)
+  if (parent) {
+    debug(D_WARNING, "BOBO: Parent node found. Go up the tree.");
     return psync_tree_go_up_rebalance_del(tree, parent);
-  else if (!tree)
+  }
+  else if (!tree) {
+    debug(D_WARNING, "BOBO: Tree is empty. Return NULL.");
     return NULL;
-  else
+  }
+  else {
+    debug(D_WARNING, "BOBO: Reblance the tree.");
     return psync_tree_go_up_rebalance_del(tree, tree);
+  }
 }
 
 psync_tree *psync_tree_get_del(psync_tree *tree, psync_tree *node){
-  if (!node->left && !node->right)
+  if (!node->left && !node->right) {
+    debug(D_WARNING, "BOBO: No left or right nodes. Replace the current one.");
     return psync_tree_replace_me_with(tree, node, NULL);
-  else if (!node->left)
+  }
+  else if (!node->left) {
+    debug(D_WARNING, "BOBO: No left node. Replace the the right.");
     return psync_tree_replace_me_with(tree, node, node->right);
-  else if (!node->right)
+  }
+  else if (!node->right) {
+    debug(D_WARNING, "BOBO: No right node. Replace the the left.");
     return psync_tree_replace_me_with(tree, node, node->left);
+  }
   else {
     psync_tree *el, *parent, **addr;
+
+    debug(D_WARNING, "BOBO: Check parent.");
+
     if (node->left->height>node->right->height){
       el=node->left;
       addr=&node->left;
@@ -315,6 +334,8 @@ psync_tree *psync_tree_get_del(psync_tree *tree, psync_tree *node){
       assert(node==tree);
       tree=el;
     }
+
+    debug(D_WARNING, "BOBO: Go up rebalance del.");
     return psync_tree_go_up_rebalance_del(tree, parent);
   }
 }

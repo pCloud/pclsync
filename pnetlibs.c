@@ -460,6 +460,9 @@ int psync_get_local_file_checksum(const char *restrict filename, unsigned char *
   psync_file_t fd;
 
   unsigned char hashbin[PSYNC_HASH_DIGEST_LEN];
+  
+  debug(D_NOTICE, "BOBO: psync_get_local_file_checksum. Filename: [%s]", filename);
+
   fd=psync_file_open(filename, P_O_RDONLY, 0);
 
   if (fd==INVALID_HANDLE_VALUE)
@@ -474,6 +477,8 @@ retry:
   psync_hash_init(&hctx);
   rsz=psync_stat_size(&st);
   cnt=0;
+
+  debug(D_NOTICE, "BOBO: psync_get_local_file_checksum. Read local file.");
 
   while (rsz){
     if (rsz>PSYNC_COPY_BUFFER_SIZE)
@@ -503,6 +508,8 @@ retry:
       psync_milisleep(5);
   }
 
+  debug(D_NOTICE, "BOBO: psync_get_local_file_checksum. Got checksum.");
+
   if (unlikely_log(psync_fstat(fd, &st2)))
     goto err1;
 
@@ -524,6 +531,8 @@ retry:
 
   if (fsize)
     *fsize=psync_stat_size(&st);
+
+  debug(D_NOTICE, "BOBO: psync_get_local_file_checksum. Return.");
 
   return PSYNC_NET_OK;
 
@@ -2456,6 +2465,47 @@ void psync_unlock_file(psync_file_lock_t *lock){
   pthread_mutex_unlock(&file_lock_mutex);
   psync_free(lock);
 }
+//Bobo
+/**************************************************/
+void log_file_lock_tree() {
+  psync_tree* tr, ** at;
+
+  tr = file_lock_tree;
+  at = &file_lock_tree;
+
+  pthread_mutex_lock(&file_lock_mutex);
+
+  debug(D_WARNING, "********* BOBO: File Lock tree elements: *********");
+
+  while (tr) {
+    debug(D_WARNING, "Left: [%s]", psync_tree_element(tr, psync_file_lock_t, tree)->filename);
+
+    if (tr->left)
+      tr = tr->left;
+    else {
+      at = &tr->left;
+      break;
+    }
+  }
+
+  tr = file_lock_tree;
+
+  while (tr) {
+    debug(D_WARNING, "Right: [%s]", psync_tree_element(tr, psync_file_lock_t, tree)->filename);
+    if (tr->right)
+      tr = tr->right;
+    else {
+      at = &tr->right;
+      break;
+    }
+  }
+
+  debug(D_WARNING, "********* BOBO: File Lock tree elements End *********");
+
+  pthread_mutex_unlock(&file_lock_mutex);
+}
+/**************************************************/
+//Bobo
 
 int psync_get_upload_checksum(psync_uploadid_t uploadid, unsigned char *uhash, uint64_t *usize){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("uploadid", uploadid)};

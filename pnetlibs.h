@@ -160,6 +160,8 @@ int psync_do_run_command_res(const char *cmd, size_t cmdlen, const binparam *par
 
 //Bobo
 void psync_unlock_file_by_path(const char* path);
+
+void log_file_lock_tree();
 //Bobo
 
 #endif
