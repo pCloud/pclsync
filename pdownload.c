@@ -1090,7 +1090,7 @@ static void task_run_download_file_thread(void *ptr){
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
 
     //set_task_inprogress(dt->taskid, 0);
-      set_task_inprogress(dt->taskid, 3); // In progress set to 3 to let the rest of the waiting tasks process
+    set_task_inprogress(dt->taskid, 3); // In progress set to 3 to let the rest of the waiting tasks process
 
     psync_wake_download();
   }
