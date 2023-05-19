@@ -323,6 +323,8 @@ int create_backend_event(const char*  binapi,
     paramsLocal[mpCnt + pCnt] = (binparam)P_STR(EPARAM_KEY, keyParams);
   }
 
+  //Comment out because the parameters contain the authentication token
+  /*
   for (i = 0; i < tpCnt; i++) {
     if (paramsLocal[i].paramtype == 0) {
       debug(D_NOTICE, "%d: String Param: [%s] - [%s]", i, paramsLocal[i].paramname, paramsLocal[i].str);
@@ -334,6 +336,7 @@ int create_backend_event(const char*  binapi,
       continue;
     }
   }
+  */
 
   res = do_send_command(sock, EVENT_WS, strlen(EVENT_WS), paramsLocal, tpCnt, -1, 1);
 

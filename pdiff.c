@@ -734,7 +734,7 @@ static psync_socket *get_connected_socket(){
 
     //If the flag is up, send a first login event to track the number of sucessful installs.
     if (isFirstLogin) {
-      debug(D_NOTICE, "This is a first login. Send the FIRST_LOGIN event. Token:[%s], User id: [%lu]", psync_my_auth, (unsigned long)userid);
+      debug(D_NOTICE, "This is a first login. Send the FIRST_LOGIN event.");
       time_t rawtime;
       time(&rawtime);
 
