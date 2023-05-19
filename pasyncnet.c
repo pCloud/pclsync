@@ -711,31 +711,45 @@ static void psync_async_thread(void *ptr){
 
   while (1){
     if (prms->pendingrequests){
+      debug(D_NOTICE, "BOBO: psync_async_thread. 1.1");
       if ((prms->pendingrequests>=PSYNC_ASYNC_MAX_GROUPED_REQUESTS || prms->datapendingsince+PSYNC_ASYNC_GROUP_REQUESTS_FOR<psync_millitime()) && flush_pending_data(prms)){
+        debug(D_NOTICE, "BOBO: psync_async_thread. 1.2");
         break;
       }
 
+      debug(D_NOTICE, "BOBO: psync_async_thread. 1.3");
       ret=psync_select_in(sel, 2, PSYNC_ASYNC_GROUP_REQUESTS_FOR/4);
 
-      if (ret==-1)
+      if (ret == -1) {
+        debug(D_NOTICE, "BOBO: psync_async_thread. 1.4");
         continue;
+      }
     }
     else{
+      debug(D_NOTICE, "BOBO: psync_async_thread. 1.5");
       if (psync_socket_pendingdata(prms->api)){
+        debug(D_NOTICE, "BOBO: psync_async_thread. 1.6");
         ret=0;
       }
       else{
+        debug(D_NOTICE, "BOBO: psync_async_thread. 1.7");
         ret=psync_select_in(sel, 2, PSYNC_ASYNC_THREAD_TIMEOUT);
       }
     }
 
     if (ret==0){
-      if (handle_incoming_data(prms))
+      debug(D_NOTICE, "BOBO: psync_async_thread. 1.8");
+      if (handle_incoming_data(prms)) {
+        debug(D_NOTICE, "BOBO: psync_async_thread. 1.9");
         break;
+      }
     }
     else if (ret==1){
-      if (handle_command(prms))
+      debug(D_NOTICE, "BOBO: psync_async_thread. 2.1");
+      if (handle_command(prms)) {
+        debug(D_NOTICE, "BOBO: psync_async_thread. 2.2");
         break;
+      }
     }
     else{
       debug(D_NOTICE, "psync_select_in returned %d, exiting, errno %d", ret, (int)psync_sock_err());

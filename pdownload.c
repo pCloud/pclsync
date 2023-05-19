@@ -1293,8 +1293,7 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
 
   psync_send_status_update();
 
-  if (hastargetchecksum && psync_get_local_file_checksum(tmpname, dt->checksum, &csize)==PSYNC_NET_OK && csize==size &&
-      !memcmp(dt->checksum, targetchecksum, PSYNC_HASH_DIGEST_HEXLEN)){
+  if (hastargetchecksum && psync_get_local_file_checksum(tmpname, dt->checksum, &csize)==PSYNC_NET_OK && csize==size && !memcmp(dt->checksum, targetchecksum, PSYNC_HASH_DIGEST_HEXLEN)){
     debug(D_NOTICE, "found file %s, candidate for %s with the right size and checksum", tmpname, localname);
     ret=rename_and_create_local(dt, targetchecksum, size, hash);
     free_download_task(dt);
