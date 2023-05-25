@@ -1790,6 +1790,12 @@ int upload_logs(char* filename, char* fPath) {
   ret = psync_stat(fPath, &st);
   fsize = psync_stat_size(&st);
 
+  if (fsize > MAX_LOG_SIZE) {
+    debug(D_NOTICE, "Zipped logs too big.  File size: [%llu] > [%llu]", fsize, MAX_LOG_SIZE);
+
+    return MAX_LOG_SIZE;
+  }
+
   binparam params[] = {
     P_STR("auth", psync_my_auth),
     P_STR("filename", filename),
