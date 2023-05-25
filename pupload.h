@@ -30,8 +30,6 @@
 
 #include "psynclib.h"
 
-#define MAX_LOG_SIZE 1000000000 // ~1G
-
 void psync_upload_init();
 void psync_upload_inc_uploads();
 void psync_upload_dec_uploads();
