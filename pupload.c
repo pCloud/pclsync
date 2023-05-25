@@ -1790,6 +1790,11 @@ int upload_logs(char* filename, char* fPath) {
   ret = psync_stat(fPath, &st);
   fsize = psync_stat_size(&st);
 
+  if (fsize > MAX_LOG_SIZE) {
+    debug(D_NOTICE, "Log size too big. Skip upload. Size: [%llu] > [%llu]", fsize, MAX_LOG_SIZE);
+    return -2;
+  }
+
   binparam params[] = {
     P_STR("auth", psync_my_auth),
     P_STR("filename", filename),
@@ -1807,8 +1812,6 @@ int upload_logs(char* filename, char* fPath) {
   buff = psync_malloc(PSYNC_COPY_BUFFER_SIZE);
 
   while (bw < fsize) {
-    psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
-
     if (fsize - bw > PSYNC_COPY_BUFFER_SIZE)
       rd = PSYNC_COPY_BUFFER_SIZE;
     else
