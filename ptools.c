@@ -1445,17 +1445,12 @@ int wait_auth_token(char* request_id) {
 
   if (currentuserid) {
     if (currentuserid != newuserid) {
-      if (!is_user_relocated(currentuserid, token)) {
-        debug(D_NOTICE, "User is not relocated. Unlink.");
-        psync_unlink();
-      }
-      else {
-        debug(D_NOTICE, "User is relocated. Skip Unlink.");
-        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
-      }
+      debug(D_NOTICE, "New user detected. Unlink.");
+      psync_unlink();
 
       psync_recache_contacts = 1;
-      //psync_set_int_value("userid", newuserid);
+
+      psync_set_int_value("userid", newuserid);
     }
   }
 
