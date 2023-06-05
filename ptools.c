@@ -1401,7 +1401,7 @@ int get_login_req_id(char** reqId) {
 /***********************************************************************/
 int wait_auth_token(char* request_id) {
   int res, loc_id, last_loc_id = 0;
-  uint64_t result, currentuserid, newuserid = 666, rememberme = 1;
+  uint64_t result, currentuserid, newuserid = 666, rememberme = 0;
   char* token;
   binresult* resData = NULL;
 

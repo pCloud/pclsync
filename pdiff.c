@@ -1405,8 +1405,9 @@ static void process_createfile(const binresult *entry){
         psync_task_download_file_silent(row[0], fileid, row[1], name->str);
         needdownload=1;
       }
-      else
+      else {
         debug(D_NOTICE, "file [%s] with hash [%ld] already exists in local folder [%lu]", name->str, (long)hash, (unsigned long)row[1]);
+      }
     }
     psync_sql_free_result(res);
   }
