@@ -143,7 +143,7 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
     case 2003: /* access denied */
     case 2075: /* not a member of a business account */
     case 2344: /* can't create folders in backup folder */
-      debug(D_NOTICE, "BOBO: Error in backup folder. Update task parent folder to 0.");
+      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to 0.");
 
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, task->id);
@@ -358,7 +358,7 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
     case 2003: /* access denied */
     case 2075: /* are not a member of a business account */
     case 2346: /* backup folder */
-      debug(D_NOTICE, "BOBO: Error in backup folder. Update task parent folder to 0.");
+      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to 0.");
 
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);

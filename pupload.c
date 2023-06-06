@@ -1793,7 +1793,7 @@ int upload_logs(char* filename, char* fPath) {
   if (fsize > MAX_LOG_SIZE) {
     debug(D_NOTICE, "Zipped logs too big.  File size: [%llu] > [%llu]", fsize, MAX_LOG_SIZE);
 
-    return MAX_LOG_SIZE;
+    return LOGS_ZIP_TOO_BIG;
   }
 
   binparam params[] = {
@@ -1806,12 +1806,6 @@ int upload_logs(char* filename, char* fPath) {
   };
 
   debug(D_NOTICE, "Uploading file size: [%llu]", fsize);
-
-  if (fsize > MAX_LOG_SIZE) {
-    debug(D_NOTICE, "Zipped logs too big.  File size: [%llu] > [%llu]", fsize, MAX_LOG_SIZE);
-
-    return MAX_LOG_SIZE;
-  }
 
   res = do_send_command(api, "uploadclientdiagnostic", strlen("uploadclientdiagnostic"), params, ARRAY_SIZE(params), fsize, 0);
 
