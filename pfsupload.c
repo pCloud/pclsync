@@ -143,6 +143,8 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
     case 2003: /* access denied */
     case 2075: /* not a member of a business account */
     case 2344: /* can't create folders in backup folder */
+      debug(D_NOTICE, "BOBO: Error in backup folder. Update task parent folder to 0.");
+
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, task->id);
       psync_sql_run_free(res);
@@ -356,6 +358,8 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
     case 2003: /* access denied */
     case 2075: /* are not a member of a business account */
     case 2346: /* backup folder */
+      debug(D_NOTICE, "BOBO: Error in backup folder. Update task parent folder to 0.");
+
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);
       psync_sql_run_free(res);
@@ -1265,25 +1269,34 @@ static int psync_process_task_creat(fsupload_task_t *task){
   const binresult *meta;
   psync_fileid_t fileid;
   result=psync_find_result(task->res, "result", PARAM_NUM)->num;
+
   if (result)
     return handle_upload_api_error(result, task);
+
   meta=psync_find_result(task->res, "metadata", PARAM_ARRAY)->array[0];
   fileid=psync_find_result(meta, "fileid", PARAM_NUM)->num;
   hash=psync_find_result(meta, "hash", PARAM_NUM)->num;
+
   if (psync_fs_update_openfile(task->id, task->int1, fileid, hash, psync_find_result(meta, "size", PARAM_NUM)->num, psync_find_result(meta, "created", PARAM_NUM)->num)){
     debug(D_NOTICE, "file %lu/%s changed while uploading, failing task", (unsigned long)task->folderid, task->text1);
     return -1;
   }
+
   psync_ops_create_file_in_db(meta);
   psync_fstask_file_created(task->folderid, task->id, task->text1, fileid);
+
   if (task->text2)
     set_key_for_fileid(fileid, hash, task->text2);
+
   psync_fs_task_to_file(task->id, fileid);
   task->int2=fileid;
+
   debug(D_NOTICE, "file %lu/%s uploaded", (unsigned long)task->folderid, task->text1);
+
   psync_sql_commit_transaction();
   psync_pagecache_creat_to_pagecache(task->id, hash, 1);
   psync_sql_start_transaction();
+
   return 0;
 }
 
