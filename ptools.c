@@ -109,7 +109,7 @@ int zipLogs(char* zipLogsFname) {
   status = mz_zip_writer_init_file(&zip_archive, zipLogsFname, 0);
 
   if (status == MZ_FALSE) {
-    return CANT_CREATE_ZIP_FILE;
+    return FAIL_TO_ZIP_LOGS;
   }
 
   srcFile = fopen(srcFname1, "r");
@@ -122,7 +122,7 @@ int zipLogs(char* zipLogsFname) {
   else {
     debug(D_NOTICE, "Failed to open: [%s]", srcFname1);
 
-    return CANT_FIND_LOG_FILE;
+    return FAIL_TO_ZIP_LOGS;
   }
 
 #if defined(P_OS_WINDOWS)
