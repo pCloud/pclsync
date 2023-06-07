@@ -175,8 +175,6 @@ int uploadLogsToDrive() {
   }
   else {
     debug(D_NOTICE, "Failed to zip logs. Res: [%d]", res);
-
-    res = FAIL_TO_ZIP_LOGS;
   }
 
   debug(D_NOTICE, "Done uploading logs. Send the data event. Res: [%d]", res);
