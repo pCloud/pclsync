@@ -77,6 +77,10 @@ int zipLogs(char* zipLogsFname) {
   mz_bool status;
   mz_zip_archive zip_archive;
 
+  uint64_t fsize = 0;
+  psync_stat_t st;
+  int ret = 0;
+
 #if defined(P_OS_WINDOWS)
   char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
   char* srcFname2 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "cbfs_log.log", NULL);
@@ -87,7 +91,18 @@ int zipLogs(char* zipLogsFname) {
 
   FILE* srcFile;
 
-  debug(D_NOTICE, "Create Zip file: [%s]", zipLogsFname);
+  debug(D_NOTICE, "Check log file size: [%s]", srcFname1);
+  ret = psync_stat(srcFname1, &st);
+  
+  fsize = psync_stat_size(&st);
+
+  if (fsize > MAX_LOG_SIZE) {
+    debug(D_NOTICE, "Zipped logs too big.  File size: [%llu] > [%llu]", fsize, MAX_LOG_SIZE);
+
+    return LOGS_ZIP_TOO_BIG;
+  }
+
+  debug(D_NOTICE, "Create Zip file");
 
   mz_zip_zero_struct(&zip_archive);
 

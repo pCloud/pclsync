@@ -1663,7 +1663,7 @@ char* psync_get_device_string();
 
 const char* psync_get_appversion();
 /*******************************************************************************/
-#define MAX_LOG_SIZE 1000000000 // ~1G Maximum size of zipped logs file to be uploaded.
+#define MAX_LOG_SIZE 3000000000 // ~3G Maximum size for zipping.
 
 #define FAIL_TO_ZIP_LOGS 101
 #define LOGS_ZIP_TOO_BIG 102
