@@ -3466,7 +3466,7 @@ const char *psync_appname(){
 char *psync_deviceid(){
   char *device;
 #if defined(P_OS_WINDOWS)
-  DWORD vers, vmajor, vminor;
+  DWORD vers, vmajor, vminor, buildnumber;
   SYSTEM_POWER_STATUS bat;
   const char* hardware, * ver;
   char versbuff[32];
@@ -3484,6 +3484,7 @@ char *psync_deviceid(){
     RtlGetVersion(&osvx);
     vmajor = (DWORD)osvx.dwMajorVersion;
     vminor = (DWORD)osvx.dwMinorVersion;
+    buildnumber = (DWORD)osvx.dwBuildNumber;
     FreeLibrary(hmodule);
   }
   else
@@ -3492,6 +3493,7 @@ char *psync_deviceid(){
     vers = GetVersion();
     vmajor=(DWORD)(LOBYTE(LOWORD(vers)));
     vminor=(DWORD)(HIBYTE(LOWORD(vers)));
+    buildnumber=(DWORD)(HIBYTE(HIWORD(vers)));
   }
   
   if (GetSystemMetrics(SM_TABLETPC))
@@ -3519,10 +3521,10 @@ char *psync_deviceid(){
     }
   }
   else if (vmajor==10){
-    switch (vminor){
-      case 0: ver="10.0"; break;
-      default: psync_slprintf(versbuff, sizeof(versbuff), "10.%u", (unsigned int)vminor); ver=versbuff;
-    }
+    if (buildnumber < 22000)
+      ver = "10.0";
+    else
+      ver = "11";
   }
   else{
     psync_slprintf(versbuff, sizeof(versbuff), "%u.%u", (unsigned int)vmajor, (unsigned int)vminor);
