@@ -3493,7 +3493,7 @@ char *psync_deviceid(){
     vers = GetVersion();
     vmajor=(DWORD)(LOBYTE(LOWORD(vers)));
     vminor=(DWORD)(HIBYTE(LOWORD(vers)));
-    buildnumber=(DWORD)(HIBYTE(HIWORD(vers)));
+    buildnumber=(DWORD)(LOBYTE(HIWORD(vers)));
   }
   
   if (GetSystemMetrics(SM_TABLETPC))
