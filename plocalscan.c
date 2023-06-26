@@ -877,6 +877,7 @@ retry:
   if (unlikely_log(!folderid)){
     /* folder is not yet created, folderid is not 0 but NULL actually */
     if (tries>=50){
+      debug(D_NOTICE, "BOBO: Delete task 5. Scanner delete tast. Too many tries. [%s]", fl->name);
       res=psync_sql_query("DELETE FROM task WHERE type="NTO_STR(PSYNC_CREATE_REMOTE_FOLDER)" AND syncid=? AND localitemid=?");
       psync_sql_bind_uint(res, 1, fl->syncid);
       psync_sql_bind_uint(res, 2, fl->localid);

@@ -460,8 +460,6 @@ int psync_get_local_file_checksum(const char *restrict filename, unsigned char *
   psync_file_t fd;
 
   unsigned char hashbin[PSYNC_HASH_DIGEST_LEN];
-  
-  debug(D_NOTICE, "BOBO: psync_get_local_file_checksum. Filename: [%s]", filename);
 
   fd=psync_file_open(filename, P_O_RDONLY, 0);
 
@@ -477,8 +475,6 @@ retry:
   psync_hash_init(&hctx);
   rsz=psync_stat_size(&st);
   cnt=0;
-
-  debug(D_NOTICE, "BOBO: psync_get_local_file_checksum. Read local file.");
 
   while (rsz){
     if (rsz>PSYNC_COPY_BUFFER_SIZE)
@@ -508,8 +504,6 @@ retry:
       psync_milisleep(5);
   }
 
-  debug(D_NOTICE, "BOBO: psync_get_local_file_checksum. Got checksum.");
-
   if (unlikely_log(psync_fstat(fd, &st2)))
     goto err1;
 
@@ -531,8 +525,6 @@ retry:
 
   if (fsize)
     *fsize=psync_stat_size(&st);
-
-  debug(D_NOTICE, "BOBO: psync_get_local_file_checksum. Return.");
 
   return PSYNC_NET_OK;
 
@@ -2361,15 +2353,15 @@ void psync_unlock_file_by_path(const char* path) {
 
   pthread_mutex_lock(&file_lock_mutex);
 
-  debug(D_WARNING, "BOBO: psync_unlock_file_by_path. Path: [%s]", path);
-
   tr = file_lock_tree;
   at = &file_lock_tree;
+
+  debug(D_WARNING, "BOBO: Unlock file by Path: [%s]", path);
 
   while (tr) {
     cmp = psync_filename_cmp(path, psync_tree_element(tr, psync_file_lock_t, tree)->filename);
 
-    debug(D_WARNING, "BOBO: psync_unlock_file_by_path. Cmp tree element: [%s]", psync_tree_element(tr, psync_file_lock_t, tree)->filename);
+    debug(D_WARNING, "BOBO: Compare: [%s] = [%s]", path, psync_tree_element(tr, psync_file_lock_t, tree)->filename);
 
     if (cmp < 0) {
       if (tr->left)
@@ -2388,7 +2380,7 @@ void psync_unlock_file_by_path(const char* path) {
       }
     }
     else {
-      debug(D_WARNING, "BOBO: Element found in tree. Delete lock.");
+      debug(D_WARNING, "BOBO: Unlock file. Path: [%s]", path);
 
       psync_tree_del(&file_lock_tree, &lock->tree);
       psync_free(lock);
@@ -2405,21 +2397,19 @@ psync_file_lock_t *psync_lock_file(const char *path){
   size_t len;
   int cmp;
 
+  debug(D_WARNING, "BOBO: Lock file: [%s]", path);
+
   len=strlen(path)+1;
   lock=psync_malloc(offsetof(psync_file_lock_t, filename)+len);
   memcpy(lock->filename, path, len);
 
   pthread_mutex_lock(&file_lock_mutex);
 
-  debug(D_WARNING, "BOBO: Check file lock. Path: [%s]", path);
-
   tr=file_lock_tree;
   at=&file_lock_tree;
 
   while (tr){
     cmp=psync_filename_cmp(path, psync_tree_element(tr, psync_file_lock_t, tree)->filename);
-
-    debug(D_WARNING, "BOBO: Cmp tree element: [%s]", psync_tree_element(tr, psync_file_lock_t, tree)->filename);
 
     if (cmp<0){
       if (tr->left)
@@ -2475,8 +2465,6 @@ void log_file_lock_tree() {
 
   pthread_mutex_lock(&file_lock_mutex);
 
-  debug(D_WARNING, "********* BOBO: File Lock tree elements: *********");
-
   while (tr) {
     debug(D_WARNING, "Left: [%s]", psync_tree_element(tr, psync_file_lock_t, tree)->filename);
 
@@ -2500,13 +2488,10 @@ void log_file_lock_tree() {
     }
   }
 
-  debug(D_WARNING, "********* BOBO: File Lock tree elements End *********");
-
   pthread_mutex_unlock(&file_lock_mutex);
 }
 /**************************************************/
 //Bobo
-
 int psync_get_upload_checksum(psync_uploadid_t uploadid, unsigned char *uhash, uint64_t *usize){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("uploadid", uploadid)};
   psync_socket *api;

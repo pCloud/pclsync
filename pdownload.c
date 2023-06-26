@@ -373,8 +373,6 @@ static int task_renamefolder(psync_syncid_t newsyncid, psync_folderid_t folderid
 static int create_conflicted(const char *name, psync_folderid_t localfolderid, psync_syncid_t syncid, const char *filename){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: create_conflicted. FileName:[%s]", filename);
-
   psync_stop_localscan();
   if (psync_rename_conflicted_file(name)){
     psync_resume_localscan();
@@ -500,9 +498,6 @@ static int stat_and_create_local(psync_syncid_t syncid, psync_fileid_t fileid, p
 
 
 static int rename_and_create_local(download_task_t *dt, unsigned char *checksum, uint64_t serversize, uint64_t hash){
-
-  debug(D_NOTICE, "BOBO: rename_and_create_local:  TmpName: [%s] FileName: [%s]", dt->tmpname, dt->filename);
-
   psync_stop_localscan();
   psync_set_crtime_mtime(dt->tmpname, dt->crtime, dt->mtime);
 
@@ -876,8 +871,6 @@ static int task_rename_file(psync_syncid_t oldsyncid, psync_syncid_t newsyncid, 
   psync_syncid_t syncid;
   int ret;
 
-  debug(D_NOTICE, "BOBO: task_rename_file. New Name: [%s]", newname);
-
   task_wait_no_downloads();
   res=psync_sql_query("SELECT id, localparentfolderid, syncid, name FROM localfile WHERE fileid=?");
   psync_sql_bind_uint(res, 1, fileid);
@@ -965,7 +958,7 @@ static void set_task_inprogress(uint64_t taskid, uint32_t val){
 static void delete_task(uint64_t taskid){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: Delete task. Id:[%llu] ", taskid);
+  debug(D_BUG, "BOBO: Delete task 4. Task Id: [%llu]", taskid);
 
   res=psync_sql_prep_statement("DELETE FROM task WHERE id=?");
   psync_sql_bind_uint(res, 1, taskid);
@@ -973,8 +966,6 @@ static void delete_task(uint64_t taskid){
 }
 
 static void free_download_task(download_task_t *dt){
-  debug(D_NOTICE, "BOBO: free_download_task: Path [%s] LocalName: [%s], TmpName: [%s], Local Size: [%llu]", dt->localpath, dt->localname, dt->tmpname, dt->localsize);
-
   if (dt->indwllist){
     pthread_mutex_lock(&current_downloads_mutex);
     psync_list_del(&dt->dwllist.list);
@@ -991,9 +982,7 @@ static void free_download_task(download_task_t *dt){
   }
 
   if (dt->lock){
-    log_file_lock_tree();
     psync_unlock_file(dt->lock);
-    log_file_lock_tree();
   }
 
   psync_free(dt->localpath);
@@ -1004,8 +993,6 @@ static void free_download_task(download_task_t *dt){
 
 static void free_task_timer_thread(void *ptr){
   download_task_t *dt=(download_task_t *)ptr;
-
-  debug(D_NOTICE, "BOBO: free_task_timer_thread. Task id: [%llu] In progress = 0", dt->taskid);
 
   set_task_inprogress(dt->taskid, 0);
   free_download_task(dt);
@@ -1030,7 +1017,6 @@ static void handle_async_error(download_task_t *dt, psync_async_result_t *res){
     psync_sql_bind_uint(sres, 3, dt->dwllist.fileid);
     psync_sql_run_free(sres);
 
-    debug(D_NOTICE, "BOBO: handle_async_error. Task id: [%llu] In progress = 0", dt->taskid);
     set_task_inprogress(dt->taskid, 0);
 
     free_download_task(dt);
@@ -1057,12 +1043,7 @@ static void rename_create_thread(void *ptr){
   async_res_dt_t *ard;
   ard=(async_res_dt_t *)ptr;
 
-  debug(D_NOTICE, "BOBO: rename_create_thread.");
-
   if (rename_and_create_local(ard->dt, ard->res.file.sha1hex, ard->res.file.size, ard->res.file.hash)){
-
-    debug(D_NOTICE, "BOBO: rename_create_thread. Task id: [%llu] In progress = 0", ard->dt->taskid);
-
     set_task_inprogress(ard->dt->taskid, 0);
     free_download_task(ard->dt);
     psync_free(ard);
@@ -1087,9 +1068,18 @@ static void rename_create_timer(psync_timer_t timer, void *ptr){
 
 static void finish_async_download(void *ptr, psync_async_result_t *res){
   download_task_t *dt=(download_task_t *)ptr;
+  psync_file_lock_t* lock;
 
+  debug(D_NOTICE, "BOBO: Finish async download.  File: [%s]  Local path: [%s] Local Name: [%s]", dt->filename, dt->localpath, dt->localname);
 
-  debug(D_NOTICE, "BOBO: Finish async download.  File: [%s]", dt->filename);
+  //Bobo
+  lock = psync_lock_file(dt->localname);
+
+  if (lock == NULL) {
+    //psync_unlock_file_by_path(dt->localname);
+    //psync_unlock_file(lock);
+  }
+  //Bobo
 
   if (res->error){
     debug(D_NOTICE, "BOBO: Async download error: [%lu]", res->error);
@@ -1146,8 +1136,6 @@ static void task_run_download_file_thread(void *ptr){
   download_task_t *dt;
   dt=(download_task_t *)ptr;
 
-  debug(D_NOTICE, "BOBO: Download file. Thread. File: [%lu]", dt->filename);
-
   if (task_download_file(dt)){
     stuck_item* elem;
 
@@ -1159,7 +1147,6 @@ static void task_run_download_file_thread(void *ptr){
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
 
     //set_task_inprogress(dt->taskid, 0);
-    debug(D_WARNING, "BOBO: task_run_download_file. Task Id: [%llu] Set Inprogress = 3", dt->taskid);
     set_task_inprogress(dt->taskid, 3); // In progress set to 3 to let the rest of the waiting tasks process
 
     psync_wake_download();
@@ -1195,8 +1182,6 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   psync_sql_bind_uint(res, 1, fileid);
   row=psync_sql_fetch_rowint(res);
 
-  debug(D_WARNING, "BOBO: Run task download file Filename: [%s]", filename);
-
   if (row){
     size=row[0];
     hash=row[1];
@@ -1223,8 +1208,6 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   psync_sql_bind_uint(res, 2, size);
   srow=psync_sql_fetch_rowstr(res);
 
-  debug(D_WARNING, "BOBO: Get checksum from DB.");
-
   if (srow){
     memcpy(targetchecksum, srow[0], PSYNC_HASH_DIGEST_HEXLEN);
     hastargetchecksum=1;
@@ -1234,13 +1217,10 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
 
   psync_sql_free_result(res);
 
-  debug(D_WARNING, "BOBO: Get local path.");
   localpath=psync_local_path_for_local_folder(localfolderid, syncid, NULL);
 
   if (unlikely_log(!localpath))
     return 0;
-
-  debug(D_WARNING, "BOBO: Init Task Struct.");
 
   localname=psync_strcat(localpath, PSYNC_DIRECTORY_SEPARATOR, filename, NULL);
   tmpname=psync_strcat(localpath, PSYNC_DIRECTORY_SEPARATOR, filename, PSYNC_APPEND_PARTIAL_FILES, NULL);
@@ -1262,8 +1242,6 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
   pthread_mutex_lock(&current_downloads_mutex);
   psync_list_add_tail(&downloads, &dt->dwllist.list);
 
-  debug(D_WARNING, "BOBO: Check MAX downloads.");
-
   while (!dt->dwllist.stop && (started_downloads>=PSYNC_MAX_PARALLEL_DOWNLOADS ||
           psync_status.bytestodownloadcurrent-psync_status.bytesdownloaded>PSYNC_START_NEW_DOWNLOADS_TRESHOLD)){
     current_downloads_waiters++;
@@ -1284,8 +1262,6 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
 
   pthread_mutex_unlock(&current_downloads_mutex);
 
-  debug(D_WARNING, "BOBO: Check task in download list.");
-
   if (unlikely(!dt->indwllist)){
     free_download_task(dt);
     return -1;
@@ -1299,8 +1275,6 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
     free_download_task(dt);
     return ret;
   }
-
-  debug(D_WARNING, "BOBO: Get local checksum.");
 
   if (psync_get_local_file_checksum(localname, dt->checksum, &dt->localsize)==PSYNC_NET_OK)
     dt->localexists=1;
@@ -1318,10 +1292,11 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
     return ret;
   }
 
+  debug(D_BUG, "BOBO: Tasks 1.");
+  psync_log_tasks();
+
   minfree=psync_setting_get_uint(_PS(minlocalfreespace));
   freespace=psync_get_free_space_by_path(localpath);
-
-  debug(D_WARNING, "BOBO: Check free space.");
   
   if (likely(freespace!=-1)){
     debug(D_NOTICE, "Free space is [%llu], needed [%llu+%llu]", (unsigned long long)freespace, (unsigned long long)minfree, (unsigned long long)size);
@@ -1356,39 +1331,41 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
     return -1;
   }
 
-  //Bobo
-  log_file_lock_tree();
+  debug(D_BUG, "BOBO: Tasks before checking file lock.");
+  psync_log_tasks();
+
   lock=psync_lock_file(localname);
 
   if (!lock) {
     debug(D_NOTICE, "Download file [%s] is currently locked, skipping for now", localname);
+
+    debug(D_BUG, "BOBO: Tasks before freeing the task struct.");
+    psync_log_tasks();
+
     free_download_task(dt);
     psync_milisleep(PSYNC_SLEEP_ON_LOCKED_FILE);
+
+    debug(D_BUG, "BOBO: Tasks after freeing the task struct.");
+    psync_log_tasks();
 
     return -1;
   }
 
   dt->lock=lock;
-  //Bobo
 
-  debug(D_WARNING, "BOBO: task_run_download_file. Task Id: [%llu] Set Inprogress = 1", taskid);
   set_task_inprogress(taskid, 1);
 
   if (size<=PSYNC_MAX_SIZE_FOR_ASYNC_DOWNLOAD){
     if (dt->localexists){
-      debug(D_WARNING, "BOBO: download file if changed. TmpName: [%s]", dt->tmpname);
       ret=psync_async_download_file_if_changed(fileid, dt->tmpname, dt->localsize, dt->checksum, finish_async_download_existing, dt);
     }
     else{
-      debug(D_WARNING, "BOBO: download file async. TmpName: [%s]", dt->tmpname);
       ret=psync_async_download_file(fileid, dt->tmpname, finish_async_download, dt);
     }
 
     if (ret){
-      debug(D_WARNING, "async download start failed for %s", dt->localname);
       free_download_task(dt);
 
-      debug(D_NOTICE, "BOBO: task_run_download_file. Task id: [%llu] In progress = 0", taskid);
       set_task_inprogress(taskid, 0);
       psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
     }
@@ -1397,6 +1374,10 @@ static int task_run_download_file(uint64_t taskid, psync_syncid_t syncid, psync_
     psync_run_thread1("download file", task_run_download_file_thread, dt);
     psync_milisleep(25); // do not run downloads strictly in parallel so we reuse some API connections
   }
+
+  debug(D_BUG, "BOBO: Tasks 2.");
+  psync_log_tasks();
+
   return -1;
 }
 
@@ -1520,6 +1501,9 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
       res=0;
   }
 
+  debug(D_BUG, "BOBO: Tasks after processing function.");
+  psync_log_tasks();
+
   if (res && type!=PSYNC_DOWNLOAD_FILE){
     debug(D_WARNING, "Task of type [%u], syncid [%u], id [%lu] localid [%lu] failed", (unsigned)type, (unsigned)syncid, (unsigned long)itemid, (unsigned long)localitemid);
   }
@@ -1557,8 +1541,6 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
     add_stuck_elem(elem);
   }
 
-  debug(D_NOTICE, "BOBO: download_task. Res: [%d]", res);
-
   psync_free(vname);
   return res;
 }
@@ -1567,8 +1549,6 @@ static void download_thread(){
   psync_variant *row;
   uint64_t taskid;
   uint32_t type;
-
-FailedDwTasksReset:
 
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
@@ -1591,8 +1571,6 @@ FailedDwTasksReset:
                          psync_get_string_or_null(row[6]),
                          psync_get_number_or_null(row[7]))){
 
-        debug(D_NOTICE, "BOBO: Process download task. Delete task.");
-
         delete_element(psync_get_number(row[3]));                                    
 
         delete_task(taskid);
@@ -1605,13 +1583,15 @@ FailedDwTasksReset:
       else if (type != PSYNC_DOWNLOAD_FILE) {
         psync_sql_res* res;
 
-        debug(D_NOTICE, "BOBO: Process download task. Set task in progess.");
         res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=? AND inprogress = 0");
         psync_sql_bind_uint(res, 1, taskid);
         psync_sql_run_free(res);
       }
 
       psync_free(row);
+
+      psync_log_tasks();
+
       continue;
     }
     else {
@@ -1623,7 +1603,6 @@ FailedDwTasksReset:
         psync_free(row);
         debug(D_NOTICE, "Failed DOWNLOAD tasks found. Reset them.");
 
-        debug(D_WARNING, "BOBO: download_thread. Set Inprogress = 0");
         res = psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE inprogress=3");
 
         psync_sql_run_free(res);
@@ -1632,7 +1611,8 @@ FailedDwTasksReset:
         debug(D_NOTICE, "Sleep abefore retrying failed tasks.");
         psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
 
-        goto FailedDwTasksReset;
+        psync_log_tasks();
+        continue;
       }
     }
 
@@ -1661,14 +1641,17 @@ void psync_delete_download_tasks_for_file(psync_fileid_t fileid, psync_syncid_t 
   download_list_t *dwl;
   uint32_t aff;
 
-  debug(D_NOTICE, "BOBO: psync_delete_download_tasks_for_file. FileId: [%llu] ", fileid);
-
   if (syncid){
+    debug(D_BUG, "BOBO: Delete task 1.");
     res=psync_sql_prep_statement("DELETE FROM task WHERE type=? AND itemid=? AND syncid=?");
   }
   else{
+    debug(D_BUG, "BOBO: Delete task 2. Download file, no sync. Type: [%d], File Id: [%llu]", PSYNC_DOWNLOAD_FILE, fileid);
     res=psync_sql_prep_statement("DELETE FROM task WHERE type=? AND itemid=?");
   }
+
+  debug(D_BUG, "BOBO: Tasks after delete.");
+  psync_log_tasks();
 
   psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE);
   psync_sql_bind_uint(res, 2, fileid);
@@ -1710,7 +1693,10 @@ void psync_stop_file_download(psync_fileid_t fileid, psync_syncid_t syncid){
 void psync_stop_sync_download(psync_syncid_t syncid){
   download_list_t *dwl;
   psync_sql_res *res;
+
+  debug(D_BUG, "BOBO: Delete task 3.");
   res=psync_sql_prep_statement("DELETE FROM task WHERE syncid=? AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_DOWNLOAD));
+
   psync_sql_bind_uint(res, 1, syncid);
   psync_sql_run_free(res);
   psync_status_recalc_to_download_async();

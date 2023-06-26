@@ -332,6 +332,12 @@ static psync_socket *get_connected_socket(){
 
     osversion=psync_deviceos();
 
+    debug(D_NOTICE, "OS parameters:");
+    debug(D_NOTICE, "osversion: [%s]", osversion);
+    debug(D_NOTICE, "appversion: [%s]", appversion);
+    debug(D_NOTICE, "deviceid: [%s]", deviceid);
+    debug(D_NOTICE, "device: [%s]", devicestring);
+
     if (psync_my_2fa_token && psync_my_2fa_code_type && psync_my_2fa_code[0]){
       const char *method=psync_my_2fa_code_type==1?"tfa_login":"tfa_loginwithrecoverycode";
       binparam params[]={P_STR("timeformat", "timestamp"),
@@ -366,8 +372,6 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getapiserver", 1),
                          P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
-
-        debug(D_NOTICE, "Send login command.");
 
         res=send_command(sock, "login", params);
       }
@@ -1327,8 +1331,6 @@ static void process_createfile(const binresult *entry){
   psync_str_row row2;
   int hasit;
 
-  debug(D_NOTICE, "BOBO: process_createfile.");
-
   if (!entry){
     if (st){
       psync_sql_free_result(st);
@@ -1341,8 +1343,6 @@ static void process_createfile(const binresult *entry){
   }
 
   if (!st){
-    debug(D_NOTICE, "BOBO: process_createfile. Insert into file.");
-
     st=psync_sql_prep_statement("INSERT OR IGNORE INTO file (id, parentfolderid, userid, size, hash, name, ctime, mtime, category, thumb, icon, "
                                 "artist, album, title, genre, trackno, width, height, duration, fps, videocodec, audiocodec, videobitrate, "
                                 "audiobitrate, audiosamplerate, rotate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -1371,8 +1371,6 @@ static void process_createfile(const binresult *entry){
   psync_sql_bind_lstring(st, 6, name->str, name->length);
   bind_meta(st, meta, 7);
   psync_sql_run(st);
-
-  debug(D_NOTICE, "BOBO: Insert into file. process_createfile. Size: [%llu], Hash: [%llu] Name: [%s]", size, hash, name->str);
 
   if (!psync_sql_affected_rows()){
     int off;
@@ -1440,8 +1438,6 @@ static void process_modifyfile(const binresult* entry) {
   uint64_t size, userid, hash, oldsize;
   int oldsync, newsync, lneeddownload, needrename;
   uint32_t cnt, i;
-
-  debug(D_NOTICE, "BOBO: process_modifyfile.");
 
   if (!entry) {
     if (sq) {
@@ -1528,8 +1524,6 @@ static void process_modifyfile(const binresult* entry) {
   oldparentfolderid = psync_get_number(row[0]);
   oldsync = psync_is_folder_in_downloadlist(oldparentfolderid);
 
-  debug(D_NOTICE, "BOBO: process_modifyfile. oldparentfolderid: [%llu], parentfolderid [%llu]", oldparentfolderid, parentfolderid);
-
   if (oldparentfolderid == parentfolderid) {
     newsync = oldsync;
   }
@@ -1544,6 +1538,7 @@ static void process_modifyfile(const binresult* entry) {
       psync_delete_download_tasks_for_file(fileid, 0, 1);
       path = psync_get_path_by_fileid(fileid, NULL);
       psync_task_delete_local_file(fileid, path);
+
       psync_free(path);
 
       needdownload = 1;
@@ -1551,12 +1546,8 @@ static void process_modifyfile(const binresult* entry) {
       return;
     }
 
-    debug(D_NOTICE, "BOBO: Size: [%llu], Old Size: [%llu], Hash: [%llu] Old Hash: [%llu]", size, oldsize, hash, psync_get_number(row[3]));
-
     lneeddownload = hash != psync_get_number(row[3]) || size != oldsize;
     oldname = psync_get_lstring(row[4], &oldnamelen);
-
-    debug(D_NOTICE, "BOBO: Rename file: [%s] to [%s] NeedDownload: [%d]", name->str, oldname, lneeddownload);
 
     if (lneeddownload){
       psync_delete_download_tasks_for_file(fileid, 0, 0);
@@ -1575,11 +1566,7 @@ static void process_modifyfile(const binresult* entry) {
 
     cnt = fres2->rows > fres1->rows ? fres1->rows : fres2->rows;
 
-    debug(D_NOTICE, "BOBO: process_modifyfile. needrename [%d], Rows 1: [%lu], Rows 2: [%lu]", needrename, fres1->rows, fres2->rows);
-
     for (i=0; i<cnt; i++){
-      debug(D_NOTICE, "BOBO: process_modifyfile. needrename [%d], lneeddownload [%d]", needrename, lneeddownload);
-
       if (needrename){
         psync_task_rename_local_file(psync_get_result_cell(fres1, i, 0), psync_get_result_cell(fres2, i, 0), fileid,
                                      psync_get_result_cell(fres1, i, 1), psync_get_result_cell(fres2, i, 1),
@@ -1608,7 +1595,7 @@ static void process_modifyfile(const binresult* entry) {
         }
       }
     }
-
+    
     for (/*i is already=cnt*/; i<fres2->rows; i++){
       psync_task_download_file_silent(psync_get_result_cell(fres2, i, 0), fileid, psync_get_result_cell(fres2, i, 1), name->str);
       needdownload=1;
@@ -1703,9 +1690,7 @@ void psync_diff_create_file(const binresult *meta){
   psync_sql_bind_lstring(st, 6, name->str, name->length);
   bind_meta(st, meta, 7);
   psync_sql_run_free(st);
- 
-  debug(D_NOTICE, "BOBO: Insert into file. psync_diff_create_file. Insert into file. Size: [%llu], Hash: [%llu] Name: [%s]", size, hash, name->str);
-  
+
   insert_revision(fileid, hash, psync_find_result(meta, "modified", PARAM_NUM)->num, size);
   insert_revision(0, 0, 0, 0);
 }
@@ -2579,8 +2564,6 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   if (entries->length>=10000)
     psync_sql_statement("DELETE FROM setting WHERE id='lastanalyze'");
 
-  debug(D_NOTICE, "BOBO: Process diff entries: [%lu]", entries->length);
-
   for (i=0; i<entries->length; i++){
     entry=entries->array[i];
     etype=psync_find_result(entry, "event", PARAM_STR);
@@ -2590,8 +2573,6 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 
         meta = psync_find_result(entry, "metadata", PARAM_HASH);
         name = psync_find_result(meta, "name", PARAM_STR);
-
-        debug(D_NOTICE, "BOBO: Process entry type: [%lu] Operation: [%s] Name: [%s]", etype->type, etype->str, name->str);
 
         event_list[j].process(entry);
         event_list[j].used=1;
@@ -2989,10 +2970,6 @@ restart:
   debug(D_NOTICE, "connected");
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
   ids.diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
-
-  //Bobo
-  debug(D_NOTICE, "BOBO: Loged in. Token: [%s]", psync_my_auth);
-  //Bobo
 
   if (ids.diffid == 0) {
 	  initialdownload=1;

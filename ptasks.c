@@ -36,8 +36,6 @@
 static void create_task1(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: create_task1. Create Task.");
-
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid) VALUES (?, ?, ?, ?)");
 
   psync_sql_bind_uint(res, 1, type);
@@ -50,8 +48,6 @@ static void create_task1(psync_uint_t type, psync_syncid_t syncid, uint64_t entr
 
 static void create_task2(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, uint64_t newitemid, const char *name){
   psync_sql_res *res;
-
-  debug(D_NOTICE, "BOBO: create_task2. Create Task. File Name [%s]", name);
 
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid, newitemid, name) VALUES (?, ?, ?, ?, ?, ?)");
 
@@ -68,8 +64,6 @@ static void create_task2(psync_uint_t type, psync_syncid_t syncid, uint64_t entr
 static void create_task3(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, const char *name){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: create_task3. Create Task. File Name [%s]", name);
-
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid, name) VALUES (?, ?, ?, ?, ?)");
 
   psync_sql_bind_uint(res, 1, type);
@@ -84,8 +78,6 @@ static void create_task3(psync_uint_t type, psync_syncid_t syncid, uint64_t entr
 static void create_task4(psync_uint_t type, uint64_t entryid, const char *name){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: create_task4. Create Task.");
-
   res=psync_sql_prep_statement("INSERT INTO task (type, itemid, localitemid, name) VALUES (?, ?, 0, ?)");
 
   psync_sql_bind_uint(res, 1, type);
@@ -98,8 +90,6 @@ static void create_task4(psync_uint_t type, uint64_t entryid, const char *name){
 static void create_task5(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: create_task5. Create Task.");
-
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid) VALUES (?, ?, ?, 0)");
 
   psync_sql_bind_uint(res, 1, type);
@@ -111,8 +101,6 @@ static void create_task5(psync_uint_t type, psync_syncid_t syncid, uint64_t entr
 
 static void create_task6(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, const char *name){
   psync_sql_res *res;
-
-  debug(D_NOTICE, "BOBO: create_task6. Create Task. File Name [%s]", name);
 
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid, name) VALUES (?, ?, ?, 0, ?)");
 
@@ -143,8 +131,6 @@ void psync_task_rename_local_folder(psync_syncid_t syncid, psync_folderid_t fold
 
 void psync_task_download_file_silent(psync_syncid_t syncid, psync_fileid_t fileid, psync_folderid_t localfolderid, const char *name){
   psync_sql_res *res;
-  
-  debug(D_NOTICE, "BOBO: psync_task_download_file_silent. Create Task. File [%s]", name);
 
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid, name) VALUES (?, ?, ?, ?, ?)");
 
@@ -160,8 +146,6 @@ void psync_task_download_file_silent(psync_syncid_t syncid, psync_fileid_t filei
 }
 
 void psync_task_download_file(psync_syncid_t syncid, psync_fileid_t fileid, psync_folderid_t localfolderid, const char *name){
-  debug(D_NOTICE, "BOBO: psync_task_download_file. File [%s]", name);
-
   psync_task_download_file_silent(syncid, fileid, localfolderid, name);
   psync_wake_download();
   psync_status_recalc_to_download();
@@ -171,8 +155,6 @@ void psync_task_download_file(psync_syncid_t syncid, psync_fileid_t fileid, psyn
 void psync_task_rename_local_file(psync_syncid_t oldsyncid, psync_syncid_t newsyncid, psync_fileid_t fileid, psync_folderid_t oldlocalfolderid,
                                   psync_folderid_t newlocalfolderid, const char *newname){
   psync_sql_res *res;
-
-  debug(D_NOTICE, "BOBO: psync_task_rename_local_file. Create Task. File Name [%s]", newname);
 
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, newsyncid, itemid, localitemid, newitemid, name) VALUES (?, ?, ?, ?, ?, ?, ?)");
   psync_sql_bind_uint(res, 1, PSYNC_RENAME_LOCAL_FILE);
@@ -211,8 +193,6 @@ void psync_task_rename_remote_file(psync_syncid_t oldsyncid, psync_syncid_t news
                                    psync_folderid_t newlocalparentfolderid, const char *newname){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: psync_task_rename_remote_file. Create Task. File Name [%s]", newname);
-
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, newsyncid, localitemid, newitemid, name, itemid) VALUES (?, ?, ?, ?, ?, ?, 0)");
 
   psync_sql_bind_uint(res, 1, PSYNC_RENAME_REMOTE_FILE);
@@ -228,8 +208,6 @@ void psync_task_rename_remote_file(psync_syncid_t oldsyncid, psync_syncid_t news
 void psync_task_rename_remote_folder(psync_syncid_t oldsyncid, psync_syncid_t newsyncid, psync_fileid_t localfileid,
                                    psync_folderid_t newlocalparentfolderid, const char *newname){
   psync_sql_res *res;
-
-  debug(D_NOTICE, "BOBO: psync_task_rename_remote_folder. Create Task. File Name [%s]", newname);
 
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, newsyncid, localitemid, newitemid, name, itemid) VALUES (?, ?, ?, ?, ?, ?, 0)");
   

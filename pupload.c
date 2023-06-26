@@ -1419,7 +1419,11 @@ static void delete_upload_task(uint64_t taskid, psync_fileid_t localfileid) {
   psync_sql_res *res;
   psync_uint_row row;
   psync_sql_lock();
+
+  debug(D_BUG, "BOBO: Delete task 7.");
+
   res=psync_sql_prep_statement("DELETE FROM task WHERE id=?");
+
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
   res=psync_sql_query_nolock("SELECT syncid, localparentfolderid FROM localfile WHERE id=?");
@@ -1442,8 +1446,6 @@ static void task_run_upload_file_thread(void *ptr){
   ut=(upload_task_t *)ptr;
 
   if (task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist)){
-    debug(D_WARNING, "BOBO: task_run_upload_file_thread. Task Id: [%llu] Set Inprogress = 0", ut->upllist.taskid);
-
     res=psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
     psync_sql_bind_uint(res, 1, ut->upllist.taskid);
     psync_sql_run_free(res);
@@ -1503,7 +1505,6 @@ static int task_run_uploadfile(uint64_t taskid, psync_syncid_t syncid, psync_fol
     return 0;
   }
 
-  debug(D_WARNING, "BOBO: task_run_uploadfile. Task Id: [%llu] Set Inprogress = 1", taskid);
   res=psync_sql_prep_statement("UPDATE task SET inprogress=1 WHERE id=?");
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
@@ -1543,8 +1544,6 @@ static int task_run_uploadfile(uint64_t taskid, psync_syncid_t syncid, psync_fol
 
   if (stop){
     psync_free(ut);
-
-    debug(D_WARNING, "BOBO: task_run_uploadfile. Task Id: [%llu] Set Inprogress = 1", taskid);
 
     res=psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
     psync_sql_bind_uint(res, 1, taskid);
@@ -1625,7 +1624,6 @@ static void upload_thread(){
   uint64_t taskid;
   uint32_t type;
 
-FailedUpTasksReset:
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
 
@@ -1653,7 +1651,10 @@ FailedUpTasksReset:
           psync_status_recalc_to_upload_async();
         }
         else{
+          debug(D_BUG, "BOBO: Delete task 8.");
+
           res=psync_sql_prep_statement("DELETE FROM task WHERE id=?");
+
           psync_sql_bind_uint(res, 1, taskid);
           psync_sql_run_free(res);
         }
@@ -1673,8 +1674,6 @@ FailedUpTasksReset:
           elem = create_stuck_elem(psync_get_number(row[3]), STUCK_MSG_NO_PERMISSION, item_type, 0, local_path, local_name);
 
           add_stuck_elem(elem);
-
-          debug(D_WARNING, "BOBO: upload_thread. Task Id: [%llu] Set Inprogress = 0", taskid);
 
           res = psync_sql_prep_statement("UPDATE task SET inprogress=3 WHERE id=? AND inprogress = 0");
           psync_sql_bind_uint(res, 1, taskid);
@@ -1697,12 +1696,11 @@ FailedUpTasksReset:
         psync_free(row);
         debug(D_NOTICE, "Failed UPLOAD tasks found. Reset them.");
 
-        debug(D_WARNING, "BOBO: upload_thread. Task Id: [%llu] Set Inprogress = 0", taskid);
         res = psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE inprogress=3");
 
         psync_sql_run_free(res);
 
-        goto FailedUpTasksReset;
+        continue;
       }
     }
 
@@ -1732,6 +1730,9 @@ void psync_upload_init(){
 void psync_delete_upload_tasks_for_file(psync_fileid_t localfileid){
   psync_sql_res *res;
   upload_list_t *upl;
+
+  debug(D_BUG, "BOBO: Delete task 6.");
+
   res=psync_sql_prep_statement("DELETE FROM task WHERE type=? AND localitemid=?");
   psync_sql_bind_uint(res, 1, PSYNC_UPLOAD_FILE);
   psync_sql_bind_uint(res, 2, localfileid);
@@ -1750,7 +1751,10 @@ void psync_stop_sync_upload(psync_syncid_t syncid){
   upload_list_t *upl;
   psync_sql_res *res;
 
+  debug(D_BUG, "BOBO: Delete task 7.");
+
   res=psync_sql_prep_statement("DELETE FROM task WHERE syncid=? AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_UPLOAD));
+
   psync_sql_bind_uint(res, 1, syncid);
   psync_sql_run_free(res);
 

@@ -288,8 +288,6 @@ int psync_fs_rename_openfile_locked(psync_fsfileid_t fileid, psync_fsfolderid_t 
 
   tr=openfiles;
 
-  debug(D_NOTICE, "BOBO: Rename psync_fs_rename_openfile_locked: [%s]", name);
-
   while (tr){
     d=fileid-psync_tree_element(tr, psync_openfile_t, tree)->fileid;
     if (d<0)
@@ -1845,13 +1843,9 @@ static int psync_fs_flush(const char *path, struct fuse_file_info *fi){
     psync_sql_free_result(res);
 
     if (aff) {
-      debug(D_NOTICE, "BOBO: Updated tasks: [%lu]. Wake upload.", aff);
-
       psync_fsupload_wake();
     }
     else{
-      debug(D_NOTICE, "BOBO: Update tasks int1.");
-
       res=psync_sql_prep_statement("UPDATE fstask SET int1=? WHERE id=? AND int1<?");
       psync_sql_bind_uint(res, 1, writeid);
       psync_sql_bind_uint(res, 2, -of->fileid);
@@ -2732,17 +2726,7 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
 
   psync_fs_set_thread_name();
 
-  //Bobo
-  psync_stat_t st;
-  int stret;
-  uint64_t fSize;
-
-  stret = psync_stat(old_path, &st);
-  fSize = psync_stat_size(&st);
-  //Bobo
-
-  debug(D_NOTICE, "BOBO: Rename [%s] Size: [%llu] to [%s]", old_path, fSize, new_path);
-  //debug(D_NOTICE, "Rename [%s] to [%s]", old_path, new_path);
+  debug(D_NOTICE, "Rename [%s] to [%s]", old_path, new_path);
 
   folder=NULL;
   psync_sql_lock();
@@ -2787,8 +2771,6 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
       goto finish;
     }
     else if ((creat=psync_fstask_find_creat(folder, fold_path->name, 0))){
-      debug(D_NOTICE, "BOBO: Renaming folder. 1.");
-
       if (psync_fs_is_folder(fnew_path->folderid, fnew_path->name))
         ret=-EISDIR;
       else if (unlikely(creat->fileid==0))
@@ -2826,8 +2808,6 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
   }
 
   if (!folder || !psync_fstask_find_unlink(folder, fold_path->name, 0)){
-    debug(D_NOTICE, "BOBO: Renaming folder. 2.");
-
     res=psync_sql_query("SELECT id FROM file WHERE parentfolderid=? AND name=?");
     psync_sql_bind_uint(res, 1, fold_path->folderid);
     psync_sql_bind_string(res, 2, fold_path->name);

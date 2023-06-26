@@ -2595,3 +2595,23 @@ double psync_err_real_expected(const char *file, const char *function, int unsig
     psync_debug(file, function, line, D_CRITICAL, "type error, wanted %s got %s", get_type_name(PSYNC_TREAL), get_type_name(v->type));
   return 0.0;
 }
+
+/******************************************************************************************/
+uint64_t get_task_id_by_file_id(psync_fileid_t fileid, int task_type) {
+  uint64_t taskid;
+  psync_sql_res* res;
+  psync_variant_row row;
+
+  res = psync_sql_prep_statement("SELECT id FROM task WHERE type=? AND itemid=?");
+
+  psync_sql_bind_uint(res, 1, task_type);
+  psync_sql_bind_uint(res, 2, fileid);
+
+  if (res) {
+    row = psync_sql_fetch_row(res);
+    taskid = psync_get_number(row[0]);
+  }
+
+  psync_sql_free_result(res);
+}
+/******************************************************************************************/

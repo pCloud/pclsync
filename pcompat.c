@@ -2876,8 +2876,6 @@ psync_file_t psync_file_open(const char *path, int access, int flags){
   else
     cdis=OPEN_EXISTING;
 
-  debug(D_NOTICE, "BOBO: Create file. Path: [%s] Params: [%d]", path, (int)cdis);
-
   wpath=utf8_to_wchar_path(path);
 
   ret=CreateFileW(wpath, access, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, cdis, FILE_FLAG_POSIX_SEMANTICS|FILE_ATTRIBUTE_NORMAL, NULL);
