@@ -3537,24 +3537,35 @@ char *psync_deviceid(){
   size_t len;
   char versbuff[64], modelname[256];
   int v;
+
   if (uname(&un))
     ver="Mac OS X";
   else{
     v=atoi(un.release);
     switch (v){
-      case 16: ver="macOS 10.12 Sierra"; break;
-      case 15: ver="OS X 10.11 El Capitan"; break;
-      case 14: ver="OS X 10.10 Yosemite"; break;
-      case 13: ver="OS X 10.9 Mavericks"; break;
-      case 12: ver="OS X 10.8 Mountain Lion"; break;
-      case 11: ver="OS X 10.7 Lion"; break;
-      case 10: ver="OS X 10.6 Snow Leopard"; break;
+      case 23: ver = "macOS 14 Sonoma"; break;
+      case 22: ver = "macOS 13 Ventura"; break;
+      case 21: ver = "macOS 12 Monterey"; break;
+      case 20: ver = "macOS 11 Big Sur"; break;
+      case 19: ver = "macOS 10.15 Catalina"; break;
+      case 18: ver = "macOS 10.14 Mojave"; break;
+      case 17: ver = "macOS 10.13 High Sierra"; break;
+      case 16: ver = "macOS 10.12 Sierra"; break;
+      case 15: ver = "OS X 10.11 El Capitan"; break;
+      case 14: ver = "OS X 10.10 Yosemite"; break;
+      case 13: ver = "OS X 10.9 Mavericks"; break;
+      case 12: ver = "OS X 10.8 Mountain Lion"; break;
+      case 11: ver = "OS X 10.7 Lion"; break;
+      case 10: ver = "OS X 10.6 Snow Leopard"; break;
       default: psync_slprintf(versbuff, sizeof(versbuff), "Mac/Darwin %s", un.release); ver=versbuff;
     }
   }
+
   len=sizeof(modelname);
+
   if (sysctlbyname("hw.model", modelname, &len, NULL, 0))
     psync_strlcpy(modelname, "Mac", sizeof(modelname));
+
   versbuff[sizeof(versbuff)-1]=0;
   device=psync_strcat(modelname, ", ", ver, NULL);
 #elif defined(P_OS_LINUX)

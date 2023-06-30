@@ -264,6 +264,8 @@ static psync_socket *get_connected_socket(){
   }
 
   debug(D_NOTICE, "using deviceid %s", deviceid);
+
+  osversion = psync_deviceos();
   appversion=psync_appname();
   devicestring=psync_device_string();
 
@@ -329,9 +331,6 @@ static psync_socket *get_connected_socket(){
 
       continue;
     }
-
-    osversion=psync_deviceos();
-
     if (psync_my_2fa_token && psync_my_2fa_code_type && psync_my_2fa_code[0]){
       const char *method=psync_my_2fa_code_type==1?"tfa_login":"tfa_loginwithrecoverycode";
       binparam params[]={P_STR("timeformat", "timestamp"),
@@ -389,8 +388,6 @@ static psync_socket *get_connected_socket(){
 
       res=send_command(sock, "userinfo", params);
     }
-
-    psync_free(osversion);
 
     if (unlikely_log(!res)){
       psync_socket_close(sock);
@@ -793,15 +790,24 @@ static psync_socket *get_connected_socket(){
       psync_sql_sync();
     }
 
+    debug(D_NOTICE, "Statistic Data. Appversion: [%s]", appversion);
+    debug(D_NOTICE, "Statistic Data. OSversion: [%s]", osversion);
+    debug(D_NOTICE, "Statistic Data. Device: [%s]", devicestring);
+    debug(D_NOTICE, "Statistic Data. Deviceid: [%s]", deviceid);
+
     psync_free(auth);
     psync_free(user);
     psync_free(pass);
+
     psync_free(psync_my_2fa_token);
     psync_my_2fa_token=NULL;
     psync_my_2fa_code_type=0;
     psync_my_2fa_code[0]=0;
+
+    psync_free(osversion);
     psync_free(deviceid);
     psync_free(devicestring);
+
     psync_sql_sync();
 
     return sock;
@@ -2936,7 +2942,9 @@ static void psync_diff_thread(){
 restart:
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   sock=get_connected_socket();
-  debug(D_NOTICE, "connected");
+  
+  debug(D_NOTICE, "Connected!");
+
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
   ids.diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
 
