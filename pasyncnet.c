@@ -844,6 +844,13 @@ static int psync_async_send_task(const void *task, size_t len){
 
   pthread_mutex_lock(&amutex);
 
+  //Bobo
+  task_hdr_file_download_t *task_loc;
+
+  task_loc = (task_hdr_file_download_t*)task;
+  debug(D_NOTICE, "BOBO: Send async task.  File name: [%s], File Id: [%llu]",   task_loc->task.localpath, task_loc->task.fileid);
+  //Bobo
+
   if (running){
     ret=psync_async_send_task_locked(task, len);
   }
