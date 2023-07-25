@@ -982,7 +982,7 @@ static int task_rename_file(psync_syncid_t oldsyncid, psync_syncid_t newsyncid, 
       psync_sql_bind_uint(res, 1, fileid);
       psync_sql_bind_uint(res, 2, fsize2);
 
-      if (res) {
+      if ((res) && (fsize2 == 0)) { //Fixing the case when an empty file with size 0 is renamed to an actual one with some data in it. Happens when Open Office is edited. This fix needs to be considered again.
         debug(D_NOTICE, "BOBO: Create task to download just renamed file. Old size: [%llu] New Size: [%llu]", fsize1, fsize2);
         psync_sql_free_result(res);
 

@@ -287,10 +287,6 @@ static int file_download_send_error(stream_t *s, async_thread_params_t *prms, fi
     delete_element(fda->hash);
   }
 
-  //Bobo
-  //psync_unlock_file_by_path(fda->localpath);
-  //Bobo
-
   r.error=error;
   r.errorflags=errorflags;
   r.file.size=fda->size;
@@ -843,13 +839,6 @@ static int psync_async_send_task(const void *task, size_t len){
   int ret;
 
   pthread_mutex_lock(&amutex);
-
-  //Bobo
-  task_hdr_file_download_t *task_loc;
-
-  task_loc = (task_hdr_file_download_t*)task;
-  debug(D_NOTICE, "BOBO: Send async task.  File name: [%s], File Id: [%llu]",   task_loc->task.localpath, task_loc->task.fileid);
-  //Bobo
 
   if (running){
     ret=psync_async_send_task_locked(task, len);
