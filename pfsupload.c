@@ -87,10 +87,10 @@ static const uint32_t requiredstatusesnooverquota[]={
 
 //Bobo
 #define LOST_AND_FOUND_FNAME "lost_and_found"
-#define LOST_AND_FOUND_FPATH "\lost_and_found"
 
 psync_folderid_t lost_and_found_fid = 0;
 //Bobo
+
 
 /**********************************************************************************************************/
 static int psync_send_task_mkdir(psync_socket *api, fsupload_task_t *task){
@@ -138,6 +138,9 @@ void get_lost_and_found_fid() {
 
   debug(D_NOTICE, "BOBO: 1 Lost and Found Id: [%llu]", laf_fid);
 
+  //psync_sql_rdlock();
+  psync_sql_lock();
+
   laf_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
 
   debug(D_NOTICE, "BOBO: 2 Lost and Found Id: [%llu]", laf_fid);
@@ -149,6 +152,9 @@ void get_lost_and_found_fid() {
 
     debug(D_NOTICE, "BOBO: 3 Lost and Found Id: [%llu]", laf_fid);
   }
+
+  //psync_sql_rdunlock();
+  psync_sql_unlock();
 
   debug(D_NOTICE, "BOBO: 4 Lost and Found Id: [%llu]", laf_fid);
 
@@ -181,13 +187,20 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
       if (lost_and_found_fid == 0) {
         get_lost_and_found_fid();
       }
-      //Bobo
 
       debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
 
+      res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
+      psync_sql_bind_uint(res, 1, lost_and_found_fid);
+      psync_sql_bind_uint(res, 2, task->id);
+      psync_sql_run_free(res);
+
+      //Bobo
+      /*
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, task->id);
       psync_sql_run_free(res);
+      */
 
       break;
     case 2001: /* invalid name */
@@ -263,12 +276,26 @@ static int handle_rmdir_api_error(uint64_t result, fsupload_task_t *task){
 
 static int psync_process_task_rmdir(fsupload_task_t *task){
   uint64_t result;
+  
   result=psync_find_result(task->res, "result", PARAM_NUM)->num;
+
   if (result)
     return handle_rmdir_api_error(result, task);
+  
   psync_ops_delete_folder_from_db(psync_find_result(task->res, "metadata", PARAM_HASH));
   psync_fstask_folder_deleted(task->folderid, task->id, task->text1);
-  debug(D_NOTICE, "folder %lu/%s deleted", (unsigned long)task->folderid, task->text1);
+
+  //Bobo
+  debug(D_NOTICE, "BOBO: Deleting folder. Check if its lost and found one. Lost and found id: [%llu], [%llu]==[%s].", lost_and_found_fid, task->folderid, task->text1);
+
+  if ((task->folderid == 0) && (lost_and_found_fid != 0) && psync_filename_cmp(task->text1, LOST_AND_FOUND_FNAME)) {
+    debug(D_NOTICE, "BOBO: Lost and Found folder deleted. Reset the global id.");
+    lost_and_found_fid = 0;
+  }
+  //Bobo
+  
+  debug(D_NOTICE, "folder %llu/%s deleted", task->folderid, task->text1);
+  
   return 0;
 }
 
@@ -401,9 +428,25 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
     case 2346: /* backup folder */
       debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to 0.");
 
+      //Bobo
+      if (lost_and_found_fid == 0) {
+        get_lost_and_found_fid();
+      }
+
+      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
+
+      res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
+      psync_sql_bind_uint(res, 1, lost_and_found_fid);
+      psync_sql_bind_uint(res, 2, taskid);
+      psync_sql_run_free(res);
+      //Bobo
+
+      /*
       res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);
       psync_sql_run_free(res);
+      */
+
       psync_fsupload_wake();
       return -1;
     case 2001: /* invalid filename */
