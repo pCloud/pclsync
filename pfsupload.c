@@ -85,11 +85,6 @@ static const uint32_t requiredstatusesnooverquota[]={
   PSTATUS_COMBINE(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE)
 };
 
-//Bobo
-#define LOST_AND_FOUND_FNAME "lost_and_found"
-
-psync_folderid_t lost_and_found_fid = 0;
-//Bobo
 
 
 /**********************************************************************************************************/
@@ -132,33 +127,32 @@ int is_task_crypto(psync_fsfileid_t taskid) {
 /**********************************************************************************************************/
 //Bobo
 void get_lost_and_found_fid() {
-  psync_folderid_t laf_fid = -1;
   int res = 0;
   char* err;
 
-  debug(D_NOTICE, "BOBO: 1 Lost and Found Id: [%llu]", laf_fid);
+  debug(D_NOTICE, "BOBO: 1 Lost and Found Id: [%llu]", lost_and_found_fid);
 
-  //psync_sql_rdlock();
-  psync_sql_lock();
-
-  laf_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
-
-  debug(D_NOTICE, "BOBO: 2 Lost and Found Id: [%llu]", laf_fid);
-
-  if (laf_fid == -1) {
-    res = psync_create_remote_folder(0, LOST_AND_FOUND_FNAME, &err);
-
-    laf_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
-
-    debug(D_NOTICE, "BOBO: 3 Lost and Found Id: [%llu]", laf_fid);
+  if (lost_and_found_fid != 0) {
+    return;
   }
 
-  //psync_sql_rdunlock();
+  psync_sql_lock();
+
+  lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+
+  debug(D_NOTICE, "BOBO: 2 Lost and Found Id: [%llu]", lost_and_found_fid);
+
+  if (lost_and_found_fid == -1) {
+    res = psync_create_remote_folder(0, LOST_AND_FOUND_FNAME, &err);
+
+    lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+
+    debug(D_NOTICE, "BOBO: 3 Lost and Found Id: [%llu]", lost_and_found_fid);
+  }
+
   psync_sql_unlock();
 
-  debug(D_NOTICE, "BOBO: 4 Lost and Found Id: [%llu]", laf_fid);
-
-  lost_and_found_fid = laf_fid;
+  debug(D_NOTICE, "BOBO: 4 Lost and Found Id: [%llu]", lost_and_found_fid);
 }
 //Bobo
 /**********************************************************************************************************/
@@ -184,9 +178,7 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
     case 2075: /* not a member of a business account */
     case 2344: /* can't create folders in backup folder */
       //Bobo
-      if (lost_and_found_fid == 0) {
-        get_lost_and_found_fid();
-      }
+      get_lost_and_found_fid();
 
       debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
 
@@ -284,15 +276,6 @@ static int psync_process_task_rmdir(fsupload_task_t *task){
   
   psync_ops_delete_folder_from_db(psync_find_result(task->res, "metadata", PARAM_HASH));
   psync_fstask_folder_deleted(task->folderid, task->id, task->text1);
-
-  //Bobo
-  debug(D_NOTICE, "BOBO: Deleting folder. Check if its lost and found one. Lost and found id: [%llu], [%llu]==[%s].", lost_and_found_fid, task->folderid, task->text1);
-
-  if ((task->folderid == 0) && (lost_and_found_fid != 0) && psync_filename_cmp(task->text1, LOST_AND_FOUND_FNAME)) {
-    debug(D_NOTICE, "BOBO: Lost and Found folder deleted. Reset the global id.");
-    lost_and_found_fid = 0;
-  }
-  //Bobo
   
   debug(D_NOTICE, "folder %llu/%s deleted", task->folderid, task->text1);
   
@@ -426,12 +409,8 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
     case 2003: /* access denied */
     case 2075: /* are not a member of a business account */
     case 2346: /* backup folder */
-      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to 0.");
-
       //Bobo
-      if (lost_and_found_fid == 0) {
-        get_lost_and_found_fid();
-      }
+      get_lost_and_found_fid();
 
       debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
 
