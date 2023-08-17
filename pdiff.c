@@ -1894,10 +1894,14 @@ static void send_share_notify(psync_eventtype_t eventid, const binresult *share,
   uint64_t touserid = 0;
   uint64_t fromuserid = 0;
 
+  debug(D_NOTICE, "BOBO: Send share notify. Initialdownload: [%d]", initialdownload);
+
   if (initialdownload)
     return;
+
   stringslen=0;
   ctime=0;
+
   if (!(br=psync_check_result(share, "frommail", PARAM_STR)) && !(br=psync_check_result(share, "tomail", PARAM_STR))){
     if(!(br=psync_check_result(share, "touserid", PARAM_NUM)) &&
        !(br=psync_check_result(share, "fromuserid", PARAM_NUM)) &&
@@ -1906,6 +1910,7 @@ static void send_share_notify(psync_eventtype_t eventid, const binresult *share,
       return;
     }
   }
+
   if (isba) {
     if((br=psync_check_result(share, "user", PARAM_BOOL)) && br->num)
       touserid = psync_find_result(share, "touserid", PARAM_NUM)->num;
