@@ -2862,7 +2862,6 @@ static int psync_diff_check_quota(psync_socket *sock){
     P_NUM("os", P_OS_ID)
   };
 
-
   res=send_command(sock, "userinfo", diffparams);
 
   if (!res)

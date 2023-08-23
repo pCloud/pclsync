@@ -625,8 +625,22 @@ void psync_update_cryptostatus(){
     uint64_t u, crexp, crsub = 0, is_business = 0;
     int crst = 0,crstat;
   
-    binparam params[] = { P_STR("auth", psync_my_auth), P_STR("timeformat","timestamp") };
+    binparam params[] = { 
+      P_STR("auth", psync_my_auth), 
+      P_STR("timeformat","timestamp"),
+      P_STR("osversion", psync_deviceos()),
+      P_STR("appversion", psync_appname()),
+      P_STR("deviceid", psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'")),
+      P_STR("device", psync_device_string()),
+      P_BOOL("getauth", 1),
+      P_BOOL("cryptokeyssign", 1),
+      P_BOOL("getapiserver", 1),
+      P_BOOL("getlastsubscription", 1),
+      P_NUM("os", P_OS_ID)
+    };
+
     res = psync_api_run_command("userinfo", params);
+
     if (!res) {
       debug(D_WARNING, "Send command returned invalid result.\n");
       return;
