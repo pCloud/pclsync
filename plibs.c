@@ -37,6 +37,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stddef.h>
+#include "pcompat.h"
 
 #define return_error(err) do {psync_error=err; return -1;} while (0)
 
@@ -406,20 +407,38 @@ int psync_sql_connect(const char *db){
   int initdbneeded=0;
   int code;
 
+  debug(D_NOTICE, "sqlite C version [%d] h version [%d]", sqlite3_libversion_number(), SQLITE_VERSION_NUMBER);
+  debug(D_NOTICE, "Using sqlite version [%s] source [%s]", sqlite3_libversion(), sqlite3_sourceid());
+
+  /*
   assert(sqlite3_libversion_number()==SQLITE_VERSION_NUMBER);
   assert(!strcmp(sqlite3_sourceid(), SQLITE_SOURCE_ID));
   assert(!strcmp(sqlite3_libversion(), SQLITE_VERSION));
+  */
+  if (sqlite3_libversion_number() != SQLITE_VERSION_NUMBER) {
+    debug(D_CRITICAL, "Using wrong SQLite version: [%d] source [%d]", sqlite3_libversion_number(), SQLITE_VERSION_NUMBER);
+  }
 
-  debug(D_NOTICE, "Using sqlite version %s source %s", sqlite3_libversion(), sqlite3_sourceid());
+  if (strcmp(sqlite3_sourceid(), SQLITE_SOURCE_ID)) {
+    debug(D_CRITICAL, "Using wrong SQLite source Id: [%s] != [%s]", sqlite3_sourceid(), SQLITE_SOURCE_ID);
+  }
+
+  if (strcmp(sqlite3_libversion(), SQLITE_VERSION)) {
+    debug(D_CRITICAL, "Using wrong SQLite lib version: [%s] != [%s]", sqlite3_libversion(), SQLITE_VERSION);
+  }
+    
 
   if (!sqlite3_threadsafe()){
     debug(D_CRITICAL, "sqlite is compiled without thread support");
     return -1;
   }
-  if (psync_stat(db, &st)!=0)
-    initdbneeded=1;
+
+  if (psync_stat(db, &st) != 0) {
+    initdbneeded = 1;
+  }
 
   code=sqlite3_open(db, &psync_db);
+
   if (likely(code==SQLITE_OK)){
     if (initmutex){
       psync_rwlock_init(&psync_db_lock);
@@ -427,27 +446,37 @@ int psync_sql_connect(const char *db){
       pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
       pthread_mutex_init(&psync_db_checkpoint_mutex, &mattr);
       pthread_mutexattr_destroy(&mattr);
+
       initmutex=0;
     }
-    if (IS_DEBUG)
+
+    if (IS_DEBUG){
       sqlite3_config(SQLITE_CONFIG_LOG, psync_sql_err_callback, NULL);
+    }
+
     sqlite3_wal_hook(psync_db, psync_sql_wal_hook, NULL);
 
     psync_sql_statement(PSYNC_DATABASE_CONFIG);
 
-    if (initdbneeded==1)
+    if (initdbneeded == 1) {
       return psync_sql_statement(PSYNC_DATABASE_STRUCTURE);
+    }
     else if (psync_sql_statement("DELETE FROM setting WHERE id='justcheckingiflocked'")){
       debug(D_ERROR, "database is locked");
+
       sqlite3_close(psync_db);
       psync_rwlock_destroy(&psync_db_lock);
+
       return -1;
     }
 
     dbver=psync_sql_cellint("SELECT value FROM setting WHERE id='dbversion'", 0);
+
     if (dbver<PSYNC_DATABASE_VERSION){
       uint64_t i;
+      
       debug(D_NOTICE, "database version %d detected, upgrading to %d", (int)dbver, (int)PSYNC_DATABASE_VERSION);
+      
       for (i=dbver; i<PSYNC_DATABASE_VERSION; i++)
         if (psync_sql_statement(psync_db_upgrade[i])){
           debug(D_ERROR, "error running statement %s on sqlite %s", psync_db_upgrade[i], sqlite3_libversion());
@@ -462,42 +491,6 @@ int psync_sql_connect(const char *db){
     debug(D_CRITICAL, "could not open sqlite database %s: %d", db, code);
     return -1;
   }
-}
-
-int psync_sql_close(){
-  int code, tries;
-  tries=0;
-
-  while (1){
-    code=sqlite3_close(psync_db);
-    if (code==SQLITE_BUSY){
-      psync_cache_clean_all();
-      tries++;
-
-      if (tries>100){
-        psync_milisleep_nosqlcheck(tries-90);
-        if (tries>200){
-          debug(D_ERROR, "Failed to close database.");
-          break;
-        }
-      }
-    }
-    else
-      break;
-  }
-
-  psync_db=NULL;
-
-  if (unlikely(code!=SQLITE_OK)){
-    debug(D_CRITICAL, "error when closing database: %d", code);
-    code=sqlite3_close_v2(psync_db);
-    if (unlikely(code!=SQLITE_OK)){
-      debug(D_CRITICAL, "error when closing database even with sqlite3_close_v2: %d", code);
-      return -1;
-    }
-  }
-
-  return 0;
 }
 
 int psync_sql_reopen(const char *path){
@@ -610,18 +603,61 @@ void psync_sql_dump_locks(){
   if (wrlocked){
     time_format(sqllockstart.tv_sec, sqllockstart.tv_nsec, dttime);
     debug(D_ERROR, "write lock taken by thread %s from %s:%u at %s", wrlockthread, wrlockfile, wrlockline, dttime);
-    senddebug("write lock taken by thread %s from %s:%u at %s", wrlockthread, wrlockfile, wrlockline, dttime);
+    //senddebug("write lock taken by thread %s from %s:%u at %s", wrlockthread, wrlockfile, wrlockline, dttime);
   }
   pthread_mutex_lock(&rdmutex);
   psync_list_for_each_element(lock, &rdlocks, rd_lock_data, list){
     time_format(lock->tm.tv_sec, lock->tm.tv_nsec, dttime);
     debug(D_ERROR, "read lock taken by thread %s from %s:%u at %s", lock->thread, lock->file, lock->line, dttime);
-    senddebug("read lock taken by thread %s from %s:%u at %s", lock->thread, lock->file, lock->line, dttime);
+    //senddebug("read lock taken by thread %s from %s:%u at %s", lock->thread, lock->file, lock->line, dttime);
   }
   pthread_mutex_unlock(&rdmutex);
 }
-
 #endif
+
+int psync_sql_close() {
+  int code, tries;
+  tries = 0;
+
+  while (1) {
+    code = sqlite3_close(psync_db);
+    if (code == SQLITE_BUSY) {
+      psync_cache_clean_all();
+      tries++;
+
+      if (tries > 100) {
+        psync_milisleep_nosqlcheck(tries - 90);
+        if (tries > 200) {
+          debug(D_ERROR, "Failed to close database.");
+          break;
+        }
+      }
+    }
+    else
+      break;
+  }
+
+#if IS_DEBUG
+  psync_sql_dump_locks();
+#endif
+
+  if (unlikely(code != SQLITE_OK)) {
+    debug(D_CRITICAL, "error when closing database: %d", code);
+    code = sqlite3_close_v2(psync_db);
+
+    if (unlikely(code != SQLITE_OK)) {
+      debug(D_CRITICAL, "error when closing database even with sqlite3_close_v2: %d", code);
+
+      psync_db = NULL;
+
+      return -1;
+    }
+  }
+
+  psync_db = NULL;
+
+  return 0;
+}
 
 #if IS_DEBUG
 int psync_sql_do_trylock(const char *file, unsigned line){
@@ -2501,10 +2537,15 @@ int psync_debug(const char *file, const char *function, int unsigned line, int u
       break;
     }
   if (unlikely(!log)){
-    log=fopen(DEBUG_FILE, "a+");
+#if defined(P_OS_WINDOWS)
+    log=fopen(psyncLogPath, "a+");
+#else
+    log = fopen(DEBUG_FILE, "a+");
+#endif
     if (!log)
       return 1;
   }
+
   psync_nanotime(&ts);
   time_format(ts.tv_sec, ts.tv_nsec, dttime);
   threadid=pthread_self();

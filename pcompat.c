@@ -228,14 +228,16 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result){
 }
 #endif
 
-/*static wchar_t *utf8_to_wchar(const char *str){
+static wchar_t *utf8_to_wchar(const char *str){
   int len;
   wchar_t *ret;
+
   len=MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
   ret=psync_new_cnt(wchar_t, len);
   MultiByteToWideChar(CP_UTF8, 0, str, -1, ret, len);
+
   return ret;
-}*/
+}
 
 static wchar_t *utf8_to_wchar_path(const char *str){
   int len;
@@ -3464,7 +3466,7 @@ const char *psync_appname(){
 char *psync_deviceid(){
   char *device;
 #if defined(P_OS_WINDOWS)
-  DWORD vers, vmajor, vminor;
+  DWORD vers, vmajor, vminor, buildnumber;
   SYSTEM_POWER_STATUS bat;
   const char* hardware, * ver;
   char versbuff[32];
@@ -3482,6 +3484,7 @@ char *psync_deviceid(){
     RtlGetVersion(&osvx);
     vmajor = (DWORD)osvx.dwMajorVersion;
     vminor = (DWORD)osvx.dwMinorVersion;
+    buildnumber = (DWORD)osvx.dwBuildNumber;
     FreeLibrary(hmodule);
   }
   else
@@ -3490,6 +3493,7 @@ char *psync_deviceid(){
     vers = GetVersion();
     vmajor=(DWORD)(LOBYTE(LOWORD(vers)));
     vminor=(DWORD)(HIBYTE(LOWORD(vers)));
+    buildnumber=(DWORD)(LOBYTE(HIWORD(vers)));
   }
   
   if (GetSystemMetrics(SM_TABLETPC))
@@ -3517,10 +3521,10 @@ char *psync_deviceid(){
     }
   }
   else if (vmajor==10){
-    switch (vminor){
-      case 0: ver="10.0"; break;
-      default: psync_slprintf(versbuff, sizeof(versbuff), "10.%u", (unsigned int)vminor); ver=versbuff;
-    }
+    if (buildnumber < 22000)
+      ver = "10.0";
+    else
+      ver = "11";
   }
   else{
     psync_slprintf(versbuff, sizeof(versbuff), "%u.%u", (unsigned int)vmajor, (unsigned int)vminor);
@@ -3533,24 +3537,35 @@ char *psync_deviceid(){
   size_t len;
   char versbuff[64], modelname[256];
   int v;
+
   if (uname(&un))
     ver="Mac OS X";
   else{
     v=atoi(un.release);
     switch (v){
-      case 16: ver="macOS 10.12 Sierra"; break;
-      case 15: ver="OS X 10.11 El Capitan"; break;
-      case 14: ver="OS X 10.10 Yosemite"; break;
-      case 13: ver="OS X 10.9 Mavericks"; break;
-      case 12: ver="OS X 10.8 Mountain Lion"; break;
-      case 11: ver="OS X 10.7 Lion"; break;
-      case 10: ver="OS X 10.6 Snow Leopard"; break;
+      case 23: ver = "macOS 14 Sonoma"; break;
+      case 22: ver = "macOS 13 Ventura"; break;
+      case 21: ver = "macOS 12 Monterey"; break;
+      case 20: ver = "macOS 11 Big Sur"; break;
+      case 19: ver = "macOS 10.15 Catalina"; break;
+      case 18: ver = "macOS 10.14 Mojave"; break;
+      case 17: ver = "macOS 10.13 High Sierra"; break;
+      case 16: ver = "macOS 10.12 Sierra"; break;
+      case 15: ver = "OS X 10.11 El Capitan"; break;
+      case 14: ver = "OS X 10.10 Yosemite"; break;
+      case 13: ver = "OS X 10.9 Mavericks"; break;
+      case 12: ver = "OS X 10.8 Mountain Lion"; break;
+      case 11: ver = "OS X 10.7 Lion"; break;
+      case 10: ver = "OS X 10.6 Snow Leopard"; break;
       default: psync_slprintf(versbuff, sizeof(versbuff), "Mac/Darwin %s", un.release); ver=versbuff;
     }
   }
+
   len=sizeof(modelname);
+
   if (sysctlbyname("hw.model", modelname, &len, NULL, 0))
     psync_strlcpy(modelname, "Mac", sizeof(modelname));
+
   versbuff[sizeof(versbuff)-1]=0;
   device=psync_strcat(modelname, ", ", ver, NULL);
 #elif defined(P_OS_LINUX)
@@ -3888,3 +3903,16 @@ int psync_munlock(void *ptr, size_t size){
 int psync_get_page_size(){
   return psync_page_size;
 }
+/***************************************************************/
+void setDriveLetter(char* appDrive) {
+#if defined(P_OS_WINDOWS)
+  appDriveLetter = psync_strdup(appDrive);
+
+  psyncLogPath = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
+
+  debug(D_NOTICE, "Setting Drive Letter to: [%s]", appDrive);
+#endif
+  debug(D_NOTICE, "Setting OS name to %s", psync_os_name);
+  debug(D_NOTICE, "Setting Software name to %s", psync_software_name);
+}
+/***************************************************************/

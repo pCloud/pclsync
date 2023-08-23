@@ -167,12 +167,10 @@ void psync_set_alloc(psync_malloc_t malloc_call, psync_realloc_t realloc_call, p
 }
 
 void psync_set_software_string(const char *str){
-  debug(D_NOTICE, "setting software name to %s", str);
   psync_set_software_name(str);
 }
 
 void psync_set_os_string(const char *str){
-  debug(D_NOTICE, "setting os name to %s", str);
   psync_set_os_name(str);
 }
 
@@ -215,8 +213,16 @@ void psync_apiserver_init(){
   }
 }
 
-int psync_init(){
+#if defined(P_OS_WINDOWS)
+int psync_init(char* appDrive) {
+#else
+int psync_init() {
+#endif
   char* deviceid;
+
+#if defined(P_OS_WINDOWS)
+  setDriveLetter(appDrive);
+#endif
 
   psync_thread_name="main app thread";
 
@@ -249,8 +255,12 @@ int psync_init(){
       pthread_mutex_unlock(&psync_libstate_mutex);
     return_error(PERROR_DATABASE_OPEN);
   }
+  
+  debug(D_WARNING, "psync_apiserver_init. Stop all inprogress tasks. Set Inprogress = 0.");
   psync_sql_statement("UPDATE task SET inprogress=0 WHERE inprogress=1");
+  
   psync_timer_init();
+  
   if (unlikely_log(psync_ssl_init())){
     if (IS_DEBUG)
       pthread_mutex_unlock(&psync_libstate_mutex);
@@ -3155,15 +3165,11 @@ int psync_get_login_req_id(char** reqId) {
 
   res = get_login_req_id(reqId);
 
-  debug(D_NOTICE, "Request Id: [%s]", *reqId);
-
   return res;
 }
 /******************************************************************************************************************/
 int psync_wait_auth_token(char* request_id) {
   int res = -1;
-
-  debug(D_NOTICE, "Wait login token. Request Id:[%s]", request_id);
   
   res = wait_auth_token(request_id);
 
@@ -3199,3 +3205,23 @@ int psync_wait_auth_token_async(char* request_id, void* callb_ptr) {
   debug(D_NOTICE, "Async call done.");
 }
 /******************************************************************************************************************/
+int psync_uploadLogsAsync() {
+  debug(D_NOTICE, "Upload logs. Start.");
+
+  psync_run_thread1("Upload Logs", uploadLogsToDrive, NULL);
+
+  debug(D_NOTICE, "Upload logs. done.");
+
+  return 0;
+}
+/******************************************************************************************************************/
+int deleteLogFiles() {
+  return deleteLogs();
+}
+/******************************************************************************************************************/
+int psync_get_isdebug()
+{
+  if (DEBUG_LEVEL > D_ERROR)
+    return 0;
+  else return 1;
+}

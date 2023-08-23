@@ -419,9 +419,9 @@ static void add_deleted_element(const sync_folderlist *e, psync_folderid_t folde
 }
 
 static void add_modified_file(const sync_folderlist *e, const sync_folderlist *dbe, psync_folderid_t folderid, psync_folderid_t localfolderid, psync_syncid_t syncid, psync_synctype_t synctype){
-  debug(D_NOTICE, "found modified file %s on disk: size=%llu mtime=%llu inode=%llu in db: size=%llu mtime=%llu inode=%llu", e->name,
+  debug(D_NOTICE, "found modified file %s on disk: size=%llu mtime=%llu inode=%llu in db: size=%llu mtime=%llu inode=%llu , name:[%s]", e->name,
         (long long unsigned)e->size, (long long unsigned)e->mtimenat, (long long unsigned)e->inode,
-        (long long unsigned)dbe->size, (long long unsigned)dbe->mtimenat, (long long unsigned)dbe->inode);
+        (long long unsigned)dbe->size, (long long unsigned)dbe->mtimenat, (long long unsigned)dbe->inode, (long long unsigned)dbe->name);
   add_element_to_scan_list(SCAN_LIST_MODFILES, copy_folderlist_element(e, folderid, localfolderid, syncid, synctype));
 }
 
@@ -462,7 +462,9 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   while (ldisk!=&disklist && ldb!=&dblist){
     fdisk=psync_list_element(ldisk, sync_folderlist, list);
     fdb=psync_list_element(ldb, sync_folderlist, list);
+
     cmp=psync_filename_cmp(fdisk->name, fdb->name);
+    //cmp = strcmp(fdisk->name, fdb->name); //Bobo
 
     if (cmp==0){
       if (fdisk->isfolder==fdb->isfolder){
@@ -632,9 +634,13 @@ static void scan_upload_file(sync_folderlist *fl){
 
 static void scan_upload_modified_file(sync_folderlist *fl){
   psync_sql_res *res;
-  debug(D_NOTICE, "file modified %s (%lu)", fl->name, (unsigned long)fl->localid);
+
+  debug(D_NOTICE, "file modified Name: [%s]  FileId: [%lu]", fl->name, (unsigned long)fl->localid);
+
   psync_delete_upload_tasks_for_file(fl->localid);
+
   res=psync_sql_prep_statement("UPDATE localfile SET size=?, inode=?, mtime=?, mtimenative=? WHERE id=?");
+
   psync_sql_bind_uint(res, 1, fl->size);
   psync_sql_bind_uint(res, 2, fl->inode);
   psync_sql_bind_uint(res, 3, psync_mtime_native_to_mtime(fl->mtimenat));
@@ -906,6 +912,7 @@ static void scanner_scan(int first){
   sync_list *l;
   psync_uint_t i, w, trn, restartsleep;
   int movedfolders;
+
   if (first)
     localsleepperfolder=0;
   else{
@@ -918,6 +925,7 @@ static void scanner_scan(int first){
     if (localsleepperfolder<1)
       localsleepperfolder=1;
   }
+
   starttime=psync_current_time;
   restartsleep=1000;
 

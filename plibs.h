@@ -56,7 +56,11 @@
 
 #define IS_DEBUG (DEBUG_LEVEL>=D_WARNING)
 
+#ifndef P_OS_WINDOWS
 #define DEBUG_FILE "/tmp/psync_err.log"
+#endif
+
+#define LOGS_FOLDER "pSync_logs"
 
 #if defined(assert)
 #undef assert

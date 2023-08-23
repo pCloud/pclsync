@@ -312,10 +312,13 @@ void psync_path_status_drive_folder_changed(psync_folderid_t folderid) {
   psync_fstask_folder_t *folder;
   folder_tasks_t *ft;
   int changed;
+
   psync_sql_lock();
+
   folder=psync_fstask_get_folder_tasks_rdlocked(folderid);
   changed=folder && (folder->creats || folder->mkdirs);
   ft=get_folder_tasks(folderid, changed);
+
   if ((!changed && (!ft || ft->child_task_cnt)) || (changed && (ft->own_tasks || ft->child_task_cnt))) {
     if (changed && !ft->own_tasks)
       ft->own_tasks=1;
@@ -324,10 +327,12 @@ void psync_path_status_drive_folder_changed(psync_folderid_t folderid) {
     psync_sql_unlock();
     return;
   }
+
   if (changed) {
     assert(!ft->own_tasks);
     assert(!ft->child_task_cnt);
     ft->own_tasks=1;
+
     while ((folderid=get_parent_folder(folderid))!=PSYNC_INVALID_FOLDERID) {
       ft=get_folder_tasks(folderid, 1);
       ft->child_task_cnt++;
@@ -339,6 +344,7 @@ void psync_path_status_drive_folder_changed(psync_folderid_t folderid) {
     assert(!ft->child_task_cnt);
     assert(ft->own_tasks);
     free_folder_tasks(ft);
+
     while ((folderid=get_parent_folder(folderid))!=PSYNC_INVALID_FOLDERID) {
       ft=get_folder_tasks(folderid, 0);
       assert(ft); // if assert fails, the problem is not the assert, don't change it to "if (!ft) break;"
@@ -348,6 +354,7 @@ void psync_path_status_drive_folder_changed(psync_folderid_t folderid) {
       free_folder_tasks(ft);
     }
   }
+
   psync_sql_unlock();
 }
 

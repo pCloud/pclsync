@@ -647,15 +647,19 @@ err0:
 psync_socket *psync_socket_connect_download(const char *host, int unsigned port, int usessl){
   psync_socket *sock;
   int64_t dwlspeed;
+
   sock=psync_socket_connect(host, port, usessl);
+
   if (sock){
     dwlspeed=psync_setting_get_int(_PS(maxdownloadspeed));
     if (dwlspeed!=-1 && dwlspeed<PSYNC_MAX_SPEED_RECV_BUFFER){
       if (dwlspeed==0)
         dwlspeed=PSYNC_RECV_BUFFER_SHAPED;
+
       psync_socket_set_recvbuf(sock, (uint32_t)dwlspeed);
     }
   }
+
   return sock;
 }
 
@@ -688,15 +692,21 @@ void psync_account_downloaded_bytes(int unsigned bytes){
   else{
     uint64_t sum;
     psync_uint_t i;
+
     download_bytes_sec[download_bytes_off].tm=current_download_sec;
     download_bytes_sec[download_bytes_off].bytes=download_bytes_this_sec;
     current_download_sec=psync_current_time;
     download_bytes_this_sec=bytes;
     download_bytes_off=(download_bytes_off+1)%PSYNC_SPEED_CALC_AVERAGE_SEC;
+
     sum=0;
-    for (i=0; i<PSYNC_SPEED_CALC_AVERAGE_SEC; i++)
-      if (download_bytes_sec[i].tm>=psync_current_time-PSYNC_SPEED_CALC_AVERAGE_SEC)
-        sum+=download_bytes_sec[i].bytes;
+
+    for (i = 0; i < PSYNC_SPEED_CALC_AVERAGE_SEC; i++) {
+      if (download_bytes_sec[i].tm >= psync_current_time - PSYNC_SPEED_CALC_AVERAGE_SEC) {
+        sum += download_bytes_sec[i].bytes;
+      }
+    }
+
     download_speed=sum/PSYNC_SPEED_CALC_AVERAGE_SEC;
     psync_status_set_download_speed(download_speed);
   }
@@ -814,59 +824,84 @@ int psync_set_default_sendbuf(psync_socket *sock){
 psync_int_t psync_socket_writeall_upload(psync_socket *sock, const void *buff, int num){
   psync_int_t uplspeed, writebytes, wr, wwr;
   psync_uint_t thissec;
+
   uplspeed=psync_setting_get_int(_PS(maxuploadspeed));
+
   if (uplspeed==0){
     writebytes=0;
+
     while (num){
       while ((thissec=get_upload_bytes_this_sec())>=dyn_upload_speed){
         dyn_upload_speed=(dyn_upload_speed*PSYNC_UPL_AUTO_SHAPER_INC_PER)/100;
-//        set_send_buf(sock);
         psync_timer_wait_next_sec();
       }
+
       debug(D_NOTICE, "dyn_upload_speed=%lu", dyn_upload_speed);
-      if (num>dyn_upload_speed-thissec)
-        wwr=dyn_upload_speed-thissec;
-      else
-        wwr=num;
+
+      if (num > dyn_upload_speed - thissec) {
+        wwr = dyn_upload_speed - thissec;
+      }
+      else {
+        wwr = num;
+      }
+
       if (!psync_socket_writable(sock)){
         dyn_upload_speed=(dyn_upload_speed*PSYNC_UPL_AUTO_SHAPER_DEC_PER)/100;
-        if (dyn_upload_speed<PSYNC_UPL_AUTO_SHAPER_MIN)
-          dyn_upload_speed=PSYNC_UPL_AUTO_SHAPER_MIN;
-//        set_send_buf(sock);
+
+        if (dyn_upload_speed < PSYNC_UPL_AUTO_SHAPER_MIN) {
+          dyn_upload_speed = PSYNC_UPL_AUTO_SHAPER_MIN;
+        }
+
         psync_milisleep(1000);
       }
+
       wr=psync_socket_write(sock, buff, wwr);
-      if (wr==-1)
-        return writebytes?writebytes:wr;
+
+      if (wr == -1) {
+        return writebytes ? writebytes : wr;
+      }
+
       num-=wr;
       buff=(char *)buff+wr;
       writebytes+=wr;
       account_uploaded_bytes(wr);
     }
+
     return writebytes;
   }
   else if (uplspeed>0){
     writebytes=0;
+
     while (num){
       while ((thissec=get_upload_bytes_this_sec())>=uplspeed)
         psync_timer_wait_next_sec();
-      if (num>uplspeed-thissec)
-        wwr=uplspeed-thissec;
-      else
-        wwr=num;
+
+      if (num > uplspeed - thissec) {
+        wwr = uplspeed - thissec;
+      }
+      else {
+        wwr = num;
+      }
+
       wr=psync_socket_write(sock, buff, wwr);
+
       if (wr==-1)
         return writebytes?writebytes:wr;
+
       num-=wr;
       buff=(char *)buff+wr;
       writebytes+=wr;
       account_uploaded_bytes(wr);
     }
+
     return writebytes;
   }
+
   writebytes=psync_socket_writeall(sock, buff, num);
+
   if (writebytes>0)
     account_uploaded_bytes(writebytes);
+
   return writebytes;
 }
 
