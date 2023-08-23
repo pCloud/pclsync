@@ -275,7 +275,7 @@ $RECYCLE.BIN;\
 .pcloud;"
 
 #if defined (P_OS_WINDOWS)
-#define PSYNC_IGNORE_PATHS_DEFAULT "C:\\$Recycle.Bin;C:\\$WinREAgent;C:\\Windows;C:\\Program Files;C:\\Program Files (x86);"
+#define PSYNC_IGNORE_PATHS_DEFAULT "C:\\$Recycle.Bin;C:\\$WinREAgent;C:\\Windows;C:\\Program Files;C:\\Program Files (x86);" ## LOST_AND_FOUND_FNAME ## ";"
 #endif
 
 #if defined (P_OS_MACOSX)
