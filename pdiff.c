@@ -2811,15 +2811,33 @@ static void psync_run_analyze_if_needed(){
 }
 
 static int psync_diff_check_quota(psync_socket *sock){
-  binparam diffparams[]={P_STR("timeformat", "timestamp"), P_BOOL("getapiserver", 1)};
   binresult *res;
   const binresult *uq;
   uint64_t oused_quota, result;
   oused_quota=used_quota;
+
+  binparam diffparams[] = {
+    P_STR("timeformat", "timestamp"), 
+    P_STR("auth", psync_my_auth),
+    P_STR("osversion", psync_deviceos()),
+    P_STR("appversion", psync_appname()),
+    P_STR("deviceid", psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'")),
+    P_STR("device", psync_device_string()),
+    P_BOOL("getauth", 1),
+    P_BOOL("cryptokeyssign", 1),
+    P_BOOL("getapiserver", 1),
+    P_BOOL("getlastsubscription", 1),
+    P_NUM("os", P_OS_ID)
+  };
+
+
   res=send_command(sock, "userinfo", diffparams);
+
   if (!res)
     return -1;
+
   result=psync_find_result(res, "result", PARAM_NUM)->num;
+
   if (unlikely(result))
     debug(D_WARNING, "userinfo returned error %u: %s", (unsigned)result, psync_find_result(res, "error", PARAM_STR)->str);
   else{
@@ -2827,15 +2845,20 @@ static int psync_diff_check_quota(psync_socket *sock){
     if (likely_log(uq))
       used_quota=uq->num;
   }
+
   if (used_quota!=oused_quota){
     debug(D_WARNING, "corrected locally calculated quota from %lu to %lu", (unsigned long)oused_quota, (unsigned long)used_quota);
     psync_set_uint_value("usedquota", used_quota);
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
   }
+
   uq=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
+
   if (uq->length)
     psync_apipool_set_server(uq->array[0]->str);
+
   psync_free(res);
+
   return 0;
 }
 
