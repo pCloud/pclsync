@@ -3056,15 +3056,31 @@ userinfo_t* psync_get_userinfo() {
     binresult* res;
     uint64_t err;
     userinfo_t *info;
-    binparam params[] = { P_STR("auth", psync_my_auth), P_STR("timeformat", "timestamp") };
+    
+    binparam params[] = {
+      P_STR("auth", psync_my_auth), 
+      P_STR("timeformat", "timestamp"),
+      P_STR("osversion", psync_deviceos()),
+      P_STR("appversion", psync_appname()),
+      P_STR("deviceid", psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'")),
+      P_STR("device", psync_device_string()),
+      P_BOOL("getauth", 1),
+      P_BOOL("cryptokeyssign", 1),
+      P_BOOL("getapiserver", 1),
+      P_BOOL("getlastsubscription", 1),
+      P_NUM("os", P_OS_ID)
+    };
+    
     res = psync_api_run_command("userinfo", params);
-    if (!res) {
+
+    if (!res){
       psync_free(res);
       return NULL;
     }
+
     err = psync_find_result(res, "result", PARAM_NUM)->num;
-    if (err)
-    {
+
+    if (err){
       psync_free(res);
       return NULL;
     }
