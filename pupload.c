@@ -1420,18 +1420,10 @@ static void delete_upload_task(uint64_t taskid, psync_fileid_t localfileid) {
   psync_uint_row row;
   psync_sql_lock();
 
-  debug(D_BUG, "BOBO: Delete task 7.");
-
-  debug(D_BUG, "BOBO: Tasks before delete.");
-  psync_log_tasks();
-
   res = psync_sql_prep_statement("DELETE FROM task WHERE id=?");
 
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
-
-  debug(D_BUG, "BOBO: Tasks after delete.");
-  psync_log_tasks();
 
   res=psync_sql_query_nolock("SELECT syncid, localparentfolderid FROM localfile WHERE id=?");
   psync_sql_bind_uint(res, 1, localfileid);
@@ -1658,18 +1650,10 @@ static void upload_thread(){
           psync_status_recalc_to_upload_async();
         }
         else{
-          debug(D_BUG, "BOBO: Delete task 8.");
-
-          debug(D_BUG, "BOBO: Tasks before delete.");
-          psync_log_tasks();
-
           res = psync_sql_prep_statement("DELETE FROM task WHERE id=?");
 
           psync_sql_bind_uint(res, 1, taskid);
           psync_sql_run_free(res);
-
-          debug(D_BUG, "BOBO: Tasks after delete.");
-          psync_log_tasks();
         }
       }
       else {
@@ -1744,18 +1728,11 @@ void psync_delete_upload_tasks_for_file(psync_fileid_t localfileid){
   psync_sql_res *res;
   upload_list_t *upl;
 
-  debug(D_BUG, "BOBO: Delete task 6.");
-
-  debug(D_BUG, "BOBO: Tasks before delete.");
-  psync_log_tasks();
-
   res = psync_sql_prep_statement("DELETE FROM task WHERE type=? AND localitemid=?");
+
   psync_sql_bind_uint(res, 1, PSYNC_UPLOAD_FILE);
   psync_sql_bind_uint(res, 2, localfileid);
   psync_sql_run(res);
-
-  debug(D_BUG, "BOBO: Tasks after delete.");
-  psync_log_tasks();
 
   if (psync_sql_affected_rows())
     psync_status_recalc_to_upload_async();
@@ -1772,18 +1749,10 @@ void psync_stop_sync_upload(psync_syncid_t syncid){
   upload_list_t *upl;
   psync_sql_res *res;
 
-  debug(D_BUG, "BOBO: Delete task 7.");
-
-  debug(D_BUG, "BOBO: Tasks before delete.");
-  psync_log_tasks();
-
   res = psync_sql_prep_statement("DELETE FROM task WHERE syncid=? AND type&"NTO_STR(PSYNC_TASK_DWLUPL_MASK)"="NTO_STR(PSYNC_TASK_UPLOAD));
 
   psync_sql_bind_uint(res, 1, syncid);
   psync_sql_run_free(res);
-
-  debug(D_BUG, "BOBO: Tasks after delete.");
-  psync_log_tasks();
 
   pthread_mutex_lock(&current_uploads_mutex);
   psync_list_for_each_element(upl, &uploads, upload_list_t, list)

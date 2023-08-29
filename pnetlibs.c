@@ -2356,12 +2356,8 @@ void psync_unlock_file_by_path(const char* path) {
   tr = file_lock_tree;
   at = &file_lock_tree;
 
-  debug(D_WARNING, "BOBO: Unlock file by Path: [%s]", path);
-
   while (tr) {
     cmp = psync_filename_cmp(path, psync_tree_element(tr, psync_file_lock_t, tree)->filename);
-
-    debug(D_WARNING, "BOBO: Compare: [%s] = [%s]", path, psync_tree_element(tr, psync_file_lock_t, tree)->filename);
 
     if (cmp < 0) {
       if (tr->left)
@@ -2380,8 +2376,6 @@ void psync_unlock_file_by_path(const char* path) {
       }
     }
     else {
-      debug(D_WARNING, "BOBO: Unlock file. Path: [%s]", path);
-
       psync_tree_del(&file_lock_tree, &lock->tree);
       psync_free(lock);
     }
@@ -2390,14 +2384,11 @@ void psync_unlock_file_by_path(const char* path) {
   pthread_mutex_unlock(&file_lock_mutex);
 }
 /******************************************************************************/
-//Bobo
 psync_file_lock_t *psync_lock_file(const char *path){
   psync_file_lock_t *lock;
   psync_tree *tr, **at;
   size_t len;
   int cmp;
-
-  debug(D_WARNING, "BOBO: Lock file: [%s]", path);
 
   len=strlen(path)+1;
   lock=psync_malloc(offsetof(psync_file_lock_t, filename)+len);
@@ -2431,15 +2422,12 @@ psync_file_lock_t *psync_lock_file(const char *path){
       pthread_mutex_unlock(&file_lock_mutex);
       psync_free(lock);
 
-      debug(D_WARNING, "BOBO: Element found in tree. Return NULL");
-
       return NULL;
     }
   }
 
   *at=&lock->tree;
 
-  debug(D_WARNING, "BOBO: Add element to lock tree. Name: [%s]", &lock->filename);
   psync_tree_added_at(&file_lock_tree, tr, &lock->tree);
 
   pthread_mutex_unlock(&file_lock_mutex);
@@ -2448,14 +2436,11 @@ psync_file_lock_t *psync_lock_file(const char *path){
 }
 
 void psync_unlock_file(psync_file_lock_t *lock){
-  debug(D_WARNING, "BOBO: Unlock file: [%s]", lock->filename);
-
   pthread_mutex_lock(&file_lock_mutex);
   psync_tree_del(&file_lock_tree, &lock->tree);
   pthread_mutex_unlock(&file_lock_mutex);
   psync_free(lock);
 }
-//Bobo
 /**************************************************/
 void log_file_lock_tree() {
   psync_tree* tr, ** at;
@@ -2491,7 +2476,6 @@ void log_file_lock_tree() {
   pthread_mutex_unlock(&file_lock_mutex);
 }
 /**************************************************/
-//Bobo
 int psync_get_upload_checksum(psync_uploadid_t uploadid, unsigned char *uhash, uint64_t *usize){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("uploadid", uploadid)};
   psync_socket *api;

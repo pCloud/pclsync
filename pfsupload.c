@@ -1257,8 +1257,6 @@ static int psync_send_task_creat(psync_socket *api, fsupload_task_t *task){
       psync_file_close(fd);
 
       if (!ret){
-        debug(D_NOTICE, "BOBO: Small upload failed. Ret: [%d]", ret);
-
         psync_upload_inc_uploads();
         task->ccreat=1;
       }

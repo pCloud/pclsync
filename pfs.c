@@ -2754,8 +2754,6 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
   old_fid = psync_get_folderid(fold_path->folderid, fold_path->name);
 
   if (folder){
-    debug(D_NOTICE, "BOBO: Renaming folder.");
-
     if ((mkdir=psync_fstask_find_mkdir(folder, fold_path->name, 0))){
       if (psync_fs_is_file(fnew_path->folderid, fnew_path->name)){
         ret=-ENOTDIR;

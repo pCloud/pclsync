@@ -1894,8 +1894,6 @@ static void send_share_notify(psync_eventtype_t eventid, const binresult *share,
   uint64_t touserid = 0;
   uint64_t fromuserid = 0;
 
-  debug(D_NOTICE, "BOBO: Send share notify. Initialdownload: [%d]", initialdownload);
-
   if (initialdownload)
     return;
 
