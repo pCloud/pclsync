@@ -799,11 +799,6 @@ static psync_socket *get_connected_socket(){
       psync_sql_sync();
     }
 
-    debug(D_NOTICE, "Statistic Data. Appversion: [%s]", appversion);
-    debug(D_NOTICE, "Statistic Data. OSversion: [%s]", osversion);
-    debug(D_NOTICE, "Statistic Data. Device: [%s]", devicestring);
-    debug(D_NOTICE, "Statistic Data. Deviceid: [%s]", deviceid);
-
     psync_free(auth);
     psync_free(user);
     psync_free(pass);
@@ -812,10 +807,6 @@ static psync_socket *get_connected_socket(){
     psync_my_2fa_token=NULL;
     psync_my_2fa_code_type=0;
     psync_my_2fa_code[0]=0;
-
-    psync_free(osversion);
-    psync_free(deviceid);
-    psync_free(devicestring);
 
     psync_sql_sync();
 
