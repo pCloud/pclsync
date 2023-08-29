@@ -255,7 +255,8 @@ int psync_init() {
       pthread_mutex_unlock(&psync_libstate_mutex);
     return_error(PERROR_DATABASE_OPEN);
   }
-
+  
+  debug(D_WARNING, "psync_apiserver_init. Stop all inprogress tasks. Set Inprogress = 0.");
   psync_sql_statement("UPDATE task SET inprogress=0 WHERE inprogress=1");
   
   psync_timer_init();
@@ -3164,15 +3165,11 @@ int psync_get_login_req_id(char** reqId) {
 
   res = get_login_req_id(reqId);
 
-  debug(D_NOTICE, "Request Id: [%s]", *reqId);
-
   return res;
 }
 /******************************************************************************************************************/
 int psync_wait_auth_token(char* request_id) {
   int res = -1;
-
-  debug(D_NOTICE, "Wait login token. Request Id:[%s]", request_id);
   
   res = wait_auth_token(request_id);
 

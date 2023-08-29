@@ -77,6 +77,10 @@ int zipLogs(char* zipLogsFname) {
   mz_bool status;
   mz_zip_archive zip_archive;
 
+  uint64_t fsize = 0;
+  psync_stat_t st;
+  int ret = 0;
+
 #if defined(P_OS_WINDOWS)
   char* srcFname1 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "psync_err.log", NULL);
   char* srcFname2 = psync_strcat(appDriveLetter, "tmp", PSYNC_DIRECTORY_SEPARATOR, "cbfs_log.log", NULL);
@@ -87,14 +91,25 @@ int zipLogs(char* zipLogsFname) {
 
   FILE* srcFile;
 
-  debug(D_NOTICE, "Create Zip file: [%s]", zipLogsFname);
+  debug(D_NOTICE, "Check log file size: [%s]", srcFname1);
+  ret = psync_stat(srcFname1, &st);
+  
+  fsize = psync_stat_size(&st);
+
+  if (fsize > MAX_LOG_SIZE) {
+    debug(D_NOTICE, "Zipped logs too big.  File size: [%llu] > [%llu]", fsize, MAX_LOG_SIZE);
+
+    return LOGS_ZIP_TOO_BIG;
+  }
+
+  debug(D_NOTICE, "Create Zip file");
 
   mz_zip_zero_struct(&zip_archive);
 
   status = mz_zip_writer_init_file(&zip_archive, zipLogsFname, 0);
 
   if (status == MZ_FALSE) {
-    return CANT_CREATE_ZIP_FILE;
+    return FAIL_TO_ZIP_LOGS;
   }
 
   srcFile = fopen(srcFname1, "r");
@@ -107,7 +122,7 @@ int zipLogs(char* zipLogsFname) {
   else {
     debug(D_NOTICE, "Failed to open: [%s]", srcFname1);
 
-    return CANT_FIND_LOG_FILE;
+    return FAIL_TO_ZIP_LOGS;
   }
 
 #if defined(P_OS_WINDOWS)
@@ -160,8 +175,6 @@ int uploadLogsToDrive() {
   }
   else {
     debug(D_NOTICE, "Failed to zip logs. Res: [%d]", res);
-
-    res = FAIL_TO_ZIP_LOGS;
   }
 
   debug(D_NOTICE, "Done uploading logs. Send the data event. Res: [%d]", res);
@@ -323,6 +336,8 @@ int create_backend_event(const char*  binapi,
     paramsLocal[mpCnt + pCnt] = (binparam)P_STR(EPARAM_KEY, keyParams);
   }
 
+  //Comment out because the parameters contain the authentication token
+  /*
   for (i = 0; i < tpCnt; i++) {
     if (paramsLocal[i].paramtype == 0) {
       debug(D_NOTICE, "%d: String Param: [%s] - [%s]", i, paramsLocal[i].paramname, paramsLocal[i].str);
@@ -334,6 +349,7 @@ int create_backend_event(const char*  binapi,
       continue;
     }
   }
+  */
 
   res = do_send_command(sock, EVENT_WS, strlen(EVENT_WS), paramsLocal, tpCnt, -1, 1);
 
@@ -1394,7 +1410,7 @@ int get_login_req_id(char** reqId) {
 /***********************************************************************/
 int wait_auth_token(char* request_id) {
   int res, loc_id, last_loc_id = 0;
-  uint64_t result, currentuserid, newuserid = 666, rememberme = 1;
+  uint64_t result, currentuserid, newuserid = 666, rememberme = 0;
   char* token;
   binresult* resData = NULL;
 
@@ -1438,17 +1454,12 @@ int wait_auth_token(char* request_id) {
 
   if (currentuserid) {
     if (currentuserid != newuserid) {
-      if (!is_user_relocated(currentuserid, token)) {
-        debug(D_NOTICE, "User is not relocated. Unlink.");
-        psync_unlink();
-      }
-      else {
-        debug(D_NOTICE, "User is relocated. Skip Unlink.");
-        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
-      }
+      debug(D_NOTICE, "New user detected. Unlink.");
+      psync_unlink();
 
       psync_recache_contacts = 1;
-      //psync_set_int_value("userid", newuserid);
+
+      psync_set_int_value("userid", newuserid);
     }
   }
 

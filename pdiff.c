@@ -264,6 +264,8 @@ static psync_socket *get_connected_socket(){
   }
 
   debug(D_NOTICE, "using deviceid %s", deviceid);
+
+  osversion = psync_deviceos();
   appversion=psync_appname();
   devicestring=psync_device_string();
 
@@ -738,7 +740,7 @@ static psync_socket *get_connected_socket(){
 
     //If the flag is up, send a first login event to track the number of sucessful installs.
     if (isFirstLogin) {
-      debug(D_NOTICE, "This is a first login. Send the FIRST_LOGIN event. Token:[%s], User id: [%lu]", psync_my_auth, (unsigned long)userid);
+      debug(D_NOTICE, "This is a first login. Send the FIRST_LOGIN event.");
       time_t rawtime;
       time(&rawtime);
 
@@ -797,15 +799,24 @@ static psync_socket *get_connected_socket(){
       psync_sql_sync();
     }
 
+    debug(D_NOTICE, "Statistic Data. Appversion: [%s]", appversion);
+    debug(D_NOTICE, "Statistic Data. OSversion: [%s]", osversion);
+    debug(D_NOTICE, "Statistic Data. Device: [%s]", devicestring);
+    debug(D_NOTICE, "Statistic Data. Deviceid: [%s]", deviceid);
+
     psync_free(auth);
     psync_free(user);
     psync_free(pass);
+
     psync_free(psync_my_2fa_token);
     psync_my_2fa_token=NULL;
     psync_my_2fa_code_type=0;
     psync_my_2fa_code[0]=0;
+
+    psync_free(osversion);
     psync_free(deviceid);
     psync_free(devicestring);
+
     psync_sql_sync();
 
     return sock;
@@ -2970,7 +2981,9 @@ static void psync_diff_thread(){
 restart:
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   sock=get_connected_socket();
-  debug(D_NOTICE, "connected");
+  
+  debug(D_NOTICE, "Connected!");
+
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
   ids.diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
 

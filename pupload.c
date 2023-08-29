@@ -1789,13 +1789,13 @@ int upload_logs(char* filename, char* fPath) {
 
   if (fd == INVALID_HANDLE_VALUE) {
     debug(D_NOTICE, "Could not open local file [%s]", fPath);
-    return -1;
+    return FAIL_TO_ZIP_LOGS;
   }
 
   api = psync_apipool_get();
 
   if (unlikely(!api)) {
-    return -1;
+    return FAIL_TO_ZIP_LOGS;
   }
 
   ret = psync_stat(fPath, &st);
@@ -1818,8 +1818,6 @@ int upload_logs(char* filename, char* fPath) {
   buff = psync_malloc(PSYNC_COPY_BUFFER_SIZE);
 
   while (bw < fsize) {
-    psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
-
     if (fsize - bw > PSYNC_COPY_BUFFER_SIZE)
       rd = PSYNC_COPY_BUFFER_SIZE;
     else
@@ -1851,7 +1849,7 @@ int upload_logs(char* filename, char* fPath) {
     psync_apipool_release(api);
   else {
     psync_apipool_release_bad(api);
-    return -1;
+    return FAIL_TO_ZIP_LOGS;
   }
 
   result = psync_find_result(res, "result", PARAM_NUM)->num;
@@ -1861,7 +1859,7 @@ int upload_logs(char* filename, char* fPath) {
     debug(D_WARNING, "command uploadfile returned code %u", (unsigned)result);
     psync_process_api_error(result);
     if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
-      return -1;
+      return FAIL_TO_ZIP_LOGS;
     else {
       return 0;
     }

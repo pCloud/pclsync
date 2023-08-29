@@ -323,11 +323,13 @@ void psync_terminate_status_waiters(){
 void psync_wait_statuses_array(const uint32_t *combinedstatuses, uint32_t cnt){
   uint32_t waited, i, statusid, status;
   pthread_mutex_lock(&statusmutex);
+
   do {
     waited=0;
     for (i=0; i<cnt; i++){
       statusid=combinedstatuses[i]>>24;
       status=combinedstatuses[i]&0x00ffffff;
+      
       while ((statuses[statusid]&status)==0){
         waited=1;
         status_waiters++;
@@ -336,6 +338,7 @@ void psync_wait_statuses_array(const uint32_t *combinedstatuses, uint32_t cnt){
       }
     }
   } while (waited);
+
   pthread_mutex_unlock(&statusmutex);
 }
 
