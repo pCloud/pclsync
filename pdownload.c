@@ -959,7 +959,6 @@ static int task_rename_file(psync_syncid_t oldsyncid, psync_syncid_t newsyncid, 
 
       debug(D_NOTICE, "renamed [%s] to [%s]", oldpath, newpath);
 
-      //Bobo
       res = psync_sql_query("SELECT size FROM file WHERE id=? AND size!=?");
       psync_sql_bind_uint(res, 1, fileid);
       psync_sql_bind_uint(res, 2, fsize2);
@@ -970,7 +969,6 @@ static int task_rename_file(psync_syncid_t oldsyncid, psync_syncid_t newsyncid, 
 
         psync_task_download_file(newsyncid, fileid, newlocalfolderid, newname);
       }
-      //Bobo
     }
     psync_resume_localscan();
   }

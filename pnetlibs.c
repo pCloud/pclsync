@@ -2374,7 +2374,6 @@ int psync_is_revision_of_file(const unsigned char *localhashhex, uint64_t filesi
     *isrev=0;
   return PSYNC_NET_OK;
 }
-//Bobo
 /******************************************************************************/
 void psync_unlock_file_by_path(const char* path) {
   psync_file_lock_t* lock;

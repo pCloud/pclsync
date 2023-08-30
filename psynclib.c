@@ -295,10 +295,8 @@ int psync_init() {
     deviceid = generate_device_id();
   }
 
-  //Bobo
   debug(D_NOTICE, "Init [%s] fodler id.", LOST_AND_FOUND_FNAME);
   lost_and_found_fid = 0;
-  //Bobo
 
   psync_free(deviceid);
 

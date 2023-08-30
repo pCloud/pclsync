@@ -125,12 +125,9 @@ int is_task_crypto(psync_fsfileid_t taskid) {
   return 0;
 }
 /**********************************************************************************************************/
-//Bobo
 void get_lost_and_found_fid() {
   int res = 0;
   char* err;
-
-  debug(D_NOTICE, "BOBO: 1 Lost and Found Id: [%llu]", lost_and_found_fid);
 
   if (lost_and_found_fid != 0) {
     return;
@@ -140,21 +137,14 @@ void get_lost_and_found_fid() {
 
   lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
 
-  debug(D_NOTICE, "BOBO: 2 Lost and Found Id: [%llu]", lost_and_found_fid);
-
   if (lost_and_found_fid == -1) {
     res = psync_create_remote_folder(0, LOST_AND_FOUND_FNAME, &err);
 
     lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
-
-    debug(D_NOTICE, "BOBO: 3 Lost and Found Id: [%llu]", lost_and_found_fid);
   }
 
   psync_sql_unlock();
-
-  debug(D_NOTICE, "BOBO: 4 Lost and Found Id: [%llu]", lost_and_found_fid);
 }
-//Bobo
 /**********************************************************************************************************/
 static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
   psync_sql_res *res;
@@ -177,7 +167,6 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
     case 2003: /* access denied */
     case 2075: /* not a member of a business account */
     case 2344: /* can't create folders in backup folder */
-      //Bobo
       get_lost_and_found_fid();
 
       debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
@@ -186,13 +175,6 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
       psync_sql_bind_uint(res, 1, lost_and_found_fid);
       psync_sql_bind_uint(res, 2, task->id);
       psync_sql_run_free(res);
-
-      //Bobo
-      /*
-      res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
-      psync_sql_bind_uint(res, 1, task->id);
-      psync_sql_run_free(res);
-      */
 
       break;
     case 2001: /* invalid name */
@@ -413,7 +395,6 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
     case 2003: /* access denied */
     case 2075: /* are not a member of a business account */
     case 2346: /* backup folder */
-      //Bobo
       get_lost_and_found_fid();
 
       debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
@@ -422,13 +403,6 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
       psync_sql_bind_uint(res, 1, lost_and_found_fid);
       psync_sql_bind_uint(res, 2, taskid);
       psync_sql_run_free(res);
-      //Bobo
-
-      /*
-      res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
-      psync_sql_bind_uint(res, 1, taskid);
-      psync_sql_run_free(res);
-      */
 
       psync_fsupload_wake();
       return -1;

@@ -393,9 +393,7 @@ static inline size_t psync_strlcpy(char *dst, const char *src, size_t size){
     return 0;
 }
 
-//Bobo
 #define LOST_AND_FOUND_FNAME "lost_and_found"
 
 psync_folderid_t lost_and_found_fid;
-//Bobo
 #endif
