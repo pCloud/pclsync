@@ -384,8 +384,6 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
 
-      debug(D_WARNING, "BOBO: Sending userinfo command. Params: Device os: [%s]. App Name: [%s]. Deviceid: [%s]. Device: [%s]", psync_deviceos(), psync_appname(), psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'"), psync_device_string());
-
       res=send_command(sock, "userinfo", params);
     }
 
@@ -2861,8 +2859,6 @@ static int psync_diff_check_quota(psync_socket *sock){
     P_BOOL("getlastsubscription", 1),
     P_NUM("os", P_OS_ID)
   };
-
-  debug(D_WARNING, "BOBO: Sending userinfo command. Params: Device os: [%s]. App Name: [%s]. Deviceid: [%s]. Device: [%s]", psync_deviceos(), psync_appname(), psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'"), psync_device_string());
 
   res=send_command(sock, "userinfo", diffparams);
 

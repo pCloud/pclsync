@@ -478,6 +478,20 @@ unsigned char *do_prepare_command(const char *command, size_t cmdlen, const binp
   if (datalen!=-1)
     plen+=sizeof(uint64_t);
 
+  debug(D_NOTICE, "BOBO: Prepare command: [%s]", command);
+
+  for (i = 0; i < paramcnt; i++) {
+    if (params[i].paramtype == PARAM_STR) {
+      debug(D_NOTICE, "BOBO: Parameter:  Name: [%s] = [%s]", params[i].paramname, params[i].str);
+    }
+    else if (params[i].paramtype == PARAM_NUM) {
+      debug(D_NOTICE, "BOBO: Parameter:  Name: [%s] = [%u]", params[i].paramname, params[i].num);
+    }
+    else if (params[i].paramtype == PARAM_BOOL) {
+      debug(D_NOTICE, "BOBO: Parameter:  Name: [%s] = [%u]", params[i].paramname, params[i].num & 1);
+    }
+  }
+
   for (i = 0; i < paramcnt; i++) {
     if (params[i].paramtype == PARAM_STR) {
       plen += params[i].paramnamelen + params[i].opts + 5; /* 1byte type+paramnamelen, nbytes paramnamelen, 4byte strlen, nbytes str */
@@ -529,8 +543,6 @@ unsigned char *do_prepare_command(const char *command, size_t cmdlen, const binp
 binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdlen, const binparam *params, size_t paramcnt, int64_t datalen, int readres){
   unsigned char *sdata;
   size_t plen;
-
-  debug(D_NOTICE, "BOBO: Sending command: [%s]", command);
 
   sdata=do_prepare_command(command, cmdlen, params, paramcnt, datalen, 0, &plen);
 

@@ -639,8 +639,6 @@ void psync_update_cryptostatus(){
       P_NUM("os", P_OS_ID)
     };
 
-    debug(D_WARNING, "BOBO: Sending userinfo command. Params: Device os: [%s]. App Name: [%s]. Deviceid: [%s]. Device: [%s]", psync_deviceos(), psync_appname(), psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'"), psync_device_string());
-
     res = psync_api_run_command("userinfo", params);
 
     if (!res) {
