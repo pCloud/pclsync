@@ -124,18 +124,18 @@ void psync_delete_cached_crypto_keys(){
 static binresult *get_userinfo_user_digest(psync_socket *sock, const char *username, size_t userlen, const char *pwddig, const char *digest, uint32_t diglen,
                                            const char *osversion, const char *appversion, const char *deviceid, const char *devicestring){
   binparam params[]={P_STR("timeformat", "timestamp"),
-                      P_LSTR("username", username, userlen),
-                      P_LSTR("digest", digest, diglen),
-                      P_LSTR("passworddigest", pwddig, PSYNC_SHA1_DIGEST_HEXLEN),
-                      P_STR("osversion", osversion),
-                      P_STR("appversion", appversion),
-                      P_STR("deviceid", deviceid),
-                      P_STR("device", devicestring),
-                      P_BOOL("getauth", 1),
-                      P_BOOL("getapiserver", 1),
-                      P_BOOL("cryptokeyssign", 1),
-					  P_BOOL("getlastsubscription", 1),
-                      P_NUM("os", P_OS_ID)};
+                     P_LSTR("username", username, userlen),
+                     P_LSTR("digest", digest, diglen),
+                     P_LSTR("passworddigest", pwddig, PSYNC_SHA1_DIGEST_HEXLEN),
+                     P_STR("osversion", osversion),
+                     P_STR("appversion", appversion),
+                     P_STR("deviceid", deviceid),
+                     P_STR("device", devicestring),
+                     P_BOOL("getauth", 1),
+                     P_BOOL("getapiserver", 1),
+                     P_BOOL("cryptokeyssign", 1),
+                     P_BOOL("getlastsubscription", 1),
+                     P_NUM("os", P_OS_ID)};
   return send_command(sock, "login", params);
 }
 
@@ -384,7 +384,7 @@ static psync_socket *get_connected_socket(){
                          P_BOOL("getlastsubscription", 1),
                          P_NUM("os", P_OS_ID)};
 
-      debug(D_NOTICE, "Send userinfo command.");
+      debug(D_WARNING, "BOBO: Sending userinfo command. Params: Device os: [%s]. App Name: [%s]. Deviceid: [%s]. Device: [%s]", psync_deviceos(), psync_appname(), psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'"), psync_device_string());
 
       res=send_command(sock, "userinfo", params);
     }
@@ -2861,6 +2861,8 @@ static int psync_diff_check_quota(psync_socket *sock){
     P_BOOL("getlastsubscription", 1),
     P_NUM("os", P_OS_ID)
   };
+
+  debug(D_WARNING, "BOBO: Sending userinfo command. Params: Device os: [%s]. App Name: [%s]. Deviceid: [%s]. Device: [%s]", psync_deviceos(), psync_appname(), psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'"), psync_device_string());
 
   res=send_command(sock, "userinfo", diffparams);
 
