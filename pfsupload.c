@@ -390,7 +390,18 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
         return -1;
       }
       else {
-        debug(D_NOTICE, "Not a crypto file. Do nothing.");
+        get_lost_and_found_fid();
+
+        debug(D_NOTICE, "Not a crypto file. Do nothing. Update task parent folder to [%llu].", lost_and_found_fid);
+
+        res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
+        psync_sql_bind_uint(res, 1, lost_and_found_fid);
+        psync_sql_bind_uint(res, 2, taskid);
+        psync_sql_run_free(res);
+
+        psync_fsupload_wake();
+
+        return -1;
       }
     case 2003: /* access denied */
     case 2075: /* are not a member of a business account */
