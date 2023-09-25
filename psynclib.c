@@ -3116,7 +3116,9 @@ userinfo_t* psync_get_userinfo() {
     info->usedquota = psync_find_result(res, "usedquota", PARAM_NUM)->num;
 
     //info->freequota = psync_find_result(res, "freequota", PARAM_NUM)->num;
-    info->freequota = psync_check_result(res, "freequota", PARAM_NUM)->num;
+    if (psync_check_result(res, "freequota", PARAM_NUM)) {
+      info->freequota = psync_find_result(res, "freequota", PARAM_NUM)->num;
+    }
 
     info->registered = psync_find_result(res, "registered", PARAM_NUM)->num;
     psync_free(res);
