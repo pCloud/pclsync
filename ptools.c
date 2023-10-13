@@ -798,16 +798,23 @@ char* get_file_name_from_path(char* path){
 /*************************************************************/
 char* get_folder_name_from_path(char* path) {
   char* folder;
+  int sepFound = 0;
 
   while (*path != NULL) {
     if ((*path == '\\') || (*path == '/')) {
       folder = ++path;
+      sepFound = 1;
     }
 
     path++;
   }
 
-  return strdup(folder);
+  if (sepFound) {
+    return strdup(folder);
+  }
+  else {
+    return strdup(STUCK_ITEM_UNKNOWN_FOLDER);
+  }
 }
 /*************************************************************/
 stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, char* path, char* name) {

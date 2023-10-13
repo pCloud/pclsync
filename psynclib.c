@@ -804,9 +804,9 @@ psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotep
     return PSYNC_INVALID_SYNCID;
 }
 
-psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_t folderid, psync_synctype_t synctype){
-  psync_sql_res *res;
-  char *syncmp;
+psync_syncid_t psync_add_sync_by_folderid(const char* localpath, psync_folderid_t folderid, psync_synctype_t synctype) {
+  psync_sql_res* res;
+  char* syncmp;
   psync_uint_row row;
   psync_str_row srow;
   uint64_t perms;
@@ -818,73 +818,97 @@ psync_syncid_t psync_add_sync_by_folderid(const char *localpath, psync_folderid_
 
   if (unlikely_log(synctype<PSYNC_SYNCTYPE_MIN || synctype>PSYNC_SYNCTYPE_MAX))
     return_isyncid(PERROR_INVALID_SYNCTYPE);
+
   if (unlikely_log(psync_stat(localpath, &st)) || unlikely_log(!psync_stat_isfolder(&st)))
     return_isyncid(PERROR_LOCAL_FOLDER_NOT_FOUND);
-  if (synctype&PSYNC_DOWNLOAD_ONLY)
-    md=7;
+
+  if (synctype & PSYNC_DOWNLOAD_ONLY)
+    md = 7;
   else
-    md=5;
+    md = 5;
+
   if (unlikely_log(!psync_stat_mode_ok(&st, md)))
     return_isyncid(PERROR_LOCAL_FOLDER_ACC_DENIED);
-  syncmp=psync_fs_getmountpoint();
-  if (syncmp){
-    size_t len=strlen(syncmp);
-    if (!psync_filename_cmpn(syncmp, localpath, len) && (localpath[len]==0 || localpath[len]=='/' || localpath[len]=='\\')){
+
+  syncmp = psync_fs_getmountpoint();
+
+  if (syncmp) {
+    size_t len = strlen(syncmp);
+    if (!psync_filename_cmpn(syncmp, localpath, len) && (localpath[len] == 0 || localpath[len] == '/' || localpath[len] == '\\')) {
       psync_free(syncmp);
       return_isyncid(PERROR_LOCAL_IS_ON_PDRIVE);
     }
     psync_free(syncmp);
   }
-  res=psync_sql_query("SELECT localpath FROM syncfolder");
+
+  res = psync_sql_query("SELECT localpath FROM syncfolder WHERE folderid IS NOT NULL");
+
   if (unlikely_log(!res))
     return_isyncid(PERROR_DATABASE_ERROR);
-  while ((srow=psync_sql_fetch_rowstr(res)))
-    if (psync_str_is_prefix(srow[0], localpath)){
+
+  while ((srow = psync_sql_fetch_rowstr(res))) {
+    if (psync_str_is_prefix(srow[0], localpath)) {
       psync_sql_free_result(res);
       return_isyncid(PERROR_PARENT_OR_SUBFOLDER_ALREADY_SYNCING);
     }
-    else if (!psync_filename_cmp(srow[0], localpath)){
+    else if (!psync_filename_cmp(srow[0], localpath)) {
       psync_sql_free_result(res);
       return_isyncid(PERROR_FOLDER_ALREADY_SYNCING);
     }
+  }
+
   psync_sql_free_result(res);
-  if (folderid){
-    res=psync_sql_query("SELECT permissions FROM folder WHERE id=?");
+
+  if (folderid) {
+    res = psync_sql_query("SELECT permissions FROM folder WHERE id=?");
+
     if (unlikely_log(!res))
       return_isyncid(PERROR_DATABASE_ERROR);
+
     psync_sql_bind_uint(res, 1, folderid);
-    row=psync_sql_fetch_rowint(res);
-    if (unlikely_log(!row)){
+    row = psync_sql_fetch_rowint(res);
+
+    if (unlikely_log(!row)) {
       psync_sql_free_result(res);
       return_isyncid(PERROR_REMOTE_FOLDER_NOT_FOUND);
     }
-    perms=row[0];
+
+    perms = row[0];
     psync_sql_free_result(res);
   }
   else
-    perms=PSYNC_PERM_ALL;
-  if (unlikely_log((synctype&PSYNC_DOWNLOAD_ONLY && (perms&PSYNC_PERM_READ)!=PSYNC_PERM_READ) ||
-      (synctype&PSYNC_UPLOAD_ONLY && (perms&PSYNC_PERM_WRITE)!=PSYNC_PERM_WRITE)))
+    perms = PSYNC_PERM_ALL;
+
+  if (unlikely_log((synctype & PSYNC_DOWNLOAD_ONLY && (perms & PSYNC_PERM_READ) != PSYNC_PERM_READ) || (synctype & PSYNC_UPLOAD_ONLY && (perms & PSYNC_PERM_WRITE) != PSYNC_PERM_WRITE)))
     return_isyncid(PERROR_REMOTE_FOLDER_ACC_DENIED);
-  res=psync_sql_prep_statement("INSERT OR IGNORE INTO syncfolder (folderid, localpath, synctype, flags, inode, deviceid) VALUES (?, ?, ?, 0, ?, ?)");
+
+  debug(D_NOTICE, "BOBO: Insert into syncfolder. Path: [%s]", localpath);
+  res = psync_sql_prep_statement("INSERT OR IGNORE INTO syncfolder (folderid, localpath, synctype, flags, inode, deviceid) VALUES (?, ?, ?, 0, ?, ?)");
+
   if (unlikely_log(!res))
     return_isyncid(PERROR_DATABASE_ERROR);
+
   psync_sql_bind_uint(res, 1, folderid);
   psync_sql_bind_string(res, 2, localpath);
   psync_sql_bind_uint(res, 3, synctype);
   psync_sql_bind_uint(res, 4, psync_stat_inode(&st));
   psync_sql_bind_uint(res, 5, psync_stat_device(&st));
   psync_sql_run(res);
+
   if (likely_log(psync_sql_affected_rows()))
-    ret=psync_sql_insertid();
+    ret = psync_sql_insertid();
   else
-    ret=PSYNC_INVALID_SYNCID;
+    ret = PSYNC_INVALID_SYNCID;
+
   psync_sql_free_result(res);
-  if (ret==PSYNC_INVALID_SYNCID)
+
+  if (ret == PSYNC_INVALID_SYNCID)
     return_isyncid(PERROR_FOLDER_ALREADY_SYNCING);
+
   psync_sql_sync();
   psync_path_status_reload_syncs();
   psync_syncer_new(ret);
+
   return ret;
 }
 
