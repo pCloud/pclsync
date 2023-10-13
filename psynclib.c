@@ -847,6 +847,8 @@ psync_syncid_t psync_add_sync_by_folderid(const char* localpath, psync_folderid_
     return_isyncid(PERROR_DATABASE_ERROR);
 
   while ((srow = psync_sql_fetch_rowstr(res))) {
+    debug(D_NOTICE, "Checking sync against path: [%s]", srow[0]);
+
     if (psync_str_is_prefix(srow[0], localpath)) {
       psync_sql_free_result(res);
       return_isyncid(PERROR_PARENT_OR_SUBFOLDER_ALREADY_SYNCING);
@@ -882,7 +884,6 @@ psync_syncid_t psync_add_sync_by_folderid(const char* localpath, psync_folderid_
   if (unlikely_log((synctype & PSYNC_DOWNLOAD_ONLY && (perms & PSYNC_PERM_READ) != PSYNC_PERM_READ) || (synctype & PSYNC_UPLOAD_ONLY && (perms & PSYNC_PERM_WRITE) != PSYNC_PERM_WRITE)))
     return_isyncid(PERROR_REMOTE_FOLDER_ACC_DENIED);
 
-  debug(D_NOTICE, "BOBO: Insert into syncfolder. Path: [%s]", localpath);
   res = psync_sql_prep_statement("INSERT OR IGNORE INTO syncfolder (folderid, localpath, synctype, flags, inode, deviceid) VALUES (?, ?, ?, 0, ?, ?)");
 
   if (unlikely_log(!res))
