@@ -327,19 +327,26 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
   psync_binary_rsa_key_t rsaprivatebin, rsapublicbin;
   time_t cryptoexpires;
   int ret;
+
   debug(D_NOTICE, "generating salt");
+
   psync_ssl_rand_strong(salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN);
+
   debug(D_NOTICE, "generating AES key from password and setting up encoder");
+
   aeskey=psync_ssl_gen_symmetric_key_from_pass(password, PSYNC_AES256_KEY_SIZE+PSYNC_AES256_BLOCK_SIZE,
                                                salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, PSYNC_CRYPTO_PASS_TO_KEY_ITERATIONS);
   enc=psync_crypto_aes256_ctr_encoder_decoder_create(aeskey);
   psync_ssl_free_symmetric_key(aeskey);
+
   if (unlikely(enc==PSYNC_CRYPTO_INVALID_ENCODER)){
     debug(D_WARNING, "psync_crypto_aes256_ctr_encoder_decoder_create failed");
     return PSYNC_CRYPTO_SETUP_KEYGEN_FAILED;
   }
+
   debug(D_NOTICE, "generating %d bit RSA key", (int)PSYNC_CRYPTO_RSA_SIZE);
   rsa=psync_ssl_gen_rsa(PSYNC_CRYPTO_RSA_SIZE);
+
   if (unlikely(rsa==PSYNC_INVALID_RSA)){
     debug(D_WARNING, "RSA key generation failed");
     psync_crypto_aes256_ctr_encoder_decoder_free(enc);
@@ -347,9 +354,11 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
   }
   else
     debug(D_NOTICE, "RSA key generated");
+
   rsaprivate=psync_ssl_rsa_get_private(rsa);
   rsapublic=psync_ssl_rsa_get_public(rsa);
   psync_ssl_free_rsa(rsa);
+
   if (unlikely(rsaprivate==PSYNC_INVALID_RSA || rsapublic==PSYNC_INVALID_RSA)){
     debug(D_WARNING, "psync_ssl_rsa_get_private or psync_ssl_rsa_get_public failed");
     if (rsaprivate!=PSYNC_INVALID_RSA)
@@ -359,10 +368,12 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
     psync_crypto_aes256_ctr_encoder_decoder_free(enc);
     return PSYNC_CRYPTO_SETUP_KEYGEN_FAILED;
   }
+
   rsaprivatebin=psync_ssl_rsa_private_to_binary(rsaprivate);
   rsapublicbin=psync_ssl_rsa_public_to_binary(rsapublic);
   psync_ssl_rsa_free_private(rsaprivate);
   psync_ssl_rsa_free_public(rsapublic);
+
   if (unlikely(rsaprivatebin==PSYNC_INVALID_BIN_RSA || rsapublic==PSYNC_INVALID_BIN_RSA)){
     debug(D_WARNING, "psync_ssl_rsa_private_to_binary or psync_ssl_rsa_public_to_binary failed");
     if (rsaprivatebin!=PSYNC_INVALID_BIN_RSA)
@@ -372,10 +383,14 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
     psync_crypto_aes256_ctr_encoder_decoder_free(enc);
     return PSYNC_CRYPTO_SETUP_KEYGEN_FAILED;
   }
+
   debug(D_NOTICE, "encoding private key");
+
   psync_crypto_aes256_ctr_encode_decode_inplace(enc, rsaprivatebin->data, rsaprivatebin->datalen, 0);
   psync_crypto_aes256_ctr_encoder_decoder_free(enc);
+
   debug(D_NOTICE, "encoded private key, uploading keys");
+
   ret=psync_cloud_crypto_setup_upload(rsaprivatebin->data, rsaprivatebin->datalen, rsapublicbin->data, rsapublicbin->datalen, salt, hint, &cryptoexpires,
                                       publicsha1, privatesha1);
   if (unlikely(ret!=PSYNC_CRYPTO_SETUP_SUCCESS)){
@@ -384,11 +399,14 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
     psync_ssl_rsa_free_binary(rsapublicbin);
     return ret;
   }
+
   debug(D_NOTICE, "keys uploaded");
   psync_cloud_crypto_setup_save_to_db(rsaprivatebin->data, rsaprivatebin->datalen, rsapublicbin->data, rsapublicbin->datalen,
                                       salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, PSYNC_CRYPTO_PASS_TO_KEY_ITERATIONS, cryptoexpires, publicsha1, privatesha1, 0);
+
   psync_ssl_rsa_free_binary(rsaprivatebin);
   psync_ssl_rsa_free_binary(rsapublicbin);
+
   return PSYNC_CRYPTO_SETUP_SUCCESS;
 }
 

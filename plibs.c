@@ -745,7 +745,7 @@ void psync_sql_do_rdlock(const char *file, unsigned line){
     }
     psync_nanotime(&end);
     msec=(end.tv_sec-start.tv_sec)*1000+end.tv_nsec/1000000-start.tv_nsec/1000000;
-    if (msec>=5)
+    if (msec>=50)
       debug(D_WARNING, "waited %lu milliseconds for database read lock", msec);
     sqlrdlockcnt++;
     memcpy(&sqlrdlockstart, &end, sizeof(struct timespec));
