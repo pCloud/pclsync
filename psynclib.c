@@ -3119,6 +3119,7 @@ userinfo_t* psync_get_userinfo() {
     if (psync_check_result(res, "freequota", PARAM_NUM)) {
       info->freequota = psync_find_result(res, "freequota", PARAM_NUM)->num;
     }
+    else info->freequota = 0;
 
     info->registered = psync_find_result(res, "registered", PARAM_NUM)->num;
     psync_free(res);
