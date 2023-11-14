@@ -616,6 +616,15 @@ typedef struct {
 } bookmarks_list_t;
 
 typedef struct {
+  uint8_t verifymail;
+  uint8_t uploadfile;
+  uint8_t autoupload;
+  uint8_t downloadapp;
+  uint8_t downloaddrive;
+  uint8_t sentinvitation;
+}steps_t;
+
+typedef struct {
   const char* email;
   const char* currency;
   const char* language;
@@ -623,6 +632,7 @@ typedef struct {
   uint8_t cryptosubscription;
   uint8_t cryptolifetime;
   uint8_t efh;//optional
+  uint8_t additionaltraffic;//optional
   uint8_t emailverified;
   uint8_t usedpublinkbranding;
   uint8_t haspassword;
@@ -640,6 +650,7 @@ typedef struct {
   uint64_t usedquota;
   uint64_t freequota;
   uint64_t registered;
+  steps_t steps;
 }userinfo_t;
 
 #define PSYNC_INVALID_SYNCID (psync_syncid_t)-1
