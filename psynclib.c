@@ -3060,19 +3060,30 @@ int psync_delete_backup_device(psync_folderid_t fId) {
   return 1;
 }
 /***********************************************************************************************************************************************/
-void psync_send_backup_del_event(psync_fileorfolderid_t remoteFId) {
+void psync_send_backup_del_event(uint8_t is_folder, char* name, char* path, psync_syncid_t sync_type) {
   time_t currTime = psync_time();
+  int event_id;
   
+  debug(D_NOTICE, "BOBO: Send BackUp/Sync del event. Obj Type: [%s] Name: [%s] Path: [%s] Sync Type: [%u]", is_folder ? "folder" : "file", name, path, sync_type);
+
+  //Bobo
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
-    if (remoteFId == 0) {
-      psync_send_eventid(PEVENT_BKUP_F_DEL_NOTSYNCED);
+
+    if (sync_type == 7) {
+      event_id = PEVENT_BKUP_OBJ_DEL;
     }
     else {
-      psync_send_eventid(PEVENT_BKUP_F_DEL_SYNCED);
+      event_id = PEVENT_SYNC_OBJ_DEL;
     }
+
+    psync_send_data_event(event_id, path, name, is_folder, NULL);
 
     lastBupDelEventTime = currTime;
   }
+  else {
+    debug(D_NOTICE, "BOBO: Data event timeout not reached!");
+  }
+  //Bobo
 }
 /***********************************************************************************************************************************************/
 userinfo_t* psync_get_userinfo() {

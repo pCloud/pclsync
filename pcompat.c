@@ -1081,15 +1081,19 @@ static void addr_save_to_db(const char *host, const char *port, struct addrinfo 
       debug(D_NOTICE, "upgraded read to write lock to save data to DB");
   }
   psync_sql_start_transaction();
+
   res=psync_sql_prep_statement("DELETE FROM resolver WHERE hostname=? AND port=?");
   psync_sql_bind_string(res, 1, host);
   psync_sql_bind_string(res, 2, port);
   psync_sql_run_free(res);
+
   res=psync_sql_prep_statement("INSERT INTO resolver (hostname, port, prio, created, family, socktype, protocol, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
   psync_sql_bind_string(res, 1, host);
   psync_sql_bind_string(res, 2, port);
   psync_sql_bind_uint(res, 4, psync_timer_time());
+
   id=0;
+
   do {
     psync_sql_bind_uint(res, 3, id++);
     psync_sql_bind_int(res, 5, addr->ai_family);
@@ -1339,8 +1343,10 @@ static psync_socket_t connect_socket_direct(const char *host, const char *port){
   struct addrinfo hints;
   psync_socket_t sock;
   int rc;
+
   debug(D_NOTICE, "connecting to %s:%s", host, port);
   dbres=addr_load_from_db(host, port);
+
   if (dbres){
     resolve_host_port resolv;
     void *params[2];
@@ -1354,13 +1360,16 @@ static psync_socket_t connect_socket_direct(const char *host, const char *port){
     callbacks[1]=resolve_callback;
     tasks=psync_task_run_tasks(callbacks, params, 2);
     res=(struct addrinfo *)psync_task_get_result(tasks, 1);
+
     if (unlikely(!res)){
       psync_task_free(tasks);
       detect_proxy();
       debug(D_WARNING, "failed to resolve %s", host);
       return INVALID_SOCKET;
     }
+
     addr_save_to_db(host, port, res);
+
     if (addr_still_valid(dbres, res)){
       debug(D_NOTICE, "successfully reused cached IP for %s:%s", host, port);
       sock=(psync_socket_t)(uintptr_t)psync_task_get_result(tasks, 0);

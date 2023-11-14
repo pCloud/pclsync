@@ -643,8 +643,10 @@ void psync_update_cryptostatus(){
     psync_sql_bind_string(q, 1, "cryptosetup");
     psync_sql_bind_uint(q, 2, u);
     psync_sql_run(q);
+
     if (u)
       crst = 1;
+
     psync_sql_bind_string(q, 1, "cryptosubscription");
     crsub =  psync_find_result(res, "cryptosubscription", PARAM_BOOL)->num;
     psync_sql_bind_uint(q, 2, crsub);
@@ -659,12 +661,13 @@ void psync_update_cryptostatus(){
     if (is_business || crsub){
       if (crst)
         crstat = 5;
-      else  crstat = 4;
-    } else {
+      else
+        crstat = 4;
+    } 
+    else {
       if (!crst)
         crstat = 1;
-      else 
-      {
+      else {
         if (psync_time() > crexp)
           crstat = 3;
         else 

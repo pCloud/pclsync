@@ -407,8 +407,10 @@ static void add_new_element(const sync_folderlist *e, psync_folderid_t folderid,
 
 static void add_deleted_element(const sync_folderlist *e, psync_folderid_t folderid, psync_folderid_t localfolderid, psync_syncid_t syncid, psync_synctype_t synctype){
   sync_folderlist *c;
-  debug(D_NOTICE, "found deleted %s %s", e->isfolder?"folder":"file", e->name);
-  c=copy_folderlist_element(e, folderid, localfolderid, syncid, synctype);
+
+  debug(D_NOTICE, "BOBO: found deleted element. Type: [%s] Path: [%s] Sync Type: [%lu]", e->isfolder ? "folder" : "file", e->name, synctype);
+
+  c = copy_folderlist_element(e, folderid, localfolderid, syncid, synctype);
 
   if (e->isfolder) {
     add_element_to_scan_list(SCAN_LIST_DELFOLDERS, c);
@@ -464,7 +466,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     fdb=psync_list_element(ldb, sync_folderlist, list);
 
     cmp=psync_filename_cmp(fdisk->name, fdb->name);
-    //cmp = strcmp(fdisk->name, fdb->name); //Bobo
 
     if (cmp==0){
       if (fdisk->isfolder==fdb->isfolder){
@@ -483,6 +484,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
         }
       }
       else{
+        debug(D_NOTICE, "BOBO: Found deleted element 1. Name: [%s]", fdb->name);
         add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
         add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       }
@@ -493,7 +495,18 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
       add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       ldisk=ldisk->next;
     }
-    else { // deleted element from disk
+    else { // deleted element from disk (file)
+      debug(D_NOTICE, "BOBO: Found deleted element 2. Name: [%s], IsFolder: [%u]", fdb->name, fdb->isfolder);
+
+      //Bobo
+      debug(D_NOTICE, "BOBO: found deleted file in sync/bup element. Type: [%s] Path: [%s] Sync Type: [%u]", fdb->isfolder ? "folder" : "file", fdb->name, synctype);
+      if ((synctype == 7) || (synctype == 3)) {
+        debug(D_NOTICE, "BOBO: Sending Sync/Bup delete event.");
+
+        psync_send_backup_del_event(fdb->isfolder, fdb->name, localpath, synctype);
+      }
+      //Bobo
+
       add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
       ldb=ldb->next;
     }
@@ -504,18 +517,25 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
     ldisk=ldisk->next;
   }
+
   while (ldb!=&dblist){
     fdb=psync_list_element(ldb, sync_folderlist, list);
 
-    if ((synctype == 7)) {
-      debug(D_NOTICE, "Detected deleted object in a backup location. Send event.");
-      psync_send_backup_del_event(fdb->remoteid);
+    debug(D_NOTICE, "BOBO: found deleted folder in sync/bup element. Type: [%s] Path: [%s] Sync Type: [%u]", fdb->isfolder ? "folder" : "file", fdb->name, synctype);
+    //Bobo
+    if ((synctype == 7) || (synctype == 3)) {
+      debug(D_NOTICE, "BOBO: Sending Sync/Bup delete event.");
+
+      psync_send_backup_del_event(fdb->isfolder, fdb->name, localpath, synctype);
     }
+    //Bobo
 
     add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
     ldb=ldb->next;
   }
+
   psync_list_for_each_element_call(&dblist, sync_folderlist, list, psync_free);
+
   if (localsleepperfolder){
     psync_milisleep(localsleepperfolder);
     if (psync_current_time-starttime>=PSYNC_LOCALSCAN_SLEEPSEC_PER_SCAN*3/2)

@@ -1206,12 +1206,10 @@ static void process_deletefolder(const binresult *entry){
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
   folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
 
-  //Bobo
   if (lost_and_found_fid == folderid) {
     debug(D_NOTICE, "Lost and found folder deleted. Reset lost_and_found_fid!");
     lost_and_found_fid = 0;
   }
-  //Bobo
 
   psync_path_status_folder_deleted(folderid);
 
