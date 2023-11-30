@@ -123,6 +123,10 @@ void psync_delete_cached_crypto_keys(){
 
 static binresult *get_userinfo_user_digest(psync_socket *sock, const char *username, size_t userlen, const char *pwddig, const char *digest, uint32_t diglen,
                                            const char *osversion, const char *appversion, const char *deviceid, const char *devicestring){
+
+  debug(D_NOTICE, "BOBO: No digerst login. User: [%s] Digest:[%s] PassDigest: [%s] OSv: [%s] AppV: [%s] DevId: [%s] DeviceStr: [%s] OSid:[%d]", username, digest, pwddig, osversion, appversion, deviceid, devicestring, P_OS_ID);
+  debug(D_NOTICE, "BOBO: No digerst login. timeformat getauth : [1] , cryptokeyssign : [1] , getapiserver : [1] , getlastsubscription : [1]");
+
   binparam params[]={P_STR("timeformat", "timestamp"),
                      P_LSTR("username", username, userlen),
                      P_LSTR("digest", digest, diglen),
@@ -136,6 +140,7 @@ static binresult *get_userinfo_user_digest(psync_socket *sock, const char *usern
                      P_BOOL("cryptokeyssign", 1),
                      P_BOOL("getlastsubscription", 1),
                      P_NUM("os", P_OS_ID)};
+
   return send_command(sock, "login", params);
 }
 
@@ -149,21 +154,32 @@ static binresult *get_userinfo_user_pass(psync_socket *sock, const char *usernam
   size_t ul, i;
   unsigned char sha1bin[PSYNC_SHA1_DIGEST_LEN];
   char sha1hex[PSYNC_SHA1_DIGEST_HEXLEN];
+
+  debug(D_NOTICE, "BOBO: Sending [getdigest] command.");
+
   res=send_command(sock, "getdigest", empty_params);
+
   if (!res)
     return res;
+
   if (psync_find_result(res, "result", PARAM_NUM)->num!=0){
     psync_free(res);
     return NULL;
   }
+
   dig=psync_find_result(res, "digest", PARAM_STR);
-  debug(D_NOTICE, "got digest %s", dig->str);
+
+  debug(D_NOTICE, "got digest [%s]", dig->str);
+
   ul=strlen(username);
   uc=psync_new_cnt(unsigned char, ul);
+
   for (i=0; i<ul; i++)
     uc[i]=tolower(username[i]);
+
   psync_sha1(uc, ul, sha1bin);
   psync_free(uc);
+
   psync_binhex(sha1hex, sha1bin, PSYNC_SHA1_DIGEST_LEN);
   psync_sha1_init(&ctx);
   psync_sha1_update(&ctx, password, strlen(password));
@@ -171,8 +187,11 @@ static binresult *get_userinfo_user_pass(psync_socket *sock, const char *usernam
   psync_sha1_update(&ctx, dig->str, dig->length);
   psync_sha1_final(sha1bin, &ctx);
   psync_binhex(sha1hex, sha1bin, PSYNC_SHA1_DIGEST_LEN);
+
   ret=get_userinfo_user_digest(sock, username, ul, sha1hex, dig->str, dig->length, osversion, appversion, deviceid, devicestring);
+
   psync_free(res);
+
   return ret;
 }
 
@@ -359,9 +378,13 @@ static psync_socket *get_connected_socket(){
     }
     else if (user && pass && pass[0]){
       if (digest){
+        debug(D_NOTICE, "BOBO: Using digerst login.");
         res=get_userinfo_user_pass(sock, user, pass, osversion, appversion, deviceid, devicestring);
       }
       else{
+        debug(D_NOTICE, "BOBO: No digerst login. User: [%s] Pass:[%s] OSv: [%s] AppV: [%s] DevId: [%s] DeviceStr: [%s] OSid:[%d]", user, pass, osversion, appversion, deviceid, devicestring, P_OS_ID);
+        debug(D_NOTICE, "BOBO: No digerst login. timeformat getauth : [1] , cryptokeyssign : [1] , getapiserver : [1] , getlastsubscription : [1]");
+
         binparam params[]={P_STR("timeformat", "timestamp"),
                          P_STR("username", user),
                          P_STR("password", pass),
