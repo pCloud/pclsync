@@ -124,8 +124,8 @@ void psync_delete_cached_crypto_keys(){
 static binresult *get_userinfo_user_digest(psync_socket *sock, const char *username, size_t userlen, const char *pwddig, const char *digest, uint32_t diglen,
                                            const char *osversion, const char *appversion, const char *deviceid, const char *devicestring){
 
-  debug(D_NOTICE, "BOBO: No digerst login. User: [%s] Digest:[%s] PassDigest: [%s] OSv: [%s] AppV: [%s] DevId: [%s] DeviceStr: [%s] OSid:[%d]", username, digest, pwddig, osversion, appversion, deviceid, devicestring, P_OS_ID);
-  debug(D_NOTICE, "BOBO: No digerst login. timeformat getauth : [1] , cryptokeyssign : [1] , getapiserver : [1] , getlastsubscription : [1]");
+  debug(D_NOTICE, "No digest login. User: [%s] Digest:[%s] PassDigest: [%s] OSv: [%s] AppV: [%s] DevId: [%s] DeviceStr: [%s] OSid:[%d]", username, digest, pwddig, osversion, appversion, deviceid, devicestring, P_OS_ID);
+  debug(D_NOTICE, "No digest login. timeformat getauth : [1] , cryptokeyssign : [1] , getapiserver : [1] , getlastsubscription : [1]");
 
   binparam params[]={P_STR("timeformat", "timestamp"),
                      P_LSTR("username", username, userlen),
@@ -155,7 +155,7 @@ static binresult *get_userinfo_user_pass(psync_socket *sock, const char *usernam
   unsigned char sha1bin[PSYNC_SHA1_DIGEST_LEN];
   char sha1hex[PSYNC_SHA1_DIGEST_HEXLEN];
 
-  debug(D_NOTICE, "BOBO: Sending [getdigest] command.");
+  debug(D_NOTICE, "Sending [getdigest] command.");
 
   res=send_command(sock, "getdigest", empty_params);
 
@@ -378,12 +378,12 @@ static psync_socket *get_connected_socket(){
     }
     else if (user && pass && pass[0]){
       if (digest){
-        debug(D_NOTICE, "BOBO: Using digerst login.");
+        debug(D_NOTICE, "Using digerst login.");
         res=get_userinfo_user_pass(sock, user, pass, osversion, appversion, deviceid, devicestring);
       }
       else{
-        debug(D_NOTICE, "BOBO: No digerst login. User: [%s] Pass:[%s] OSv: [%s] AppV: [%s] DevId: [%s] DeviceStr: [%s] OSid:[%d]", user, pass, osversion, appversion, deviceid, devicestring, P_OS_ID);
-        debug(D_NOTICE, "BOBO: No digerst login. timeformat getauth : [1] , cryptokeyssign : [1] , getapiserver : [1] , getlastsubscription : [1]");
+        debug(D_NOTICE, "No digest login. User: [%s] Pass:[%s] OSv: [%s] AppV: [%s] DevId: [%s] DeviceStr: [%s] OSid:[%d]", user, pass, osversion, appversion, deviceid, devicestring, P_OS_ID);
+        debug(D_NOTICE, "No digest login. timeformat getauth : [1] , cryptokeyssign : [1] , getapiserver : [1] , getlastsubscription : [1]");
 
         binparam params[]={P_STR("timeformat", "timestamp"),
                          P_STR("username", user),
