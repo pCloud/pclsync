@@ -993,27 +993,35 @@ int psync_fstask_rename_file(psync_fsfileid_t fileid, psync_fsfolderid_t parentf
   psync_fileid_t rfileid;
   size_t nlen, nnlen;
   uint64_t ftaskid, ttaskid;
+
   nlen=strlen(name);
+
   if (new_name)
     nnlen=strlen(new_name);
   else{
     new_name=name;
     nnlen=nlen;
   }
+
   folder=psync_fstask_get_or_create_folder_tasks_locked(parentfolderid);
   cr=psync_fstask_find_creat(folder, name, 0);
+
   if (cr)
     rfileid=cr->rfileid;
   else
     rfileid=0;
-  debug(D_NOTICE, "renaming file %ld from %ld/%s to %ld/%s", (long)fileid, (long)parentfolderid, name, (long)to_folderid, new_name);
+
+  debug(D_NOTICE, "Renaming file [%ld] from [%ld/%s] to [%ld/%s]", (long)fileid, (long)parentfolderid, name, (long)to_folderid, new_name);
+
   psync_sql_start_transaction();
+
   res=psync_sql_prep_statement("INSERT INTO fstask (type, status, folderid, fileid, text1) VALUES ("NTO_STR(PSYNC_FS_TASK_RENFILE_FROM)", 10, ?, ?, ?)");
   psync_sql_bind_int(res, 1, parentfolderid);
   psync_sql_bind_int(res, 2, fileid);
   psync_sql_bind_lstring(res, 3, name, nlen);
   psync_sql_run_free(res);
   ftaskid=psync_sql_insertid();
+
   res=psync_sql_prep_statement("INSERT INTO fstask (type, status, folderid, fileid, text1, int1, int2) VALUES ("NTO_STR(PSYNC_FS_TASK_RENFILE_TO)", 0, ?, ?, ?, ?, ?)");
   psync_sql_bind_int(res, 1, to_folderid);
   psync_sql_bind_int(res, 2, fileid);
@@ -1022,6 +1030,7 @@ int psync_fstask_rename_file(psync_fsfileid_t fileid, psync_fsfolderid_t parentf
   psync_sql_bind_uint(res, 5, rfileid);
   psync_sql_run_free(res);
   ttaskid=psync_sql_insertid();
+
   if (fileid<0){
     res=psync_sql_prep_statement("UPDATE fstask SET sfolderid=? WHERE id=?");
     psync_sql_bind_int(res, 1, to_folderid);
@@ -1029,66 +1038,88 @@ int psync_fstask_rename_file(psync_fsfileid_t fileid, psync_fsfolderid_t parentf
     psync_sql_run_free(res);
     psync_fstask_depend(ttaskid, -fileid);
   }
+
   if (parentfolderid<0)
     psync_fstask_depend(ttaskid, -parentfolderid);
+
   if (to_folderid<0 && to_folderid!=parentfolderid)
     psync_fstask_depend(ttaskid, -to_folderid);
+
   psync_fstask_depend_on_name2(ttaskid, ftaskid, parentfolderid, name, nlen);
   psync_fstask_depend_on_name(ttaskid, to_folderid, new_name, nnlen);
+
   if (cr)
     psync_fstask_depend(ttaskid, cr->taskid);
+
   if (unlikely_log(psync_sql_commit_transaction())){
     psync_fstask_release_folder_tasks_locked(folder);
     return -EIO;
   }
+
   if (cr){
     psync_tree_del(&folder->creats, &cr->tree);
     psync_free(cr);
     folder->taskscnt--;
+
     if (folder->folderid>=0)
       psync_path_status_drive_folder_changed(folder->folderid);
   }
+
   psync_fs_rename_openfile_locked(fileid, to_folderid, new_name);
+
   nlen++;
   rm=(psync_fstask_unlink_t *)psync_malloc(offsetof(psync_fstask_unlink_t, name)+nlen);
   rm->taskid=ftaskid;
   rm->fileid=fileid;
   memcpy(rm->name, name, nlen);
+
   psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_unlink_t, name), &rm->tree);
+
   folder->taskscnt++;
   psync_fstask_release_folder_tasks_locked(folder);
 
   folder=psync_fstask_get_or_create_folder_tasks_locked(to_folderid);
   nnlen++;
   cr=psync_fstask_find_creat(folder, new_name, 0);
+
   if (cr){
     debug(D_NOTICE, "renaming over creat of file %s(%ld) in folder %lu", new_name, (long)cr->fileid, (unsigned long)to_folderid);
+
     if (cr->fileid<0)
       psync_fstask_stop_and_delete_file(cr->fileid);
+
     psync_tree_del(&folder->creats, &cr->tree);
     psync_free(cr);
     folder->taskscnt--;
   }
+
   rm=(psync_fstask_unlink_t *)psync_malloc(offsetof(psync_fstask_unlink_t, name)+nnlen);
   rm->fileid=fileid;
   rm->taskid=ttaskid;
   memcpy(rm->name, new_name, nnlen);
+
   psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_unlink_t, name), &rm->tree);
+
   cr=(psync_fstask_creat_t *)psync_malloc(offsetof(psync_fstask_creat_t, name)+nnlen);
   cr->fileid=fileid;
   cr->rfileid=rfileid;
   cr->taskid=ttaskid;
   memcpy(cr->name, new_name, nnlen);
+
   psync_fstask_insert_into_tree(&folder->creats, offsetof(psync_fstask_creat_t, name), &cr->tree);
+
   folder->taskscnt+=2;
   psync_fstask_release_folder_tasks_locked(folder);
   psync_fsupload_wake();
+
   if (fileid>0 && parentfolderid>=0)
     add_history_record(fileid, parentfolderid, name);
   else if (rfileid>0 && parentfolderid>=0)
     add_history_record(rfileid, parentfolderid, name);
+
   if (folder->folderid>=0)
     psync_path_status_drive_folder_changed(folder->folderid);
+
   return 0;
 }
 

@@ -295,6 +295,9 @@ int psync_init() {
     deviceid = generate_device_id();
   }
 
+  debug(D_NOTICE, "Init [%s] fodler id.", LOST_AND_FOUND_FNAME);
+  lost_and_found_fid = 0;
+
   psync_free(deviceid);
 
   return 0;
@@ -3051,7 +3054,7 @@ userinfo_t* psync_get_userinfo() {
   if (psync_my_auth[0]) {
     size_t lemail, lcurrency, llanguage;
     const char* email, * currency, * language;
-    const binresult* cres;
+    const binresult* cres, *st;
     char* ptr;
     binresult* res;
     uint64_t err;
@@ -3118,6 +3121,9 @@ userinfo_t* psync_get_userinfo() {
     cres = psync_check_result(res, "efh", PARAM_BOOL);
     if (cres) info->efh = cres->num;
     else info->efh = 0;
+    cres = psync_check_result(res, "additionaltraffic", PARAM_BOOL);
+    if (cres) info->additionaltraffic = cres->num;
+    else info->additionaltraffic = 0;
     cres = psync_check_result(res, "premiumexpires", PARAM_NUM);
     if (cres) info->premiumexpires = cres->num;
     else info->premiumexpires = 0;
@@ -3127,7 +3133,42 @@ userinfo_t* psync_get_userinfo() {
     info->userid = psync_find_result(res, "userid", PARAM_NUM)->num;
     info->quota = psync_find_result(res, "quota", PARAM_NUM)->num;
     info->usedquota = psync_find_result(res, "usedquota", PARAM_NUM)->num;
-    info->freequota = psync_find_result(res, "freequota", PARAM_NUM)->num;
+
+    //info->freequota = psync_find_result(res, "freequota", PARAM_NUM)->num;
+    if (psync_check_result(res, "freequota", PARAM_NUM)) {
+      info->freequota = psync_find_result(res, "freequota", PARAM_NUM)->num;
+    }
+    else info->freequota = 0;
+
+    cres = psync_check_result(res, "journey", PARAM_HASH);
+    if (cres) {
+      st = psync_check_result(cres, "steps", PARAM_HASH);
+      if (st) {
+        info->steps.autoupload = psync_find_result(st, "autoupload", PARAM_BOOL)->num;
+        info->steps.downloadapp = psync_find_result(st, "downloadapp", PARAM_BOOL)->num;
+        info->steps.downloaddrive = psync_find_result(st, "downloaddrive", PARAM_BOOL)->num;
+        info->steps.sentinvitation = psync_find_result(st, "sentinvitation", PARAM_BOOL)->num;
+        info->steps.uploadfile = psync_find_result(st, "uploadfile", PARAM_BOOL)->num;
+        info->steps.verifymail = psync_find_result(st, "verifymail", PARAM_BOOL)->num;
+      }
+      else {
+        info->steps.autoupload = 0;
+        info->steps.downloadapp = 0;
+        info->steps.downloaddrive = 0;
+        info->steps.sentinvitation = 0;
+        info->steps.uploadfile = 0;
+        info->steps.verifymail = 0;
+      }
+    }
+    else {
+      info->steps.autoupload = 0;
+      info->steps.downloadapp = 0;
+      info->steps.downloaddrive = 0;
+      info->steps.sentinvitation = 0;
+      info->steps.uploadfile = 0;
+      info->steps.verifymail = 0;
+    }
+
     info->registered = psync_find_result(res, "registered", PARAM_NUM)->num;
     psync_free(res);
     return info;

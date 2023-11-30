@@ -458,54 +458,76 @@ int psync_get_local_file_checksum(const char *restrict filename, unsigned char *
   ssize_t rrs;
   psync_uint_t cnt;
   psync_file_t fd;
+
   unsigned char hashbin[PSYNC_HASH_DIGEST_LEN];
+
   fd=psync_file_open(filename, P_O_RDONLY, 0);
+
   if (fd==INVALID_HANDLE_VALUE)
     return PSYNC_NET_PERMFAIL;
+
   buff=psync_malloc(PSYNC_COPY_BUFFER_SIZE);
+
 retry:
   if (unlikely_log(psync_fstat(fd, &st)))
     goto err1;
+
   psync_hash_init(&hctx);
   rsz=psync_stat_size(&st);
   cnt=0;
+
   while (rsz){
     if (rsz>PSYNC_COPY_BUFFER_SIZE)
       rs=PSYNC_COPY_BUFFER_SIZE;
     else
       rs=rsz;
+
     rrs=psync_file_read(fd, buff, rs);
+
     if (unlikely(rrs<=0)){
       if (rrs==0 && !psync_fstat(fd, &st2) && file_changed(&st, &st2)){
         debug(D_NOTICE, "file %s changed while calculating checksum, restarting", filename);
+
         psync_hash_final(hashbin, &hctx);
         psync_milisleep(PSYNC_SLEEP_FILE_CHANGE);
         psync_file_seek(fd, 0, P_SEEK_SET);
+
         goto retry;
       }
       goto err1;
     }
+
     psync_hash_update(&hctx, buff, rrs);
     rsz-=rrs;
+
     if (++cnt%16==0)
       psync_milisleep(5);
   }
+
   if (unlikely_log(psync_fstat(fd, &st2)))
     goto err1;
+
   if (unlikely(file_changed(&st, &st2))){
     debug(D_NOTICE, "file %s changed while calculating checksum, restarting", filename);
+
     psync_hash_final(hashbin, &hctx);
+
     psync_milisleep(PSYNC_SLEEP_FILE_CHANGE);
     psync_file_seek(fd, 0, P_SEEK_SET);
+
     goto retry;
   }
+
   psync_free(buff);
   psync_file_close(fd);
   psync_hash_final(hashbin, &hctx);
   psync_binhex(hexsum, hashbin, PSYNC_HASH_DIGEST_LEN);
+
   if (fsize)
     *fsize=psync_stat_size(&st);
+
   return PSYNC_NET_OK;
+
 err1:
   psync_free(buff);
   psync_file_close(fd);
@@ -2352,20 +2374,68 @@ int psync_is_revision_of_file(const unsigned char *localhashhex, uint64_t filesi
     *isrev=0;
   return PSYNC_NET_OK;
 }
+/******************************************************************************/
+void psync_unlock_file_by_path(const char* path) {
+  psync_file_lock_t* lock;
+  psync_tree* tr, ** at;
+  size_t len;
+  int cmp;
 
+  len = strlen(path) + 1;
+  lock = psync_malloc(offsetof(psync_file_lock_t, filename) + len);
+  memcpy(lock->filename, path, len);
+
+  pthread_mutex_lock(&file_lock_mutex);
+
+  tr = file_lock_tree;
+  at = &file_lock_tree;
+
+  while (tr) {
+    cmp = psync_filename_cmp(path, psync_tree_element(tr, psync_file_lock_t, tree)->filename);
+
+    if (cmp < 0) {
+      if (tr->left)
+        tr = tr->left;
+      else {
+        at = &tr->left;
+        break;
+      }
+    }
+    else if (cmp > 0) {
+      if (tr->right)
+        tr = tr->right;
+      else {
+        at = &tr->right;
+        break;
+      }
+    }
+    else {
+      psync_tree_del(&file_lock_tree, &lock->tree);
+      psync_free(lock);
+    }
+  }
+
+  pthread_mutex_unlock(&file_lock_mutex);
+}
+/******************************************************************************/
 psync_file_lock_t *psync_lock_file(const char *path){
   psync_file_lock_t *lock;
   psync_tree *tr, **at;
   size_t len;
   int cmp;
+
   len=strlen(path)+1;
   lock=psync_malloc(offsetof(psync_file_lock_t, filename)+len);
   memcpy(lock->filename, path, len);
+
   pthread_mutex_lock(&file_lock_mutex);
+
   tr=file_lock_tree;
   at=&file_lock_tree;
+
   while (tr){
     cmp=psync_filename_cmp(path, psync_tree_element(tr, psync_file_lock_t, tree)->filename);
+
     if (cmp<0){
       if (tr->left)
         tr=tr->left;
@@ -2385,12 +2455,17 @@ psync_file_lock_t *psync_lock_file(const char *path){
     else{
       pthread_mutex_unlock(&file_lock_mutex);
       psync_free(lock);
+
       return NULL;
     }
   }
+
   *at=&lock->tree;
+
   psync_tree_added_at(&file_lock_tree, tr, &lock->tree);
+
   pthread_mutex_unlock(&file_lock_mutex);
+
   return lock;
 }
 
@@ -2400,7 +2475,41 @@ void psync_unlock_file(psync_file_lock_t *lock){
   pthread_mutex_unlock(&file_lock_mutex);
   psync_free(lock);
 }
+/**************************************************/
+void log_file_lock_tree() {
+  psync_tree* tr, ** at;
 
+  tr = file_lock_tree;
+  at = &file_lock_tree;
+
+  pthread_mutex_lock(&file_lock_mutex);
+
+  while (tr) {
+    debug(D_WARNING, "Left: [%s]", psync_tree_element(tr, psync_file_lock_t, tree)->filename);
+
+    if (tr->left)
+      tr = tr->left;
+    else {
+      at = &tr->left;
+      break;
+    }
+  }
+
+  tr = file_lock_tree;
+
+  while (tr) {
+    debug(D_WARNING, "Right: [%s]", psync_tree_element(tr, psync_file_lock_t, tree)->filename);
+    if (tr->right)
+      tr = tr->right;
+    else {
+      at = &tr->right;
+      break;
+    }
+  }
+
+  pthread_mutex_unlock(&file_lock_mutex);
+}
+/**************************************************/
 int psync_get_upload_checksum(psync_uploadid_t uploadid, unsigned char *uhash, uint64_t *usize){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("uploadid", uploadid)};
   psync_socket *api;

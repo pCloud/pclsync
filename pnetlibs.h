@@ -158,4 +158,9 @@ int psync_send_debug(int thread, const char *file, const char *function, int uns
 
 int psync_do_run_command_res(const char *cmd, size_t cmdlen, const binparam *params, size_t paramscnt, char **err);
 
+//Lost and found folder methods.
+void psync_unlock_file_by_path(const char* path);
+
+void log_file_lock_tree();
+//Lost and found folder methods. End.
 #endif

@@ -285,7 +285,9 @@ int psync_fs_rename_openfile_locked(psync_fsfileid_t fileid, psync_fsfolderid_t 
   psync_openfile_t *fl;
   psync_tree *tr;
   int64_t d;
+
   tr=openfiles;
+
   while (tr){
     d=fileid-psync_tree_element(tr, psync_openfile_t, tree)->fileid;
     if (d<0)
@@ -1791,20 +1793,27 @@ unlock_ex:
 
 static int psync_fs_flush(const char *path, struct fuse_file_info *fi){
   psync_openfile_t *of;
+
   psync_fs_set_thread_name();
-  debug(D_NOTICE, "flush %s", path);
+
+  debug(D_NOTICE, "flush [%s]", path);
+
   of=fh_to_openfile(fi->fh);
   psync_fs_lock_file(of);
+
   if (of->modified){
     psync_sql_res *res;
     uint64_t writeid;
     uint32_t aff;
     int ret;
+
     if (of->staticfile){
       pthread_mutex_unlock(&of->mutex);
       return 0;
     }
+
     writeid=of->writeid;
+
     if (of->encrypted){
       ret=psync_fs_crypto_flush_file(of);
       if (unlikely_log(ret)){
@@ -1812,7 +1821,9 @@ static int psync_fs_flush(const char *path, struct fuse_file_info *fi){
         return ret;
       }
     }
+
     of->releasedforupload=1;
+
     if (of->writetimer && !psync_timer_stop(of->writetimer)){
       if (--of->refcnt==0){
         debug(D_BUG, "zero refcnt in flush after canceling timer");
@@ -1820,16 +1831,20 @@ static int psync_fs_flush(const char *path, struct fuse_file_info *fi){
       }
       of->writetimer=PSYNC_INVALID_TIMER;
     }
+
     pthread_mutex_unlock(&of->mutex);
-    debug(D_NOTICE, "releasing file %s for upload, size=%lu, writeid=%u", path, (unsigned long)of->currentsize, (unsigned)writeid);
+    debug(D_NOTICE, "releasing file [%s] for upload, size=[%lu], writeid=[%u]", path, (unsigned long)of->currentsize, (unsigned)writeid);
+
     res=psync_sql_prep_statement("UPDATE fstask SET status=0, int1=? WHERE id=? AND status=1");
     psync_sql_bind_uint(res, 1, writeid);
     psync_sql_bind_uint(res, 2, -of->fileid);
     psync_sql_run(res);
     aff=psync_sql_affected_rows();
     psync_sql_free_result(res);
-    if (aff)
+
+    if (aff) {
       psync_fsupload_wake();
+    }
     else{
       res=psync_sql_prep_statement("UPDATE fstask SET int1=? WHERE id=? AND int1<?");
       psync_sql_bind_uint(res, 1, writeid);
@@ -1837,6 +1852,7 @@ static int psync_fs_flush(const char *path, struct fuse_file_info *fi){
       psync_sql_bind_uint(res, 3, writeid);
       psync_sql_run_free(res);
     }
+
     psync_status_recalc_to_upload_async();
     return 0;
   }
@@ -2709,10 +2725,13 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
   int ret;
 
   psync_fs_set_thread_name();
-  debug(D_NOTICE, "rename %s to %s", old_path, new_path);
+
+  debug(D_NOTICE, "Rename [%s] to [%s]", old_path, new_path);
+
   folder=NULL;
   psync_sql_lock();
   CHECK_LOGIN_LOCKED();
+
   fold_path=psync_fsfolder_resolve_path(old_path);
   fnew_path=psync_fsfolder_resolve_path(new_path);
 
@@ -2807,6 +2826,7 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
 finish:
   if (folder)
     psync_fstask_release_folder_tasks_locked(folder);
+
   psync_sql_unlock();
   psync_free(fold_path);
   psync_free(fnew_path);
@@ -2814,10 +2834,13 @@ finish:
 err_enoent:
   if (folder)
     psync_fstask_release_folder_tasks_locked(folder);
+
   psync_sql_unlock();
   psync_free(fold_path);
   psync_free(fnew_path);
+
   debug(D_NOTICE, "returning ENOENT, folder not found");
+
   return -ENOENT;
 }
 

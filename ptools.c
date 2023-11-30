@@ -1176,8 +1176,6 @@ char* dns_lookup(const char* addr_host, int port) {
   char port_str[6];
   WSADATA wsaData;
 
-  debug(D_NOTICE, "Resolve: [%s], Port: [%d]", addr_host, port);
-
   if ((res = WSAStartup(MAKEWORD(2, 0), &wsaData)) != 0) {
     debug(D_WARNING, "Error initializing socket: [%s]", res);
     return NULL;
@@ -1251,8 +1249,6 @@ char* dns_lookup(const char* addr_host, int port) {
     byteRead = fread(ip, 1, sizeof(ip), stream);
   }
 #endif
-
-  debug(D_NOTICE, "Resolved IP: [%s]", ip);
 
   return psync_strdup(ip);
 }

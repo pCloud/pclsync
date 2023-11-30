@@ -236,36 +236,48 @@ up:
 
 static psync_tree *psync_tree_replace_me_with(psync_tree *tree, psync_tree *node, psync_tree *repl){
   psync_tree *parent;
+
   parent=node->parent;
+
   if (!parent){
     assert(tree==node);
     tree=repl;
   }
-  else if (node==parent->left)
-    parent->left=repl;
+  else if (node == parent->left) {
+    parent->left = repl;
+  }
   else{
     assert(node==parent->right);
     parent->right=repl;
   }
+
   if (repl)
     repl->parent=parent;
-  if (parent)
+
+  if (parent) {
     return psync_tree_go_up_rebalance_del(tree, parent);
-  else if (!tree)
+  }
+  else if (!tree) {
     return NULL;
-  else
+  }
+  else {
     return psync_tree_go_up_rebalance_del(tree, tree);
+  }
 }
 
 psync_tree *psync_tree_get_del(psync_tree *tree, psync_tree *node){
-  if (!node->left && !node->right)
+  if (!node->left && !node->right) {
     return psync_tree_replace_me_with(tree, node, NULL);
-  else if (!node->left)
+  }
+  else if (!node->left) {
     return psync_tree_replace_me_with(tree, node, node->right);
-  else if (!node->right)
+  }
+  else if (!node->right) {
     return psync_tree_replace_me_with(tree, node, node->left);
+  }
   else {
     psync_tree *el, *parent, **addr;
+
     if (node->left->height>node->right->height){
       el=node->left;
       addr=&node->left;
@@ -309,6 +321,7 @@ psync_tree *psync_tree_get_del(psync_tree *tree, psync_tree *node){
       assert(node==tree);
       tree=el;
     }
+
     return psync_tree_go_up_rebalance_del(tree, parent);
   }
 }

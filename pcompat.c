@@ -2467,6 +2467,7 @@ int psync_select_in(psync_socket_t *sockets, int cnt, int64_t timeoutmillisec){
   struct timeval tv, *ptv;
   psync_socket_t max;
   int i;
+
   if (timeoutmillisec<0)
     ptv=NULL;
   else{
@@ -2474,14 +2475,18 @@ int psync_select_in(psync_socket_t *sockets, int cnt, int64_t timeoutmillisec){
     tv.tv_usec=(timeoutmillisec%1000)*1000;
     ptv=&tv;
   }
+
   FD_ZERO(&rfds);
   max=0;
+
   for (i=0; i<cnt; i++){
     FD_SET(sockets[i], &rfds);
     if (sockets[i]>=max)
       max=sockets[i]+1;
   }
+
   i=select(max, &rfds, NULL, NULL, ptv);
+
   if (i>0){
     for (i=0; i<cnt; i++)
       if (FD_ISSET(sockets[i], &rfds))
@@ -2489,6 +2494,7 @@ int psync_select_in(psync_socket_t *sockets, int cnt, int64_t timeoutmillisec){
   }
   else if (i==0)
     psync_sock_set_err(P_TIMEDOUT);
+
   return SOCKET_ERROR;
 }
 
@@ -2858,6 +2864,7 @@ psync_file_t psync_file_open(const char *path, int access, int flags){
   DWORD cdis;
   wchar_t *wpath;
   HANDLE ret;
+
   if (flags&P_O_EXCL)
     cdis=CREATE_NEW;
   else if ((flags&(P_O_CREAT|P_O_TRUNC))==(P_O_CREAT|P_O_TRUNC))
@@ -2868,11 +2875,16 @@ psync_file_t psync_file_open(const char *path, int access, int flags){
     cdis=TRUNCATE_EXISTING;
   else
     cdis=OPEN_EXISTING;
+
   wpath=utf8_to_wchar_path(path);
+
   ret=CreateFileW(wpath, access, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, cdis, FILE_FLAG_POSIX_SEMANTICS|FILE_ATTRIBUTE_NORMAL, NULL);
+
   if (IS_DEBUG && ret==INVALID_HANDLE_VALUE && GetLastError()!=ERROR_FILE_NOT_FOUND)
     debug(D_WARNING, "could not open file %s, error %d", path, (int)GetLastError());
+
   psync_free(wpath);
+
   return ret;
 #else
 #error "Function not implemented for your operating system"
@@ -2958,9 +2970,12 @@ int psync_file_schedulesync(psync_file_t fd){
   void *fmap;
   int ret;
   ret=-1;
+
   mapping=CreateFileMapping(fd, NULL, PAGE_READWRITE, 0, 0, NULL);
+
   if (mapping!=NULL){
     fmap=MapViewOfFile(mapping, FILE_MAP_WRITE, 0, 0, 0);
+
     if (fmap!=NULL){
       if (FlushViewOfFile(fmap, 0))
         ret=0;
@@ -2970,10 +2985,12 @@ int psync_file_schedulesync(psync_file_t fd){
     }
     else
       debug(D_NOTICE, "MapViewOfFile failed, error %u", (unsigned)GetLastError());
+
     CloseHandle(mapping);
   }
   else
     debug(D_NOTICE, "CreateFileMapping failed, error %u", (unsigned)GetLastError());
+
   return ret;
 #else
   return 0;

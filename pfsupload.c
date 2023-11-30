@@ -85,6 +85,9 @@ static const uint32_t requiredstatusesnooverquota[]={
   PSTATUS_COMBINE(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE)
 };
 
+
+
+/**********************************************************************************************************/
 static int psync_send_task_mkdir(psync_socket *api, fsupload_task_t *task){
   if (task->text2){
     binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", task->folderid), P_STR("name", task->text1), P_STR("timeformat", "timestamp"),
@@ -122,6 +125,27 @@ int is_task_crypto(psync_fsfileid_t taskid) {
   return 0;
 }
 /**********************************************************************************************************/
+void get_lost_and_found_fid() {
+  int res = 0;
+  char* err;
+
+  if (lost_and_found_fid != 0) {
+    return;
+  }
+
+  psync_sql_lock();
+
+  lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+
+  if (lost_and_found_fid == -1) {
+    res = psync_create_remote_folder(0, LOST_AND_FOUND_FNAME, &err);
+
+    lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+  }
+
+  psync_sql_unlock();
+}
+/**********************************************************************************************************/
 static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
   psync_sql_res *res;
 
@@ -143,11 +167,15 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
     case 2003: /* access denied */
     case 2075: /* not a member of a business account */
     case 2344: /* can't create folders in backup folder */
-      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to 0.");
+      get_lost_and_found_fid();
 
-      res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
-      psync_sql_bind_uint(res, 1, task->id);
+      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
+
+      res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
+      psync_sql_bind_uint(res, 1, lost_and_found_fid);
+      psync_sql_bind_uint(res, 2, task->id);
       psync_sql_run_free(res);
+
       break;
     case 2001: /* invalid name */
       res=psync_sql_prep_statement("UPDATE fstask SET text1=\"Invalid Name Requested\" WHERE id=?");
@@ -222,12 +250,17 @@ static int handle_rmdir_api_error(uint64_t result, fsupload_task_t *task){
 
 static int psync_process_task_rmdir(fsupload_task_t *task){
   uint64_t result;
+  
   result=psync_find_result(task->res, "result", PARAM_NUM)->num;
+
   if (result)
     return handle_rmdir_api_error(result, task);
+  
   psync_ops_delete_folder_from_db(psync_find_result(task->res, "metadata", PARAM_HASH));
   psync_fstask_folder_deleted(task->folderid, task->id, task->text1);
-  debug(D_NOTICE, "folder %lu/%s deleted", (unsigned long)task->folderid, task->text1);
+  
+  debug(D_NOTICE, "folder %llu/%s deleted", task->folderid, task->text1);
+  
   return 0;
 }
 
@@ -262,13 +295,17 @@ static int psync_send_task_creat_upload_small(psync_socket *api, fsupload_task_t
     psync_free(data);
     return -1;
   }
+
   size+=len;
+
   if (unlikely_log(psync_socket_writeall_upload(api, data, size)!=size)){
     psync_free(data);
+
     return -1;
   }
   else{
     psync_free(data);
+
     return 0;
   }
 }
@@ -353,16 +390,31 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
         return -1;
       }
       else {
-        debug(D_NOTICE, "Not a crypto file. Do nothing.");
+        get_lost_and_found_fid();
+
+        debug(D_NOTICE, "Not a crypto file. Do nothing. Update task parent folder to [%llu].", lost_and_found_fid);
+
+        res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
+        psync_sql_bind_uint(res, 1, lost_and_found_fid);
+        psync_sql_bind_uint(res, 2, taskid);
+        psync_sql_run_free(res);
+
+        psync_fsupload_wake();
+
+        return -1;
       }
     case 2003: /* access denied */
     case 2075: /* are not a member of a business account */
     case 2346: /* backup folder */
-      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to 0.");
+      get_lost_and_found_fid();
 
-      res=psync_sql_prep_statement("UPDATE fstask SET folderid=0 WHERE id=?");
-      psync_sql_bind_uint(res, 1, taskid);
+      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
+
+      res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
+      psync_sql_bind_uint(res, 1, lost_and_found_fid);
+      psync_sql_bind_uint(res, 2, taskid);
       psync_sql_run_free(res);
+
       psync_fsupload_wake();
       return -1;
     case 2001: /* invalid filename */
@@ -1180,11 +1232,15 @@ static int psync_sent_task_creat_upload_large(fsupload_task_t *task){
 
 void psync_fsupload_stop_upload_locked(uint64_t taskid){
   psync_sql_res *res;
+
   if (current_upload_taskid==taskid)
     stop_current_upload=1;
+
   res=psync_sql_prep_statement("UPDATE fstask SET status=1 WHERE id=?");
+
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
+
   assertw(psync_sql_affected_rows());
 }
 
@@ -1224,19 +1280,23 @@ static int psync_send_task_creat(psync_socket *api, fsupload_task_t *task){
     uint64_t size;
     psync_file_t fd;
     int ret;
+
     psync_binhex(fileidhex, &task->id, sizeof(psync_fsfileid_t));
     fileidhex[sizeof(psync_fsfileid_t)]='d';
     fileidhex[sizeof(psync_fsfileid_t)+1]=0;
     filename=psync_strcat(psync_setting_get_string(_PS(fscachepath)), PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
     fd=psync_file_open(filename, P_O_RDONLY, 0);
     psync_free(filename);
+
     if (unlikely_log(fd==INVALID_HANDLE_VALUE) || unlikely_log(psync_fstat(fd, &st))){
       if (fd!=INVALID_HANDLE_VALUE)
         psync_file_close(fd);
       perm_fail_upload_task(task->id);
       return -1;
     }
+
     size=psync_stat_size(&st);
+
     if (size>PSYNC_FS_DIRECT_UPLOAD_LIMIT){
       psync_file_close(fd);
       debug(D_NOTICE, "defering upload of %lu/%s due to size of %lu", (unsigned long)task->folderid, task->text1, (unsigned long)size);
@@ -1244,17 +1304,21 @@ static int psync_send_task_creat(psync_socket *api, fsupload_task_t *task){
     }
     else{
       debug(D_NOTICE, "uploading file %lu/%s pipelined due to size of %lu", (unsigned long)task->folderid, task->text1, (unsigned long)size);
+
       ret=psync_send_task_creat_upload_small(api, task, fd, &st);
       psync_file_close(fd);
+
       if (!ret){
         psync_upload_inc_uploads();
         task->ccreat=1;
       }
+
       return ret;
     }
   }
-  else
+  else{
     return psync_sent_task_creat_upload_large(task);
+  }
 }
 
 static int psync_send_task_modify(psync_socket *api, fsupload_task_t *task){
@@ -1478,13 +1542,19 @@ static int handle_rename_file_api_error(uint64_t result, fsupload_task_t *task){
 static int psync_process_task_rename_file(fsupload_task_t *task){
   uint64_t result;
   const binresult *meta;
+
   result=psync_find_result(task->res, "result", PARAM_NUM)->num;
+
   if (result && result!=2049)
     return handle_rename_file_api_error(result, task);
+
   meta=psync_find_result(task->res, "metadata", PARAM_HASH);
+
   psync_ops_update_file_in_db(meta);
   psync_fstask_file_renamed(task->folderid, task->id, task->text1, task->int1);
+
   debug(D_NOTICE, "file %lu/%s renamed", (unsigned long)task->folderid, task->text1);
+
   return 0;
 }
 
