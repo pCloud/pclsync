@@ -3933,7 +3933,7 @@ void setDriveLetter(char* appDrive) {
   debug(D_NOTICE, "Setting Software name to %s", psync_software_name);
 }
 /***************************************************************/
-int psync_check_local_dir_empty(const char* path) {
+int psync_check_local_dir_empty(char* path) {
 #if defined(P_OS_POSIX)
   psync_pstat pst;
   DIR* dh;
@@ -3944,6 +3944,8 @@ int psync_check_local_dir_empty(const char* path) {
   int ret = 1;
 
   dh = opendir(path);
+
+  debug(D_WARNING, "BOBO: Check dir for files: [%s]", path);
 
   if (unlikely(!dh)) {
     debug(D_WARNING, "Could not open directory [%s]", path);
@@ -3961,7 +3963,11 @@ int psync_check_local_dir_empty(const char* path) {
 
   pst.path = cpath;
 
+  debug(D_WARNING, "BOBO: Dir open look for files.");
+
   while (!readdir_r(dh, entry, &de) && de){
+    debug(D_WARNING, "BOBO: Check dir entry: [%s].", de->d_name);
+
     if (de->d_name[0] != '.' || (de->d_name[1] != 0 && (de->d_name[1] != '.' || de->d_name[2] != 0))) {
       ret = 0;
       break;

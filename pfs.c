@@ -3617,7 +3617,9 @@ err00:
 
 static void psync_fs_wait_start(){
   debug(D_NOTICE, "waiting for online status");
+
   psync_wait_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
+
   if (psync_do_run){
     debug(D_NOTICE, "starting fs");
     psync_fs_do_start();
@@ -3650,20 +3652,36 @@ void psync_fs_clean_tasks(){
 int psync_fs_start(){
   uint32_t status;
   int ret;
+
+  debug(D_NOTICE, "BOBO: psync_fs_start.");
+
   pthread_mutex_lock(&start_mutex);
-  if (started)
+
+  if (started){
     ret=-1;
-  else
+  }
+  else{
     ret=0;
+  }
+  
   pthread_mutex_unlock(&start_mutex);
-  if (ret)
+
+  if (ret) {
     return ret;
+  }
+
   status=psync_status_get(PSTATUS_TYPE_AUTH);
   debug(D_NOTICE, "auth status=%u", status);
-  if (status==PSTATUS_AUTH_PROVIDED)
+
+  if (status==PSTATUS_AUTH_PROVIDED){
+    debug(D_NOTICE, "BOBO: Status is auth provided. Start FS now.");
+
     return psync_fs_do_start();
+  }
   else{
+    debug(D_NOTICE, "BOBO: Status is not auth provided. Wait for auth.");
     psync_run_thread("fs wait login", psync_fs_wait_start);
+
     return 0;
   }
 }
@@ -3678,10 +3696,15 @@ int psync_fs_isstarted(){
 
 int psync_fs_remount(){
   int s;
+
+  debug(D_NOTICE, "BOBO: Remount FS.");
+
   pthread_mutex_lock(&start_mutex);
   s=started;
   pthread_mutex_unlock(&start_mutex);
+
   if (s){
+    debug(D_NOTICE, "BOBO: Status is started. Restart FS.");
     psync_fs_stop();
     return psync_fs_start();
   }
