@@ -3933,3 +3933,51 @@ void setDriveLetter(char* appDrive) {
   debug(D_NOTICE, "Setting Software name to %s", psync_software_name);
 }
 /***************************************************************/
+int psync_check_local_dir_empty(const char* path) {
+#if defined(P_OS_POSIX)
+  psync_pstat pst;
+  DIR* dh;
+  char* cpath;
+  size_t pl, entrylen;
+  long namelen;
+  struct dirent* entry, * de;
+  int ret = 1;
+
+  dh = opendir(path);
+
+  if (unlikely(!dh)) {
+    debug(D_WARNING, "Could not open directory [%s]", path);
+    return 1;
+  }
+
+  entrylen = offsetof(struct dirent, d_name) + namelen + 1;
+  cpath = (char*)psync_malloc(pl + namelen + 2);
+  entry = (struct dirent*)psync_malloc(entrylen);
+  memcpy(cpath, path, pl);
+
+  if (!pl || cpath[pl - 1] != PSYNC_DIRECTORY_SEPARATORC){
+    cpath[pl++] = PSYNC_DIRECTORY_SEPARATORC;
+  }
+
+  pst.path = cpath;
+
+  while (!readdir_r(dh, entry, &de) && de){
+    if (de->d_name[0] != '.' || (de->d_name[1] != 0 && (de->d_name[1] != '.' || de->d_name[2] != 0))) {
+      ret = 0;
+      break;
+    }
+  }
+
+  psync_free(entry);
+  psync_free(cpath);
+  closedir(dh);
+
+  debug(D_NOTICE, "BOBO: Directory [%s] Empty:[%d]", path, ret);
+
+  return ret;
+#elif defined(P_OS_WINDOWS)
+  debug(D_WARNING, "BOBO: Warning. psync_check_local_dir_empty no implemented fopr Windows. Return [0]");
+  return 0;
+#endif
+}
+/***************************************************************/

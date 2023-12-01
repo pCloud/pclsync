@@ -52,6 +52,9 @@
 #include "pcloudcrypto.h"
 #include "pfscrypto.h"
 #include "pfsstatic.h"
+//Bobo
+#include "pcallbacks.h"
+//Bobo
 
 #ifndef FUSE_STAT
 #define FUSE_STAT stat
@@ -3238,10 +3241,13 @@ static int get_first_free_drive(){
 static char *psync_fuse_get_mountpoint(){
   const char *stored;
   char *mp = (char*)psync_malloc(3);
+
   mp[0] = 'P';
   mp[1] = ':';
   mp[2] = '\0';
+
   stored = psync_setting_get_string(_PS(fsroot));
+
   if (stored[0] && stored[1] && is_mountable(stored[0])){
       mp[0] = stored[0];
       goto ready;
@@ -3250,7 +3256,9 @@ static char *psync_fuse_get_mountpoint(){
   if (is_mountable('P')){
       goto ready;
   }
+
   mp[0] = 'A' + get_first_free_drive();
+
 ready:
   return mp;
 }
@@ -3482,6 +3490,7 @@ static int psync_fs_do_start(){
   char *mp;
   struct fuse_operations psync_oper;
   struct fuse_args args=FUSE_ARGS_INIT(0, NULL);
+  int is_mp_empty = 0;
 
 // it seems that fuse option parser ignores the first argument
 // it is ignored as it's like in the exec() parameters, argv[0] is the program
@@ -3562,12 +3571,25 @@ static int psync_fs_do_start(){
   unmount(mp, MNT_FORCE);
 #endif
 
+  is_mp_empty = psync_check_local_dir_empty(mp);
+
   psync_fuse_channel=fuse_mount(mp, &args);
 
   if (unlikely_log(!psync_fuse_channel)){
     debug(D_NOTICE, "Failed to mount fuse. Mount Point: [%s]", mp);
+    /*Send event to warn the user that the drive failed to mount because of files in the mount path. 
+    This is an assumption since mount does not return proper error code*/
+    if (is_mp_empty) {
+      psync_send_data_event(PEVENT_MP_NOT_EMPTY_ERR, "", "", 0, 0);
+    }
 
     goto err0;
+  }
+
+  /*Send event to warn the user that there are files in the mount path that won't be accessible while the drive is mounted.*/
+  if (is_mp_empty) {
+    debug(D_NOTICE, "BOBO: There are files in the mount path. Warn the user.");
+    psync_send_data_event(PEVENT_MP_NOT_EMPTY_NO_ERR, "", "", 0, 0);
   }
 
   psync_fuse=fuse_new(psync_fuse_channel, &args, &psync_oper, sizeof(psync_oper), NULL);

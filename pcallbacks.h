@@ -54,13 +54,20 @@ void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 #define PEVENT_SYNC_RENAME_F 1
 
 //Event types to notify the UI of changes to the files/folders in order to update the search index.
+/*100*/
 #define PEVENT_FS_ADD_OBJ 101
 #define PEVENT_FS_DEL_OBJ 102
 #define PEVENT_FS_MOD_OBJ 103
-
+/*200*/
 #define PEVENT_STUCK_OBJ_CNT 201
-
+/*300*/
 #define PEVENT_UPLOAD_LOGS_DONE 301
+
+/*400*/
+#define PEVENT_MP_NOT_EMPTY_ERR 401
+#define PEVENT_MP_NOT_EMPTY_NO_ERR 402
+
+/*500*/
 //Data event type constants. End.
 
 typedef struct {
