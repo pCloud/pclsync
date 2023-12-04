@@ -3573,6 +3573,8 @@ static int psync_fs_do_start(){
 
   is_mp_empty = psync_check_local_dir_empty(mp);
 
+  debug(D_NOTICE, "Mounting: [%s]", mp);
+
   psync_fuse_channel=fuse_mount(mp, &args);
 
   if (unlikely_log(!psync_fuse_channel)){

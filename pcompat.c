@@ -3936,7 +3936,6 @@ void setDriveLetter(char* appDrive) {
 int psync_check_local_dir_empty(char* path) {
 #if defined(P_OS_POSIX)
   DIR* dh;
-  char* cpath;
   size_t pl, entrylen;
   long namelen;
   struct dirent* entry, * de;
@@ -3951,16 +3950,12 @@ int psync_check_local_dir_empty(char* path) {
     return 0;
   }
 
+  debug(D_WARNING, "BOBO: 1. Directory: [%s]", path);
+
   entrylen = offsetof(struct dirent, d_name) + namelen + 1;
-  cpath = (char*)psync_malloc(pl + namelen + 2);
   entry = (struct dirent*)psync_malloc(entrylen);
-  memcpy(cpath, path, pl);
 
-  if (!pl || cpath[pl - 1] != PSYNC_DIRECTORY_SEPARATORC){
-    cpath[pl++] = PSYNC_DIRECTORY_SEPARATORC;
-  }
-
-  debug(D_WARNING, "BOBO: Dir open look for files.");
+  debug(D_WARNING, "BOBO: Dir open look for files: [%s]", path);
 
   while (!readdir_r(dh, entry, &de) && de){
     debug(D_WARNING, "BOBO: Check dir entry: [%s].", de->d_name);
@@ -3973,7 +3968,6 @@ int psync_check_local_dir_empty(char* path) {
   }
 
   psync_free(entry);
-  psync_free(cpath);
   closedir(dh);
 
   debug(D_NOTICE, "BOBO: Directory Empty:[%d]", ret);
