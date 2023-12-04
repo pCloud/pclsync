@@ -3935,21 +3935,20 @@ void setDriveLetter(char* appDrive) {
 /***************************************************************/
 int psync_check_local_dir_empty(char* path) {
 #if defined(P_OS_POSIX)
-  psync_pstat pst;
   DIR* dh;
   char* cpath;
   size_t pl, entrylen;
   long namelen;
   struct dirent* entry, * de;
-  int ret = 1;
+  int ret = 0;
 
   dh = opendir(path);
 
   debug(D_WARNING, "BOBO: Check dir for files: [%s]", path);
 
   if (unlikely(!dh)) {
-    debug(D_WARNING, "Could not open directory [%s]", path);
-    return 1;
+    debug(D_WARNING, "Could not open directory.");
+    return 0;
   }
 
   entrylen = offsetof(struct dirent, d_name) + namelen + 1;
@@ -3961,15 +3960,14 @@ int psync_check_local_dir_empty(char* path) {
     cpath[pl++] = PSYNC_DIRECTORY_SEPARATORC;
   }
 
-  pst.path = cpath;
-
   debug(D_WARNING, "BOBO: Dir open look for files.");
 
   while (!readdir_r(dh, entry, &de) && de){
     debug(D_WARNING, "BOBO: Check dir entry: [%s].", de->d_name);
 
     if (de->d_name[0] != '.' || (de->d_name[1] != 0 && (de->d_name[1] != '.' || de->d_name[2] != 0))) {
-      ret = 0;
+      debug(D_NOTICE, "BOBO: File found. Dir not empty.");
+      ret = 1;
       break;
     }
   }
@@ -3978,7 +3976,7 @@ int psync_check_local_dir_empty(char* path) {
   psync_free(cpath);
   closedir(dh);
 
-  debug(D_NOTICE, "BOBO: Directory [%s] Empty:[%d]", path, ret);
+  debug(D_NOTICE, "BOBO: Directory Empty:[%d]", ret);
 
   return ret;
 #elif defined(P_OS_WINDOWS)

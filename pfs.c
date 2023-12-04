@@ -3580,6 +3580,7 @@ static int psync_fs_do_start(){
     /*Send event to warn the user that the drive failed to mount because of files in the mount path. 
     This is an assumption since mount does not return proper error code*/
     if (is_mp_empty) {
+      debug(D_NOTICE, "Send data event!");
       psync_send_data_event(PEVENT_MP_NOT_EMPTY_ERR, "", "", 0, 0);
     }
 
