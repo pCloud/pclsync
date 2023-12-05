@@ -296,7 +296,6 @@ void psync_set_status_callback(pstatus_change_callback_t callback){
 
 void psync_send_status_update(){
   if (statusthreadrunning){
-    debug(D_NOTICE, "BOBO: Sending STATUS update.");
     pthread_mutex_lock(&statusmutex);
     if (++statuschanges==0){
       statuschanges++;

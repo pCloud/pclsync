@@ -3582,7 +3582,7 @@ static int psync_fs_do_start(){
     /*Send event to warn the user that the drive failed to mount because of files in the mount path. 
     This is an assumption since mount does not return proper error code*/
     if (is_mp_empty) {
-      debug(D_NOTICE, "Send data event!");
+      debug(D_NOTICE, "There are files in the mount path. Warn the user.");
       psync_send_data_event(PEVENT_MP_NOT_EMPTY_ERR, "", "", 0, 0);
     }
 
@@ -3591,7 +3591,7 @@ static int psync_fs_do_start(){
 
   /*Send event to warn the user that there are files in the mount path that won't be accessible while the drive is mounted.*/
   if (is_mp_empty) {
-    debug(D_NOTICE, "BOBO: There are files in the mount path. Warn the user.");
+    debug(D_NOTICE, "There are files in the mount path. Warn the user.");
     psync_send_data_event(PEVENT_MP_NOT_EMPTY_NO_ERR, "", "", 0, 0);
   }
 
@@ -3656,8 +3656,6 @@ int psync_fs_start(){
   uint32_t status;
   int ret;
 
-  debug(D_NOTICE, "BOBO: psync_fs_start.");
-
   pthread_mutex_lock(&start_mutex);
 
   if (started){
@@ -3677,12 +3675,11 @@ int psync_fs_start(){
   debug(D_NOTICE, "auth status=%u", status);
 
   if (status==PSTATUS_AUTH_PROVIDED){
-    debug(D_NOTICE, "BOBO: Status is auth provided. Start FS now.");
+    debug(D_NOTICE, "Status is auth provided. Start FS now.");
 
     return psync_fs_do_start();
   }
   else{
-    debug(D_NOTICE, "BOBO: Status is not auth provided. Wait for auth.");
     psync_run_thread("fs wait login", psync_fs_wait_start);
 
     return 0;
@@ -3700,14 +3697,14 @@ int psync_fs_isstarted(){
 int psync_fs_remount(){
   int s;
 
-  debug(D_NOTICE, "BOBO: Remount FS.");
+  debug(D_NOTICE, "Remount FS.");
 
   pthread_mutex_lock(&start_mutex);
   s=started;
   pthread_mutex_unlock(&start_mutex);
 
   if (s){
-    debug(D_NOTICE, "BOBO: Status is started. Restart FS.");
+    debug(D_NOTICE, "Status is started. Restart FS.");
     psync_fs_stop();
     return psync_fs_start();
   }

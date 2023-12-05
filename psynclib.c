@@ -350,7 +350,6 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
   debug(D_NOTICE, "P2P init done.");
 
   if (psync_setting_get_bool(_PS(autostartfs))){
-    debug(D_NOTICE, "BOBO: Autostart FS on init.");
     psync_fs_start();
     debug(D_NOTICE, "FS start done.");
   }

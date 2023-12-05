@@ -3940,35 +3940,27 @@ int psync_check_local_dir_empty(char* path) {
   struct dirent* de;
   int ret = 0;
 
-  dh = opendir(path);
+  debug(D_WARNING, "Check mount point for files: [%s]", path);
 
-  debug(D_WARNING, "BOBO: Check dir for files: [%s]", path);
+  dh = opendir(path);
 
   if (unlikely(!dh)) {
     debug(D_WARNING, "Could not open directory.");
     return 0;
   }
 
-
-  debug(D_WARNING, "BOBO: Dir open look for files: [%s]", path);
-
   while ((de = readdir(dh)) != NULL) {
-    debug(D_WARNING, "BOBO: Check dir entry: [%s].", de->d_name);
-
     if (de->d_name[0] != '.' || (de->d_name[1] != 0 && (de->d_name[1] != '.' || de->d_name[2] != 0))) {
-      debug(D_NOTICE, "BOBO: File found. Dir not empty.");
+      debug(D_NOTICE, "File found. Dir not empty. [%s]", de->d_name);
       ret = 1;
       break;
     }
   }
-
   closedir(dh);
-
-  debug(D_NOTICE, "BOBO: Directory Empty:[%d]", ret);
 
   return ret;
 #elif defined(P_OS_WINDOWS)
-  debug(D_WARNING, "BOBO: Warning. psync_check_local_dir_empty no implemented fopr Windows. Return [0]");
+  debug(D_WARNING, "Warning. psync_check_local_dir_empty no implemented for Windows. Return [0]");
   return 0;
 #endif
 }
