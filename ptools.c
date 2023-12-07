@@ -544,7 +544,7 @@ char* get_machine_name() {
 
 #if defined(P_OS_MACOSX)
   int byteRead;
-  FILE* stream = popen("system_profiler SPSoftwareDataType | grep \"Computer Name\" | cut -d: -f2", "r");
+  FILE* stream = popen("system_profiler SPSoftwareDataType | grep \"Computer Name\" | cut -d: -f2 | tr -d ' '", "r");
 
   while (!feof(stream) && !ferror(stream)) {
     byteRead = fread(pcName, 1, 128, stream);
