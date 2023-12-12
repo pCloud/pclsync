@@ -61,6 +61,11 @@ void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 #define PEVENT_STUCK_OBJ_CNT 201
 
 #define PEVENT_UPLOAD_LOGS_DONE 301
+
+#define PEVENT_BACKUP_STOP           401
+#define PEVENT_BKUP_OBJ_DEL          402
+#define PEVENT_SYNC_OBJ_DEL          403
+#define PEVENT_BKUP_F_DEL_DRIVE      404
 //Data event type constants. End.
 
 typedef struct {
