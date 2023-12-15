@@ -1325,7 +1325,10 @@ int psync_fs_crypto_write_modified_locked_nu(psync_openfile_t *of, const char *b
   psync_crypto_sectorid_t firstsectorid, lastsectorid, sectorid, esectorid;
   uint32_t l, asize, aid, icnt;
   int ret;
-//  debug(D_NOTICE, "off=%lu size=%lu cs=%lu ce=%d", (unsigned long)offset, (unsigned long)size, (unsigned long)of->currentsize, checkextender);
+
+  //debug(D_NOTICE, "off=%lu size=%lu cs=%lu ce=%d", (unsigned long)offset, (unsigned long)size, (unsigned long)of->currentsize, checkextender);
+  debug(D_NOTICE, "BOBO: psync_fs_crypto_write_modified_locked_nu. Start.");
+
   if (unlikely((size+offset+PSYNC_CRYPTO_SECTOR_SIZE-1)/PSYNC_CRYPTO_SECTOR_SIZE>PSYNC_CRYPTO_MAX_SECTORID))
     return -EINVAL;
   if (checkextender){

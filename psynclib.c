@@ -2542,6 +2542,14 @@ char * psync_get_token(){
 int psync_get_promo(char **url, uint64_t *width, uint64_t *height) {
   uint64_t result;
   binresult *res;
+
+  debug(D_WARNING, "BOBO: Get Promo URL Start.");
+
+  if (!psync_my_auth[0]) {
+    debug(D_WARNING, "BOBO: No auth token yet. Return.");
+    return 1;
+  }
+
   binparam params[]={ P_STR("auth", psync_my_auth), P_NUM("os", P_OS_ID) };
   *url = 0;
 

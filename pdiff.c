@@ -320,7 +320,9 @@ static psync_socket *get_connected_socket(){
     }
 
     debug(D_NOTICE, "STATUS: get_connected_socket");
-    psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+    //Bobo
+    //psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+    //Bobo
 
     saveauth=psync_setting_get_bool(_PS(saveauth));
     sock=psync_api_connect(apiserver, psync_setting_get_bool(_PS(usessl)));
@@ -527,7 +529,13 @@ static psync_socket *get_connected_socket(){
     psync_is_business=psync_find_result(res, "business", PARAM_BOOL)->num;
 	  lid=psync_setting_get_uint(_PS(location_id));
     psync_sql_start_transaction();
+
+
+    //Bobo
+    debug(D_NOTICE, "BOBO: Populate global variable auth token!");
     psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
+    psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+    //Bobo
 
     if (luserid){
       debug(D_NOTICE, "There is already logged user.");

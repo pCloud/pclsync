@@ -1475,7 +1475,6 @@ int wait_auth_token(char* request_id) {
   psync_set_int_value("last_logged_location_id", loc_id);
   psync_set_int_value("location_id", loc_id);
 
-
   if (loc_id == 1) {//User is located in US
     debug(D_NOTICE, "US location detected.");
     psync_set_apiserver(PSYNC_API_HOST_US,loc_id);

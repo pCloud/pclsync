@@ -2542,8 +2542,10 @@ static void logout2_thread(){
 
 // this is called when ANY api call returns non zero result
 void psync_process_api_error(uint64_t result){
-  if (result==2000)
+  if (result==2000){
+    debug(D_NOTICE, "BOBO: Got API error 2000. Auth Token: [%s]", psync_my_auth);
     psync_run_thread("logout from process_api_error", logout2_thread);
+  }
 }
 
 static void psync_netlibs_timer(psync_timer_t timer, void *ptr){

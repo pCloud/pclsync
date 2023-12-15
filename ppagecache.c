@@ -600,10 +600,12 @@ static psync_urls_t *get_urls_for_request(psync_request_t *req){
   psync_urls_t *urls;
   binresult *res;
   int64_t d;
+
   pthread_mutex_lock(&url_cache_mutex);
   el=url_cache_tree;
   pel=&url_cache_tree;
   d=-1;
+
   while (el){
     urls=psync_tree_element(el, psync_urls_t, tree);
     d=req->hash-urls->hash;
@@ -626,6 +628,9 @@ static psync_urls_t *get_urls_for_request(psync_request_t *req){
       }
     }
   }
+
+  debug(D_NOTICE, "BOBO: Getting URLS d = [%d]", d);
+
   if (d==0){
     urls->refcnt++;
     while (urls->status==0)
@@ -639,6 +644,8 @@ static psync_urls_t *get_urls_for_request(psync_request_t *req){
     pthread_mutex_unlock(&url_cache_mutex);
     return NULL;
   }
+
+
   urls=psync_new(psync_urls_t);
   urls->hash=req->hash;
   urls->refcnt=0;
@@ -648,10 +655,14 @@ static psync_urls_t *get_urls_for_request(psync_request_t *req){
   pthread_mutex_unlock(&url_cache_mutex);
   psync_get_string_id(buff, "URLS", req->hash);
   res=(binresult *)psync_cache_get(buff);
+
   if (res){
     set_urls(urls, res);
     return urls;
   }
+
+  debug(D_NOTICE, "BOBO: Getting URLS from backend. Refcnt: [%d]", urls->refcnt);
+
   if (get_urls(req, urls)){
     set_urls(urls, NULL);
     return NULL;
@@ -1676,7 +1687,11 @@ int psync_pagecache_read_modified_locked(psync_openfile_t *of, char *buf, uint64
   uint64_t isize, ioffset;
   ssize_t br;
   int rd;
+
+  debug(D_NOTICE, "BOBO: psync_pagecache_read_modified_locked. Start.");
+
   fi=psync_interval_tree_first_interval_containing_or_after(of->writeintervals, offset);
+
   if (fi && fi->from<=offset && fi->to>=offset+size){
     debug(D_NOTICE, "reading %lu bytes at offset %lu only from local storage", (unsigned long)size, (unsigned long)offset);
     br=psync_file_pread(of->datafile, buf, size, offset);
@@ -1888,18 +1903,24 @@ static void psync_pagecache_read_unmodified_thread(void *ptr){
   psync_crypto_aes256_sector_encoder_decoder_t enc;
   int err, tries;
   request=(psync_request_t *)ptr;
+
+  debug(D_NOTICE, "BOBO: Start psync_pagecache_read_unmodified_thread.");
+
   if (psync_status_get(PSTATUS_TYPE_ONLINE)==PSTATUS_ONLINE_OFFLINE){
+    debug(D_NOTICE, "BOBO: Not yet logged in don't start the readahed thread.");
     psync_pagecache_send_error(request, -ENOTCONN);
     return;
   }
   range=psync_list_element(request->ranges.next, psync_request_range_t, list);
   debug(D_NOTICE, "thread run, first offset %lu, size %lu", (unsigned long)range->offset, (unsigned long)range->length);
   tries=0;
+
 retry:
   if (!(urls=get_urls_for_request(request))){
     psync_pagecache_send_error(request, -EIO);
     return;
   }
+
   if (unlikely(request->needkey)){
     enc=psync_cloud_crypto_get_file_encoder(request->fileid, request->hash, 0);
     if (psync_crypto_to_error(enc)){
@@ -1916,15 +1937,18 @@ retry:
     pthread_mutex_unlock(&request->of->mutex);
     request->needkey=0;
   }
+
   if (psync_list_isempty(&request->ranges)){
     release_urls(urls);
     psync_fs_dec_of_refcnt_and_readers(request->of);
     psync_pagecache_free_request(request);
     return;
   }
+
   hosts=psync_find_result(urls->urls, "hosts", PARAM_ARRAY);
   psync_slprintf(cookie, sizeof(cookie), "Cookie: dwltag=%s\015\012", psync_find_result(urls->urls, "dwltag", PARAM_STR)->str);
   sock=psync_http_connect_multihost_from_cache(hosts, &host);
+
   if (!sock){
     if ((api=psync_apipool_get_from_cache())){
       debug(D_NOTICE, "no cached server connections, but got cached API connection, serving request from API");
@@ -1992,13 +2016,18 @@ err_api0:
       debug(D_WARNING, "error reading range from API, trying from content servers");
     }
   }
+
   if (!sock)
     sock=psync_http_connect_multihost(hosts, &host);
+
   if (unlikely_log(!sock))
     goto err0;
-//  debug(D_NOTICE, "connected to %s", host);
+
+  debug(D_NOTICE, "BOBO: Multyhost connected to: [%s]", host);
+
   path=psync_find_result(urls->urls, "path", PARAM_STR)->str;
   psync_socket_set_write_buffered(sock->sock);
+
   psync_list_for_each_element(range, &request->ranges, psync_request_range_t, list){
     debug(D_NOTICE, "sending request for offset %lu, size %lu", (unsigned long)range->offset, (unsigned long)range->length);
     if (psync_list_is_head(&request->ranges, &range->list) && !psync_list_is_tail(&request->ranges, &range->list)){
@@ -2012,32 +2041,44 @@ err_api0:
     if (err){
       if (tries++<5){
         psync_http_close(sock);
+
+        debug(D_NOTICE, "BOBO: 1. psync_pagecache_read_unmodified_thread. Retry!");
+
         goto retry;
       }
       else
         goto err1;
     }
   }
+
   psync_list_for_each_element(range, &request->ranges, psync_request_range_t, list)
     if ((err=psync_pagecache_read_range_from_sock(request, range, sock))){
       if (err==1 && tries++<5){
         psync_http_close(sock);
         release_bad_urls(urls);
+        
+        debug(D_NOTICE, "BOBO: 2. psync_pagecache_read_unmodified_thread. Retry!");
+
         goto retry;
       }
       else
         goto err1;
     }
+
   psync_socket_clear_write_buffered(sock->sock);
   psync_http_close(sock);
+
   debug(D_NOTICE, "request from %s finished", host);
+
 ok1:
   psync_fs_dec_of_refcnt_and_readers(request->of);
   psync_pagecache_free_request(request);
   release_urls(urls);
   return;
+
 err1:
   psync_http_close(sock);
+
 err0:
   psync_pagecache_send_error(request, -EIO);
   release_urls(urls);
@@ -2313,14 +2354,20 @@ int psync_pagecache_read_unmodified_locked(psync_openfile_t *of, char *buf, uint
   psync_request_t *rq;
   psync_list waiting;
   int ret;
+
+  debug(D_NOTICE, "BOBO: psync_pagecache_read_unmodified_locked. Start.");
+
   initialsize=of->initialsize;
   hash=of->hash;
   fileid=of->remotefileid;
   pthread_mutex_unlock(&of->mutex);
+
   if (offset>=initialsize)
     return 0;
+
   if (offset+size>initialsize)
     size=initialsize-offset;
+
   poffset=offset_round_down_to_page(offset);
   pageoff=offset-poffset;
   psize=size_round_up_to_page(size+pageoff);
@@ -2499,10 +2546,14 @@ int psync_pagecache_read_unmodified_encrypted_locked(psync_openfile_t *of, char 
   psync_fileid_t fileid;
   uint32_t asize, aoff;
   int ret, needkey;
+
+  debug(D_NOTICE, "BOBO: psync_pagecache_read_unmodified_encrypted_locked. Start.");
+
   initialsize=of->initialsize;
   hash=of->hash;
   fileid=of->remotefileid;
   intv=psync_interval_tree_first_interval_containing_or_after(of->authenticatedints, offset);
+
   if (!intv || intv->from>offset)
     authupto=0;
   else

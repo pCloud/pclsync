@@ -1435,6 +1435,9 @@ static psync_socket_t connect_socket_direct(const char *host, const char *port){
     detect_proxy();
     debug(D_WARNING, "failed to connect to %s:%s", host, port);
   }
+
+  debug(D_NOTICE, "BOBO: Resolve API IP: [%s], Host: [%s], Port: [%s]", psync_get_server_ip(), host, port);
+
   return sock;
 }
 

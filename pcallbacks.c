@@ -299,6 +299,9 @@ void psync_send_status_update(){
     pthread_mutex_lock(&statusmutex);
     if (++statuschanges==0){
       statuschanges++;
+
+      debug(D_NOTICE, "BOBO: Signal stastus change!");
+
       pthread_cond_signal(&statuscond);
     }
     pthread_mutex_unlock(&statusmutex);

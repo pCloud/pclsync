@@ -95,6 +95,7 @@ static uint32_t psync_calc_status(){
       return -1;
     }
   }
+
   if (statuses[PSTATUS_TYPE_RUN]!=PSTATUS_RUN_RUN){
     if (statuses[PSTATUS_TYPE_RUN] == PSTATUS_RUN_PAUSE) {
       debug(D_NOTICE, "Calc status to: PSTATUS_PAUSED");
@@ -109,6 +110,7 @@ static uint32_t psync_calc_status(){
       return -1;
     }
   }
+
   if (statuses[PSTATUS_TYPE_ONLINE]!=PSTATUS_ONLINE_ONLINE){
     if (statuses[PSTATUS_TYPE_ONLINE] == PSTATUS_ONLINE_CONNECTING) {
       debug(D_NOTICE, "Calc status to: PSTATUS_CONNECTING");
@@ -127,6 +129,7 @@ static uint32_t psync_calc_status(){
       return -1;
     }
   }
+  
   if (statuses[PSTATUS_TYPE_LOCALSCAN]!=PSTATUS_LOCALSCAN_READY){
     if (statuses[PSTATUS_TYPE_LOCALSCAN] == PSTATUS_LOCALSCAN_SCANNING) {
       debug(D_NOTICE, "Calc status to: PSTATUS_SCANNING");
@@ -147,6 +150,7 @@ static uint32_t psync_calc_status(){
       return -1;
     }
   }
+  
   if (statuses[PSTATUS_TYPE_DISKFULL]!=PSTATUS_DISKFULL_OK){
     if (statuses[PSTATUS_TYPE_DISKFULL] == PSTATUS_DISKFULL_FULL) {
       debug(D_NOTICE, "Calc status to: PSTATUS_DISK_FULL");
@@ -272,6 +276,9 @@ uint32_t psync_status_get(uint32_t statusid){
   pthread_mutex_lock(&statusmutex);
   statusid=statuses[statusid];
   pthread_mutex_unlock(&statusmutex);
+
+  debug(D_NOTICE, "BOBO: Return statusid: [%lu]", statusid);
+
   return statusid;
 }
 
@@ -281,15 +288,21 @@ void psync_set_status(uint32_t statusid, uint32_t status){
   if (statusid == PSTATUS_TYPE_AUTH) {
     debug(D_NOTICE, "STATUS: set auth status to: [%lu]", status);
   }
-
+  else {
+    debug(D_NOTICE, "BOBO: STATUS: Set status to type-id: [%lu]-[%lu]", statusid, status);
+  }
+  
   pthread_mutex_lock(&statusmutex);
   statuses[statusid]=status;
+
   if (status_waiters)
     pthread_cond_broadcast(&statuscond);
+
   psync_status.remoteisfull=(statuses[PSTATUS_TYPE_ACCFULL]==PSTATUS_ACCFULL_OVERQUOTA);
   psync_status.localisfull=(statuses[PSTATUS_TYPE_DISKFULL]==PSTATUS_DISKFULL_FULL);
   pthread_mutex_unlock(&statusmutex);
   status=psync_calc_status();
+
   if (psync_status.status!=status){
     psync_status.status=status;
     psync_send_status_update();
@@ -298,6 +311,8 @@ void psync_set_status(uint32_t statusid, uint32_t status){
 
 void psync_wait_status(uint32_t statusid, uint32_t status){
   pthread_mutex_lock(&statusmutex);
+
+  debug(D_NOTICE, "BOBO: Wait for status type-id: [%lu]-[%lu]", statusid, status);
 
   while ((statuses[statusid]&status)==0 && psync_do_run){
     status_waiters++;
@@ -311,6 +326,8 @@ void psync_wait_status(uint32_t statusid, uint32_t status){
     debug(D_NOTICE, "exiting");
     pthread_exit(NULL);
   }
+
+  debug(D_NOTICE, "BOBO: Satus received. type-id: [%lu]-[%lu]", statusid, status);
 }
 
 void psync_terminate_status_waiters(){

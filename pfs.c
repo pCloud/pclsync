@@ -1939,9 +1939,13 @@ static int psync_fs_read(const char *path, char *buf, size_t size, fuse_off_t of
   psync_openfile_t *of;
   time_t currenttime;
   psync_fs_set_thread_name();
+
+  debug(D_NOTICE, "BOBO: psync_fs_read. Start.");
+
   of=fh_to_openfile(fi->fh);
   currenttime=psync_timer_time();
   psync_fs_lock_file(of);
+
   if (of->currentsec==currenttime){
     of->bytesthissec+=size;
     if (of->currentspeed<of->bytesthissec)
@@ -3489,6 +3493,9 @@ static int psync_fs_do_start(){
   struct fuse_operations psync_oper;
   struct fuse_args args=FUSE_ARGS_INIT(0, NULL);
 
+
+  debug(D_NOTICE, "BOBO: psync_fs_do_start!");
+
 // it seems that fuse option parser ignores the first argument
 // it is ignored as it's like in the exec() parameters, argv[0] is the program
 
@@ -3600,8 +3607,10 @@ err00:
 }
 
 static void psync_fs_wait_start(){
-  debug(D_NOTICE, "waiting for online status");
+  debug(D_NOTICE, "Waiting for online status to mount FS.");
+  
   psync_wait_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
+  
   if (psync_do_run){
     debug(D_NOTICE, "starting fs");
     psync_fs_do_start();
@@ -3634,16 +3643,23 @@ void psync_fs_clean_tasks(){
 int psync_fs_start(){
   uint32_t status;
   int ret;
+
   pthread_mutex_lock(&start_mutex);
+
   if (started)
     ret=-1;
   else
     ret=0;
+
   pthread_mutex_unlock(&start_mutex);
+
   if (ret)
     return ret;
+
   status=psync_status_get(PSTATUS_TYPE_AUTH);
+
   debug(D_NOTICE, "auth status=%u", status);
+
   if (status==PSTATUS_AUTH_PROVIDED)
     return psync_fs_do_start();
   else{
