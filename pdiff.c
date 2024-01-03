@@ -530,11 +530,12 @@ static psync_socket *get_connected_socket(){
 	  lid=psync_setting_get_uint(_PS(location_id));
     psync_sql_start_transaction();
 
-
-    //Bobo
-    debug(D_NOTICE, "BOBO: Populate global variable auth token!");
     psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
-    psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+    //Bobo
+    if (sizeof(psync_my_auth) > 0) {
+      debug(D_NOTICE, "Auth token populated!");
+      psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+    }
     //Bobo
 
     if (luserid){
