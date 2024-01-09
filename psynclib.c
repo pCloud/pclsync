@@ -416,7 +416,7 @@ void psync_set_user_pass(const char *username, const char *password, int save){
     pthread_mutex_unlock(&psync_my_auth_mutex);
   }
 
-  debug(D_NOTICE, "STATUS: psync_set_user_pass");
+  debug(D_NOTICE, "STATUS: psync_set_user_pass. User: [%s]", psync_my_user);
 
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
   psync_recache_contacts=1;
@@ -797,6 +797,8 @@ void psync_tfa_set_code(const char *code, int trusted, int is_recovery){
 
 psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotepath, psync_synctype_t synctype){
   psync_folderid_t folderid=psync_get_folderid_by_path(remotepath);
+
+  debug(D_NOTICE, "BOBO: Add syns. Local Path: [%s] Remote Path: [%s]", localpath, remotepath);
 
   if (likely_log(folderid!=PSYNC_INVALID_FOLDERID))
     return psync_add_sync_by_folderid(localpath, folderid, synctype);
@@ -1309,15 +1311,22 @@ int psync_lost_password(const char *email, char **err){
 int psync_change_password(const char *currentpass, const char *newpass, char **err){
   char * device; int ret;binresult *res;
   device=psync_deviceid();
+
   {
     binparam params[]={P_STR("auth", psync_my_auth), P_STR("oldpassword", currentpass), P_STR("newpassword", newpass), P_STR("device", device), P_BOOL("regetauth", 1)};
     ret = run_command_get_res("changepassword", params, err, &res);
   }
+
+  debug(D_WARNING, "BOBO: psync_change_password.");
+
   psync_free(device);
+
   if (ret)
     return ret;
+
   psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
   psync_free(res);
+
   return 0;
 }
 
@@ -1325,12 +1334,18 @@ int psync_create_remote_folder_by_path(const char *path, char **err){
   binparam params[]={P_STR("auth", psync_my_auth), P_STR("path", path), P_STR("timeformat", "timestamp")};
   binresult *res;
   int ret;
+
+  debug(D_WARNING, "BOBO: psync_create_remote_folder_by_path.");
+
   ret=run_command_get_res("createfolder", params, err, &res);
+
   if (ret)
     return ret;
+
   psync_ops_create_folder_in_db(psync_find_result(res, "metadata", PARAM_HASH));
   psync_free(res);
   psync_diff_wake();
+
   return 0;
 }
 
@@ -1338,12 +1353,18 @@ int psync_create_remote_folder(psync_folderid_t parentfolderid, const char *name
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", parentfolderid), P_STR("name", name), P_STR("timeformat", "timestamp")};
   binresult *res;
   int ret;
+
+  debug(D_WARNING, "BOBO: psync_create_remote_folder.");
+
   ret=run_command_get_res("createfolder", params, err, &res);
+
   if (ret)
     return ret;
+
   psync_ops_create_folder_in_db(psync_find_result(res, "metadata", PARAM_HASH));
   psync_free(res);
   psync_diff_wake();
+
   return 0;
 }
 
@@ -3069,21 +3090,12 @@ int psync_delete_backup_device(psync_folderid_t fId) {
   return 1;
 }
 /***********************************************************************************************************************************************/
-void psync_send_backup_del_event(uint8_t is_folder, char* name, char* path, psync_syncid_t sync_type) {
+void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t is_folder) {
   time_t currTime = psync_time();
-  int event_id;
-  
-  debug(D_NOTICE, "BOBO: Send BackUp/Sync del event. Obj Type: [%s] Name: [%s] Path: [%s] Sync Type: [%u]", is_folder ? "folder" : "file", name, path, sync_type);
 
   //Bobo
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
-
-    if (sync_type == 7) {
-      event_id = PEVENT_BKUP_OBJ_DEL;
-    }
-    else {
-      event_id = PEVENT_SYNC_OBJ_DEL;
-    }
+    debug(D_NOTICE, "BOBO: Send BackUp/Sync del event. Obj Type: [%s] Name: [%s] Path: [%s] Sync Type: [%u]", is_folder ? "folder" : "file", name, path);
 
     psync_send_data_event(event_id, path, name, is_folder, NULL);
 

@@ -907,7 +907,7 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId);
 int psync_delete_backup_device(psync_folderid_t fId);
 
 //Backup events
-void psync_send_backup_del_event(uint8_t is_folder, char* name, char* path, psync_syncid_t sync_type);
+void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t is_folder);
 
 //Send async event
 void psync_async_ui_callback(void* ptr);
@@ -1686,6 +1686,33 @@ int psync_uploadLogsAsync();
 int deleteLogFiles();
 /*******************************************************************************/
 int psync_get_isdebug();
+/*******************************************************************************/
+//Data event methods and types.
+//Data event type constants. Start.
+#define PEVENT_SYNC_RENAME_F 1
+
+//Event types to notify the UI of changes to the files/folders in order to update the search index.
+/*100*/
+#define PEVENT_FS_ADD_OBJ 101
+#define PEVENT_FS_DEL_OBJ 102
+#define PEVENT_FS_MOD_OBJ 103
+
+/*200*/
+#define PEVENT_STUCK_OBJ_CNT 201
+
+/*300*/
+#define PEVENT_UPLOAD_LOGS_DONE 301
+
+/*400*/
+#define PEVENT_BACKUP_STOP           401
+#define PEVENT_BKUP_OBJ_DEL          402
+#define PEVENT_SYNC_OBJ_DEL          403
+#define PEVENT_BKUP_F_DEL_DRIVE      404
+
+/*500*/
+
+//Data event type constants. End.
+/*******************************************************************************/
 #ifdef __cplusplus
 }
 #endif
