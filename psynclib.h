@@ -1710,6 +1710,8 @@ int psync_get_isdebug();
 #define PEVENT_BKUP_F_DEL_DRIVE      404
 
 /*500*/
+#define PEVENT_MP_NOT_EMPTY_ERR 501
+#define PEVENT_MP_NOT_EMPTY_NO_ERR 502
 
 //Data event type constants. End.
 /*******************************************************************************/

@@ -52,10 +52,8 @@
 #include "pcloudcrypto.h"
 #include "pfscrypto.h"
 #include "pfsstatic.h"
-
 //Bobo
 #include "pcallbacks.h"
-
 //Bobo
 
 #ifndef FUSE_STAT
@@ -3250,10 +3248,13 @@ static int get_first_free_drive(){
 static char *psync_fuse_get_mountpoint(){
   const char *stored;
   char *mp = (char*)psync_malloc(3);
+
   mp[0] = 'P';
   mp[1] = ':';
   mp[2] = '\0';
+
   stored = psync_setting_get_string(_PS(fsroot));
+
   if (stored[0] && stored[1] && is_mountable(stored[0])){
       mp[0] = stored[0];
       goto ready;
@@ -3262,7 +3263,9 @@ static char *psync_fuse_get_mountpoint(){
   if (is_mountable('P')){
       goto ready;
   }
+
   mp[0] = 'A' + get_first_free_drive();
+
 ready:
   return mp;
 }
@@ -3494,6 +3497,7 @@ static int psync_fs_do_start(){
   char *mp;
   struct fuse_operations psync_oper;
   struct fuse_args args=FUSE_ARGS_INIT(0, NULL);
+  int is_mp_empty = 0;
 
 
   debug(D_NOTICE, "BOBO: psync_fs_do_start!");
@@ -3577,12 +3581,28 @@ static int psync_fs_do_start(){
   unmount(mp, MNT_FORCE);
 #endif
 
+  is_mp_empty = psync_check_local_dir_empty(mp);
+
+  debug(D_NOTICE, "Mounting: [%s]", mp);
+
   psync_fuse_channel=fuse_mount(mp, &args);
 
   if (unlikely_log(!psync_fuse_channel)){
     debug(D_NOTICE, "Failed to mount fuse. Mount Point: [%s]", mp);
+    /*Send event to warn the user that the drive failed to mount because of files in the mount path. 
+    This is an assumption since mount does not return proper error code*/
+    if (is_mp_empty) {
+      debug(D_NOTICE, "There are files in the mount path. Warn the user.");
+      psync_send_data_event(PEVENT_MP_NOT_EMPTY_ERR, "", "", 0, 0);
+    }
 
     goto err0;
+  }
+
+  /*Send event to warn the user that there are files in the mount path that won't be accessible while the drive is mounted.*/
+  if (is_mp_empty) {
+    debug(D_NOTICE, "There are files in the mount path. Warn the user.");
+    psync_send_data_event(PEVENT_MP_NOT_EMPTY_NO_ERR, "", "", 0, 0);
   }
 
   psync_fuse=fuse_new(psync_fuse_channel, &args, &psync_oper, sizeof(psync_oper), NULL);
@@ -3609,10 +3629,8 @@ err00:
 }
 
 static void psync_fs_wait_start(){
-  debug(D_NOTICE, "Waiting for online status to mount FS.");
-  
+  debug(D_NOTICE, "waiting for online status");
   psync_wait_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
-  
   if (psync_do_run){
     debug(D_NOTICE, "starting fs");
     psync_fs_do_start();
@@ -3647,11 +3665,13 @@ int psync_fs_start(){
   int ret;
 
   pthread_mutex_lock(&start_mutex);
-
-  if (started)
+  
+  if (started){
     ret=-1;
-  else
-    ret=0;
+  }
+  else {
+    ret = 0;
+  }
 
   pthread_mutex_unlock(&start_mutex);
 
@@ -3660,12 +3680,13 @@ int psync_fs_start(){
 
   status=psync_status_get(PSTATUS_TYPE_AUTH);
 
-  debug(D_NOTICE, "auth status=%u", status);
-
-  if (status==PSTATUS_AUTH_PROVIDED)
+  debug(D_NOTICE, "auth status=[%u]", status);
+  if (status==PSTATUS_AUTH_PROVIDED){
     return psync_fs_do_start();
+  }
   else{
     psync_run_thread("fs wait login", psync_fs_wait_start);
+
     return 0;
   }
 }
@@ -3680,10 +3701,15 @@ int psync_fs_isstarted(){
 
 int psync_fs_remount(){
   int s;
+
+  debug(D_NOTICE, "Remount FS.");
+
   pthread_mutex_lock(&start_mutex);
   s=started;
   pthread_mutex_unlock(&start_mutex);
+
   if (s){
+    debug(D_NOTICE, "Status is started. Restart FS.");
     psync_fs_stop();
     return psync_fs_start();
   }

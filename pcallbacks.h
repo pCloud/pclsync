@@ -49,28 +49,31 @@ void psync_send_event_by_path(psync_eventtype_t eventid, psync_syncid_t syncid, 
 void psync_send_eventid(psync_eventtype_t eventid);
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 
-/*
-* Bobo
 //Data event methods and types.
 //Data event type constants. Start.
 #define PEVENT_SYNC_RENAME_F 1
 
 //Event types to notify the UI of changes to the files/folders in order to update the search index.
+/*100*/
 #define PEVENT_FS_ADD_OBJ 101
 #define PEVENT_FS_DEL_OBJ 102
 #define PEVENT_FS_MOD_OBJ 103
-
+/*200*/
 #define PEVENT_STUCK_OBJ_CNT 201
-
+/*300*/
 #define PEVENT_UPLOAD_LOGS_DONE 301
 
+/*400*/
 #define PEVENT_BACKUP_STOP           401
 #define PEVENT_BKUP_OBJ_DEL          402
 #define PEVENT_SYNC_OBJ_DEL          403
 #define PEVENT_BKUP_F_DEL_DRIVE      404
+
+/*500*/
+#define PEVENT_MP_NOT_EMPTY_ERR 501
+#define PEVENT_MP_NOT_EMPTY_NO_ERR 502
+
 //Data event type constants. End.
-* Bobo
-*/
 
 typedef struct {
   int eventid;
