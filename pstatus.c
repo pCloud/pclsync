@@ -273,11 +273,10 @@ void psync_status_recalc_to_upload_async(){
 }
 
 uint32_t psync_status_get(uint32_t statusid){
+
   pthread_mutex_lock(&statusmutex);
   statusid=statuses[statusid];
   pthread_mutex_unlock(&statusmutex);
-
-  debug(D_NOTICE, "BOBO: Return statusid: [%lu]", statusid);
 
   return statusid;
 }
@@ -312,8 +311,6 @@ void psync_set_status(uint32_t statusid, uint32_t status){
 void psync_wait_status(uint32_t statusid, uint32_t status){
   pthread_mutex_lock(&statusmutex);
 
-  debug(D_NOTICE, "BOBO: Wait for status type-id: [%lu]-[%lu]", statusid, status);
-
   while ((statuses[statusid]&status)==0 && psync_do_run){
     status_waiters++;
     pthread_cond_wait(&statuscond, &statusmutex);
@@ -326,8 +323,6 @@ void psync_wait_status(uint32_t statusid, uint32_t status){
     debug(D_NOTICE, "exiting");
     pthread_exit(NULL);
   }
-
-  debug(D_NOTICE, "BOBO: Satus received. type-id: [%lu]-[%lu]", statusid, status);
 }
 
 void psync_terminate_status_waiters(){

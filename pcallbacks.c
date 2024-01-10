@@ -300,8 +300,6 @@ void psync_send_status_update(){
     if (++statuschanges==0){
       statuschanges++;
 
-      debug(D_NOTICE, "BOBO: Signal stastus change!");
-
       pthread_cond_signal(&statuscond);
     }
     pthread_mutex_unlock(&statusmutex);
@@ -545,7 +543,7 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
   data->uint1 = uint1;
   data->uint2 = uint2;
 
-  debug(D_NOTICE, "BOBO: Send data event: Event Id: [%d] Str1: [%s] Str2: [%s] Uint1: [%llu] Uint2: [%llu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
+  //debug(D_NOTICE, "Send data event: Event Id: [%d] Str1: [%s] Str2: [%s] Uint1: [%llu] Uint2: [%llu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
   if (data_event_fptr) {
     add_elem(data, &data_event_elem_list);

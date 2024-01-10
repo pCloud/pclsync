@@ -496,24 +496,19 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
       ldisk=ldisk->next;
     }
     else { // deleted element from disk (file)
-      debug(D_NOTICE, "BOBO: Found deleted element 2. Name: [%s], IsFolder: [%u]", fdb->name, fdb->isfolder);
-
-      //Bobo
-      debug(D_NOTICE, "BOBO: found deleted file in sync/bup element. Type: [%s] Path: [%s] Sync Type: [%u]", fdb->isfolder ? "folder" : "file", fdb->name, synctype);
       if (synctype == 7) {
-        debug(D_NOTICE, "BOBO: Sending Bup delete event.");
+        debug(D_NOTICE, "Sending Bup delete event.");
 
         psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, NULL, NULL);
       }
       else if (synctype == 3) {
-        debug(D_NOTICE, "BOBO: Sending Sync delete event.");
+        debug(D_NOTICE, "Sending Sync delete event.");
 
         psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, localpath, fdb->name, fdb->isfolder);
       }
       else {
-        debug(D_NOTICE, "BOBO: Unsuported sync type: [%u]", synctype);
+        debug(D_NOTICE, "Unsuported sync type: [%u]", synctype);
       }
-      //Bobo
 
       add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
       ldb=ldb->next;
@@ -529,22 +524,19 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   while (ldb!=&dblist){
     fdb=psync_list_element(ldb, sync_folderlist, list);
 
-    debug(D_NOTICE, "BOBO: found deleted folder in sync/bup element. Type: [%s] Path: [%s] Sync Type: [%u]", fdb->isfolder ? "folder" : "file", fdb->name, synctype);
-    //Bobo
     if (synctype == 7) {
-      debug(D_NOTICE, "BOBO: Sending Bup delete event.");
+      debug(D_NOTICE, "Sending Bup delete event.");
 
       psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, NULL, NULL);
     }
     else if (synctype == 3) {
-      debug(D_NOTICE, "BOBO: Sending Sync delete event.");
+      debug(D_NOTICE, "Sending Sync delete event.");
 
       psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, localpath, fdb->name, fdb->isfolder);
     }
     else {
-      debug(D_NOTICE, "BOBO: Unsuported sync type: [%u]", synctype);
+      debug(D_NOTICE, "Unsuported sync type: [%u]", synctype);
     }
-    //Bobo
 
     add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
     ldb=ldb->next;

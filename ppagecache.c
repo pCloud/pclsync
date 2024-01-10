@@ -629,8 +629,6 @@ static psync_urls_t *get_urls_for_request(psync_request_t *req){
     }
   }
 
-  debug(D_NOTICE, "BOBO: Getting URLS d = [%d]", d);
-
   if (d==0){
     urls->refcnt++;
     while (urls->status==0)
@@ -660,8 +658,6 @@ static psync_urls_t *get_urls_for_request(psync_request_t *req){
     set_urls(urls, res);
     return urls;
   }
-
-  debug(D_NOTICE, "BOBO: Getting URLS from backend. Refcnt: [%d]", urls->refcnt);
 
   if (get_urls(req, urls)){
     set_urls(urls, NULL);
@@ -1688,8 +1684,6 @@ int psync_pagecache_read_modified_locked(psync_openfile_t *of, char *buf, uint64
   ssize_t br;
   int rd;
 
-  debug(D_NOTICE, "BOBO: psync_pagecache_read_modified_locked. Start.");
-
   fi=psync_interval_tree_first_interval_containing_or_after(of->writeintervals, offset);
 
   if (fi && fi->from<=offset && fi->to>=offset+size){
@@ -1904,10 +1898,7 @@ static void psync_pagecache_read_unmodified_thread(void *ptr){
   int err, tries;
   request=(psync_request_t *)ptr;
 
-  debug(D_NOTICE, "BOBO: Start psync_pagecache_read_unmodified_thread.");
-
   if (psync_status_get(PSTATUS_TYPE_ONLINE)==PSTATUS_ONLINE_OFFLINE){
-    debug(D_NOTICE, "BOBO: Not yet logged in don't start the readahed thread.");
     psync_pagecache_send_error(request, -ENOTCONN);
     return;
   }
@@ -2023,8 +2014,6 @@ err_api0:
   if (unlikely_log(!sock))
     goto err0;
 
-  debug(D_NOTICE, "BOBO: Multyhost connected to: [%s]", host);
-
   path=psync_find_result(urls->urls, "path", PARAM_STR)->str;
   psync_socket_set_write_buffered(sock->sock);
 
@@ -2042,8 +2031,6 @@ err_api0:
       if (tries++<5){
         psync_http_close(sock);
 
-        debug(D_NOTICE, "BOBO: 1. psync_pagecache_read_unmodified_thread. Retry!");
-
         goto retry;
       }
       else
@@ -2056,8 +2043,6 @@ err_api0:
       if (err==1 && tries++<5){
         psync_http_close(sock);
         release_bad_urls(urls);
-        
-        debug(D_NOTICE, "BOBO: 2. psync_pagecache_read_unmodified_thread. Retry!");
 
         goto retry;
       }
@@ -2355,8 +2340,6 @@ int psync_pagecache_read_unmodified_locked(psync_openfile_t *of, char *buf, uint
   psync_list waiting;
   int ret;
 
-  debug(D_NOTICE, "BOBO: psync_pagecache_read_unmodified_locked. Start.");
-
   initialsize=of->initialsize;
   hash=of->hash;
   fileid=of->remotefileid;
@@ -2546,8 +2529,6 @@ int psync_pagecache_read_unmodified_encrypted_locked(psync_openfile_t *of, char 
   psync_fileid_t fileid;
   uint32_t asize, aoff;
   int ret, needkey;
-
-  debug(D_NOTICE, "BOBO: psync_pagecache_read_unmodified_encrypted_locked. Start.");
 
   initialsize=of->initialsize;
   hash=of->hash;

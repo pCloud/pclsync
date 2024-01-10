@@ -1938,8 +1938,6 @@ static int psync_fs_read(const char *path, char *buf, size_t size, fuse_off_t of
   time_t currenttime;
   psync_fs_set_thread_name();
 
-  debug(D_NOTICE, "BOBO: psync_fs_read. Start.");
-
   of=fh_to_openfile(fi->fh);
   currenttime=psync_timer_time();
   psync_fs_lock_file(of);
@@ -3498,9 +3496,6 @@ static int psync_fs_do_start(){
   struct fuse_operations psync_oper;
   struct fuse_args args=FUSE_ARGS_INIT(0, NULL);
   int is_mp_empty = 0;
-
-
-  debug(D_NOTICE, "BOBO: psync_fs_do_start!");
 
 // it seems that fuse option parser ignores the first argument
 // it is ignored as it's like in the exec() parameters, argv[0] is the program

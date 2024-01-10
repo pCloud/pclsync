@@ -798,7 +798,7 @@ void psync_tfa_set_code(const char *code, int trusted, int is_recovery){
 psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotepath, psync_synctype_t synctype){
   psync_folderid_t folderid=psync_get_folderid_by_path(remotepath);
 
-  debug(D_NOTICE, "BOBO: Add syns. Local Path: [%s] Remote Path: [%s]", localpath, remotepath);
+  debug(D_NOTICE, "Add sync. Local Path: [%s] Remote Path: [%s]", localpath, remotepath);
 
   if (likely_log(folderid!=PSYNC_INVALID_FOLDERID))
     return psync_add_sync_by_folderid(localpath, folderid, synctype);
@@ -1317,8 +1317,6 @@ int psync_change_password(const char *currentpass, const char *newpass, char **e
     ret = run_command_get_res("changepassword", params, err, &res);
   }
 
-  debug(D_WARNING, "BOBO: psync_change_password.");
-
   psync_free(device);
 
   if (ret)
@@ -1334,8 +1332,6 @@ int psync_create_remote_folder_by_path(const char *path, char **err){
   binparam params[]={P_STR("auth", psync_my_auth), P_STR("path", path), P_STR("timeformat", "timestamp")};
   binresult *res;
   int ret;
-
-  debug(D_WARNING, "BOBO: psync_create_remote_folder_by_path.");
 
   ret=run_command_get_res("createfolder", params, err, &res);
 
@@ -1353,8 +1349,6 @@ int psync_create_remote_folder(psync_folderid_t parentfolderid, const char *name
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", parentfolderid), P_STR("name", name), P_STR("timeformat", "timestamp")};
   binresult *res;
   int ret;
-
-  debug(D_WARNING, "BOBO: psync_create_remote_folder.");
 
   ret=run_command_get_res("createfolder", params, err, &res);
 
@@ -2564,10 +2558,7 @@ int psync_get_promo(char **url, uint64_t *width, uint64_t *height) {
   uint64_t result;
   binresult *res;
 
-  debug(D_WARNING, "BOBO: Get Promo URL Start.");
-
   if (!psync_my_auth[0]) {
-    debug(D_WARNING, "BOBO: No auth token yet. Return.");
     return 1;
   }
 
@@ -2683,7 +2674,7 @@ int psync_is_folder_syncable(char*  localPath,
 
   debug(D_NOTICE, "Check if folder is already synced. LocalPath [%s]", localPath);
 
-  sql = psync_sql_query("SELECT localpath FROM syncfolder");
+  sql = psync_sql_query("SELECT localpath FROM syncfolder WHERE folderid IS NOT NULL");
 
   if (unlikely_log(!sql)) {
     return_isyncid(PERROR_DATABASE_ERROR);
@@ -3095,14 +3086,14 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
 
   //Bobo
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
-    debug(D_NOTICE, "BOBO: Send BackUp/Sync del event. Obj Type: [%s] Name: [%s] Path: [%s] Sync Type: [%u]", is_folder ? "folder" : "file", name, path);
+    debug(D_NOTICE, "Send BackUp/Sync del event. Obj Type: [%s] Name: [%s] Path: [%s] Sync Type: [%u]", is_folder ? "folder" : "file", name, path);
 
     psync_send_data_event(event_id, path, name, is_folder, NULL);
 
     lastBupDelEventTime = currTime;
   }
   else {
-    debug(D_NOTICE, "BOBO: Data event timeout not reached!");
+    //debug(D_NOTICE, "Data event timeout not reached!");
   }
   //Bobo
 }
