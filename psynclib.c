@@ -3086,7 +3086,7 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
 
   //Bobo
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
-    debug(D_NOTICE, "Send BackUp/Sync del event. Obj Type: [%s] Name: [%s] Path: [%s] Sync Type: [%u]", is_folder ? "folder" : "file", name, path);
+    debug(D_NOTICE, "Send BackUp/Sync del event. Event Id: [%d] Obj Type: [%s] Name: [%s] Path: [%s]", event_id, is_folder ? "folder" : "file", name, path);
 
     psync_send_data_event(event_id, path, name, is_folder, NULL);
 

@@ -288,7 +288,7 @@ void psync_set_status(uint32_t statusid, uint32_t status){
     debug(D_NOTICE, "STATUS: set auth status to: [%lu]", status);
   }
   else {
-    debug(D_NOTICE, "BOBO: STATUS: Set status to type-id: [%lu]-[%lu]", statusid, status);
+    debug(D_NOTICE, "STATUS: Set status to type-id: [%lu]-[%lu]", statusid, status);
   }
   
   pthread_mutex_lock(&statusmutex);

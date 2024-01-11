@@ -795,7 +795,6 @@ static psync_fsfileid_t get_file_at_old_location(psync_fsfileid_t fileid){
     return 0;
   psync_get_string_id(key, "HLOC", fileid);
 
-  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   rec=(file_history_record *)psync_cache_get(key);
 
   if (!rec)
@@ -982,7 +981,6 @@ static void add_history_record(psync_fileid_t fileid, psync_folderid_t folderid,
   char key[16];
   psync_get_string_id(key, "HLOC", fileid);
 
-  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   while ((rec=(file_history_record *)psync_cache_get(key)))
     psync_free(rec);
 

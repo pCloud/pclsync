@@ -171,7 +171,6 @@ void psync_apipool_set_server(const char *binapi) {
 psync_socket *psync_apipool_get(){
   psync_socket *ret;
   while (1){
-    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     ret=(psync_socket *)psync_cache_get(apikey);
 
     if (!ret)
@@ -188,7 +187,6 @@ psync_socket *psync_apipool_get(){
 psync_socket *psync_apipool_get_from_cache(){
   psync_socket *ret;
   while (1){
-    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     ret=(psync_socket *)psync_cache_get(apikey);
 
     if (!ret)
@@ -944,7 +942,6 @@ psync_http_socket *psync_http_connect(const char *host, const char *path, uint64
   cl=snprintf(cachekey, sizeof(cachekey)-1, "HTTP%d-%s", usessl, host)+1;
   cachekey[sizeof(cachekey)-1]=0;
 
-  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   sock=(psync_socket *)psync_cache_get(cachekey);
 
   if (!sock){
@@ -953,7 +950,7 @@ psync_http_socket *psync_http_connect(const char *host, const char *path, uint64
       goto err0;
   }
   else
-    debug(D_NOTICE, "got connection to %s from cache", host);
+    debug(D_NOTICE, "got connection to [%s] from cache", host);
   readbuff=psync_malloc(PSYNC_HTTP_RESP_BUFFER);
   if (!addhdr)
     addhdr="";
@@ -1298,7 +1295,6 @@ psync_http_socket *psync_http_connect_multihost(const binresult *hosts, const ch
     cl=snprintf(cachekey, sizeof(cachekey)-1, "HTTP%d-%s", usessl, hosts->array[i]->str)+1;
     cachekey[sizeof(cachekey)-1]=0;
 
-    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     sock=(psync_socket *)psync_cache_get(cachekey);
 
     if (sock){
@@ -1307,7 +1303,7 @@ psync_http_socket *psync_http_connect_multihost(const binresult *hosts, const ch
         sock=NULL;
       }
       else{
-        debug(D_NOTICE, "got socket to %s from cache", hosts->array[i]->str);
+        debug(D_NOTICE, "got socket to [%s] from cache", hosts->array[i]->str);
         *host=hosts->array[i]->str;
         break;
       }
@@ -1361,7 +1357,6 @@ psync_http_socket *psync_http_connect_multihost_from_cache(const binresult *host
     cl=snprintf(cachekey, sizeof(cachekey)-1, "HTTP%d-%s", usessl, hosts->array[i]->str)+1;
     cachekey[sizeof(cachekey)-1]=0;
 
-    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     sock=(psync_socket *)psync_cache_get(cachekey);
 
     if (sock){
@@ -2556,7 +2551,7 @@ static void logout2_thread(){
 // this is called when ANY api call returns non zero result
 void psync_process_api_error(uint64_t result){
   if (result==2000){
-    debug(D_NOTICE, "BOBO: Got API error 2000. Auth Token: [%s]", psync_my_auth);
+    debug(D_NOTICE, "BOBO: Got API error 2000.");
     psync_run_thread("logout from process_api_error", logout2_thread);
   }
 }

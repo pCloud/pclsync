@@ -1302,7 +1302,6 @@ psync_sql_res *psync_sql_query_rdlock(const char *sql){
 #endif
   psync_sql_res *ret;
 
-  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   ret=(psync_sql_res *)psync_cache_get(sql);
 
   if (ret){
@@ -1368,7 +1367,6 @@ psync_sql_res *psync_sql_query_nolock(const char *sql){
     abort();
   }
 #endif
-  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   ret=(psync_sql_res *)psync_cache_get(sql);
 
   if (ret){
@@ -1477,7 +1475,6 @@ psync_sql_res *psync_sql_prep_statement(const char *sql){
 #endif
   psync_sql_res *ret;
 
-  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   ret=psync_cache_get(sql);
   if (ret){
 //    debug(D_NOTICE, "got statement %s from cache", sql);
