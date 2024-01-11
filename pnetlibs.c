@@ -171,7 +171,9 @@ void psync_apipool_set_server(const char *binapi) {
 psync_socket *psync_apipool_get(){
   psync_socket *ret;
   while (1){
+    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     ret=(psync_socket *)psync_cache_get(apikey);
+
     if (!ret)
       break;
     if (!api_sock_is_broken(ret))
@@ -186,7 +188,9 @@ psync_socket *psync_apipool_get(){
 psync_socket *psync_apipool_get_from_cache(){
   psync_socket *ret;
   while (1){
+    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     ret=(psync_socket *)psync_cache_get(apikey);
+
     if (!ret)
       break;
     if (!api_sock_is_broken(ret))
@@ -939,7 +943,10 @@ psync_http_socket *psync_http_connect(const char *host, const char *path, uint64
   usessl=psync_setting_get_bool(_PS(usessl));
   cl=snprintf(cachekey, sizeof(cachekey)-1, "HTTP%d-%s", usessl, host)+1;
   cachekey[sizeof(cachekey)-1]=0;
+
+  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   sock=(psync_socket *)psync_cache_get(cachekey);
+
   if (!sock){
     sock=psync_socket_connect_download(host, usessl?443:80, usessl);
     if (!sock)
@@ -1290,7 +1297,10 @@ psync_http_socket *psync_http_connect_multihost(const binresult *hosts, const ch
   for (i=0; i<hosts->length; i++){
     cl=snprintf(cachekey, sizeof(cachekey)-1, "HTTP%d-%s", usessl, hosts->array[i]->str)+1;
     cachekey[sizeof(cachekey)-1]=0;
+
+    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     sock=(psync_socket *)psync_cache_get(cachekey);
+
     if (sock){
       if (unlikely_log(psync_socket_is_broken(sock->sock))){
         psync_socket_close_bad(sock);
@@ -1350,7 +1360,10 @@ psync_http_socket *psync_http_connect_multihost_from_cache(const binresult *host
   for (i=0; i<hosts->length; i++){
     cl=snprintf(cachekey, sizeof(cachekey)-1, "HTTP%d-%s", usessl, hosts->array[i]->str)+1;
     cachekey[sizeof(cachekey)-1]=0;
+
+    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     sock=(psync_socket *)psync_cache_get(cachekey);
+
     if (sock){
       if (unlikely_log(psync_socket_is_broken(sock->sock))){
         psync_socket_close_bad(sock);

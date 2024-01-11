@@ -127,18 +127,24 @@ PSYNC_NOINLINE static void timer_process_timers(psync_list *timers){
 static void timer_thread(){
   psync_list timers;
   time_t lt;
+
   lt=psync_current_time;
+
   while (psync_do_run){
     psync_list_init(&timers);
     psync_milisleep(1000);
     psync_current_time=psync_time();
     pthread_mutex_lock(&timer_mutex);
     timer_prepare_timers(lt, psync_current_time, &timers);
+
     if (nextsecwaiters)
       pthread_cond_broadcast(&timer_cond);
+
     pthread_mutex_unlock(&timer_mutex);
+
     if (unlikely(!psync_list_isempty(&timers)))
       timer_process_timers(&timers);
+
     if (unlikely(psync_current_time-lt>=25))
       timer_sleep_detected(lt);
     else if (unlikely_log(psync_current_time==lt)){

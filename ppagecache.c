@@ -652,6 +652,8 @@ static psync_urls_t *get_urls_for_request(psync_request_t *req){
   psync_tree_added_at(&url_cache_tree, el, &urls->tree);
   pthread_mutex_unlock(&url_cache_mutex);
   psync_get_string_id(buff, "URLS", req->hash);
+
+  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   res=(binresult *)psync_cache_get(buff);
 
   if (res){

@@ -794,10 +794,15 @@ static psync_fsfileid_t get_file_at_old_location(psync_fsfileid_t fileid){
   if (fileid<0)
     return 0;
   psync_get_string_id(key, "HLOC", fileid);
+
+  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   rec=(file_history_record *)psync_cache_get(key);
+
   if (!rec)
     return 0;
+
   folder=psync_fstask_get_folder_tasks_locked(rec->folderid);
+
   if (folder){
     cr=psync_fstask_find_creat(folder, rec->name, 0);
     if (cr){
@@ -976,8 +981,11 @@ static void add_history_record(psync_fileid_t fileid, psync_folderid_t folderid,
   size_t len;
   char key[16];
   psync_get_string_id(key, "HLOC", fileid);
+
+  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   while ((rec=(file_history_record *)psync_cache_get(key)))
     psync_free(rec);
+
   len=strlen(name)+1;
   rec=(file_history_record *)psync_malloc(offsetof(file_history_record, name)+len);
   rec->folderid=folderid;

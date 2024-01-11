@@ -290,6 +290,8 @@ int psync_ssl_connect(psync_socket_t sock, void **sslconn, const char *hostname)
   ssl_set_rng(&conn->ssl, ctr_drbg_random_locked, &psync_mbed_rng);
   ssl_set_bio(&conn->ssl, psync_mbed_read, conn, psync_mbed_write, conn);
   ssl_set_hostname(&conn->ssl, hostname); // we do not need SNI, but should not hurt in general to support
+
+  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   if ((sess=(ssl_session *)psync_cache_get(conn->cachekey))){
     debug(D_NOTICE, "reusing cached session for %s", hostname);
     if (ssl_set_session(&conn->ssl, sess))

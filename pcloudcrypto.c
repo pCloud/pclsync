@@ -897,8 +897,12 @@ static psync_symmetric_key_t psync_crypto_get_folder_symkey_locked(psync_folderi
   char buff[16];
   psync_encrypted_symmetric_key_t enckey;
   psync_symmetric_key_t symkey;
+
   psync_get_string_id(buff, "FKEY", folderid);
+  
+  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   symkey=(psync_symmetric_key_t)psync_cache_get(buff);
+
   if (symkey)
     return symkey;
   enckey=psync_crypto_get_folder_enc_key(folderid);
@@ -918,7 +922,10 @@ static psync_symmetric_key_t psync_crypto_get_file_symkey_locked(psync_fileid_t 
   psync_encrypted_symmetric_key_t enckey;
   psync_symmetric_key_t symkey;
   psync_get_string_id2(buff, "DKEY", fileid, hash);
+
+  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   symkey=(psync_symmetric_key_t)psync_cache_get(buff);
+
   if (symkey){
     debug(D_NOTICE, "got key for file %lu from cache", (unsigned long)fileid);
     return symkey;
@@ -997,7 +1004,10 @@ static psync_crypto_aes256_text_encoder_t psync_crypto_get_folder_encoder_check_
   char buff[16];
   psync_crypto_aes256_text_encoder_t enc;
   psync_get_string_id(buff, "FLDE", folderid);
+
+  debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
   enc=(psync_crypto_aes256_text_encoder_t)psync_cache_get(buff);
+
   if (enc)
     return enc;
   else
@@ -1147,7 +1157,10 @@ psync_crypto_aes256_text_decoder_t psync_cloud_crypto_get_folder_decoder(psync_f
     return (psync_crypto_aes256_text_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_NOT_STARTED));
   if (folderid>=0){
     psync_get_string_id(buff, "FLDD", folderid);
+
+    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     dec=(psync_crypto_aes256_text_decoder_t)psync_cache_get(buff);
+    
     if (dec)
       return dec;
   }
@@ -1206,7 +1219,10 @@ psync_crypto_aes256_text_encoder_t psync_cloud_crypto_get_folder_encoder(psync_f
     return (psync_crypto_aes256_text_encoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_NOT_STARTED));
   if (folderid>=0){
     psync_get_string_id(buff, "FLDE", folderid);
+
+    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     enc=(psync_crypto_aes256_text_encoder_t)psync_cache_get(buff);
+
     if (enc)
       return enc;
   }
@@ -1344,7 +1360,10 @@ psync_crypto_aes256_sector_encoder_decoder_t psync_cloud_crypto_get_file_encoder
     return (psync_crypto_aes256_sector_encoder_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_NOT_STARTED));
   if (fileid>=0){
     psync_get_string_id2(buff, "SEEN", fileid, hash);
+
+    debug(D_NOTICE, "BOBO: Calling psync_cache_get.");
     enc=(psync_crypto_aes256_sector_encoder_decoder_t)psync_cache_get(buff);
+
     if (enc)
       return enc;
   }
