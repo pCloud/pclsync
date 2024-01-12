@@ -2551,7 +2551,7 @@ static void logout2_thread(){
 // this is called when ANY api call returns non zero result
 void psync_process_api_error(uint64_t result){
   if (result==2000){
-    debug(D_NOTICE, "BOBO: Got API error 2000.");
+    debug(D_NOTICE, "Got API error 2000. Start logout thred.");
     psync_run_thread("logout from process_api_error", logout2_thread);
   }
 }

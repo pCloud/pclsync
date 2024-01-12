@@ -2507,11 +2507,12 @@ static int psync_fs_unlink(const char *path){
     debug(D_NOTICE, "Backedup file deleted in P drive. Send event. Flags: [%d], fname: [%s]", fpath->flags, fpath->name);
     psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", NULL);
   }
+
   if (fpath) {
     psync_free(fpath);
   }
   
-  debug(D_NOTICE, "unlink %s=%d", path, ret);
+  debug(D_NOTICE, "unlink [%s]=[%d]", path, ret);
   return ret;
 }
 

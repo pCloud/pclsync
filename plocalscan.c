@@ -408,8 +408,6 @@ static void add_new_element(const sync_folderlist *e, psync_folderid_t folderid,
 static void add_deleted_element(const sync_folderlist *e, psync_folderid_t folderid, psync_folderid_t localfolderid, psync_syncid_t syncid, psync_synctype_t synctype){
   sync_folderlist *c;
 
-  debug(D_NOTICE, "BOBO: found deleted element. Type: [%s] Path: [%s] Sync Type: [%lu]", e->isfolder ? "folder" : "file", e->name, synctype);
-
   c = copy_folderlist_element(e, folderid, localfolderid, syncid, synctype);
 
   if (e->isfolder) {
@@ -484,7 +482,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
         }
       }
       else{
-        debug(D_NOTICE, "BOBO: Found deleted element 1. Name: [%s]", fdb->name);
         add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
         add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       }

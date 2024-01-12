@@ -574,7 +574,7 @@ void psync_unlink(){
   char* errMsg;
 
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
-  debug(D_NOTICE, "unlink");
+  debug(D_NOTICE, "Unlink");
 
   psync_diff_lock();
   unlinked=1;
@@ -3089,8 +3089,6 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
     debug(D_NOTICE, "Send BackUp/Sync del event. Event Id: [%d] Obj Type: [%s] Name: [%s] Path: [%s]", event_id, is_folder ? "folder" : "file", name, path);
 
     psync_send_data_event(event_id, path, name, is_folder, NULL);
-
-    debug(D_NOTICE, "BOBO: Done.");
     
     lastBupDelEventTime = currTime;
   }

@@ -514,7 +514,7 @@ void data_event_thread(void* ptr) {
       if (data) {
         debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%lu] Uint2:[%lu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
         data_event_fptr(data->eventid, data->str1, data->str2, data->uint1, data->uint2);
-        debug(D_NOTICE, "BOBO: Data event sent.");
+
         free_data_event(data);
       }
       else {
@@ -551,8 +551,6 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
   else {
     //debug(D_ERROR, "Data event callback function not set.");
   }
-
-  debug(D_NOTICE, "BOBO: Done.");
 }
 /**********************************************************************************************/
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
