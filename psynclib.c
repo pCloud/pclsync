@@ -3013,7 +3013,7 @@ void psync_async_delete_sync(void* ptr) {
   debug(D_NOTICE, "Backup stopped on the Web.");
 
   if (res == 0) {
-    psync_send_data_event(PEVENT_BACKUP_STOP, NULL, NULL, NULL, NULL);
+    psync_send_data_event(PEVENT_BACKUP_STOP, "", "", NULL, NULL);
     //psync_send_eventid(PEVENT_BACKUP_STOP);
   }
 }

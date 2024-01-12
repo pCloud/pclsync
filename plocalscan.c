@@ -499,7 +499,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
       if (synctype == 7) {
         debug(D_NOTICE, "Sending Bup delete event.");
 
-        psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, NULL, NULL);
+        psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, localpath, fdb->name, fdb->isfolder);
       }
       else if (synctype == 3) {
         debug(D_NOTICE, "Sending Sync delete event.");
@@ -527,7 +527,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     if (synctype == 7) {
       debug(D_NOTICE, "Sending Bup delete event.");
 
-      psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, NULL, NULL);
+      psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, localpath, fdb->name, fdb->isfolder);
     }
     else if (synctype == 3) {
       debug(D_NOTICE, "Sending Sync delete event.");
