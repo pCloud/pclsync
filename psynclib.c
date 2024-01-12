@@ -3090,6 +3090,8 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
 
     psync_send_data_event(event_id, path, name, is_folder, NULL);
 
+    debug(D_NOTICE, "BOBO: Done.");
+    
     lastBupDelEventTime = currTime;
   }
   else {
