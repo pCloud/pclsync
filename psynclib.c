@@ -3014,7 +3014,6 @@ void psync_async_delete_sync(void* ptr) {
 
   if (res == 0) {
     psync_send_data_event(PEVENT_BACKUP_STOP, "", "", NULL, NULL);
-    //psync_send_eventid(PEVENT_BACKUP_STOP);
   }
 }
 /***********************************************************************************************************************************************/
