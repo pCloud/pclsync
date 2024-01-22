@@ -900,7 +900,7 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId);
 int psync_delete_backup_device(psync_folderid_t fId);
 
 //Backup events
-void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t is_folder);
+void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t is_folder, psync_folderid_t itemid);
 
 //Send async event
 void psync_async_ui_callback(void* ptr);

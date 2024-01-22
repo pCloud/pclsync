@@ -432,7 +432,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   char *subpath;
   int cmp;
 
-  debug(D_NOTICE, "scanning folder %s deviceid: %llu", localpath, deviceid);
+  debug(D_NOTICE, "scanning folder [%s] deviceid: [%llu]", localpath, deviceid);
 
   if (unlikely_log(scanner_local_folder_to_list(localpath, &disklist))){
     stuck_item* elem;
@@ -476,7 +476,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
 
         if (fdisk->isfolder && psync_deviceid_short(fdisk->deviceid)!=fdb->deviceid && fdisk->inode!=fdb->inode){
           if (fdisk->deviceid==deviceid){
-            debug(D_NOTICE, "deviceid of localfolder %s %lu is different, skipping", fdisk->name, (unsigned long)fdisk->localid);
+            debug(D_NOTICE, "deviceid of localfolder [%s] [%lu] is different, skipping", fdisk->name, (unsigned long)fdisk->localid);
             fdisk->localid=0;
           }
         }
@@ -488,11 +488,14 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
       ldisk=ldisk->next;
       ldb=ldb->next;
     }
-    else if (cmp<0){ // new element on disk
+    else if (cmp<0){ // new element on disk (file)
+      debug(D_NOTICE, "BOBO: Found new file. SyncType: [%lu]", synctype);
       add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       ldisk=ldisk->next;
     }
     else { // deleted element from disk (file)
+      debug(D_NOTICE, "BOBO: Found deleted file. SyncType: [%lu] Name: [%s]", synctype, fdb->name);
+      /*
       if (synctype == 7) {
         debug(D_NOTICE, "Sending Bup delete event.");
 
@@ -506,6 +509,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
       else {
         debug(D_NOTICE, "Unsuported sync type: [%u]", synctype);
       }
+      */
 
       add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
       ldb=ldb->next;
@@ -521,6 +525,8 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   while (ldb!=&dblist){
     fdb=psync_list_element(ldb, sync_folderlist, list);
 
+    debug(D_NOTICE, "BOBO: Found deleted folder. SyncType: [%lu], Name: [%s]", synctype, fdb->name);
+    /*
     if (synctype == 7) {
       debug(D_NOTICE, "Sending Bup delete event.");
 
@@ -534,6 +540,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     else {
       debug(D_NOTICE, "Unsuported sync type: [%u]", synctype);
     }
+    */
 
     add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
     ldb=ldb->next;
@@ -549,7 +556,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   psync_list_for_each_element(l, &disklist, sync_folderlist, list)
    if (l->isfolder && l->localid && l->deviceid==deviceid){
       subpath=psync_strcat(localpath, PSYNC_DIRECTORY_SEPARATOR, l->name, NULL);
-      scanner_scan_folder(subpath, l->remoteid, l->localid, syncid, synctype, deviceid);
+      +(subpath, l->remoteid, l->localid, syncid, synctype, deviceid);
       psync_free(subpath);
    }
 
@@ -600,9 +607,12 @@ static void scan_rename_file(sync_folderlist *rnfr, sync_folderlist *rnto){
   psync_folderid_t old_parentfolderid;
   psync_syncid_t old_syncid;
   int filetoupload;
-  debug(D_NOTICE, "file renamed from %s to %s", rnfr->name, rnto->name);
+
+  debug(D_NOTICE, "file renamed from [%s] to [%s]", rnfr->name, rnto->name);
   res=psync_sql_query_nolock("SELECT syncid, localparentfolderid FROM localfile WHERE id=?");
+
   psync_sql_bind_uint(res, 1, rnfr->localid);
+
   if ((row=psync_sql_fetch_rowint(res))) {
     old_syncid=row[0];
     old_parentfolderid=row[1];
@@ -619,6 +629,7 @@ static void scan_rename_file(sync_folderlist *rnfr, sync_folderlist *rnto){
     psync_sql_free_result(res);
     return;
   }
+
   res=psync_sql_prep_statement("UPDATE localfile SET localparentfolderid=?, syncid=?, name=? WHERE id=?");
   psync_sql_bind_uint(res, 1, rnto->localparentfolderid);
   psync_sql_bind_uint(res, 2, rnto->syncid);
@@ -626,6 +637,7 @@ static void scan_rename_file(sync_folderlist *rnfr, sync_folderlist *rnto){
   psync_sql_bind_uint(res, 4, rnfr->localid);
   psync_sql_run_free(res);
   psync_task_rename_remote_file(rnfr->syncid, rnto->syncid, rnfr->localid, rnto->localparentfolderid, rnto->name);
+
   if (filetoupload) {
     psync_path_status_sync_folder_task_added_locked(rnto->syncid, rnto->localparentfolderid);
     psync_path_status_sync_folder_task_completed(old_syncid, old_parentfolderid);
@@ -682,7 +694,26 @@ static void scan_delete_file(sync_folderlist *fl){
   psync_fileid_t fileid;
   psync_folderid_t localparentfolderid;
   psync_syncid_t syncid;
-  debug(D_NOTICE, "file deleted %s", fl->name);
+
+  debug(D_NOTICE, "file deleted [%s]", fl->name);
+  
+  //Bobo
+  // Potentialy send the backup/sync deleted event here.
+  if (fl->synctype == 7) {
+    debug(D_NOTICE, "Sending Bup delete event.");
+
+    psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->synctype);
+  }
+  else if (fl->synctype == 3) {
+    debug(D_NOTICE, "Sending Sync delete event.");
+
+    psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->synctype);
+  }
+  else {
+    debug(D_NOTICE, "Unsuported sync type: [%u]", fl->synctype);
+  }
+  //Bobo
+
   // it is also possible to use fl->remoteid, but the file might have just been uploaded by the upload thread
   res=psync_sql_query("SELECT fileid, syncid, localparentfolderid FROM localfile WHERE id=?");
   psync_sql_bind_uint(res, 1, fl->localid);
@@ -758,17 +789,10 @@ static void scan_create_folder(sync_folderlist *fl){
   if (unlikely_log(!psync_sql_affected_rows()))
     return;
   psync_task_create_remote_folder(fl->syncid, localfolderid, fl->name);
-/* this should not be here, as we are in transaction:
- *
- *  localpath=psync_local_path_for_local_folder(localfolderid, fl->syncid, NULL);
-  if (likely_log(localpath)){
-    scanner_scan_folder(localpath, 0, localfolderid, fl->syncid, fl->synctype, fl->deviceid);
-    psync_free(localpath);
-  }*/
+
   return;
 hasfolder:
-//  psync_list_del(&fl->list);
-///  psync_free(fl);
+
   return;
 }
 
@@ -843,14 +867,6 @@ static void scan_rename_folder(sync_folderlist *rnfr, sync_folderlist *rnto){
     update_syncid_rec(rnfr->localid, rnto->syncid);
   }
   psync_task_rename_remote_folder(rnfr->syncid, rnto->syncid, rnfr->localid, rnto->localparentfolderid, rnto->name);
-/* remove the scan from here and restart the full scan once we finished with current update makes more sense when we found moved folders
- *
-  localpath=psync_local_path_for_local_folder(rnfr->localid, rnto->syncid, NULL);
-  if (likely_log(localpath)){
-    scanner_scan_folder(localpath, rnfr->remoteid, rnfr->localid, rnto->syncid, rnto->synctype, rnto->deviceid);
-    psync_free(localpath);
-  }
-*/
 }
 
 static void delete_local_folder_rec(psync_folderid_t localfolderid){
@@ -889,16 +905,37 @@ static void scan_delete_folder(sync_folderlist *fl){
   int tries;
   tries=0;
 retry:
-  debug(D_NOTICE, "folder deleted %s", fl->name);
+  debug(D_NOTICE, "folder deleted [%s]", fl->name);
+
+//Bobo
+// Potentialy send the backup/sync deleted event here. Folder.
+  if (fl->synctype == 7) {
+    debug(D_NOTICE, "Sending Bup delete event.");
+
+    psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->synctype);
+  }
+  else if (fl->synctype == 3) {
+    debug(D_NOTICE, "Sending Sync delete event.");
+
+    psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->synctype);
+  }
+  else {
+    debug(D_NOTICE, "Unsuported sync type: [%u]", fl->synctype);
+  }
+//Bobo
+
   res=psync_sql_query("SELECT folderid FROM localfolder WHERE id=?");
   psync_sql_bind_uint(res, 1, fl->localid);
+
   if (likely_log(row=psync_sql_fetch_rowint(res)))
     folderid=row[0];
   else{
     psync_sql_free_result(res);
     return;
   }
+
   psync_sql_free_result(res);
+
   if (unlikely_log(!folderid)){
     /* folder is not yet created, folderid is not 0 but NULL actually */
     if (tries>=50){
@@ -917,7 +954,9 @@ retry:
       goto retry;
     }
   }
+
   delete_local_folder_rec(fl->localid);
+
   if (folderid)
     psync_task_delete_remote_folder(fl->syncid, folderid);
 }
@@ -971,36 +1010,40 @@ restart:
 
   psync_list_for_each_element(l, &slist, sync_list, list){
     psync_stat_t st;
+
     if (unlikely(psync_stat(l->localpath, &st))){
       debug(D_WARNING, "could not stat local sync folder %s and will not scan it (recursively)", l->localpath);
       continue;
     }
+
     if (is_path_to_ignore(psync_stat_device_full(&st), psync_stat_inode(&st))) {
       debug(D_NOTICE, "not syncing folder %s as it is in ignore list", l->localpath);
       continue;
     }
+
     scanner_scan_folder(l->localpath, l->folderid, 0, l->syncid, l->synctype, psync_stat_device_full(&st));
   }
   
   psync_list_for_each_element(l, &slist_full_deviceid, sync_list, list){
-	psync_stat_t st;
-	psync_deviceid_t deviceid;
+	  psync_stat_t st;
+	  psync_deviceid_t deviceid;
   
-	if(unlikely(psync_stat(l->localpath, &st))){
-	  debug(D_NOTICE, "Can't stat sync folder %s. Was it deleted/unmounted while scanning? Will restart the local scan.", l->localpath);
-	  psync_restart_localscan();
-	  break;
-	}
-	else{
-	  deviceid=psync_stat_device_full(&st);
-	}
-	if (l->deviceid!=deviceid){
-	  debug(D_NOTICE, "The deviceid of sync folder '%s' has changed from %llu to %llu while scanning. Will restart the local scan.",
-          l->localpath, (unsigned long long)l->deviceid, (unsigned long long)deviceid);
-	  psync_restart_localscan();
-	  break;
-	}
+	  if(unlikely(psync_stat(l->localpath, &st))){
+	    debug(D_NOTICE, "Can't stat sync folder %s. Was it deleted/unmounted while scanning? Will restart the local scan.", l->localpath);
+	    psync_restart_localscan();
+	    break;
+	  }
+	  else{
+	    deviceid=psync_stat_device_full(&st);
+	  }
+	
+    if (l->deviceid!=deviceid){
+      debug(D_NOTICE, "The deviceid of sync folder '%s' has changed from %llu to %llu while scanning. Will restart the local scan.", l->localpath, (unsigned long long)l->deviceid, (unsigned long long)deviceid);
+      psync_restart_localscan();
+      break;
+    }
   }
+
   psync_list_for_each_element_call(&slist, sync_list, list, psync_free);
   psync_list_for_each_element_call(&slist_full_deviceid, sync_list, list, psync_free);
   w=0;

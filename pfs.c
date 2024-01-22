@@ -52,9 +52,7 @@
 #include "pcloudcrypto.h"
 #include "pfscrypto.h"
 #include "pfsstatic.h"
-//Bobo
 #include "pcallbacks.h"
-//Bobo
 
 #ifndef FUSE_STAT
 #define FUSE_STAT stat
@@ -2505,7 +2503,7 @@ static int psync_fs_unlink(const char *path){
   if ((fpath->flags & PSYNC_FOLDER_FLAG_BACKUP) && ret == 0) {
     //Send async event to UI to notify the user that he is deleting a backedup file.
     debug(D_NOTICE, "Backedup file deleted in P drive. Send event. Flags: [%d], fname: [%s]", fpath->flags, fpath->name);
-    psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", NULL);
+    psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", NULL, NULL, NULL);
   }
 
   if (fpath) {
