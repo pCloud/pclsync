@@ -3089,10 +3089,10 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
 
     if(itemid){
       if (is_folder) {
-        path = psync_local_path_for_local_folder(itemid, NULL, sync_type);
+        path = psync_local_path_for_local_folder(itemid, sync_type, NULL);
       }
       else {
-        path = psync_local_path_for_local_file(itemid, NULL, sync_type);
+        path = psync_local_path_for_local_file(itemid, NULL);
       }
     }
 
