@@ -3080,7 +3080,7 @@ int psync_delete_backup_device(psync_folderid_t fId) {
   return 1;
 }
 /***********************************************************************************************************************************************/
-void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t is_folder, psync_folderid_t itemid, psync_synctype_t sync_type) {
+void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t is_folder, psync_folderid_t itemid, psync_syncid_t sync_id) {
   time_t currTime = psync_time();
 
   //Bobo
@@ -3089,7 +3089,7 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
 
     if(itemid){
       if (is_folder) {
-        path = psync_local_path_for_local_folder(itemid, sync_type, NULL);
+        path = psync_local_path_for_local_folder(itemid, sync_id, NULL);
       }
       else {
         path = psync_local_path_for_local_file(itemid, NULL);
