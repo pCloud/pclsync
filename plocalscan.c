@@ -494,23 +494,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
       ldisk=ldisk->next;
     }
     else { // deleted element from disk (file)
-      debug(D_NOTICE, "BOBO: Found deleted file. SyncType: [%lu] Name: [%s]", synctype, fdb->name);
-      /*
-      if (synctype == 7) {
-        debug(D_NOTICE, "Sending Bup delete event.");
-
-        psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, localpath, fdb->name, fdb->isfolder);
-      }
-      else if (synctype == 3) {
-        debug(D_NOTICE, "Sending Sync delete event.");
-
-        psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, localpath, fdb->name, fdb->isfolder);
-      }
-      else {
-        debug(D_NOTICE, "Unsuported sync type: [%u]", synctype);
-      }
-      */
-
       add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
       ldb=ldb->next;
     }
@@ -524,23 +507,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
 
   while (ldb!=&dblist){
     fdb=psync_list_element(ldb, sync_folderlist, list);
-
-    debug(D_NOTICE, "BOBO: Found deleted folder. SyncType: [%lu], Name: [%s]", synctype, fdb->name);
-    /*
-    if (synctype == 7) {
-      debug(D_NOTICE, "Sending Bup delete event.");
-
-      psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, localpath, fdb->name, fdb->isfolder);
-    }
-    else if (synctype == 3) {
-      debug(D_NOTICE, "Sending Sync delete event.");
-
-      psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, localpath, fdb->name, fdb->isfolder);
-    }
-    else {
-      debug(D_NOTICE, "Unsuported sync type: [%u]", synctype);
-    }
-    */
 
     add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
     ldb=ldb->next;
@@ -702,12 +668,12 @@ static void scan_delete_file(sync_folderlist *fl){
   if (fl->synctype == 7) {
     debug(D_NOTICE, "Sending Bup delete event.");
 
-    psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->synctype);
+    psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->syncid);
   }
   else if (fl->synctype == 3) {
     debug(D_NOTICE, "Sending Sync delete event.");
 
-    psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->synctype);
+    psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->syncid);
   }
   else {
     debug(D_NOTICE, "Unsuported sync type: [%u]", fl->synctype);
@@ -912,12 +878,12 @@ retry:
   if (fl->synctype == 7) {
     debug(D_NOTICE, "Sending Bup delete event.");
 
-    psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->synctype);
+    psync_send_backup_del_event(PEVENT_BKUP_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->syncid);
   }
   else if (fl->synctype == 3) {
     debug(D_NOTICE, "Sending Sync delete event.");
 
-    psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->synctype);
+    psync_send_backup_del_event(PEVENT_SYNC_OBJ_DEL, NULL, fl->name, fl->isfolder, fl->localid, fl->syncid);
   }
   else {
     debug(D_NOTICE, "Unsuported sync type: [%u]", fl->synctype);

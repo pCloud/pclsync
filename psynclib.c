@@ -3096,6 +3096,10 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
       }
     }
 
+    if (!path) {
+      path = strdup(STUCK_ITEM_UNKNOWN_PATH);
+    }
+
     psync_send_data_event(event_id, path, name, is_folder, NULL);
     
     lastBupDelEventTime = currTime;
