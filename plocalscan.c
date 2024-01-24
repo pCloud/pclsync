@@ -314,17 +314,22 @@ static void scanner_db_folder_to_list(psync_syncid_t syncid, psync_folderid_t lo
   sync_folderlist *e;
   const char *name;
   size_t namelen;
+
   psync_list_init(lst);
+
   res=psync_sql_query_rdlock("SELECT id, folderid, inode, deviceid, mtimenative, name FROM localfolder WHERE localparentfolderid=? AND syncid=? AND mtimenative IS NOT NULL");
   psync_sql_bind_uint(res, 1, localfolderid);
   psync_sql_bind_uint(res, 2, syncid);
+
   while ((row=psync_sql_fetch_row(res))){
     name=psync_get_lstring(row[5], &namelen);
+
     if (unlikely(psync_is_lname_to_ignore(name, namelen))){
-      debug(D_NOTICE, "found a name %s matching ignore pattern in localfolder, will try to delete", name);
+      debug(D_NOTICE, "found a name [%s] matching ignore pattern in localfolder, will try to delete", name);
       try_delete_localfolder(psync_get_number(row[0]));
       continue;
     }
+
     namelen++;
     e=(sync_folderlist *)psync_malloc(offsetof(sync_folderlist, name)+namelen);
     e->localid=psync_get_number(row[0]);
@@ -338,16 +343,20 @@ static void scanner_db_folder_to_list(psync_syncid_t syncid, psync_folderid_t lo
     psync_list_add_tail(lst, &e->list);
   }
   psync_sql_free_result(res);
+
   res=psync_sql_query_rdlock("SELECT id, fileid, inode, mtimenative, size, name FROM localfile WHERE localparentfolderid=? AND syncid=?");
   psync_sql_bind_uint(res, 1, localfolderid);
   psync_sql_bind_uint(res, 2, syncid);
+
   while ((row=psync_sql_fetch_row(res))){
     name=psync_get_lstring(row[5], &namelen);
+
     if (unlikely(psync_is_lname_to_ignore(name, namelen))){
-      debug(D_NOTICE, "found a name %s matching ignore pattern in localfile, will try to delete", name);
+      debug(D_NOTICE, "found a name [%s] matching ignore pattern in localfile, will try to delete", name);
       try_delete_localfile(psync_get_number(row[0]));
       continue;
     }
+
     namelen++;
     e=(sync_folderlist *)psync_malloc(offsetof(sync_folderlist, name)+namelen);
     e->localid=psync_get_number(row[0]);
@@ -389,20 +398,29 @@ static void add_element_to_scan_list(psync_uint_t id, sync_folderlist *e){
 static void add_new_element(const sync_folderlist *e, psync_folderid_t folderid, psync_folderid_t localfolderid, psync_syncid_t syncid, psync_synctype_t synctype,
                             psync_deviceid_t deviceid){
   sync_folderlist *c;
-  if (e->isfolder && e->deviceid!=deviceid)
+
+  if (e->isfolder && e->deviceid != deviceid) {
+    debug(D_WARNING, "Different deviceid. Skip.");
     return;
-  if (psync_is_name_to_ignore(e->name))
-    return;
-  if (!psync_is_valid_utf8(e->name)){
-    debug(D_WARNING, "ignoring %s with invalid UTF8 name %s", e->isfolder?"folder":"file", e->name);
+  }    
+
+  if (psync_is_name_to_ignore(e->name)) {
     return;
   }
-  debug(D_NOTICE, "found new %s %s", e->isfolder?"folder":"file", e->name);
+
+  if (!psync_is_valid_utf8(e->name)){
+    debug(D_WARNING, "Ignoring [%s] with invalid UTF8 name [%s]", e->isfolder?"folder":"file", e->name);
+    return;
+  }
+
   c=copy_folderlist_element(e, folderid, localfolderid, syncid, synctype);
-  if (e->isfolder)
+
+  if (e->isfolder) {
     add_element_to_scan_list(SCAN_LIST_NEWFOLDERS, c);
-  else
+  }
+  else {
     add_element_to_scan_list(SCAN_LIST_NEWFILES, c);
+  }    
 }
 
 static void add_deleted_element(const sync_folderlist *e, psync_folderid_t folderid, psync_folderid_t localfolderid, psync_syncid_t syncid, psync_synctype_t synctype){
@@ -485,11 +503,11 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
         add_deleted_element(fdb, folderid, localfolderid, syncid, synctype);
         add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       }
+
       ldisk=ldisk->next;
       ldb=ldb->next;
     }
     else if (cmp<0){ // new element on disk (file)
-      debug(D_NOTICE, "BOBO: Found new file. SyncType: [%lu]", synctype);
       add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
       ldisk=ldisk->next;
     }
@@ -501,6 +519,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
 
   while (ldisk!=&disklist){
     fdisk=psync_list_element(ldisk, sync_folderlist, list);
+
     add_new_element(fdisk, folderid, localfolderid, syncid, synctype, deviceid);
     ldisk=ldisk->next;
   }
@@ -516,15 +535,22 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
 
   if (localsleepperfolder){
     psync_milisleep(localsleepperfolder);
+
     if (psync_current_time-starttime>=PSYNC_LOCALSCAN_SLEEPSEC_PER_SCAN*3/2)
       localsleepperfolder=0;
   }
-  psync_list_for_each_element(l, &disklist, sync_folderlist, list)
-   if (l->isfolder && l->localid && l->deviceid==deviceid){
+  
+  
+
+  psync_list_for_each_element(l, &disklist, sync_folderlist, list){
+    if (l->isfolder && l->localid && l->deviceid==deviceid){
       subpath=psync_strcat(localpath, PSYNC_DIRECTORY_SEPARATOR, l->name, NULL);
-      +(subpath, l->remoteid, l->localid, syncid, synctype, deviceid);
+
+      scanner_scan_folder(subpath, l->remoteid, l->localid, syncid, synctype, deviceid);
+
       psync_free(subpath);
-   }
+    }
+  }
 
   psync_list_for_each_element_call(&disklist, sync_folderlist, list, psync_free);
 }
@@ -662,9 +688,9 @@ static void scan_delete_file(sync_folderlist *fl){
   psync_syncid_t syncid;
 
   debug(D_NOTICE, "file deleted [%s]", fl->name);
-  
+
   //Bobo
-  // Potentialy send the backup/sync deleted event here.
+  //Potentialy send the backup/sync deleted event here.
   if (fl->synctype == 7) {
     debug(D_NOTICE, "Sending Bup delete event.");
 
@@ -683,7 +709,10 @@ static void scan_delete_file(sync_folderlist *fl){
   // it is also possible to use fl->remoteid, but the file might have just been uploaded by the upload thread
   res=psync_sql_query("SELECT fileid, syncid, localparentfolderid FROM localfile WHERE id=?");
   psync_sql_bind_uint(res, 1, fl->localid);
+
   if (likely_log(row=psync_sql_fetch_rowint(res))){
+    debug(D_NOTICE, "File found in the localfile table. Probably just moved.");
+
     fileid=row[0];
     syncid=row[1];
     localparentfolderid=row[2];
@@ -692,13 +721,16 @@ static void scan_delete_file(sync_folderlist *fl){
     psync_sql_free_result(res);
     return;
   }
+
   psync_sql_free_result(res);
   psync_delete_upload_tasks_for_file(fl->localid);
   res=psync_sql_prep_statement("DELETE FROM localfile WHERE id=?");
   psync_sql_bind_uint(res, 1, fl->localid);
   psync_sql_run_free(res);
+
   if (fileid)
     psync_task_delete_remote_file(fl->syncid, fileid);
+
   psync_path_status_sync_folder_task_completed(syncid, localparentfolderid);
 }
 
@@ -961,15 +993,24 @@ static void scanner_scan(int first){
 
 restart:
   pthread_mutex_lock(&scan_mutex);
-  while (scan_stoppers)
+
+  while (scan_stoppers) {
     pthread_cond_wait(&scan_cond, &scan_mutex);
+  }
+    
   restart_scan=0;
   pthread_mutex_unlock(&scan_mutex);
-  if (!psync_statuses_ok_array(requiredstatuses, ARRAY_SIZE(requiredstatuses)))
+
+
+  if (!psync_statuses_ok_array(requiredstatuses, ARRAY_SIZE(requiredstatuses))){
     return;
+  }
+
   reload_ignored_folders();
+
   for (i=0; i<SCAN_LIST_CNT; i++)
     psync_list_init(&scan_lists[i]);
+
   scanner_set_syncs_to_list(&slist, &slist_full_deviceid);
   changes=0;
   movedfolders=0;

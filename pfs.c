@@ -2833,6 +2833,12 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
 
   goto err_enoent;
 finish:
+  if ((fold_path->flags & PSYNC_FOLDER_FLAG_BACKUP) && !(fnew_path->flags & PSYNC_FOLDER_FLAG_BACKUP)) {
+    debug(D_NOTICE, "Parent is Backup. Target is not. Send Event.");
+
+    psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", NULL, NULL, NULL);
+  }
+
   if (folder)
     psync_fstask_release_folder_tasks_locked(folder);
 

@@ -1180,7 +1180,7 @@ int psync_is_lname_to_ignore(const char *name, size_t namelen){
     if (psync_match_pattern(namelower, pt, pl)){
       if (namelower!=buff)
         psync_free(namelower);
-      debug(D_NOTICE, "ignoring file/folder %s", name);
+      debug(D_NOTICE, "ignoring file/folder [%s]", name);
       return 1;
     }
   } while (sc);
