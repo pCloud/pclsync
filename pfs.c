@@ -2824,16 +2824,16 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
       if (psync_fs_is_folder(fnew_path->folderid, fnew_path->name))
         ret=-EISDIR;
       else
-        ret=psync_fs_rename_file(fid, fold_path->folderid, fold_path->name, fold_path->permissions,
-                                 fnew_path->folderid, fnew_path->name, fnew_path->permissions, fold_path->shareid==fnew_path->shareid);
+        ret=psync_fs_rename_file(fid, fold_path->folderid, fold_path->name, fold_path->permissions, fnew_path->folderid, fnew_path->name, fnew_path->permissions, fold_path->shareid==fnew_path->shareid);
       goto finish;
     }
     psync_sql_free_result(res);
   }
 
   goto err_enoent;
+
 finish:
-  if ((fold_path->flags & PSYNC_FOLDER_FLAG_BACKUP) && !(fnew_path->flags & PSYNC_FOLDER_FLAG_BACKUP)) {
+  if ((ret == 0) && (fold_path->flags & PSYNC_FOLDER_FLAG_BACKUP) && !(fnew_path->flags & PSYNC_FOLDER_FLAG_BACKUP)) {
     debug(D_NOTICE, "Parent is Backup. Target is not. Send Event.");
 
     psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", NULL, NULL, NULL);
