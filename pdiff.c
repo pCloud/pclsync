@@ -918,8 +918,10 @@ static void process_createfolder(const binresult *entry){
   psync_sql_bind_uint(st, 7, mtime);
   psync_sql_bind_uint(st, 8, flags);
   psync_sql_run(st);
-
+#if defined(P_OS_MACOSX)
   psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
+#endif // 
+
 
   if (!psync_sql_affected_rows()){
     res=psync_sql_prep_statement("UPDATE folder SET parentfolderid=?, userid=?, permissions=?, name=?, ctime=?, mtime=?, flags=? WHERE id=?");
@@ -1055,16 +1057,17 @@ static void process_modifyfolder(const binresult *entry){
     oldparentfolderid=psync_get_number(vrow[0]);
     oldname=psync_dup_string(vrow[1]);
     oldflags=psync_get_number(vrow[2]);
-
+#if defined(P_OS_MACOSX)
     psync_send_data_event(PEVENT_FS_MOD_OBJ, "", "", folderid, 0);
+#endif
   }
   else{
     debug(D_ERROR, "got modify for non-existing folder %lu (%s), processing as create", (unsigned long)folderid, name->str);
     psync_sql_free_result(res);
     process_createfolder(entry);
-
+#if defined(P_OS_MACOSX)
     psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", folderid, 0);
-
+#endif
     return;
   }
 
@@ -1241,9 +1244,9 @@ static void process_deletefolder(const binresult *entry){
   }
 
   psync_path_status_folder_deleted(folderid);
-
+#if defined(P_OS_MACOSX)
   psync_send_data_event(PEVENT_FS_DEL_OBJ, "", "", folderid, 0);
-    
+#endif
   if (psync_is_folder_in_downloadlist(folderid)){
     psync_del_folder_from_downloadlist(folderid);
     res=psync_sql_query("SELECT syncid, localfolderid FROM syncedfolder WHERE folderid=?");
@@ -1458,8 +1461,9 @@ static void process_createfile(const binresult *entry){
     }
     psync_sql_free_result(res);
   }
-
+#if defined(P_OS_MACOSX)
   psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", 0, fileid);
+#endif
 }
 
 static void process_modifyfile(const binresult* entry) {
@@ -1507,13 +1511,15 @@ static void process_modifyfile(const binresult* entry) {
   if (!row) {
     debug(D_ERROR, "got modify for non-existing file [%lu] [%s], processing as create", (unsigned long)fileid, name->str);
     process_createfile(entry);
-
+#if defined(P_OS_MACOSX)
     psync_send_data_event(PEVENT_FS_ADD_OBJ, "", "", 0, fileid);
-
+#endif
     return;
   }
   else {
+#if defined(P_OS_MACOSX)
     psync_send_data_event(PEVENT_FS_MOD_OBJ, "", "", 0, fileid);
+#endif
   }
 
   oldsize = psync_get_number(row[2]);
@@ -1684,9 +1690,9 @@ static void process_deletefile(const binresult *entry){
       needdownload=1;
     }
   }
-
+#if defined(P_OS_MACOSX)
   psync_send_data_event(PEVENT_FS_DEL_OBJ, "", "", 0, fileid);
-
+#endif
   psync_sql_bind_uint(st, 1, fileid);
   psync_sql_run(st);
 
