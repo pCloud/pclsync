@@ -7,6 +7,9 @@
 #pragma once
 
 #include "papi.h"
+//Bobo
+
+//Bobo
 
 #define EVENT_WS "loganalyticsevent"
 
@@ -97,7 +100,7 @@ typedef struct stuck_return_type {
 } stuck_return_item;
 
 #define STUCK_ITEM_RET_SIZE 100
-
+/**********************************************************************************************************/
 typedef struct stuck_return_list_type {
   int elem_count;
   stuck_return_item items[STUCK_ITEM_RET_SIZE];
@@ -136,9 +139,9 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  uint32_t get_sync_id_from_fid(uint64_t fid);
 /**********************************************************************************************************/
  char* get_sync_folder_by_syncid(uint64_t syncId);
- /**********************************************************************************************************/
+/**********************************************************************************************************/
  char* get_folder_name_from_path(char* path);
- /**********************************************************************************************************/
+/**********************************************************************************************************/
 #define STUCK_ITEM_RETRY_COUNT 0
 #define STUCK_ITEM_TOTAL_COUNT 100
 
@@ -201,4 +204,34 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  int uploadLogsToDrive();
 
  int deleteLogs();
+ /**********************************************************************************************************/
+ //Upload tasks methods. Start.
+ typedef struct uptask_item_type {
+   int      item_type;
+   int      item_status;
+   const char* path;
+   const char* name;
+   uint64_t size;
+   int      error_code;
+ } uptask_item;
+
+ typedef struct uptask_item_list_type {
+   int item_cnt;
+   uptask_item list[1000];
+ } uptask_item_list;
+ 
+ int create_upload_task(int type, int status, int size, int level, uint64_t parentfid, char* fname, char* path);
+
+ void upload_tasks_status_thread();
+
+ uptask_item_list* get_uptask_item_list(int status);
+
+ void log_uptasks();
+
+ void clean_uptasks(int status);
+
+ uint64_t create_local_file_in_db(uint64_t parent_folder_id);
+
+ uint64_t create_uptask_lfolder_in_db(uint64_t parent_folder_id, char* foname);
+ //Upload tasks methods. End.
  /**********************************************************************************************************/

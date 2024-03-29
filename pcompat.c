@@ -275,16 +275,19 @@ int psync_stat(const char *path, psync_stat_t *st){
   wpath=utf8_to_wchar_path(path);
 retry:
   attr=GetFileAttributesW(wpath);
+
   if (attr==INVALID_FILE_ATTRIBUTES){
     psync_free(wpath);
     return -1;
   }
+
   if (attr&FILE_ATTRIBUTE_DIRECTORY)
     flag=FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_POSIX_SEMANTICS;
   else
     flag=FILE_ATTRIBUTE_NORMAL|FILE_FLAG_POSIX_SEMANTICS;
 
   fd=CreateFileW(wpath, 0, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, flag, NULL);
+
   if (unlikely_log(fd==INVALID_HANDLE_VALUE)){
     if (GetLastError()==ERROR_SHARING_VIOLATION){
       debug(D_WARNING, "file %s is locked by another process, will retry after sleep", path);
@@ -296,9 +299,11 @@ retry:
     psync_free(wpath);
     return -1;
   }
+
   psync_free(wpath);
   ret=GetFileInformationByHandle(fd, st);
   CloseHandle(fd);
+
   return psync_bool_to_zero(ret);
 }
 #endif

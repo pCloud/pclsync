@@ -1706,7 +1706,25 @@ int psync_get_isdebug();
 #define PEVENT_MP_NOT_EMPTY_ERR 501
 #define PEVENT_MP_NOT_EMPTY_NO_ERR 502
 
+/*600*///Upload tasks status update
+#define PEVENT_UPL_TASKS_STAT 601
+
 //Data event type constants. End.
+/*******************************************************************************/
+//Upload task constants. Begin.
+//Task statuses
+#define PUPTASK_STATUS_WAITING    1
+#define PUPTASK_STATUS_INPROGRESS 2
+#define PUPTASK_STATUS_FINISHED   4
+#define PUPTASK_STATUS_FAILED     8
+
+//Error codes
+#define PUPTASK_ERROR_GENERAL    1
+//Upload task constants. End.
+
+int psync_uptask_scan(char** paths, int path_cnt, char* dest_path);
+
+uptask_item_list* psync_get_uptask_list(int status);
 /*******************************************************************************/
 #ifdef __cplusplus
 }

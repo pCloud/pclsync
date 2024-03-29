@@ -221,8 +221,23 @@ void psync_status_recalc_to_upload(){
   psync_stat_t st;
   uint64_t bytestou;
   uint32_t filestou;
-  res=psync_sql_query_rdlock("SELECT COUNT(*), SUM(f.size) FROM task t, localfile f WHERE t.type=? AND t.localitemid=f.id");
+
+  //res=psync_sql_query_rdlock("SELECT COUNT(*), SUM(f.size) FROM task t, localfile f WHERE t.type=? AND t.localitemid=f.id");
+  res = psync_sql_query_rdlock("SELECT COUNT(*), SUM(size) "
+                               " FROM ("
+                                 " SELECT f.size  "
+                                 "    FROM task t, "
+                                 "          localfile f"
+                                 "   WHERE t.localitemid = f.id"
+                                 "     AND t.type = ?"
+                                 "   UNION ALL"
+                                 "  SELECT size"
+                                 "    FROM upload_tasks    "
+                                 "   WHERE status & 3" //Waiting and InProgress tasks
+                                 ")");
+
   psync_sql_bind_uint(res, 1, PSYNC_UPLOAD_FILE);
+
   if ((row=psync_sql_fetch_rowint(res))){
     filestou=row[0];
     bytestou=row[1];
@@ -231,10 +246,15 @@ void psync_status_recalc_to_upload(){
     filestou=0;
     bytestou=0;
   }
+
+  debug(D_NOTICE, "BOBO: Bytes to upload selected: [%llu]", bytestou);
+
   psync_sql_free_result(res);
   fscpath=psync_setting_get_string(_PS(fscachepath));
+
   res=psync_sql_query_rdlock("SELECT id FROM fstask WHERE type IN ("NTO_STR(PSYNC_FS_TASK_CREAT)", "NTO_STR(PSYNC_FS_TASK_MODIFY)") AND text1 NOT LIKE '.%'"
                              " AND status!=3");
+
   while ((row=psync_sql_fetch_rowint(res))){
     psync_binhex(fileidhex, &row[0], sizeof(psync_fsfileid_t));
     fileidhex[sizeof(psync_fsfileid_t)]='d';
@@ -246,11 +266,14 @@ void psync_status_recalc_to_upload(){
     }
     psync_free(filename);
   }
+
   psync_sql_free_result(res);
   psync_status.filestoupload=filestou;
   psync_status.bytestoupload=bytestou;
+
   if (!filestou)
     psync_status.uploadspeed=0;
+
   psync_status.status=psync_calc_status();
 }
 

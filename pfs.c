@@ -723,10 +723,14 @@ int psync_fs_crypto_err_to_errno(int cryptoerr){
 static int psync_fs_getrootattr(struct FUSE_STAT *stbuf){
   psync_sql_res *res;
   psync_variant_row row;
+
   res=psync_sql_query_rdlock("SELECT 0, 0, IFNULL(s.value, 1414766136)*1, f.mtime, f.subdircnt FROM folder f LEFT JOIN setting s ON s.id='registered' WHERE f.id=0");
+
   if ((row=psync_sql_fetch_row(res)))
     psync_row_to_folder_stat(row, stbuf);
+
   psync_sql_free_result(res);
+
   return 0;
 }
 

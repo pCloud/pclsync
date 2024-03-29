@@ -258,6 +258,11 @@ int psync_init() {
   
   debug(D_WARNING, "psync_apiserver_init. Stop all inprogress tasks. Set Inprogress = 0.");
   psync_sql_statement("UPDATE task SET inprogress=0 WHERE inprogress=1");
+
+  //Bobo
+  debug(D_WARNING, "BOBO: Reset inprogress upload tasks.");
+  psync_sql_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_WAITING)" WHERE status = "NTO_STR(PUPTASK_STATUS_INPROGRESS));
+  //Bobo
   
   psync_timer_init();
   
@@ -299,6 +304,11 @@ int psync_init() {
   lost_and_found_fid = 0;
 
   psync_free(deviceid);
+
+  //Bobo
+  debug(D_NOTICE, "BOBO: Start upload tasks status thread.");
+  psync_run_thread("Upload tasks status monitor thread.", upload_tasks_status_thread);
+  //Bobo
 
   return 0;
 }
@@ -372,6 +382,8 @@ uint32_t psync_download_state(){
 }
 
 void psync_destroy(){
+  debug(D_NOTICE, "BOBO: Runing psync_destroy. Stop all syncs.");
+
   psync_do_run=0;
   psync_fs_stop();
   psync_terminate_status_waiters();
@@ -798,7 +810,22 @@ void psync_tfa_set_code(const char *code, int trusted, int is_recovery){
 psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotepath, psync_synctype_t synctype){
   psync_folderid_t folderid=psync_get_folderid_by_path(remotepath);
 
-  debug(D_NOTICE, "Add sync. Local Path: [%s] Remote Path: [%s]", localpath, remotepath);
+  debug(D_NOTICE, "Add sync. Local Path: [%s] Remote Path: [%s], Remote folderId: [%llu]", localpath, remotepath, folderid);
+  //Bobo
+  /*
+  char* test_paths[2];
+  char* dest_path;
+
+  dest_path = psync_strdup("/test_folder_struct");
+
+  test_paths[0] = psync_strdup("C:\\Work\\test_files\\test_folder_struct");
+  test_paths[1] = psync_strdup("C:\\Work\\test_files\\calibre-64bit-6.11.0.msi");
+
+  psync_uptask_scan(test_paths, 2, dest_path);
+
+  return PSYNC_INVALID_SYNCID;
+  */
+  //Bobo
 
   if (likely_log(folderid!=PSYNC_INVALID_FOLDERID))
     return psync_add_sync_by_folderid(localpath, folderid, synctype);
@@ -1059,6 +1086,8 @@ static void psync_delete_local_recursive(psync_syncid_t syncid, psync_folderid_t
 int psync_delete_sync(psync_syncid_t syncid){
   psync_sql_res *res;
   psync_sql_start_transaction();
+
+  debug(D_NOTICE, "BOBO: Deleteting sync id: [%lu]", syncid);
 
   psync_delete_local_recursive(syncid, 0);
   res=psync_sql_prep_statement("DELETE FROM syncfolder WHERE id=?");
@@ -3083,7 +3112,6 @@ int psync_delete_backup_device(psync_folderid_t fId) {
 void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t is_folder, psync_folderid_t itemid, psync_syncid_t sync_id) {
   time_t currTime = psync_time();
 
-  //Bobo
   if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
     debug(D_NOTICE, "Send BackUp/Sync del event. Event Id: [%d] Obj Type: [%s] Name: [%s] Path: [%s]", event_id, is_folder ? "folder" : "file", name, path);
 
@@ -3107,7 +3135,6 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
   else {
     //debug(D_NOTICE, "Data event timeout not reached!");
   }
-  //Bobo
 }
 /***********************************************************************************************************************************************/
 userinfo_t* psync_get_userinfo() {
@@ -3342,3 +3369,52 @@ int psync_get_isdebug()
     return 0;
   else return 1;
 }
+//Upload tasks methods. Start.
+/******************************************************************************************************************/
+int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
+  type_upload_task_t* upl_data;
+  psync_folderid_t dest_folder_id;
+  char** paths_local;
+
+  debug(D_NOTICE, "BOBO: psync_uptask_scan. Create upload thread. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
+
+  dest_folder_id = psync_get_folderid_by_path(dest_path);
+
+  if (dest_folder_id == PSYNC_INVALID_FOLDERID) {
+    debug(D_NOTICE, "BOBO: Can't get destination folder id. Return.");
+
+    return -1;
+  }
+  else {
+    debug(D_NOTICE, "BOBO: Got destination folder id: [%llu].", dest_folder_id);
+  }
+
+  paths_local = psync_malloc(path_cnt);
+
+  for (int i = 0; i < path_cnt; i++) {
+    debug(D_NOTICE, "BOBO: Path: [%d] - [%s]", i, paths[i]);
+    paths_local[i] = psync_strdup(paths[i]);
+  }
+
+  debug(D_NOTICE, "BOBO: psync_uptask_scan. Create upload thread. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
+
+  upl_data = psync_new(type_upload_task_t);
+
+  upl_data->dest_folid = dest_folder_id;
+  upl_data->paths = paths_local;
+  upl_data->path_cnt = path_cnt;
+
+  psync_run_thread1("Upload Tasks Scan", do_create_upload_from_list, upl_data);
+
+  return 0;
+}
+/******************************************************************************************************************/
+uptask_item_list* psync_get_uptask_list(int status) {
+  uptask_item_list* list;
+
+  list = get_uptask_item_list(status);
+
+  return list;
+}
+/******************************************************************************************************************/
+//Upload tasks methods. End.

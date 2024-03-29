@@ -41,6 +41,9 @@
 #include "pssl.h"
 #include <string.h>
 #include <ctype.h>
+//Bobo
+#include <ptools.h>
+//Bobo
 
 typedef struct {
   psync_list list;
@@ -131,7 +134,9 @@ static void scanner_set_syncs_to_list(psync_list *lst, psync_list *lst_deviceid_
   psync_list_init(lst);
   psync_list_init(lst_deviceid_full);
   syncmp=psync_fs_getmountpoint();
+
   res=psync_sql_query_rdlock("SELECT id, folderid, localpath, synctype, deviceid, inode FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
+
   while ((row=psync_sql_fetch_row(res))){
     lp=psync_get_lstring(row[2], &lplen);
     if (unlikely(psync_stat(lp, &st))){
@@ -280,6 +285,7 @@ static void scanner_local_entry_to_list(void *ptr, psync_pstat *st){
   e->size=psync_stat_size(&st->stat);
   e->isfolder=psync_stat_isfolder(&st->stat);
   memcpy(e->name, st->name, l);
+
   psync_list_add_tail(lst, &e->list);
 }
 
@@ -689,8 +695,6 @@ static void scan_delete_file(sync_folderlist *fl){
 
   debug(D_NOTICE, "file deleted [%s]", fl->name);
 
-  //Bobo
-  //Potentialy send the backup/sync deleted event here.
   if (fl->synctype == 7) {
     debug(D_NOTICE, "Sending Bup delete event.");
 
@@ -704,7 +708,6 @@ static void scan_delete_file(sync_folderlist *fl){
   else {
     debug(D_NOTICE, "Unsuported sync type: [%u]", fl->synctype);
   }
-  //Bobo
 
   // it is also possible to use fl->remoteid, but the file might have just been uploaded by the upload thread
   res=psync_sql_query("SELECT fileid, syncid, localparentfolderid FROM localfile WHERE id=?");
@@ -905,8 +908,6 @@ static void scan_delete_folder(sync_folderlist *fl){
 retry:
   debug(D_NOTICE, "folder deleted [%s]", fl->name);
 
-//Bobo
-// Potentialy send the backup/sync deleted event here. Folder.
   if (fl->synctype == 7) {
     debug(D_NOTICE, "Sending Bup delete event.");
 
@@ -920,7 +921,6 @@ retry:
   else {
     debug(D_NOTICE, "Unsuported sync type: [%u]", fl->synctype);
   }
-//Bobo
 
   res=psync_sql_query("SELECT folderid FROM localfolder WHERE id=?");
   psync_sql_bind_uint(res, 1, fl->localid);
@@ -1345,3 +1345,82 @@ void psync_localscan_init(){
   }
   psync_sql_free_result(res);
 }
+/**********************************************************************/
+void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync_folderid_t local_folder_id) {
+  int ret;
+  psync_list disklist, * list_elem, * list_next;
+  sync_folderlist* elem;
+  char* nextpath;
+  psync_stat_t stat_struct;
+
+  psync_list_init(&disklist);
+
+  debug(D_NOTICE, "BOBO: Recursive Scan Start! Path: [%s], Level: [%d], Remote folder Id: [%llu]", path, level, parent_folder_id);
+
+  ret = psync_list_dir(path, scanner_local_entry_to_list, &disklist);
+
+  debug(D_NOTICE, "BOBO: psync_list_dir ret: [%d]", ret);
+
+  list_elem = disklist.next;
+  list_next = list_elem->next;
+
+  while (list_elem != &disklist) {
+    elem = psync_list_element(list_elem, sync_folderlist, list);
+
+    debug(D_NOTICE, "BOBO: List element Name: [%s], Is Folder: [%u], Parent fId: [%llu]", elem->name, elem->isfolder, elem->parentfolderid);
+
+    nextpath = psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR, elem->name, NULL);
+
+    if (elem->isfolder == 1) {
+      ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, level, parent_folder_id, elem->name, path);
+
+      debug(D_NOTICE, "BOBO: Folder detected [%s]. Scan it.", nextpath);
+      uptask_scan(level + 1, nextpath, ret, local_folder_id);
+    }
+    else {
+      debug(D_NOTICE, "BOBO: File detected [%s]. ", nextpath);
+
+      ret = psync_stat(nextpath, &stat_struct);
+
+      ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), level, parent_folder_id, elem->name, path);
+    }
+
+    list_elem = list_next;
+    list_next = list_elem->next;
+  }
+
+  debug(D_NOTICE, "BOBO: Done scanning.");
+}
+/**********************************************************************/
+void do_create_upload_from_list(void* ptr) {
+  type_upload_task_t* upl_data = (type_upload_task_t*)ptr;
+  psync_stat_t stat_struct;
+  int ret;
+
+  debug(D_NOTICE, "BOBO: Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
+
+  for (int i = 0; i < upl_data->path_cnt; i++) {
+    debug(D_NOTICE, "BOBO: Process path: [%s].", upl_data->paths[i]);
+
+    ret = psync_stat(upl_data->paths[i], &stat_struct);
+
+    debug(D_NOTICE, "BOBO: stat ret: [%d]", ret);
+
+    if (ret == 0) {
+      uptask_scan(0, upl_data->paths[i], upl_data->dest_folid, 0);
+    }
+    else {
+      debug(D_NOTICE, "BOBO: Failed to stat path. Skipping it.");
+    }
+  }
+
+  debug(D_NOTICE, "BOBO: Finished Upload task init. Send wake signal.");
+
+  psync_free(upl_data);
+
+  psync_do_run = 1; //Activate the upload thread.
+  psync_wake_upload();
+
+  debug(D_NOTICE, "BOBO: do_create_upload_from_list. Done.");
+}
+/**********************************************************************/

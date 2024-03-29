@@ -1134,21 +1134,28 @@ static void large_upload(){
   psync_uint_row urow;
   int ret;
   char fileidhex[sizeof(psync_fsfileid_t)*2+2];
-  debug(D_NOTICE, "started");
+
+  debug(D_NOTICE, "Large upload thread started.");
+
   while (1){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
+ 
     res=psync_sql_query("SELECT id, type, folderid, text1, text2, int1, fileid, int2 FROM fstask WHERE status=2 AND "
                         "type IN ("NTO_STR(PSYNC_FS_TASK_CREAT)", "NTO_STR(PSYNC_FS_TASK_MODIFY)") ORDER BY id LIMIT 1");
+
     row=psync_sql_fetch_row(res);
+
     if (!row){
       large_upload_running=0;
       current_upload_taskid=0;
       psync_sql_free_result(res);
       break;
     }
+
     taskid=psync_get_number(row[0]);
     type=psync_get_number(row[1]);
     folderid=psync_get_number(row[2]);
+
     if (psync_is_null(row[4]))
       key=NULL;
     else{
@@ -1157,6 +1164,7 @@ static void large_upload(){
       key=psync_new_cnt(char, len);
       memcpy(key, cname, len);
     }
+
     cname=psync_get_lstring(row[3], &len);
     writeid=psync_get_number(row[5]);
     fileid=psync_get_number(row[6]);
@@ -1164,28 +1172,40 @@ static void large_upload(){
     len++;
     name=psync_new_cnt(char, len);
     memcpy(name, cname, len);
+
     current_upload_taskid=taskid;
     stop_current_upload=0;
+
     psync_sql_free_result(res);
+
     psync_binhex(fileidhex, &taskid, sizeof(psync_fsfileid_t));
     fileidhex[sizeof(psync_fsfileid_t)]='d';
     fileidhex[sizeof(psync_fsfileid_t)+1]=0;
+
     cname=psync_setting_get_string(_PS(fscachepath));
     filename=psync_strcat(cname, PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
     fileidhex[sizeof(psync_fsfileid_t)]='i';
     indexname=psync_strcat(cname, PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
+
+    debug(D_NOTICE, "BOBO: Large upload fs task: id:[%llu] type: [%llu] folderid: [%llu] text1: [%s], text2:[%s], int1: [%llu], fileid:[%llu], int2: [%llu].", taskid, type, folderid, cname, key, writeid, fileid, hash);
+
     res=psync_sql_query_rdlock("SELECT uploadid FROM fstaskupload WHERE fstaskid=? ORDER BY uploadid DESC LIMIT 1");
     psync_sql_bind_uint(res, 1, taskid);
+
     if ((urow=psync_sql_fetch_rowint(res)))
       uploadid=urow[0];
     else
       uploadid=0;
+
     psync_sql_free_result(res);
     psync_upload_inc_uploads();
-    if (type==PSYNC_FS_TASK_CREAT)
+
+    if (type==PSYNC_FS_TASK_CREAT){
       ret=large_upload_creat(taskid, folderid, name, filename, uploadid, writeid, key);
-    else if (type==PSYNC_FS_TASK_MODIFY)
+    }
+    else if (type==PSYNC_FS_TASK_MODIFY){
       ret=upload_modify(taskid, folderid, name, filename, indexname, fileid, hash, writeid, key);
+    }
     else{
       ret=0;
       debug(D_BUG, "wrong type %lu for task %lu", (unsigned long)type, (unsigned long)taskid);
@@ -1194,7 +1214,9 @@ static void large_upload(){
       psync_sql_run_free(res);
       psync_status_recalc_to_upload_async();
     }
+
     psync_upload_dec_uploads();
+
     if (ret){
       res=psync_sql_query_rdlock("SELECT type FROM fstask WHERE id=?");
       psync_sql_bind_uint(res, 1, taskid);
@@ -1209,12 +1231,16 @@ static void large_upload(){
         psync_fsupload_wake();
       psync_milisleep(PSYNC_SLEEP_ON_FAILED_UPLOAD);
     }
+
     psync_free(indexname);
     psync_free(filename);
     psync_free(name);
     psync_free(key);
+
+    debug(D_NOTICE, "BOBO: Large upload fs task done.");
   }
-  debug(D_NOTICE, "exited");
+
+  debug(D_NOTICE, "Large upload thread exited.");
 }
 
 static int psync_sent_task_creat_upload_large(fsupload_task_t *task){
@@ -2018,6 +2044,7 @@ static void psync_fsupload_check_tasks(){
   uint32_t cnt;
   psync_list_init(&tasks);
   cnt=0;
+
   if (psync_status_get(PSTATUS_TYPE_ACCFULL)==PSTATUS_ACCFULL_QUOTAOK)
     res=psync_sql_query_rdlock("SELECT f.id, f.type, f.folderid, f.fileid, f.text1, f.text2, f.int1, f.int2, f.sfolderid, f.status FROM fstask f"
                         " LEFT JOIN fstaskdepend d ON f.id=d.fstaskid"
@@ -2026,6 +2053,7 @@ static void psync_fsupload_check_tasks(){
     res=psync_sql_query_rdlock("SELECT f.id, f.type, f.folderid, f.fileid, f.text1, f.text2, f.int1, f.int2, f.sfolderid, f.status FROM fstask f"
                         " LEFT JOIN fstaskdepend d ON f.id=d.fstaskid WHERE d.fstaskid IS NULL AND status IN (0, 11) AND f.type NOT IN ("NTO_STR(PSYNC_FS_TASK_CREAT)
                         ", "NTO_STR(PSYNC_FS_TASK_MODIFY)") ORDER BY id LIMIT "NTO_STR(PSYNC_FSUPLOAD_NUM_TASKS_PER_RUN));
+
   while ((row=psync_sql_fetch_row(res))){
     cnt++;
     if (psync_get_number(row[0])==current_upload_taskid)
@@ -2044,6 +2072,7 @@ static void psync_fsupload_check_tasks(){
     task->fileid=psync_get_number_or_null(row[3]);
     task->sfolderid=psync_get_number_or_null(row[8]);
     task->status=psync_get_number(row[9]);
+
     if (row[4].type==PSYNC_TSTRING){
       memcpy(end, row[4].str, row[4].length+1);
       task->text1=end;
@@ -2051,27 +2080,35 @@ static void psync_fsupload_check_tasks(){
     }
     else
       task->text1=NULL;
+
     if (row[5].type==PSYNC_TSTRING){
       memcpy(end, row[5].str, row[5].length+1);
       task->text2=end;
     }
     else
       task->text2=NULL;
+
     task->int1=psync_get_snumber_or_null(row[6]);
     task->int2=psync_get_snumber_or_null(row[7]);
     task->ccreat=0;
     psync_list_add_tail(&tasks, &task->list);
-//    debug(D_NOTICE, "will process taskid %lu", (unsigned long)task->id);
+
+    debug(D_NOTICE, "BOBO: Process fs task: taskid: [%lu], type: [%llu]", (unsigned long)task->id, task->type);
   }
+
   current_upload_batch=&tasks;
   psync_sql_free_result(res);
+
   if (cnt==PSYNC_FSUPLOAD_NUM_TASKS_PER_RUN)
     upload_wakes++;
+
   if (!psync_list_isempty(&tasks))
     psync_fsupload_run_tasks(&tasks);
+
   psync_sql_lock();
   current_upload_batch=NULL;
   psync_sql_unlock();
+
   psync_list_for_each_element_call(&tasks, fsupload_task_t, list, psync_free);
 }
 

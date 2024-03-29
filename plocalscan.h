@@ -38,4 +38,18 @@ void psync_resume_localscan();
 void psync_restat_sync_folders();
 void psync_restat_sync_folders_del(psync_syncid_t syncid);
 void psync_restat_sync_folders_add(psync_syncid_t syncid, const char *localpath);
+
+
+//Bobo
+#define UPLAOD_TASKS_SYNC_ID 0
+
+typedef struct {
+  char** paths;
+  int path_cnt;
+  psync_folderid_t dest_folid;
+} type_upload_task_t;
+
+void do_create_upload_from_list(void* ptr);
+//Bobo
+
 #endif

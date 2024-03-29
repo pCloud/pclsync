@@ -350,22 +350,28 @@ char *psync_get_path_by_folderid(psync_folderid_t folderid, size_t *retlen){
   psync_list folderlist;
   char *ret;
   int res;
+
   psync_list_init(&folderlist);
   psync_sql_rdlock();
+
   res=psync_add_path_to_list(&folderlist, folderid);
   psync_sql_rdunlock();
+
   if (unlikely_log(res)){
     psync_free_string_list(&folderlist);
     return PSYNC_INVALID_PATH;
   }
+
   ret=psync_join_string_list("/", &folderlist, retlen);
   psync_free_string_list(&folderlist);
+
   if (!ret[0]){
     psync_free(ret);
     ret=psync_strdup("/");
     if (retlen)
       *retlen=1;
   }
+
   return ret;
 }
 
