@@ -1724,24 +1724,6 @@ void log_uptasks() {
   //psync_free(uptask_list);
 }
 /**********************************************************************/
-void clean_uptasks(int status) {
-  psync_sql_res* sql;
-
-  debug(D_NOTICE, "BOBO: clean_uptasks. Status: [%d]", status);
-
-  psync_sql_statement("DELETE FROM upload_tasks WHERE status & "NTO_STR(status));
-
-  psync_sql_start_transaction();
-
-  sql = psync_sql_prep_statement("DELETE FROM upload_tasks WHERE status & ?");
-
-  psync_sql_bind_uint(sql, 1, status);
-  psync_sql_run_free(sql);
-
-  psync_sql_commit_transaction();
-
-  debug(D_NOTICE, "BOBO: clean_uptasks. Rows affected: [%lu]", psync_sql_affected_rows());
-}
 /**********************************************************************/
 /**********************************************************************/
 /**********************************************************************/
