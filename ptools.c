@@ -1703,6 +1703,7 @@ uptask_item_list* get_uptask_item_list(int status) {
 /**********************************************************************/
 void log_uptasks() {
   uptask_item_list* uptask_list;
+  int i = 0;
 
   uptask_list = get_uptask_item_list(15);
 
@@ -1710,7 +1711,7 @@ void log_uptasks() {
 
   if (uptask_list != NULL) {
     debug(D_NOTICE, "***********************************************************");
-    for (int i = 0; i < uptask_list->item_cnt; i++) {
+    for (; i < uptask_list->item_cnt; i++) {
       debug(D_NOTICE, "BOBO: Task: Status: [%d] Type: [%d] Name: [%s] Path: [%s]", uptask_list->list[i].item_status, uptask_list->list[i].item_type, uptask_list->list[i].name, uptask_list->list[i].path);
       psync_free(uptask_list->list[i].name);
       psync_free(uptask_list->list[i].path);

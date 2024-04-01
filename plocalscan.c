@@ -42,7 +42,7 @@
 #include <string.h>
 #include <ctype.h>
 //Bobo
-#include <ptools.h>
+#include "ptools.h"
 //Bobo
 
 typedef struct {
@@ -1396,10 +1396,10 @@ void do_create_upload_from_list(void* ptr) {
   type_upload_task_t* upl_data = (type_upload_task_t*)ptr;
   psync_stat_t stat_struct;
   int ret;
-
+  int i = 0;
   debug(D_NOTICE, "BOBO: Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
 
-  for (int i = 0; i < upl_data->path_cnt; i++) {
+  for (; i < upl_data->path_cnt; i++) {
     debug(D_NOTICE, "BOBO: Process path: [%s].", upl_data->paths[i]);
 
     ret = psync_stat(upl_data->paths[i], &stat_struct);

@@ -3375,6 +3375,7 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
   type_upload_task_t* upl_data;
   psync_folderid_t dest_folder_id;
   char** paths_local;
+  int i = 0;
 
   debug(D_NOTICE, "BOBO: psync_uptask_scan. Create upload thread. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
 
@@ -3391,7 +3392,7 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
 
   paths_local = psync_malloc(path_cnt);
 
-  for (int i = 0; i < path_cnt; i++) {
+  for (; i < path_cnt; i++) {
     debug(D_NOTICE, "BOBO: Path: [%d] - [%s]", i, paths[i]);
     paths_local[i] = psync_strdup(paths[i]);
   }
