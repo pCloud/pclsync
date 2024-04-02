@@ -429,6 +429,7 @@ void psync_localnotify_add_sync(psync_syncid_t syncid){
   msg.syncid=syncid;
   if (!WriteFile(pipe_write, &msg, sizeof(msg), &bw, NULL) || bw!=sizeof(msg))
     debug(D_ERROR, "write to pipe failed");
+  if(handles)
   SetEvent(handles[0]);
 }
 
@@ -439,6 +440,7 @@ void psync_localnotify_del_sync(psync_syncid_t syncid){
   msg.syncid=syncid;
   if (!WriteFile(pipe_write, &msg, sizeof(msg), &bw, NULL) || bw!=sizeof(msg))
     debug(D_ERROR, "write to pipe failed");
+  if (handles)
   SetEvent(handles[0]);
 }
 
