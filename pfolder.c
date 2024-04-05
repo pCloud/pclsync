@@ -1052,11 +1052,36 @@ char* psync_get_path_from_str(char* fullPath) {
 
   while (i > 1) {
     if (fullPath[i] == PSYNC_DIRECTORY_SEPARATORC) {
-      path = (char*)malloc((i + 1) * sizeof(char));
+      path = (char*)malloc((i + 2) * sizeof(char));
       strncpy(path, fullPath, i + 1);
       //strncpy_s(path, i + 1, fullPath, i + 1);
 
       path[i + 1] = 0;
+
+      break;
+    }
+
+    i--;
+  }
+
+  return path;
+}
+
+char* psync_get_path_from_str_noslash(char* fullPath) {
+  char* path;
+  int i = strlen(fullPath);
+
+  if (i < 2) {
+    return NULL;
+  }
+
+  while (i > 1) {
+    if (fullPath[i] == PSYNC_DIRECTORY_SEPARATORC) {
+      path = (char*)malloc((i + 1) * sizeof(char));
+      strncpy(path, fullPath, i);
+      //strncpy_s(path, i + 1, fullPath, i + 1);
+
+      path[i] = 0;
 
       break;
     }

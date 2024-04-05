@@ -61,6 +61,7 @@ psync_folder_list_t* psync_list_get_list(char* syncTypes);
 psync_folderid_t psync_wait_folder_in_local_db(psync_folderid_t folderid);
 
 char* psync_get_path_from_str(char* fullPath);
+char* psync_get_path_from_str_noslash(char* fullPath);
 
 #ifdef P_OS_WINDOWS
 void psync_refresh_explorer_crypto_folder();

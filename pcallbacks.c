@@ -538,8 +538,10 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
   data = psync_new(event_data_struct);
 
   data->eventid = event_id;
-  data->str1 = strdup(str1);
-  data->str2 = strdup(str2);
+  if(str1)data->str1 = strdup(str1);
+  else data->str1 = strdup("null");
+  if (str1)data->str2 = strdup(str2);
+  else data->str2 = strdup("null");
   data->uint1 = uint1;
   data->uint2 = uint2;
 

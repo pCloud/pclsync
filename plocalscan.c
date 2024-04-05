@@ -1395,7 +1395,10 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 void do_create_upload_from_list(void* ptr) {
   type_upload_task_t* upl_data = (type_upload_task_t*)ptr;
   psync_stat_t stat_struct;
+  char* folder;
+  char* name;
   int ret;
+  size_t size, fsize;
   int i = 0;
   debug(D_NOTICE, "BOBO: Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
 
@@ -1407,7 +1410,26 @@ void do_create_upload_from_list(void* ptr) {
     debug(D_NOTICE, "BOBO: stat ret: [%d]", ret);
 
     if (ret == 0) {
-      uptask_scan(0, upl_data->paths[i], upl_data->dest_folid, 0);
+      if (psync_stat_isfolder(&stat_struct))
+      {
+        uptask_scan(0, upl_data->paths[i], upl_data->dest_folid, 0);
+      }
+      else
+      {
+        ret = psync_stat(upl_data->paths[i], &stat_struct);
+        debug(D_NOTICE, "Create upload task PSYNC_UPLOAD_FILE");
+        folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
+        fsize = strlen(folder);
+        size = strlen(upl_data->paths[i]);
+        if (size - fsize > 0)name = (char*)malloc((size - fsize) * sizeof(char));
+        else continue;
+        strncpy(name, upl_data->paths[i] + fsize+1, size - fsize-1);
+        name[size - fsize-1] = 0;
+        ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
+        debug(D_NOTICE, "Upload task added");
+        psync_free(folder);
+        psync_free(name);
+      }
     }
     else {
       debug(D_NOTICE, "BOBO: Failed to stat path. Skipping it.");
