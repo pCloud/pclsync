@@ -1414,7 +1414,10 @@ void do_create_upload_from_list(void* ptr) {
       fsize = strlen(folder);
       size = strlen(upl_data->paths[i]);
       if (size - fsize > 0)name = (char*)malloc((size - fsize) * sizeof(char));
-      else continue;
+      else {
+        psync_free(folder);
+        continue;
+      }
       strncpy(name, upl_data->paths[i] + fsize + 1, size - fsize - 1);
       name[size - fsize - 1] = 0;
       if (psync_stat_isfolder(&stat_struct))
@@ -1428,9 +1431,10 @@ void do_create_upload_from_list(void* ptr) {
         ret = psync_stat(upl_data->paths[i], &stat_struct);
         ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
         debug(D_NOTICE, "Upload task added");
-        psync_free(folder);
-        psync_free(name);
+        
       }
+      psync_free(folder);
+      psync_free(name);
     }
     else {
       debug(D_NOTICE, "BOBO: Failed to stat path. Skipping it.");
