@@ -1410,21 +1410,22 @@ void do_create_upload_from_list(void* ptr) {
     debug(D_NOTICE, "BOBO: stat ret: [%d]", ret);
 
     if (ret == 0) {
+      folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
+      fsize = strlen(folder);
+      size = strlen(upl_data->paths[i]);
+      if (size - fsize > 0)name = (char*)malloc((size - fsize) * sizeof(char));
+      else continue;
+      strncpy(name, upl_data->paths[i] + fsize + 1, size - fsize - 1);
+      name[size - fsize - 1] = 0;
       if (psync_stat_isfolder(&stat_struct))
       {
-        uptask_scan(0, upl_data->paths[i], upl_data->dest_folid, 0);
+        ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, 0, upl_data->dest_folid, name, folder);
+        uptask_scan(0, upl_data->paths[i], ret, 0);
       }
       else
       {
-        ret = psync_stat(upl_data->paths[i], &stat_struct);
         debug(D_NOTICE, "Create upload task PSYNC_UPLOAD_FILE");
-        folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
-        fsize = strlen(folder);
-        size = strlen(upl_data->paths[i]);
-        if (size - fsize > 0)name = (char*)malloc((size - fsize) * sizeof(char));
-        else continue;
-        strncpy(name, upl_data->paths[i] + fsize+1, size - fsize-1);
-        name[size - fsize-1] = 0;
+        ret = psync_stat(upl_data->paths[i], &stat_struct);
         ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
         debug(D_NOTICE, "Upload task added");
         psync_free(folder);
