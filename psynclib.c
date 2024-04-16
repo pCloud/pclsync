@@ -812,7 +812,6 @@ psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotep
 
   debug(D_NOTICE, "Add sync. Local Path: [%s] Remote Path: [%s], Remote folderId: [%llu]", localpath, remotepath, folderid);
   //Bobo
-  /*
   char* test_paths[2];
   char* dest_path;
 
@@ -824,7 +823,6 @@ psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotep
   psync_uptask_scan(test_paths, 2, dest_path);
 
   return PSYNC_INVALID_SYNCID;
-  */
   //Bobo
 
   if (likely_log(folderid!=PSYNC_INVALID_FOLDERID))
@@ -3423,7 +3421,7 @@ void clean_uptasks(int status) {
 
   debug(D_NOTICE, "BOBO: clean_uptasks. Status: [%d]", status);
 
-  psync_sql_statement("DELETE FROM upload_tasks WHERE status & "NTO_STR(status));
+  //psync_sql_statement("DELETE FROM upload_tasks WHERE status & "NTO_STR(status));
 
   psync_sql_start_transaction();
 
@@ -3435,6 +3433,10 @@ void clean_uptasks(int status) {
   psync_sql_commit_transaction();
 
   debug(D_NOTICE, "BOBO: clean_uptasks. Rows affected: [%lu]", psync_sql_affected_rows());
+}
+/******************************************************************************************************************/
+void psync_cancel_uptasks() {
+  cancel_uptasks();
 }
 /******************************************************************************************************************/
 //Upload tasks methods. End.

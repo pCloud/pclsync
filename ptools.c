@@ -1725,6 +1725,33 @@ void log_uptasks() {
   //psync_free(uptask_list);
 }
 /**********************************************************************/
+int is_file_to_ignore(psync_stat_t* st) {
+  int ret = 0;
+
+  if (st->dwFileAttributes & (FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DEVICE | FILE_ATTRIBUTE_HIDDEN)) {
+    if (st->dwFileAttributes & FILE_ATTRIBUTE_SYSTEM) {
+      debug(D_NOTICE, "Ignoring file with FILE_ATTRIBUTE_SYSTEM");
+      ret = 1;
+    }
+      
+    if (st->dwFileAttributes & FILE_ATTRIBUTE_TEMPORARY) {
+      debug(D_NOTICE, "Ignoring file with FILE_ATTRIBUTE_TEMPORARY");
+      ret = 1;
+    }
+      
+    if (st->dwFileAttributes & FILE_ATTRIBUTE_DEVICE) {
+      debug(D_NOTICE, "Ignoring file with FILE_ATTRIBUTE_DEVICE");
+      ret = 1;
+    }
+      
+    if (st->dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) {
+      debug(D_NOTICE, "Ignoring file with FILE_ATTRIBUTE_HIDDEN");
+      ret = 1;
+    }
+  }
+
+  return ret;
+}
 /**********************************************************************/
 /**********************************************************************/
 /**********************************************************************/

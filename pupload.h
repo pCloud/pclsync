@@ -44,5 +44,7 @@ void psync_stop_all_upload();
 
 int upload_logs(char* filename, char* fPath);
 
-
+//Bobo
+int cancel_uptasks();
+//Bobo
 #endif

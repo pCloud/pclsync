@@ -1361,6 +1361,12 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 
   debug(D_NOTICE, "BOBO: psync_list_dir ret: [%d]", ret);
 
+  debug(D_NOTICE, "BOBO: psync_list_dir ret: Clean all Uptasks.");
+
+  clean_uptasks(15);
+
+  debug(D_NOTICE, "BOBO: psync_list_dir ret: Uptasks cleaned.");
+
   list_elem = disklist.next;
   list_next = list_elem->next;
 
@@ -1400,6 +1406,7 @@ void do_create_upload_from_list(void* ptr) {
   int ret;
   size_t size, fsize;
   int i = 0;
+
   debug(D_NOTICE, "BOBO: Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
 
   for (; i < upl_data->path_cnt; i++) {
@@ -1409,30 +1416,35 @@ void do_create_upload_from_list(void* ptr) {
 
     debug(D_NOTICE, "BOBO: stat ret: [%d]", ret);
 
-    if (ret == 0) {
+    if ((ret == 0) && (is_file_to_ignore(&stat_struct) == 0)) {
       folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
       fsize = strlen(folder);
       size = strlen(upl_data->paths[i]);
-      if (size - fsize > 0)name = (char*)malloc((size - fsize) * sizeof(char));
+
+      if (size - fsize > 0){
+        name = (char*)malloc((size - fsize) * sizeof(char));
+      }
       else {
+        debug(D_NOTICE, "BOBO: Empty Path. Skip it.");
         psync_free(folder);
         continue;
       }
+
       strncpy(name, upl_data->paths[i] + fsize + 1, size - fsize - 1);
       name[size - fsize - 1] = 0;
-      if (psync_stat_isfolder(&stat_struct))
-      {
+
+      if (psync_stat_isfolder(&stat_struct)) {
         ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, 0, upl_data->dest_folid, name, folder);
         uptask_scan(0, upl_data->paths[i], ret, 0);
       }
-      else
-      {
+      else {
         debug(D_NOTICE, "Create upload task PSYNC_UPLOAD_FILE");
-        ret = psync_stat(upl_data->paths[i], &stat_struct);
+        //ret = psync_stat(upl_data->paths[i], &stat_struct);
+
         ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
         debug(D_NOTICE, "Upload task added");
-        
       }
+
       psync_free(folder);
       psync_free(name);
     }

@@ -2093,3 +2093,37 @@ int upload_logs(char* filename, char* fPath) {
   return 0;
 }
 /*************************************************************/
+int cancel_uptasks() {
+  psync_sql_res* sql;
+  psync_variant_row row;
+  upload_list_t* upl;
+
+  debug(D_NOTICE, "BOBO: cancel_uptasks. Stop all inprogress uptasks.");
+
+  pthread_mutex_lock(&current_uploads_mutex);
+
+  psync_list_for_each_element(upl, &uploads, upload_list_t, list)
+    if (upl->syncid == 0) {
+      debug(D_NOTICE, "BOBO: UpTask Found Id: [%llu]", upl->taskid);
+      upl->stop = 1;
+    }
+
+  pthread_mutex_unlock(&current_uploads_mutex);
+
+
+  debug(D_NOTICE, "BOBO: cancel_uptasks. Delete all records in upload_tasks table.");
+
+  psync_sql_start_transaction();
+
+  sql = psync_sql_prep_statement("DELETE FROM upload_tasks WHERE status & ?");
+
+  psync_sql_bind_uint(sql, 1, 15); //All types
+  psync_sql_run_free(sql);
+
+  psync_sql_commit_transaction();
+
+  debug(D_NOTICE, "BOBO: clean_uptasks. Rows affected: [%lu]", psync_sql_affected_rows());
+
+  return 0;
+}
+/*************************************************************/
