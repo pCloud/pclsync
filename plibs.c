@@ -2067,12 +2067,17 @@ psync_task_manager_t psync_task_run_tasks(psync_task_callback_t const *callbacks
   psync_task_manager_t ret;
   struct psync_task_t_ *t;
   int i;
+
   ret=(psync_task_manager_t)psync_malloc(offsetof(struct psync_task_manager_t_, tasks)+sizeof(struct psync_task_t_)*cnt);
   pthread_mutex_init(&ret->mutex, NULL);
   ret->taskcnt=cnt;
   ret->refcnt=cnt+1;
   ret->waitfor=PSYNC_WAIT_NOBODY;
+
+  debug(D_NOTICE, "BOBO: Taks count: [%d]", cnt);
+
   for (i=0; i<cnt; i++){
+    debug(D_NOTICE, "BOBO: Runing task: [%d]", i);
     t=&ret->tasks[i];
     t->callback=callbacks[i];
     t->param=params[i];
@@ -2081,6 +2086,7 @@ psync_task_manager_t psync_task_run_tasks(psync_task_callback_t const *callbacks
     t->status=PSYNC_TASK_STATUS_RUNNING;
     psync_run_thread1("task", psync_task_entry, t);
   }
+
   return ret;
 }
 

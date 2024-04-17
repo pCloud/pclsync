@@ -811,19 +811,6 @@ psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotep
   psync_folderid_t folderid=psync_get_folderid_by_path(remotepath);
 
   debug(D_NOTICE, "Add sync. Local Path: [%s] Remote Path: [%s], Remote folderId: [%llu]", localpath, remotepath, folderid);
-  //Bobo
-  char* test_paths[2];
-  char* dest_path;
-
-  dest_path = psync_strdup("/test_folder_struct");
-
-  test_paths[0] = psync_strdup("C:\\Work\\test_files\\test_folder_struct");
-  test_paths[1] = psync_strdup("C:\\Work\\test_files\\calibre-64bit-6.11.0.msi");
-
-  psync_uptask_scan(test_paths, 2, dest_path);
-
-  return PSYNC_INVALID_SYNCID;
-  //Bobo
 
   if (likely_log(folderid!=PSYNC_INVALID_FOLDERID))
     return psync_add_sync_by_folderid(localpath, folderid, synctype);
@@ -3373,7 +3360,7 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
   type_upload_task_t* upl_data;
   psync_folderid_t dest_folder_id;
   char** paths_local;
-  int i = 0;
+  int i;
 
   debug(D_NOTICE, "BOBO: psync_uptask_scan. Create upload thread. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
 
@@ -3388,11 +3375,22 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
     debug(D_NOTICE, "BOBO: Got destination folder id: [%llu].", dest_folder_id);
   }
 
+  /*
+  debug(D_NOTICE, "BOBO: psync_list_dir ret: Clean all Uptasks.");
+
+  cancel_uptasks();
+
+  debug(D_NOTICE, "BOBO: psync_list_dir ret: Uptasks cleaned.");
+  */
+
   paths_local = psync_malloc(path_cnt);
 
-  for (; i < path_cnt; i++) {
+  for (i = 0; i < path_cnt; i++) {
     debug(D_NOTICE, "BOBO: Path: [%d] - [%s]", i, paths[i]);
+    //Bobo
     paths_local[i] = psync_strdup(paths[i]);
+    //paths_local[i] = psync_strdup("C:\\Work\\test_files\\test_folder_struct");
+    //Bobo
   }
 
   debug(D_NOTICE, "BOBO: psync_uptask_scan. Create upload thread. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);

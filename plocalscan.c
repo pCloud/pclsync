@@ -1361,12 +1361,6 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 
   debug(D_NOTICE, "BOBO: psync_list_dir ret: [%d]", ret);
 
-  debug(D_NOTICE, "BOBO: psync_list_dir ret: Clean all Uptasks.");
-
-  clean_uptasks(15);
-
-  debug(D_NOTICE, "BOBO: psync_list_dir ret: Uptasks cleaned.");
-
   list_elem = disklist.next;
   list_next = list_elem->next;
 

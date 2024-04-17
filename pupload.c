@@ -643,6 +643,8 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   ssize_t rrd;
   psync_file_t fd;
 
+  //debug(D_NOTICE, "BOBO: upload_file: [%s]", name);
+
   fd=psync_file_open(localpath, P_O_RDONLY, 0);
 
   if (fd==INVALID_HANDLE_VALUE){
@@ -1844,11 +1846,12 @@ static void upload_thread(){
                       "     UNION ALL "
                       "    SELECT id, type, 0 as syncid, id as itemid, parentfid as localitemid, 0 as newitemid, fname, 0 as newsyncid, level"
                       "      FROM upload_tasks"
-                      "     WHERE status = "NTO_STR(PUPTASK_STATUS_WAITING)
+                      //"     WHERE status = "NTO_STR(PUPTASK_STATUS_WAITING)
+                      "     WHERE status = 1"
                       "  )"
                       "ORDER BY id, level LIMIT 1");
     //Bobo
-    log_uptasks();
+    //log_uptasks();
     //Bobo
 
     if (row){
@@ -1902,6 +1905,8 @@ static void upload_thread(){
           psync_milisleep(PSYNC_SLEEP_ON_FAILED_UPLOAD);
         }
       }
+
+      debug(D_NOTICE, "BOBO: Free upload task row.");
 
       psync_free(row);
       continue;

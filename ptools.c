@@ -1546,8 +1546,12 @@ int create_upload_task(int type, int status, int size, int level, uint64_t paren
 
   psync_sql_start_transaction();
 
+  debug(D_NOTICE, "BOBO: create_upload_task. Prepare statement.");
+
   res = psync_sql_prep_statement("INSERT INTO upload_tasks(type, status, size, level, parentfid, fname, fpath) VALUES (? ,? ,? ,? ,? ,?, ?); ");
   
+  debug(D_NOTICE, "BOBO: create_upload_task. Bind variables.");
+
   psync_sql_bind_int(res,  1, type);
   psync_sql_bind_int(res,  2, status);
   psync_sql_bind_uint(res, 3, size);
@@ -1556,6 +1560,8 @@ int create_upload_task(int type, int status, int size, int level, uint64_t paren
 
   psync_sql_bind_lstring(res, 6, fname, strlen(fname));
   psync_sql_bind_lstring(res, 7, path, strlen(path));
+
+  debug(D_NOTICE, "BOBO: create_upload_task. Run query.");
 
   if (unlikely(psync_sql_run_free(res))) { 
     psync_sql_rollback_transaction();
@@ -1673,7 +1679,8 @@ uptask_item_list* get_uptask_item_list(int status) {
 
   res = psync_sql_query("SELECT type, status, fpath, fname, size, error_code "
                         "  FROM upload_tasks "
-                        " WHERE (status & ?)");
+                        " WHERE (status & ?)"
+                        " LIMIT 10");
 
   psync_sql_bind_uint(res, 1, status);
 
@@ -1702,8 +1709,9 @@ uptask_item_list* get_uptask_item_list(int status) {
 }
 /**********************************************************************/
 void log_uptasks() {
+  int i;
+
   uptask_item_list* uptask_list;
-  int i = 0;
 
   uptask_list = get_uptask_item_list(15);
 
@@ -1711,10 +1719,14 @@ void log_uptasks() {
 
   if (uptask_list != NULL) {
     debug(D_NOTICE, "***********************************************************");
-    for (; i < uptask_list->item_cnt; i++) {
+    for (i = 0; i < uptask_list->item_cnt; i++) {
       debug(D_NOTICE, "BOBO: Task: Status: [%d] Type: [%d] Name: [%s] Path: [%s]", uptask_list->list[i].item_status, uptask_list->list[i].item_type, uptask_list->list[i].name, uptask_list->list[i].path);
       psync_free(uptask_list->list[i].name);
       psync_free(uptask_list->list[i].path);
+
+      if (i > 15) {
+        break;
+      }
     }
     debug(D_NOTICE, "***********************************************************");
   }
