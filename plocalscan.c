@@ -1410,7 +1410,8 @@ void do_create_upload_from_list(void* ptr) {
 
     debug(D_NOTICE, "BOBO: stat ret: [%d]", ret);
 
-    if ((ret == 0) && (is_file_to_ignore(&stat_struct) == 0)) {
+    //if ((ret == 0) && (is_file_to_ignore(&stat_struct) == 0)) {
+    if (ret == 0) {
       folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
       fsize = strlen(folder);
       size = strlen(upl_data->paths[i]);
