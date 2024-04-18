@@ -3388,7 +3388,12 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
   for (i = 0; i < path_cnt; i++) {
     debug(D_NOTICE, "BOBO: Path: [%d] - [%s]", i, paths[i]);
     //Bobo
-    paths_local[i] = psync_strdup(paths[i]);
+    if (strlen(paths[i]) > 0) {
+      paths_local[i] = psync_strdup(paths[i]);
+    }
+    else {
+      debug(D_NOTICE, "BOBO: psync_uptask_scan. Path Empty, skip it");
+    }
     //paths_local[i] = psync_strdup("C:\\Work\\test_files\\test_folder_struct");
     //Bobo
   }

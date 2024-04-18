@@ -1398,12 +1398,12 @@ void do_create_upload_from_list(void* ptr) {
   char* folder;
   char* name;
   int ret;
-  size_t size, fsize;
-  int i = 0;
+  size_t path_size;
+  int i;
 
   debug(D_NOTICE, "BOBO: Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
 
-  for (; i < upl_data->path_cnt; i++) {
+  for (i = 0; i < upl_data->path_cnt; i++) {
     debug(D_NOTICE, "BOBO: Process path: [%s].", upl_data->paths[i]);
 
     ret = psync_stat(upl_data->paths[i], &stat_struct);
@@ -1413,20 +1413,18 @@ void do_create_upload_from_list(void* ptr) {
     //if ((ret == 0) && (is_file_to_ignore(&stat_struct) == 0)) {
     if (ret == 0) {
       folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
-      fsize = strlen(folder);
-      size = strlen(upl_data->paths[i]);
+      
+      path_size = strlen(folder);
 
-      if (size - fsize > 0){
-        name = (char*)malloc((size - fsize) * sizeof(char));
+      if (path_size > 0) {
+        name = upl_data->paths[i]+path_size+strlen(PSYNC_DIRECTORY_SEPARATOR);
       }
       else {
-        debug(D_NOTICE, "BOBO: Empty Path. Skip it.");
-        psync_free(folder);
+        debug(D_NOTICE, "BOBO: Path empty. Skip it.");
         continue;
       }
 
-      strncpy(name, upl_data->paths[i] + fsize + 1, size - fsize - 1);
-      name[size - fsize - 1] = 0;
+      debug(D_NOTICE, "BOBO: Got Path: [%s] Name: [%s]", folder, name);
 
       if (psync_stat_isfolder(&stat_struct)) {
         ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, 0, upl_data->dest_folid, name, folder);
@@ -1434,14 +1432,12 @@ void do_create_upload_from_list(void* ptr) {
       }
       else {
         debug(D_NOTICE, "Create upload task PSYNC_UPLOAD_FILE");
-        //ret = psync_stat(upl_data->paths[i], &stat_struct);
-
         ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
+
         debug(D_NOTICE, "Upload task added");
       }
 
       psync_free(folder);
-      psync_free(name);
     }
     else {
       debug(D_NOTICE, "BOBO: Failed to stat path. Skipping it.");
