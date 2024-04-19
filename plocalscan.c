@@ -1436,12 +1436,12 @@ void do_create_upload_from_list(void* ptr) {
 
         debug(D_NOTICE, "Upload task added");
       }
-
-      psync_free(folder);
     }
     else {
       debug(D_NOTICE, "BOBO: Failed to stat path. Skipping it.");
     }
+
+    psync_free(upl_data->paths[i]);
   }
 
   debug(D_NOTICE, "BOBO: Finished Upload task init. Send wake signal.");

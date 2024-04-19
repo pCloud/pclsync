@@ -1846,8 +1846,7 @@ static void upload_thread(){
                       "     UNION ALL "
                       "    SELECT id, type, 0 as syncid, id as itemid, parentfid as localitemid, 0 as newitemid, fname, 0 as newsyncid, level"
                       "      FROM upload_tasks"
-                      //"     WHERE status = "NTO_STR(PUPTASK_STATUS_WAITING)
-                      "     WHERE status = 1"
+                      "     WHERE status = "NTO_STR(PUPTASK_STATUS_WAITING)
                       "  )"
                       "ORDER BY id, level LIMIT 1");
     //Bobo

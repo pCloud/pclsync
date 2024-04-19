@@ -2074,10 +2074,7 @@ psync_task_manager_t psync_task_run_tasks(psync_task_callback_t const *callbacks
   ret->refcnt=cnt+1;
   ret->waitfor=PSYNC_WAIT_NOBODY;
 
-  debug(D_NOTICE, "BOBO: Taks count: [%d]", cnt);
-
   for (i=0; i<cnt; i++){
-    debug(D_NOTICE, "BOBO: Runing task: [%d]", i);
     t=&ret->tasks[i];
     t->callback=callbacks[i];
     t->param=params[i];

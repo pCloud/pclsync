@@ -44,9 +44,9 @@ void psync_restat_sync_folders_add(psync_syncid_t syncid, const char *localpath)
 #define UPLAOD_TASKS_SYNC_ID 0
 
 typedef struct {
-  char** paths;
   int path_cnt;
   psync_folderid_t dest_folid;
+  char** paths;
 } type_upload_task_t;
 
 void do_create_upload_from_list(void* ptr);

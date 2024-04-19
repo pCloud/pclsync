@@ -1722,6 +1722,10 @@ int psync_get_isdebug();
 #define PUPTASK_ERROR_GENERAL    1
 //Upload task constants. End.
 
+typedef struct {
+  char* string;
+} type_char_struct;
+
 int psync_uptask_scan(char** paths, int path_cnt, char* dest_path);
 
 uptask_item_list* psync_get_uptask_list(int status);

@@ -3359,10 +3359,11 @@ int psync_get_isdebug()
 int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
   type_upload_task_t* upl_data;
   psync_folderid_t dest_folder_id;
-  char** paths_local;
+  uint64_t arr_size = 0;
+  
   int i;
 
-  debug(D_NOTICE, "BOBO: psync_uptask_scan. Create upload thread. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
+  debug(D_NOTICE, "BOBO: psync_uptask_scan. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
 
   dest_folder_id = psync_get_folderid_by_path(dest_path);
 
@@ -3375,35 +3376,18 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
     debug(D_NOTICE, "BOBO: Got destination folder id: [%llu].", dest_folder_id);
   }
 
-  /*
-  debug(D_NOTICE, "BOBO: psync_list_dir ret: Clean all Uptasks.");
-
-  cancel_uptasks();
-
-  debug(D_NOTICE, "BOBO: psync_list_dir ret: Uptasks cleaned.");
-  */
-
-  paths_local = psync_malloc(path_cnt);
+  upl_data = psync_new(type_upload_task_t);
+  upl_data->paths = psync_malloc(path_cnt * sizeof(char*));
 
   for (i = 0; i < path_cnt; i++) {
     debug(D_NOTICE, "BOBO: Path: [%d] - [%s]", i, paths[i]);
-    //Bobo
-    if (strlen(paths[i]) > 0) {
-      paths_local[i] = psync_strdup(paths[i]);
-    }
-    else {
-      debug(D_NOTICE, "BOBO: psync_uptask_scan. Path Empty, skip it");
-    }
-    //paths_local[i] = psync_strdup("C:\\Work\\test_files\\test_folder_struct");
-    //Bobo
+
+    upl_data->paths[i] = psync_strdup(paths[i]);
   }
 
   debug(D_NOTICE, "BOBO: psync_uptask_scan. Create upload thread. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
 
-  upl_data = psync_new(type_upload_task_t);
-
   upl_data->dest_folid = dest_folder_id;
-  upl_data->paths = paths_local;
   upl_data->path_cnt = path_cnt;
 
   psync_run_thread1("Upload Tasks Scan", do_create_upload_from_list, upl_data);
