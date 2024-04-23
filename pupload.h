@@ -46,5 +46,7 @@ int upload_logs(char* filename, char* fPath);
 
 //Bobo
 int cancel_uptasks();
+
+static void delete_uptaks_uploadids(psync_fileid_t localfileid);
 //Bobo
 #endif

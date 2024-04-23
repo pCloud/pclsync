@@ -92,7 +92,7 @@ CREATE INDEX IF NOT EXISTS klocalfilelpfid ON localfile(localparentfolderid);\
 CREATE INDEX IF NOT EXISTS klocalfilefileid ON localfile(fileid);\
 CREATE INDEX IF NOT EXISTS klocalfilechecksum ON localfile(checksum);\
 CREATE UNIQUE INDEX IF NOT EXISTS klocalfilerpsn ON localfile(syncid, localparentfolderid, name);\
-CREATE TABLE IF NOT EXISTS localfileupload (localfileid INTEGER, uploadid INTEGER, PRIMARY KEY (localfileid, uploadid)) " P_SQL_WOWROWID ";\
+CREATE TABLE IF NOT EXISTS localfileupload (localfileid INTEGER REFERENCES localfile(id) ON DELETE CASCADE, uploadid INTEGER, PRIMARY KEY (localfileid, uploadid)) " P_SQL_WOWROWID ";\
 CREATE TABLE IF NOT EXISTS syncedfolder (syncid INTEGER REFERENCES syncfolder(id) ON DELETE CASCADE, folderid INTEGER, localfolderid INTEGER, synctype INTEGER,\
   PRIMARY KEY (syncid, folderid));\
 CREATE INDEX IF NOT EXISTS ksyncedfolderdownfolderid ON syncedfolder(folderid);\
@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS myteams (id INTEGER PRIMARY KEY, name TEXT); \
 CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY, last_path VARCHAR(1024), type INTEGER, vendor VARCHAR(2048), product VARCHAR(2048), device_id VARCHAR(4096),\
   connected INTEGER, enabled INTEGER); \
 CREATE TABLE upload_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, type INTEGER NOT NULL DEFAULT 0, status INTEGER NOT NULL DEFAULT 0, level INTEGER, parentfid INTEGER, fname VARCHAR(4096), fpath VARCHAR(4096), size INTEGER, checksum TEXT, error_code  INTEGER NOT NULL DEFAULT 0);\
+CREATE TABLE IF NOT EXISTS uptask_fileupload (localfileid INTEGER REFERENCES upload_tasks(id) ON DELETE CASCADE, uploadid INTEGER, PRIMARY KEY (localfileid, uploadid)) "P_SQL_WOWROWID";\
 CREATE INDEX IF NOT EXISTS UploadTasksTypeIdx ON upload_tasks(type);\
 CREATE INDEX IF NOT EXISTS UploadTasksStatusIdx ON upload_tasks(status);\
 CREATE INDEX IF NOT EXISTS UploadTasksLevelIdx ON upload_tasks(level);\
@@ -305,14 +306,10 @@ UPDATE setting SET value=22 WHERE id='dbversion'; \
 COMMIT;",//DB Version 22 End
 "BEGIN; \
 CREATE TABLE upload_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, type INTEGER NOT NULL DEFAULT 0, status INTEGER NOT NULL DEFAULT 0, level INTEGER, parentfid INTEGER, fname VARCHAR(4096), fpath VARCHAR(4096), size INTEGER, checksum TEXT, error_code  INTEGER NOT NULL DEFAULT 0);\
+CREATE TABLE IF NOT EXISTS uptask_fileupload (localfileid INTEGER REFERENCES upload_tasks(id) ON DELETE CASCADE, uploadid INTEGER, PRIMARY KEY (localfileid, uploadid)) "P_SQL_WOWROWID";\
 CREATE INDEX IF NOT EXISTS UploadTasksTypeIdx ON upload_tasks(type);\
 CREATE INDEX IF NOT EXISTS UploadTasksStatusIdx ON upload_tasks(status);\
 CREATE INDEX IF NOT EXISTS UploadTasksLevelIdx ON upload_tasks(level);\
-INSERT INTO syncfolder (id, folderid, localpath, synctype, flags, inode, deviceid) VALUES (0,0,\"Upload Tasks Sync Dummy\", 0, 0, 0, 0); \
-CREATE TABLE IF NOT EXISTS temp_localfileupload(localfileid INTEGER, uploadid INTEGER, PRIMARY KEY(localfileid, uploadid)) WITHOUT ROWID;\
-INSERT INTO temp_localfileupload (localfileid, uploadid) SELECT localfileid, uploadid FROM localfileupload;\
-DROP TABLE localfileupload;\
-ALTER TABLE temp_localfileupload RENAME TO localfileupload;\
 UPDATE setting SET value=23 WHERE id='dbversion'; \
 COMMIT;"//DB Version 23 End
 };

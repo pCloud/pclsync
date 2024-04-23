@@ -1737,6 +1737,18 @@ void log_uptasks() {
   //psync_free(uptask_list);
 }
 /**********************************************************************/
+int64_t get_db_id() {
+  psync_sql_res* res;
+
+  psync_sql_start_transaction();
+
+  res = psync_sql_prep_statement("INSERT INTO pagecache (type) VALUES ("NTO_STR(PAGE_TYPE_FREE)")");
+
+  psync_sql_commit_transaction();
+
+  psync_sql_free_result(res);
+}
+/**********************************************************************/
 /*
 int is_file_to_ignore(psync_stat_t* st) {
   int ret = 0;

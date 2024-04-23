@@ -951,14 +951,23 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
       if (!row) {
         psync_sql_rollback_transaction();
         debug(D_NOTICE, "local file %s (%lu) disappeard from localfile while creating upload, failing task", localpath, (unsigned long)localfileid);
+
         return -1;
       }
     }
 
-    sql = psync_sql_prep_statement("INSERT INTO localfileupload (localfileid, uploadid) VALUES (?, ?)");
-    psync_sql_bind_uint(sql, 1, localfileid);
-    psync_sql_bind_uint(sql, 2, uploadid);
-    psync_sql_run_free(sql);
+    if (syncid == 0) {
+      sql = psync_sql_prep_statement("INSERT INTO uptask_fileupload (localfileid, uploadid) VALUES (?, ?)");
+      psync_sql_bind_uint(sql, 1, localfileid);
+      psync_sql_bind_uint(sql, 2, uploadid);
+      psync_sql_run_free(sql);
+    }
+    else {
+      sql = psync_sql_prep_statement("INSERT INTO localfileupload (localfileid, uploadid) VALUES (?, ?)");
+      psync_sql_bind_uint(sql, 1, localfileid);
+      psync_sql_bind_uint(sql, 2, uploadid);
+      psync_sql_run_free(sql);
+    }
 
     psync_sql_commit_transaction();
   }
@@ -1054,9 +1063,16 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
         psync_sql_free_result(sql);
     }
 
-    sql=psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 5");
-    psync_sql_bind_uint(sql, 1, localfileid);
-    fr = psync_sql_fetchall_int(sql);
+    if (syncid == 0) {
+      sql = psync_sql_query_rdlock("SELECT uploadid FROM uptask_fileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 5");
+      psync_sql_bind_uint(sql, 1, localfileid);
+      fr = psync_sql_fetchall_int(sql);
+    }
+    else {
+      sql = psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 5");
+      psync_sql_bind_uint(sql, 1, localfileid);
+      fr = psync_sql_fetchall_int(sql);
+    }
 
     for (id=0; id<fr->rows; id++)
       if (psync_get_result_cell(fr, id, 0)!=uploadid && psync_net_scan_upload_for_blocks(api, &rlist, psync_get_result_cell(fr, id, 0), fd)==PSYNC_NET_TEMPFAIL){
@@ -1368,10 +1384,15 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     return -1;
   }
 
-  debug(D_WARNING, "BOBO: task_uploadfile. Check upload id.");
-
-  res=psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 1");
-  psync_sql_bind_uint(res, 1, localfileid);
+  if (syncid == 0) {
+    debug(D_WARNING, "BOBO: task_uploadfile. Check upload id.");
+    res = psync_sql_query_rdlock("SELECT uploadid FROM uptask_fileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 1");
+    psync_sql_bind_uint(res, 1, localfileid);
+  }
+  else {
+    res = psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=? ORDER BY uploadid DESC LIMIT 1");
+    psync_sql_bind_uint(res, 1, localfileid);
+  }
 
   if ((row=psync_sql_fetch_rowint(res)))
     uploadid=row[0];
@@ -1554,8 +1575,14 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
   psync_free(nname);
   psync_free(localpath);
 
-  if (!ret)
-    delete_uploadids(localfileid);
+  if (!ret) {
+    if (syncid != 0) {
+      delete_uploadids(localfileid);
+    }
+    else {
+      delete_uptaks_uploadids(localfileid);
+    }
+  }
 
   return ret;
 }
@@ -2130,4 +2157,29 @@ int cancel_uptasks() {
 
   return 0;
 }
+/*************************************************************/
+//static void delete_uploadids(psync_fileid_t localfileid) {
+static void delete_uptaks_uploadids(psync_fileid_t localfileid) {
+  psync_sql_res* res;
+  psync_full_result_int* rows;
+  uint32_t i;
+
+  res = psync_sql_query_rdlock("SELECT uploadid FROM uptask_fileupload WHERE localfileid=?");
+  psync_sql_bind_uint(res, 1, localfileid);
+
+  rows = psync_sql_fetchall_int(res);
+
+  if (rows->rows) {
+    for (i = 0; i < rows->rows; i++) {
+      delete_uploadid(psync_get_result_cell(rows, i, 0));
+    }
+
+    res = psync_sql_prep_statement("DELETE FROM uptask_fileupload WHERE localfileid=?");
+    psync_sql_bind_uint(res, 1, localfileid);
+    psync_sql_run_free(res);
+  }
+  psync_free(rows);
+}
+/*************************************************************/
+/*************************************************************/
 /*************************************************************/
