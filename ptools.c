@@ -1632,12 +1632,17 @@ void upload_tasks_status_thread() {
   psync_variant* row;
   uint64_t Waiting = 0, InProgress = 0, Finished = 0, Failed = 0;
 
+
+  debug(D_NOTICE, "BOBO: PSYNC_UPLOAD_FILE:[%d]", NTO_STR(PSYNC_UPLOAD_FILE));
+
   while (1) {
     row = psync_sql_row("SELECT IFNULL(SUM(status = "NTO_STR(PUPTASK_STATUS_WAITING)"), 0)    AS Waiting,    "
                         "       IFNULL(SUM(status = "NTO_STR(PUPTASK_STATUS_INPROGRESS)"), 0) AS InProgress, "
                         "       IFNULL(SUM(status = "NTO_STR(PUPTASK_STATUS_FINISHED)"), 0)   AS Finished,   "
                         "       IFNULL(SUM(status = "NTO_STR(PUPTASK_STATUS_FAILED)"), 0)     AS Failed      "
-                        "  FROM upload_tasks");
+                        "  FROM upload_tasks"
+                        " WHERE type = 3" //Files only
+                        );
 
     if (row) {
       //debug(D_NOTICE, "BOBO: Upload tasks Last Status: Waiting: [%llu], In Progress: [%llu], Finished: [%llu], Failed: [%llu] ", Waiting, InProgress, Finished, Failed);
@@ -1653,7 +1658,11 @@ void upload_tasks_status_thread() {
         Finished   = psync_get_number(row[2]);
         Failed     = psync_get_number(row[3]);
 
-        psync_send_data_event(PEVENT_UPL_TASKS_STAT, NULL, NULL, (Waiting + InProgress), Finished);
+        psync_send_data_event(PEVENT_UPL_TASKS_STAT, NULL, NULL, (Finished), (Waiting + InProgress + Finished + Failed)); //Inprogress, Total
+
+        if ((Waiting == 0) && (InProgress == 0)){
+          psync_send_data_event(PEVENT_UPL_TASKS_FINISH, NULL, NULL, (Finished), (Waiting + InProgress + Finished + Failed)); //Inprogress, Total
+        }
       }
       else {
         //debug(D_NOTICE, "BOBO: No change in stats. Wait.");
@@ -1748,36 +1757,6 @@ int64_t get_db_id() {
 
   psync_sql_free_result(res);
 }
-/**********************************************************************/
-/*
-int is_file_to_ignore(psync_stat_t* st) {
-  int ret = 0;
-
-  if (st->dwFileAttributes & (FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DEVICE | FILE_ATTRIBUTE_HIDDEN)) {
-    if (st->dwFileAttributes & FILE_ATTRIBUTE_SYSTEM) {
-      debug(D_NOTICE, "Ignoring file with FILE_ATTRIBUTE_SYSTEM");
-      ret = 1;
-    }
-      
-    if (st->dwFileAttributes & FILE_ATTRIBUTE_TEMPORARY) {
-      debug(D_NOTICE, "Ignoring file with FILE_ATTRIBUTE_TEMPORARY");
-      ret = 1;
-    }
-      
-    if (st->dwFileAttributes & FILE_ATTRIBUTE_DEVICE) {
-      debug(D_NOTICE, "Ignoring file with FILE_ATTRIBUTE_DEVICE");
-      ret = 1;
-    }
-      
-    if (st->dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) {
-      debug(D_NOTICE, "Ignoring file with FILE_ATTRIBUTE_HIDDEN");
-      ret = 1;
-    }
-  }
-
-  return ret;
-}
-*/
 /**********************************************************************/
 /**********************************************************************/
 /**********************************************************************/

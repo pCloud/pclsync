@@ -1708,6 +1708,7 @@ int psync_get_isdebug();
 
 /*600*///Upload tasks status update
 #define PEVENT_UPL_TASKS_STAT 601
+#define PEVENT_UPL_TASKS_FINISH 602 //No more waiting or inprogress tasks.
 
 //Data event type constants. End.
 /*******************************************************************************/

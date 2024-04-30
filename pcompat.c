@@ -3982,3 +3982,46 @@ int psync_check_local_dir_empty(char* path) {
 #endif
 }
 /***************************************************************/
+int is_file_to_ignore(psync_pstat* st) {
+#if defined(P_OS_POSIX)
+  if (st->name[0] != '.' || (st->name[1] != 0 && (st->named_name[1] != '.' || st->name[2] != 0))) {
+    debug(D_NOTICE, "BOBO: MacOS/Linux File [%s] HIDDEN ignore it.", st->name);
+
+    return -1;
+  }
+#if defined(P_OS_MACOSX)
+  if (st->stat.st_flags & (UF_HIDDEN | UF_IMMUTABLE | SF_IMMUTABLE)) {
+    debug(D_NOTICE, "BOBO: MacOS. File [%s] HIDDEN ignore it.", st->name);
+
+    return -1;
+  }
+#endif
+
+  return 0;
+#elif defined(P_OS_WINDOWS)
+  debug(D_NOTICE, "BOBO: Win file attributes: [%lu]", st->stat.dwFileAttributes);
+
+  if (st->stat.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) {
+    debug(D_NOTICE, "Ignoring file [%s] with FILE_ATTRIBUTE_HIDDEN attribute", st->name);
+
+    return -1;
+  }
+
+  if (st->stat.dwFileAttributes & FILE_ATTRIBUTE_TEMPORARY){
+    debug(D_NOTICE, "Ignoring file [%s] with FILE_ATTRIBUTE_TEMPORARY attribute", st->name);
+
+    return -1;
+  }
+
+  if (st->stat.dwFileAttributes & FILE_ATTRIBUTE_DEVICE){
+    debug(D_NOTICE, "Ignoring file [%s] with FILE_ATTRIBUTE_DEVICE attribute", st->name);
+
+    return -1;
+  }
+
+  return 0;
+#else
+#error "Function not implemented for your operating system"
+#endif
+}
+/***************************************************************/

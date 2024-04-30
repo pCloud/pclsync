@@ -1401,19 +1401,20 @@ void do_create_upload_from_list(void* ptr) {
   size_t path_size;
   int i;
 
+  psync_pstat st; //OS compatible stat struct
+
   debug(D_NOTICE, "BOBO: Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
 
   for (i = 0; i < upl_data->path_cnt; i++) {
     debug(D_NOTICE, "BOBO: Process path: [%s].", upl_data->paths[i]);
 
     ret = psync_stat(upl_data->paths[i], &stat_struct);
+    //ret = psync_stat(upl_data->paths[i], &st);
 
     debug(D_NOTICE, "BOBO: stat ret: [%d]", ret);
 
-    //if ((ret == 0) && (is_file_to_ignore(&stat_struct) == 0)) {
     if (ret == 0) {
       folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
-      
       path_size = strlen(folder);
 
       if (path_size > 0) {
@@ -1424,18 +1425,37 @@ void do_create_upload_from_list(void* ptr) {
         continue;
       }
 
+      st.name = psync_strdup(name);
+      st.path = psync_strdup(folder);
+      st.stat = stat_struct;
+
+      if (ret == -1) {
+        continue;
+      }
+
       debug(D_NOTICE, "BOBO: Got Path: [%s] Name: [%s]", folder, name);
 
       if (psync_stat_isfolder(&stat_struct)) {
+        debug(D_NOTICE, "Create upload task PSYNC_CREATE_REMOTE_FOLDER");
+
         ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, 0, upl_data->dest_folid, name, folder);
+
         uptask_scan(0, upl_data->paths[i], ret, 0);
       }
       else {
         debug(D_NOTICE, "Create upload task PSYNC_UPLOAD_FILE");
-        ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
 
-        debug(D_NOTICE, "Upload task added");
-      }
+        ret = is_file_to_ignore(&st);
+
+        if (ret == -1) {
+          continue;
+        }
+
+        ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
+     }
+
+      psync_free(st.name);
+      psync_free(st.path);
     }
     else {
       debug(D_NOTICE, "BOBO: Failed to stat path. Skipping it.");
