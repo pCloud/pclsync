@@ -3984,12 +3984,14 @@ int psync_check_local_dir_empty(char* path) {
 /***************************************************************/
 int is_file_to_ignore(psync_pstat* st) {
 #if defined(P_OS_POSIX)
-  if (st->name[0] != '.' || (st->name[1] != 0 && (st->named_name[1] != '.' || st->name[2] != 0))) {
+  if (st->name[0] != '.' || (st->name[1] != 0 && (st->name[1] != '.' || st->name[2] != 0))) {
     debug(D_NOTICE, "BOBO: MacOS/Linux File [%s] HIDDEN ignore it.", st->name);
 
     return -1;
   }
 #if defined(P_OS_MACOSX)
+  debug(D_NOTICE, "BOBO: MacOS. FileAttrFlags: [%d]", st->stat.st_flags);
+
   if (st->stat.st_flags & (UF_HIDDEN | UF_IMMUTABLE | SF_IMMUTABLE)) {
     debug(D_NOTICE, "BOBO: MacOS. File [%s] HIDDEN ignore it.", st->name);
 
