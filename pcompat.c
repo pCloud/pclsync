@@ -3984,7 +3984,7 @@ int psync_check_local_dir_empty(char* path) {
 /***************************************************************/
 int is_file_to_ignore(psync_pstat* st) {
 #if defined(P_OS_POSIX)
-  if (st->name[0] != '.' || (st->name[1] != 0 && (st->name[1] != '.' || st->name[2] != 0))) {
+  if (st->name[0] == '.' && (st->name[1] != 0 && st->name[1] != '.' && st->name[2] != 0)) {
     debug(D_NOTICE, "BOBO: MacOS/Linux File [%s] HIDDEN ignore it.", st->name);
 
     return -1;
