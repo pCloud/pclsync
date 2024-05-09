@@ -1538,7 +1538,7 @@ int deleteLogs() {
 }
 /**********************************************************************/
 //Upload tasks methods
-int create_upload_task(int type, int status, int size, int level, uint64_t parentfid, char* fname, char* path) {
+int create_upload_task(int type, int status, uint64_t size, int level, uint64_t parentfid, char* fname, char* path) {
   psync_sql_res* res;
   uint64_t upTaskId;
 
@@ -1658,10 +1658,10 @@ void upload_tasks_status_thread() {
         Finished   = psync_get_number(row[2]);
         Failed     = psync_get_number(row[3]);
 
-        psync_send_data_event(PEVENT_UPL_TASKS_STAT, NULL, NULL, (Finished), (Waiting + InProgress + Finished + Failed)); //Inprogress, Total
+        psync_send_data_event(PEVENT_UPL_TASKS_STAT, NULL, NULL, (Finished), (Waiting + InProgress + Finished + Failed)); //Finished, Total
 
         if ((Waiting == 0) && (InProgress == 0)){
-          psync_send_data_event(PEVENT_UPL_TASKS_FINISH, NULL, NULL, (Finished), (Waiting + InProgress + Finished + Failed)); //Inprogress, Total
+          psync_send_data_event(PEVENT_UPL_TASKS_FINISH, NULL, NULL, (Finished), (Waiting + InProgress + Finished + Failed)); //Finished, Total
         }
       }
       else {

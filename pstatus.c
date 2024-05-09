@@ -195,8 +195,11 @@ void psync_status_init(){
 void psync_status_recalc_to_download(){
   psync_sql_res *res;
   psync_uint_row row;
+
   res=psync_sql_query_rdlock("SELECT COUNT(*), SUM(f.size) FROM task t, file f WHERE t.type=? AND t.itemid=f.id");
+
   psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE);
+
   if ((row=psync_sql_fetch_rowint(res))){
     psync_status.filestodownload=row[0];
     psync_status.bytestodownload=row[1];
@@ -226,19 +229,20 @@ void psync_status_recalc_to_upload(){
   res = psync_sql_query_rdlock("SELECT COUNT(*), SUM(size) "
                                " FROM ("
                                  " SELECT f.size  "
-                                 "    FROM task t, "
-                                 "          localfile f"
-                                 "   WHERE t.localitemid = f.id"
-                                 "     AND t.type = ?"
-                                 "   UNION ALL"
-                                 "  SELECT size"
-                                 "    FROM upload_tasks    "
-                                 "   WHERE status & 3" //Waiting and InProgress tasks
+                                 "   FROM task t, "
+                                 "        localfile f"
+                                 "  WHERE t.localitemid = f.id"
+                                 "    AND t.type = ?"
+                                 "  UNION ALL"
+                                 " SELECT size"
+                                 "   FROM upload_tasks    "
+                                 "  WHERE status & 3" //Waiting and InProgress tasks
                                  ")");
 
   psync_sql_bind_uint(res, 1, PSYNC_UPLOAD_FILE);
 
   if ((row=psync_sql_fetch_rowint(res))){
+    debug(D_NOTICE, "BOBO: Got count from DB.");
     filestou=row[0];
     bytestou=row[1];
   }
@@ -247,7 +251,7 @@ void psync_status_recalc_to_upload(){
     bytestou=0;
   }
 
-  debug(D_NOTICE, "BOBO: Bytes to upload selected: [%llu]", bytestou);
+  debug(D_NOTICE, "BOBO: Bytes to upload selected: [%llu], Files to Upload: [%lu]", bytestou, filestou);
 
   psync_sql_free_result(res);
   fscpath=psync_setting_get_string(_PS(fscachepath));

@@ -211,6 +211,8 @@ static void status_fill_formatted_str(pstatus_t *status, char *downloadstr, char
   else
     dw=cat_const(dw, "Everything Downloaded");
 
+  debug(D_NOTICE, "BOBO: Status string build, FilestoUpload:[%lu]", status->filestoupload);
+
   if (status->filestoupload){
     speed=status->uploadspeed;
     if (status->status==PSTATUS_PAUSED || status->status==PSTATUS_STOPPED || status->remoteisfull || speed==0){
@@ -257,11 +259,13 @@ static void status_change_thread(void *ptr){
     // Maximum 2 updates/sec
     psync_milisleep(500);
     pthread_mutex_lock(&statusmutex);
+
     while (statuschanges<=0){
       statuschanges=-1;
       pthread_cond_wait(&statuscond, &statusmutex);
     }
     statuschanges=0;
+
     if (((status_old.filestodownload > 0 ) && (psync_status.filestodownload == 0)) ||
         ((psync_status.filestodownload > 0 ) && (status_old.filestodownload == 0)) ||
         ((status_old.filestoupload > 0 ) && (psync_status.filestoupload == 0)) ||
@@ -277,10 +281,13 @@ static void status_change_thread(void *ptr){
           (status_old.status == PSTATUS_OFFLINE) ) )
     )
       psync_run_ratelimited("rebuild icons", psync_rebuild_icons, 1, 1);
+    
     status_old = psync_status;
     pthread_mutex_unlock(&statusmutex);
+
     if (!psync_do_run)
       break;
+
     status_fill_formatted_str(&psync_status, downloadstr, uploadstr);
     debug(D_NOTICE, "sending status update, dwlstr: %s, uplstr: %s", psync_status.downloadstr, psync_status.uploadstr);
     callback(&psync_status);

@@ -1701,6 +1701,8 @@ static int task_run_uploadfile(uint64_t taskid, psync_syncid_t syncid, psync_fol
   if (likely(row)){
     filesize=row[0];
     psync_sql_free_result(res);
+
+    debug(D_NOTICE, "BOBO: task_run_uploadfile. Got File Size From DB: [%lld]", filesize);
   }
   else{
     psync_sql_free_result(res);
@@ -1863,6 +1865,7 @@ static void upload_thread(){
 
   while (psync_do_run){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
+    debug(D_NOTICE, "BOBO: Check for upload tasks.");
 
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid, level"
                       "  FROM ("
@@ -1959,6 +1962,7 @@ static void upload_thread(){
     if (!upload_wakes) {
       debug(D_NOTICE, "BOBO: Waiting for upload signal.");
       pthread_cond_wait(&upload_cond, &upload_mutex);
+      debug(D_NOTICE, "BOBO: Upload Signal Received.");
     }
     upload_wakes=0;
 

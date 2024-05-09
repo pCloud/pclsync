@@ -1367,6 +1367,14 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
   while (list_elem != &disklist) {
     elem = psync_list_element(list_elem, sync_folderlist, list);
 
+    ret = psync_is_name_to_ignore(elem->name);
+
+    if (ret == 1) {
+      list_elem = list_next;
+      list_next = list_elem->next;
+      continue;
+    }
+
     debug(D_NOTICE, "BOBO: List element Name: [%s], Is Folder: [%u], Parent fId: [%llu]", elem->name, elem->isfolder, elem->parentfolderid);
 
     nextpath = psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR, elem->name, NULL);
@@ -1409,7 +1417,6 @@ void do_create_upload_from_list(void* ptr) {
     debug(D_NOTICE, "BOBO: Process path: [%s].", upl_data->paths[i]);
 
     ret = psync_stat(upl_data->paths[i], &stat_struct);
-    //ret = psync_stat(upl_data->paths[i], &st);
 
     debug(D_NOTICE, "BOBO: stat ret: [%d]", ret);
 
@@ -1428,8 +1435,10 @@ void do_create_upload_from_list(void* ptr) {
       st.name = psync_strdup(name);
       st.path = psync_strdup(folder);
       st.stat = stat_struct;
+      
+      ret = psync_is_name_to_ignore(name);
 
-      if (ret == -1) {
+      if (ret  == 1) {
         continue;
       }
 
@@ -1448,6 +1457,9 @@ void do_create_upload_from_list(void* ptr) {
         ret = is_file_to_ignore(&st);
 
         if (ret == -1) {
+          psync_free(st.name);
+          psync_free(st.path);
+
           continue;
         }
 
@@ -1464,12 +1476,14 @@ void do_create_upload_from_list(void* ptr) {
     psync_free(upl_data->paths[i]);
   }
 
-  debug(D_NOTICE, "BOBO: Finished Upload task init. Send wake signal.");
+  debug(D_NOTICE, "BOBO: Finished Upload task init. Send some signals.");
 
   psync_free(upl_data);
 
   psync_do_run = 1; //Activate the upload thread.
   psync_wake_upload();
+
+  psync_status_recalc_to_upload_async();
 
   debug(D_NOTICE, "BOBO: do_create_upload_from_list. Done.");
 }

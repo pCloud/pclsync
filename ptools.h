@@ -220,7 +220,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
    uptask_item list[1000];
  } uptask_item_list;
  
- int create_upload_task(int type, int status, int size, int level, uint64_t parentfid, char* fname, char* path);
+ int create_upload_task(int type, int status, uint64_t size, int level, uint64_t parentfid, char* fname, char* path);
 
  void upload_tasks_status_thread();
 
