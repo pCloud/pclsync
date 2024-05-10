@@ -211,8 +211,6 @@ static void status_fill_formatted_str(pstatus_t *status, char *downloadstr, char
   else
     dw=cat_const(dw, "Everything Downloaded");
 
-  debug(D_NOTICE, "BOBO: Status string build, FilestoUpload:[%lu]", status->filestoupload);
-
   if (status->filestoupload){
     speed=status->uploadspeed;
     if (status->status==PSTATUS_PAUSED || status->status==PSTATUS_STOPPED || status->remoteisfull || speed==0){

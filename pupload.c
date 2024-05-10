@@ -1314,7 +1314,15 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
 
     psync_sql_bind_uint(res, 1, task->upllist.taskid);
 
-    vrow = psync_sql_fetch_row(res);
+    if (!(vrow = psync_sql_fetch_row(res))) {
+      debug(D_NOTICE, "BOBO: Record not found in DB 1. Return.");
+
+      task->upllist.taskid = 0;
+
+      psync_sql_free_result(res);
+
+      return -1;
+    }
 
     localpath = psync_strcat(psync_get_string(vrow[0]), PSYNC_DIRECTORY_SEPARATOR, psync_get_string(vrow[1]), NULL);
     name = psync_dup_string(vrow[1]);
@@ -1498,7 +1506,16 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     }
 
     psync_sql_bind_uint(res, 1, localfileid);
-    srow=psync_sql_fetch_rowstr(res);
+
+    if (!(srow = psync_sql_fetch_rowstr(res))) {
+      debug(D_NOTICE, "BOBO: Record not found in DB 2. Return.");
+
+      task->upllist.taskid = 0;
+
+      psync_sql_free_result(res);
+
+      return -1;
+    }
     
     if (srow && strcmp(srow[0], name)){
       const char *s1=srow[0], *s2=name;
@@ -1621,10 +1638,15 @@ static void task_run_upload_file_thread(void *ptr){
   if (task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist, ut)){
     //Bobo
     if (ut->upllist.syncid == 0) { //This is an upload task.
-      debug(D_NOTICE, "BOBO: task_run_upload_file_thread. Update upload task Id to failed!");
-      res = psync_sql_prep_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_FAILED)", error_code = "NTO_STR(PUPTASK_ERROR_GENERAL)" WHERE id=?"); //Set upload task status to failed.
-      psync_sql_bind_uint(res, 1, ut->upllist.taskid);
-      psync_sql_run_free(res);
+      if (ut->upllist.taskid != 0) {
+        debug(D_NOTICE, "BOBO: task_run_upload_file_thread. Update upload task Id to failed!");
+        res = psync_sql_prep_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_FAILED)", error_code = "NTO_STR(PUPTASK_ERROR_GENERAL)" WHERE id=?"); //Set upload task status to failed.
+        psync_sql_bind_uint(res, 1, ut->upllist.taskid);
+        psync_sql_run_free(res);
+      }
+      else {
+        debug(D_NOTICE, "BOBO: task_run_upload_file_thread. Task Id is 0 skip update.!");
+      }
     }
     else {
       res = psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
@@ -1633,7 +1655,6 @@ static void task_run_upload_file_thread(void *ptr){
     }
 
     psync_wake_upload();
-
     //Bobo
 
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
@@ -1721,10 +1742,7 @@ static int task_run_uploadfile(uint64_t taskid, psync_syncid_t syncid, psync_fol
     psync_sql_bind_uint(res, 1, taskid);
   }
   psync_sql_run_free(res);
-  //Bobo
 
-
-  //Bobo
   res = psync_sql_query("SELECT fname, fpath"
                         "  FROM upload_tasks"
                         " WHERE id = ?");
@@ -1869,7 +1887,7 @@ static void upload_thread(){
 
     row=psync_sql_row("SELECT id, type, syncid, itemid, localitemid, newitemid, name, newsyncid, level"
                       "  FROM ("
-                      "    SELECT id, type,  0 as syncid,0 as itemid,0 as localitemid,0 as newitemid,0 as name,0 as newsyncid, 0 as level"
+                      "    SELECT id, type, syncid as syncid, itemid as itemid, localitemid as localitemid, newitemid as newitemid, name as name, newsyncid as newsyncid, 0 as level"
                       "      FROM task "
                       "     WHERE type &"NTO_STR(PSYNC_TASK_DWLUPL_MASK)" = "NTO_STR(PSYNC_TASK_UPLOAD)
                       "       AND inprogress = 0"
