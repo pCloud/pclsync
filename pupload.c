@@ -1448,8 +1448,6 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     if (syncid == 0) {
       debug(D_NOTICE, "BOBO: Upload task detected. Fail the task.");
 
-      task->upllist.taskid = 0;
-
       return -1;
     }
     else {
