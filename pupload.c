@@ -1440,12 +1440,23 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
       add_stuck_elem(elem);
     }
 
-    debug(D_WARNING, "could not open local file %s, deleting it from localfile", localpath);
+    debug(D_WARNING, "could not open local file [%s], deleting it from localfile", localpath);
 
     psync_unlock_file(lock);
     psync_free(localpath);
-    delete_from_localfile(localfileid);
-    return 0;
+
+    if (syncid == 0) {
+      debug(D_NOTICE, "BOBO: Upload task detected. Fail the task.");
+
+      task->upllist.taskid = 0;
+
+      return -1;
+    }
+    else {
+      delete_from_localfile(localfileid);
+
+      return 0;
+    }
   }
 
   debug(D_WARNING, "BOBO: Bytes to upload current: [%llu]", psync_status.bytestouploadcurrent);
