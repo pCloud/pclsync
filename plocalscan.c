@@ -1332,21 +1332,26 @@ void psync_localscan_init(){
   psync_variant_row row;
   const char *localpath;
   psync_syncid_t syncid;
+
   psync_list_init(&scan_folders_list);
   psync_timer_exception_handler(psync_wake_localscan_noscan);
   psync_run_thread("localscan", scanner_thread);
   localnotify=psync_localnotify_init();
+
+
   res=psync_sql_query_rdlock("SELECT id, localpath FROM syncfolder WHERE synctype&"NTO_STR(PSYNC_UPLOAD_ONLY)"="NTO_STR(PSYNC_UPLOAD_ONLY));
+
   while ((row=psync_sql_fetch_row(res))){
     syncid=psync_get_number(row[0]);
     localpath=psync_get_string(row[1]);
     psync_localnotify_add_sync(syncid);
     psync_restat_sync_folders_add(syncid, localpath);
   }
+
   psync_sql_free_result(res);
 }
 /**********************************************************************/
-void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync_folderid_t local_folder_id) {
+void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync_folderid_t local_folder_id, uint64_t* taskcnt) {
   int ret;
   psync_list disklist, * list_elem, * list_next;
   sync_folderlist* elem;
@@ -1381,9 +1386,10 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 
     if (elem->isfolder == 1) {
       ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, level, parent_folder_id, elem->name, path);
+      *taskcnt = *taskcnt + 1;
 
       debug(D_NOTICE, "BOBO: Folder detected [%s]. Scan it.", nextpath);
-      uptask_scan(level + 1, nextpath, ret, local_folder_id);
+      uptask_scan(level + 1, nextpath, ret, local_folder_id, taskcnt);
     }
     else {
       debug(D_NOTICE, "BOBO: File detected [%s]. ", nextpath);
@@ -1391,6 +1397,7 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
       ret = psync_stat(nextpath, &stat_struct);
 
       ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), level, parent_folder_id, elem->name, path);
+      *taskcnt = *taskcnt + 1;
     }
 
     list_elem = list_next;
@@ -1408,6 +1415,7 @@ void do_create_upload_from_list(void* ptr) {
   int ret;
   size_t path_size;
   int i;
+  uint64_t taskcnt = 0;
 
   psync_pstat st; //OS compatible stat struct
 
@@ -1448,8 +1456,9 @@ void do_create_upload_from_list(void* ptr) {
         debug(D_NOTICE, "Create upload task PSYNC_CREATE_REMOTE_FOLDER");
 
         ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, 0, upl_data->dest_folid, name, folder);
+        taskcnt++;
 
-        uptask_scan(0, upl_data->paths[i], ret, 0);
+        uptask_scan(0, upl_data->paths[i], ret, 0, &taskcnt);
       }
       else {
         debug(D_NOTICE, "Create upload task PSYNC_UPLOAD_FILE");
@@ -1464,6 +1473,7 @@ void do_create_upload_from_list(void* ptr) {
         }
 
         ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
+        taskcnt++;
      }
 
       psync_free(st.name);
@@ -1476,9 +1486,17 @@ void do_create_upload_from_list(void* ptr) {
     psync_free(upl_data->paths[i]);
   }
 
-  debug(D_NOTICE, "BOBO: Finished Upload task init. Send some signals.");
+  debug(D_NOTICE, "BOBO: Finished Upload task init. Tasks created: [%d] Send some signals.", taskcnt);
 
   psync_free(upl_data);
+
+  if (taskcnt == 0) {
+    debug(D_NOTICE, "BOBO: do_create_upload_from_list. No upload tasks were created. Send data event.");
+
+    psync_send_data_event(PEVENT_UPL_TASKS_NO_TASKS_ADDED, NULL, NULL, 0, 0);
+
+    return;
+  }
 
   psync_do_run = 1; //Activate the upload thread.
   psync_wake_upload();

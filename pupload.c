@@ -228,14 +228,21 @@ static int task_createfolder(psync_syncid_t syncid, psync_folderid_t localfolder
 
     if (unlikely(result)){
       psync_diff_unlock();
-      debug(D_WARNING, "command createfolderifnotexists returned code %u: %s for creating folder in %lu with name %s",
-            (unsigned)result, psync_find_result(bres, "error", PARAM_STR)->str, (unsigned long)parentfolderid, name);
-      psync_process_api_error(result);
+
+      debug(D_WARNING, "command createfolderifnotexists returned code %u: %s for creating folder in %lu with name %s", (unsigned)result, psync_find_result(bres, "error", PARAM_STR)->str, (unsigned long)parentfolderid, name);
+    
+      psync_process_api_error(result); //Processes only error 2000 Bad Token
+
+      fail_child_uptasks(taskid);
+
       psync_free(bres);
-      if (psync_handle_api_result(result)==PSYNC_NET_TEMPFAIL)
+
+      if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL) {
         return -1;
-      else
+      }
+      else {
         return 0;
+      }
     }
 
     meta=psync_find_result(bres, "metadata", PARAM_HASH);
@@ -705,13 +712,24 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
 
   if (unlikely(result)){
     psync_free(res);
-    debug(D_WARNING, "command uploadfile returned code %u", (unsigned)result);
+
+    debug(D_WARNING, "command uploadfile returned code [%u]", (unsigned)result);
+
     psync_process_api_error(result);
-    if (psync_handle_api_result(result)==PSYNC_NET_TEMPFAIL)
+
+    if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL) {
       goto err00;
-    else{
+    }
+    else {
       psync_diff_unlock();
-      return 0;
+
+      if (syncid == 0) {
+        debug(D_WARNING, "BOBO: Upload file backend error. Return -1.");
+        return -1;
+      }
+      else {
+        return 0;
+      }
     }
   }
 
@@ -757,7 +775,7 @@ err1:
   psync_apipool_release_bad(api);
 err0:
   psync_file_close(fd);
-return -1;
+  return -1;
 err00:
   psync_diff_unlock();
   return -1;
@@ -1248,6 +1266,9 @@ static void delete_uploadids(psync_fileid_t localfileid){
   psync_sql_res *res;
   psync_full_result_int *rows;
   uint32_t i;
+
+  debug(D_NOTICE, "BOBO: delete_uploadids. Delete all paralel uploads for file id: [%llu].", localfileid);
+
   res=psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=?");
   psync_sql_bind_uint(res, 1, localfileid);
   rows=psync_sql_fetchall_int(res);
@@ -1636,7 +1657,7 @@ static void task_run_upload_file_thread(void *ptr){
   psync_sql_res *res;
 
   stuck_item* elem;
-  int item_type;
+  int item_type, ret;
   char* local_path = NULL;
   uint64_t itemid;
 
@@ -1644,7 +1665,10 @@ static void task_run_upload_file_thread(void *ptr){
 
   debug(D_NOTICE, "BOBO: task_run_upload_file_thread. Upload file thread. File Name: [%s], Sync Id: [%lu], Task Id: [%llu]", ut->filename, ut->upllist.syncid, ut->upllist.taskid);
 
-  if (task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist, ut)){
+  ret = task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist, ut);
+  debug(D_NOTICE, "BOBO: task_uploadfile. Returned: [%d]", ret);
+
+  if (ret){
     //Bobo
     if (ut->upllist.syncid == 0) { //This is an upload task.
       if (ut->upllist.taskid != 0) {
@@ -1849,6 +1873,7 @@ static int task_deletefolderrec(uint64_t taskid, psync_folderid_t folderid){
 static int upload_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, uint64_t itemid, uint64_t localitemid,
                        uint64_t newitemid, const char *name, psync_syncid_t newsyncid){
   int res;
+  psync_sql_res* sqlres;
 
   debug(D_NOTICE, "BOBO: upload_task. Type: [%lu], TaskId: [%lld], SyncId: [%lu], PSYNC_UPLOAD_FILE: [%d]", type, taskid, syncid, PSYNC_UPLOAD_FILE);
 
@@ -2212,5 +2237,23 @@ static void delete_uptaks_uploadids(psync_fileid_t localfileid) {
   psync_free(rows);
 }
 /*************************************************************/
+void fail_child_uptasks(uint64_t taskid) {
+  psync_sql_res* sqlres;
+  debug(D_NOTICE, "BOBO: Create remote folder failed. Fail all child tasks. TaskId: [%llu]", taskid);
+
+  psync_sql_start_transaction();
+  
+  sqlres = psync_sql_prep_statement("UPDATE upload_tasks SET status=?, error_code=? WHERE id=? OR parentfid=?");
+
+  psync_sql_bind_uint(sqlres, 1, PUPTASK_STATUS_FAILED);
+  psync_sql_bind_uint(sqlres, 2, PUPTASK_ERROR_PARENT_FAILED);
+  psync_sql_bind_uint(sqlres, 3, taskid);
+  psync_sql_bind_uint(sqlres, 4, taskid);
+  psync_sql_run_free(sqlres);
+
+  debug(D_NOTICE, "BOBO: RowsUpdated: [%lu]", psync_sql_affected_rows());
+
+  psync_sql_commit_transaction();
+}
 /*************************************************************/
 /*************************************************************/

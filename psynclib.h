@@ -1707,8 +1707,9 @@ int psync_get_isdebug();
 #define PEVENT_MP_NOT_EMPTY_NO_ERR 502
 
 /*600*///Upload tasks status update
-#define PEVENT_UPL_TASKS_STAT 601
-#define PEVENT_UPL_TASKS_FINISH 602 //No more waiting or inprogress tasks.
+#define PEVENT_UPL_TASKS_STAT           601
+#define PEVENT_UPL_TASKS_FINISH         602 //No more waiting or inprogress tasks.
+#define PEVENT_UPL_TASKS_NO_TASKS_ADDED 603 //Snet when no tasks were created for an upload, all the files are hidden etc.
 
 //Data event type constants. End.
 /*******************************************************************************/
@@ -1720,7 +1721,8 @@ int psync_get_isdebug();
 #define PUPTASK_STATUS_FAILED     8
 
 //Error codes
-#define PUPTASK_ERROR_GENERAL    1
+#define PUPTASK_ERROR_GENERAL       1
+#define PUPTASK_ERROR_PARENT_FAILED 2
 //Upload task constants. End.
 
 typedef struct {

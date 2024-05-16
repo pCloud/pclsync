@@ -1641,12 +1641,11 @@ void upload_tasks_status_thread() {
                         "       IFNULL(SUM(status = "NTO_STR(PUPTASK_STATUS_FINISHED)"), 0)   AS Finished,   "
                         "       IFNULL(SUM(status = "NTO_STR(PUPTASK_STATUS_FAILED)"), 0)     AS Failed      "
                         "  FROM upload_tasks"
-                        " WHERE type = 3" //Files only
+                        //" WHERE type = 3" //Files only
                         );
 
     if (row) {
       //debug(D_NOTICE, "BOBO: Upload tasks Last Status: Waiting: [%llu], In Progress: [%llu], Finished: [%llu], Failed: [%llu] ", Waiting, InProgress, Finished, Failed);
- 
       if ((Waiting    != psync_get_number(row[0])) ||
           (InProgress != psync_get_number(row[1])) ||
           (Finished   != psync_get_number(row[2])) ||
@@ -1667,7 +1666,6 @@ void upload_tasks_status_thread() {
       else {
         //debug(D_NOTICE, "BOBO: No change in stats. Wait.");
       }
-
       psync_free(row);
     }
     else {
