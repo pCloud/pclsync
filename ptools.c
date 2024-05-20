@@ -1662,6 +1662,8 @@ void upload_tasks_status_thread() {
         if ((Waiting == 0) && (InProgress == 0)){
           psync_send_data_event(PEVENT_UPL_TASKS_FINISH, NULL, NULL, (Finished), (Waiting + InProgress + Finished + Failed)); //Finished, Total
         }
+
+        psync_status_recalc_to_upload_async();
       }
       else {
         //debug(D_NOTICE, "BOBO: No change in stats. Wait.");
@@ -1756,5 +1758,23 @@ int64_t get_db_id() {
   psync_sql_free_result(res);
 }
 /**********************************************************************/
+int check_ignored_paths(const char* path) {  //Check if folder is not a child of an igrnored folder
+  const char* ignorePaths;
+  folderPath folders;
+  int i;
+
+  debug(D_NOTICE, "BOBO: Check ignored paths.");
+
+  ignorePaths = psync_setting_get_string(_PS(ignorepaths));
+  parse_os_path(ignorePaths, &folders, DELIM_SEMICOLON, 0);
+
+  for (i = 0; i < folders.cnt; i++) {
+    if (psync_left_str_is_prefix(folders.folders[i], path)) {
+      debug(D_NOTICE, "BOBO: ignored path found: [%s]=[%s]", folders.folders[i], path);
+
+      return PERROR_PARENT_IS_IGNORED;
+    }
+  }
+}
 /**********************************************************************/
 /**********************************************************************/

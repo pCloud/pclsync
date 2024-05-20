@@ -1444,9 +1444,15 @@ void do_create_upload_from_list(void* ptr) {
       st.path = psync_strdup(folder);
       st.stat = stat_struct;
       
-      ret = psync_is_name_to_ignore(name);
+      ret = psync_is_name_to_ignore(name); //Check ignore patterns
 
-      if (ret  == 1) {
+      if (ret  != 0) {
+        continue;
+      }
+
+      ret = check_ignored_paths(upl_data->paths[i]);  //Check ignored paths
+
+      if (ret != 0) {
         continue;
       }
 

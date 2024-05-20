@@ -233,3 +233,5 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
  uint64_t create_uptask_lfolder_in_db(uint64_t parent_folder_id, char* foname);
  //Upload tasks methods. End.
  /**********************************************************************************************************/
+ int check_ignored_paths(const char* path);
+/**********************************************************************************************************/
