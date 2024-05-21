@@ -1775,6 +1775,45 @@ int check_ignored_paths(const char* path) {  //Check if folder is not a child of
       return PERROR_PARENT_IS_IGNORED;
     }
   }
+
+  return 0;
 }
 /**********************************************************************/
+int check_dest_folder_syncable(char* path) {
+  psync_sql_res* res;
+  psync_str_row srow;
+
+  debug(D_NOTICE, "Is path syncable: [%s]", path);
+
+  res = psync_sql_query("SELECT f.name "
+                        "  FROM syncfolder sf"
+                        "  JOIN folder f ON f.id = sf.folderid"
+                        " WHERE sf.folderid IS NOT NULL");
+
+  if (unlikely_log(!res))
+    return PERROR_DATABASE_ERROR;
+
+  while ((srow = psync_sql_fetch_rowstr(res))) {
+    debug(D_NOTICE, "Checking sync against path: [%s]", srow[0]);
+
+    if (psync_str_is_prefix(srow[0], path)) {
+      psync_sql_free_result(res);
+
+      debug(D_NOTICE, "Parent is already syncing. Path: [%s]", srow[0]);
+
+      return PERROR_PARENT_OR_SUBFOLDER_ALREADY_SYNCING;
+    }
+    else if (!psync_filename_cmp(srow[0], path)) {
+      psync_sql_free_result(res);
+
+      debug(D_NOTICE, "Path is already syncing. Path: [%s]", srow[0]);
+
+      return PERROR_FOLDER_ALREADY_SYNCING;
+    }
+  }
+
+  psync_sql_free_result(res);
+
+  return 0;
+}
 /**********************************************************************/

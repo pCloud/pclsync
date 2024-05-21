@@ -1538,9 +1538,12 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     psync_sql_bind_uint(res, 1, localfileid);
 
     if (!(srow = psync_sql_fetch_rowstr(res))) {
-      debug(D_NOTICE, "BOBO: Record not found in DB 2. Return.");
+      debug(D_NOTICE, "BOBO: Local file name not found in DB 2. Local file id: [%llu] Return.", localfileid);
 
-      task->upllist.taskid = 0;
+      if (syncid == 0) {
+        debug(D_NOTICE, "BOBO: Upload task. Set task id to 0.");
+        task->upllist.taskid = 0;
+      }
 
       psync_sql_free_result(res);
 
@@ -1669,6 +1672,7 @@ static void task_run_upload_file_thread(void *ptr){
   debug(D_NOTICE, "BOBO: task_uploadfile. Returned: [%d]", ret);
 
   if (ret){
+    debug(D_NOTICE, "BOBO: task_run_upload_file_thread. Upload task failed. Sync Id: [%lu]", ut->upllist.syncid);
     //Bobo
     if (ut->upllist.syncid == 0) { //This is an upload task.
       if (ut->upllist.taskid != 0) {
@@ -1682,6 +1686,7 @@ static void task_run_upload_file_thread(void *ptr){
       }
     }
     else {
+      debug(D_NOTICE, "BOBO: task_run_upload_file_thread. Update sync task inprogress = 0, task id: [%llu]", ut->upllist.taskid);
       res = psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, ut->upllist.taskid);
       psync_sql_run_free(res);
@@ -1693,6 +1698,8 @@ static void task_run_upload_file_thread(void *ptr){
     psync_milisleep(PSYNC_SLEEP_ON_FAILED_DOWNLOAD);
   }
   else {
+    debug(D_NOTICE, "BOBO: task_run_upload_file_thread. Upload task success. Sync Id: [%lu]", ut->upllist.syncid);
+
     if (ut->upllist.syncid == 0) {
       debug(D_NOTICE, "BOBO: task_run_upload_file_thread. Update upload task Id to Finished!");
       res = psync_sql_prep_statement("UPDATE upload_tasks SET status="NTO_STR(PUPTASK_STATUS_FINISHED)" WHERE id=?"); //Set upload task status to failed.

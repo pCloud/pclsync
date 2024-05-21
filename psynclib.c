@@ -3360,8 +3360,7 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
   type_upload_task_t* upl_data;
   psync_folderid_t dest_folder_id;
   uint64_t arr_size = 0;
-  
-  int i;
+  int i, ret;
 
   debug(D_NOTICE, "BOBO: psync_uptask_scan. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
 
@@ -3375,6 +3374,16 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
   else {
     debug(D_NOTICE, "BOBO: Got destination folder id: [%llu].", dest_folder_id);
   }
+
+
+  /*
+  ret = check_dest_folder_syncable(dest_path);
+
+  if (ret != 0) {
+    debug(D_NOTICE, "BOBO: Destination is syncing.");
+    return -1;
+  }
+  */
 
   upl_data = psync_new(type_upload_task_t);
   upl_data->paths = psync_malloc(path_cnt * sizeof(char*));
