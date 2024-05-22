@@ -1537,6 +1537,9 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
 
     psync_sql_bind_uint(res, 1, localfileid);
 
+    srow = psync_sql_fetch_rowstr(res);
+
+    /*
     if (!(srow = psync_sql_fetch_rowstr(res))) {
       debug(D_NOTICE, "BOBO: Local file name not found in DB 2. Local file id: [%llu] Return.", localfileid);
 
@@ -1549,6 +1552,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
 
       return -1;
     }
+    */
     
     if (srow && strcmp(srow[0], name)){
       const char *s1=srow[0], *s2=name;

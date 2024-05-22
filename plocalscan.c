@@ -660,8 +660,10 @@ static void scan_upload_file(sync_folderlist *fl){
   psync_sql_bind_uint(res, 6, fl->mtimenat);
   psync_sql_bind_string(res, 7, fl->name);
   psync_sql_run_free(res);
+
   if (unlikely_log(!psync_sql_affected_rows()))
     return;
+
   localfileid=psync_sql_insertid();
   psync_task_upload_file_silent(fl->syncid, localfileid, fl->name);
   psync_path_status_sync_folder_task_added(fl->syncid, fl->localparentfolderid);
