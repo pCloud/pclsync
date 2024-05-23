@@ -44,11 +44,9 @@ void psync_stop_all_upload();
 
 int upload_logs(char* filename, char* fPath);
 
-//Bobo
 int cancel_uptasks();
 
 static void delete_uptaks_uploadids(psync_fileid_t localfileid);
 
 void fail_child_uptasks(uint64_t taskid);
-//Bobo
 #endif

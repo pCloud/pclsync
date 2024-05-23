@@ -19,11 +19,8 @@
 #include "pstatus.h"
 #include "psettings.h"
 
-//Bobo
 #include "plocalscan.h"
 #include "psynclib.h"
-//Bobo
-
 
 #if defined(P_OS_WINDOWS)
 #define _CRT_SECURE_NO_WARNINGS
@@ -1542,15 +1539,9 @@ int create_upload_task(int type, int status, uint64_t size, int level, uint64_t 
   psync_sql_res* res;
   uint64_t upTaskId;
 
-  debug(D_NOTICE, "BOBO: create_upload_task. Start Transaction. Type: [%d], Status: [%d], Size: [%llu] Level: [%d], parentfid: [%llu], Name: [%s], Path: [%s]", type, status, size, level, parentfid, fname, path);
-
   psync_sql_start_transaction();
 
-  debug(D_NOTICE, "BOBO: create_upload_task. Prepare statement.");
-
   res = psync_sql_prep_statement("INSERT INTO upload_tasks(type, status, size, level, parentfid, fname, fpath) VALUES (? ,? ,? ,? ,? ,?, ?); ");
-  
-  debug(D_NOTICE, "BOBO: create_upload_task. Bind variables.");
 
   psync_sql_bind_int(res,  1, type);
   psync_sql_bind_int(res,  2, status);
@@ -1561,12 +1552,10 @@ int create_upload_task(int type, int status, uint64_t size, int level, uint64_t 
   psync_sql_bind_lstring(res, 6, fname, strlen(fname));
   psync_sql_bind_lstring(res, 7, path, strlen(path));
 
-  debug(D_NOTICE, "BOBO: create_upload_task. Run query.");
-
   if (unlikely(psync_sql_run_free(res))) { 
     psync_sql_rollback_transaction();
 
-    debug(D_NOTICE, "BOBO: create_upload_task. Transaction failed.");
+    debug(D_NOTICE, "Transaction failed.");
 
     return -1;
   }
@@ -1575,16 +1564,12 @@ int create_upload_task(int type, int status, uint64_t size, int level, uint64_t 
 
   psync_sql_commit_transaction();
 
-  debug(D_NOTICE, "BOBO: create_upload_task. Return UpTaskId: [%llu]", upTaskId);
-
   return upTaskId;
 }
 /**********************************************************************/
 uint64_t create_uptask_lfolder_in_db(uint64_t parent_folder_id, char* foname) {
   psync_sql_res* sql;
   psync_fileid_t localfolderid;
-
-  debug(D_NOTICE, "BOBO: Add local folder in DB. Parent Folder Id: [%llu] Name: [%s]", parent_folder_id, foname);
 
   psync_sql_start_transaction();
 
@@ -1600,16 +1585,12 @@ uint64_t create_uptask_lfolder_in_db(uint64_t parent_folder_id, char* foname) {
 
   localfolderid = psync_sql_insertid();
 
-  debug(D_NOTICE, "BOBO: Returning Local folder Id: [%llu]", localfolderid);
-
   return localfolderid;
 }
 /**********************************************************************/
 uint64_t create_local_file_in_db(uint64_t parent_folder_id) {
   psync_sql_res* sql;
   psync_fileid_t localfileid;
-
-  debug(D_NOTICE, "BOBO: Add local file in DB. Parent Folder Id: [%llu]", parent_folder_id);
 
   psync_sql_start_transaction();
 
@@ -1623,17 +1604,12 @@ uint64_t create_local_file_in_db(uint64_t parent_folder_id) {
 
   localfileid = psync_sql_insertid();
 
-  debug(D_NOTICE, "BOBO: Returning Local File Id: [%llu]", localfileid);
-
   return localfileid;
 }
 /**********************************************************************/
 void upload_tasks_status_thread() {
   psync_variant* row;
   uint64_t Waiting = 0, InProgress = 0, Finished = 0, Failed = 0;
-
-
-  debug(D_NOTICE, "BOBO: PSYNC_UPLOAD_FILE:[%d]", NTO_STR(PSYNC_UPLOAD_FILE));
 
   while (1) {
     row = psync_sql_row("SELECT IFNULL(SUM(status = "NTO_STR(PUPTASK_STATUS_WAITING)"), 0)    AS Waiting,    "
@@ -1645,13 +1621,10 @@ void upload_tasks_status_thread() {
                         );
 
     if (row) {
-      //debug(D_NOTICE, "BOBO: Upload tasks Last Status: Waiting: [%llu], In Progress: [%llu], Finished: [%llu], Failed: [%llu] ", Waiting, InProgress, Finished, Failed);
       if ((Waiting    != psync_get_number(row[0])) ||
           (InProgress != psync_get_number(row[1])) ||
           (Finished   != psync_get_number(row[2])) ||
           (Failed     != psync_get_number(row[3]))) {
-        debug(D_NOTICE, "BOBO: Change in stats. Send event.");
-
         Waiting    = psync_get_number(row[0]);
         InProgress = psync_get_number(row[1]);
         Finished   = psync_get_number(row[2]);
@@ -1666,12 +1639,12 @@ void upload_tasks_status_thread() {
         psync_status_recalc_to_upload_async();
       }
       else {
-        //debug(D_NOTICE, "BOBO: No change in stats. Wait.");
+        //debug(D_NOTICE, "No change in stats. Wait.");
       }
       psync_free(row);
     }
     else {
-      debug(D_NOTICE, "BOBO: error selecting upload tasks stats.");
+      debug(D_NOTICE, "Error selecting upload tasks stats.");
     }
 
     psync_milisleep(2000);
@@ -1683,8 +1656,6 @@ uptask_item_list* get_uptask_item_list(int status) {
   psync_sql_res* res;
   psync_variant_row row;
   int i = 0;
-
-  debug(D_NOTICE, "BOBO: get_uptask_item_list. Start. Status: [%d]", status);
 
   res = psync_sql_query("SELECT type, status, fpath, fname, size, error_code "
                         "  FROM upload_tasks "
@@ -1701,18 +1672,13 @@ uptask_item_list* get_uptask_item_list(int status) {
     uptask_list.list[i].size = psync_get_number(row[4]);
     uptask_list.list[i].error_code = psync_get_number(row[5]);
 
-    debug(D_NOTICE, "BOBO: Add to list: Type: [%d], Status: [%d], Path:[%s], Name:[%s] Size: [%llu] Error Code: [%d].", uptask_list.list[i].item_type, uptask_list.list[i].item_status, uptask_list.list[i].path, uptask_list.list[i].name, uptask_list.list[i].size, uptask_list.list[i].error_code);
-
     //psync_free(row);
 
     i++;
   }
 
   uptask_list.item_cnt = i;
-
   psync_sql_free_result(res);
-
-  debug(D_NOTICE, "BOBO: Set list Cound To: [%d]", uptask_list.item_cnt);
 
   return &uptask_list;
 }
@@ -1724,12 +1690,12 @@ void log_uptasks() {
 
   uptask_list = get_uptask_item_list(15);
 
-  debug(D_NOTICE, "BOBO: Uptask Count: [%d]", uptask_list->item_cnt);
+  debug(D_NOTICE, "Uptask Count: [%d]", uptask_list->item_cnt);
 
   if (uptask_list != NULL) {
     debug(D_NOTICE, "***********************************************************");
     for (i = 0; i < uptask_list->item_cnt; i++) {
-      debug(D_NOTICE, "BOBO: Task: Status: [%d] Type: [%d] Name: [%s] Path: [%s]", uptask_list->list[i].item_status, uptask_list->list[i].item_type, uptask_list->list[i].name, uptask_list->list[i].path);
+      debug(D_NOTICE, "Task: Status: [%d] Type: [%d] Name: [%s] Path: [%s]", uptask_list->list[i].item_status, uptask_list->list[i].item_type, uptask_list->list[i].name, uptask_list->list[i].path);
       psync_free(uptask_list->list[i].name);
       psync_free(uptask_list->list[i].path);
 
@@ -1740,7 +1706,7 @@ void log_uptasks() {
     debug(D_NOTICE, "***********************************************************");
   }
   else {
-    debug(D_NOTICE, "BOBO: No tasks to log.");
+    debug(D_NOTICE, "No tasks to log.");
   }
 
   //psync_free(uptask_list);
@@ -1763,14 +1729,12 @@ int check_ignored_paths(const char* path) {  //Check if folder is not a child of
   folderPath folders;
   int i;
 
-  debug(D_NOTICE, "BOBO: Check ignored paths.");
-
   ignorePaths = psync_setting_get_string(_PS(ignorepaths));
   parse_os_path(ignorePaths, &folders, DELIM_SEMICOLON, 0);
 
   for (i = 0; i < folders.cnt; i++) {
     if (psync_left_str_is_prefix(folders.folders[i], path)) {
-      debug(D_NOTICE, "BOBO: ignored path found: [%s]=[%s]", folders.folders[i], path);
+      debug(D_NOTICE, "Ignored path found: [%s]=[%s]", folders.folders[i], path);
 
       return PERROR_PARENT_IS_IGNORED;
     }

@@ -528,10 +528,8 @@ static void wake_loop(){
   if (unlikely(!runloop)){
     unsigned int tries=0;
     while (!runloop && tries++ < 1000) {
-      //Bobo
       //psync_milisleep(2); 
       psync_milisleep_nosqlcheck(2); //Should fix the issue on MacOS with startup crashes, when there is sync
-      //Bobo
     }
 
     if (!runloop)

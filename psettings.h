@@ -33,7 +33,7 @@
 #include "pcompat.h"
 
 //Library version x.yy.mm.z Where x is major version number, yy is year, mm is month, z is minor version number (if we need more than one release in a month)
-#define PSYNC_LIB_VERSION "2.24.01.0"
+#define PSYNC_LIB_VERSION "2.24.05.0"
 
  /*
  #define PSYNC_API_HOST     "api74.pcloud.com"
@@ -340,5 +340,4 @@ int psync_setting_set_uint(psync_settingid_t settingid, uint64_t value);
 const char* psync_setting_get_string(psync_settingid_t settingid) PSYNC_PURE;
 int psync_setting_set_string(psync_settingid_t settingid, const char* value);
 int psync_setting_reset(psync_settingid_t settingid);
-
 #endif

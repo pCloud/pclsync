@@ -43,10 +43,7 @@
 #define PSYNC_TEXT_COL "COLLATE NOCASE"
 #endif
 
-//Bobo
-//#define PSYNC_DATABASE_VERSION 22
 #define PSYNC_DATABASE_VERSION 23
-//Bobo
 
 #define PSYNC_DATABASE_CONFIG \
 "\

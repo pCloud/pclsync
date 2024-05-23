@@ -256,13 +256,11 @@ int psync_init() {
     return_error(PERROR_DATABASE_OPEN);
   }
   
-  debug(D_WARNING, "psync_apiserver_init. Stop all inprogress tasks. Set Inprogress = 0.");
+  debug(D_WARNING, "Stop all inprogress tasks. Set Inprogress = 0.");
   psync_sql_statement("UPDATE task SET inprogress=0 WHERE inprogress=1");
 
-  //Bobo
-  debug(D_WARNING, "BOBO: Reset inprogress upload tasks.");
+  debug(D_WARNING, "Reset inprogress upload tasks.");
   psync_sql_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_WAITING)" WHERE status = "NTO_STR(PUPTASK_STATUS_INPROGRESS));
-  //Bobo
   
   psync_timer_init();
   
@@ -305,10 +303,8 @@ int psync_init() {
 
   psync_free(deviceid);
 
-  //Bobo
-  debug(D_NOTICE, "BOBO: Start upload tasks status thread.");
+  debug(D_NOTICE, "Start upload tasks status thread.");
   psync_run_thread("Upload tasks status monitor thread.", upload_tasks_status_thread);
-  //Bobo
 
   return 0;
 }
@@ -382,7 +378,7 @@ uint32_t psync_download_state(){
 }
 
 void psync_destroy(){
-  debug(D_NOTICE, "BOBO: Runing psync_destroy. Stop all syncs.");
+  debug(D_NOTICE, "Runing psync_destroy. Stop all syncs.");
 
   psync_do_run=0;
   psync_fs_stop();
@@ -1072,7 +1068,7 @@ int psync_delete_sync(psync_syncid_t syncid){
   psync_sql_res *res;
   psync_sql_start_transaction();
 
-  debug(D_NOTICE, "BOBO: Deleteting sync id: [%lu]", syncid);
+  debug(D_NOTICE, "Deleteting sync id: [%lu]", syncid);
 
   psync_delete_local_recursive(syncid, 0);
   res=psync_sql_prep_statement("DELETE FROM syncfolder WHERE id=?");
@@ -3362,39 +3358,27 @@ int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
   uint64_t arr_size = 0;
   int i, ret;
 
-  debug(D_NOTICE, "BOBO: psync_uptask_scan. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
+  debug(D_NOTICE, "Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
 
   dest_folder_id = psync_get_folderid_by_path(dest_path);
 
   if (dest_folder_id == PSYNC_INVALID_FOLDERID) {
-    debug(D_NOTICE, "BOBO: Can't get destination folder id. Return.");
+    debug(D_NOTICE, "Can't get destination folder id. Return.");
 
     return -1;
   }
   else {
-    debug(D_NOTICE, "BOBO: Got destination folder id: [%llu].", dest_folder_id);
+    debug(D_NOTICE, "Got destination folder id: [%llu].", dest_folder_id);
   }
-
-
-  /*
-  ret = check_dest_folder_syncable(dest_path);
-
-  if (ret != 0) {
-    debug(D_NOTICE, "BOBO: Destination is syncing.");
-    return -1;
-  }
-  */
 
   upl_data = psync_new(type_upload_task_t);
   upl_data->paths = psync_malloc(path_cnt * sizeof(char*));
 
   for (i = 0; i < path_cnt; i++) {
-    debug(D_NOTICE, "BOBO: Path: [%d] - [%s]", i, paths[i]);
+    debug(D_NOTICE, "Path: [%d] - [%s]", i, paths[i]);
 
     upl_data->paths[i] = psync_strdup(paths[i]);
   }
-
-  debug(D_NOTICE, "BOBO: psync_uptask_scan. Create upload thread. Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
 
   upl_data->dest_folid = dest_folder_id;
   upl_data->path_cnt = path_cnt;
@@ -3415,9 +3399,7 @@ uptask_item_list* psync_get_uptask_list(int status) {
 void clean_uptasks(int status) {
   psync_sql_res* sql;
 
-  debug(D_NOTICE, "BOBO: clean_uptasks. Status: [%d]", status);
-
-  //psync_sql_statement("DELETE FROM upload_tasks WHERE status & "NTO_STR(status));
+  debug(D_NOTICE, "Clean Uptasks. Status: [%d]", status);
 
   psync_sql_start_transaction();
 
@@ -3428,7 +3410,7 @@ void clean_uptasks(int status) {
 
   psync_sql_commit_transaction();
 
-  debug(D_NOTICE, "BOBO: clean_uptasks. Rows affected: [%lu]", psync_sql_affected_rows());
+  debug(D_NOTICE, "Task Rows affected: [%lu]", psync_sql_affected_rows());
 }
 /******************************************************************************************************************/
 void psync_cancel_uptasks() {

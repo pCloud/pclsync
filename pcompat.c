@@ -3985,15 +3985,15 @@ int psync_check_local_dir_empty(char* path) {
 int is_file_to_ignore(psync_pstat* st) {
 #if defined(P_OS_POSIX)
   if (st->name[0] == '.' && (st->name[1] != 0 && st->name[1] != '.' && st->name[2] != 0)) {
-    debug(D_NOTICE, "BOBO: MacOS/Linux File [%s] HIDDEN ignore it.", st->name);
+    debug(D_NOTICE, "MacOS/Linux File [%s] HIDDEN ignore it.", st->name);
 
     return -1;
   }
 #if defined(P_OS_MACOSX)
-  debug(D_NOTICE, "BOBO: MacOS. FileAttrFlags: [%d]", st->stat.st_flags);
+  debug(D_NOTICE, "MacOS. FileAttrFlags: [%d]", st->stat.st_flags);
 
   if (st->stat.st_flags & (UF_HIDDEN | UF_IMMUTABLE | SF_IMMUTABLE)) {
-    debug(D_NOTICE, "BOBO: MacOS. File [%s] HIDDEN ignore it.", st->name);
+    debug(D_NOTICE, "MacOS. File [%s] HIDDEN ignore it.", st->name);
 
     return -1;
   }
@@ -4001,8 +4001,6 @@ int is_file_to_ignore(psync_pstat* st) {
 
   return 0;
 #elif defined(P_OS_WINDOWS)
-  debug(D_NOTICE, "BOBO: Win file attributes: [%lu]", st->stat.dwFileAttributes);
-
   if (st->stat.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) {
     debug(D_NOTICE, "Ignoring file [%s] with FILE_ATTRIBUTE_HIDDEN attribute", st->name);
 

@@ -556,7 +556,5 @@ void psync_rebuild_icons();
 
 int psync_check_local_dir_empty(char* path);
 
-//Bobo
 int is_file_to_ignore(psync_pstat* st);
-//Bobo
 #endif

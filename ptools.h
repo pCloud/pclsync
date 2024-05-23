@@ -7,9 +7,6 @@
 #pragma once
 
 #include "papi.h"
-//Bobo
-
-//Bobo
 
 #define EVENT_WS "loganalyticsevent"
 

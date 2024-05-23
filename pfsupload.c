@@ -1187,8 +1187,6 @@ static void large_upload(){
     fileidhex[sizeof(psync_fsfileid_t)]='i';
     indexname=psync_strcat(cname, PSYNC_DIRECTORY_SEPARATOR, fileidhex, NULL);
 
-    debug(D_NOTICE, "BOBO: Large upload fs task: id:[%llu] type: [%llu] folderid: [%llu] text1: [%s], text2:[%s], int1: [%llu], fileid:[%llu], int2: [%llu].", taskid, type, folderid, cname, key, writeid, fileid, hash);
-
     res=psync_sql_query_rdlock("SELECT uploadid FROM fstaskupload WHERE fstaskid=? ORDER BY uploadid DESC LIMIT 1");
     psync_sql_bind_uint(res, 1, taskid);
 
@@ -1236,8 +1234,6 @@ static void large_upload(){
     psync_free(filename);
     psync_free(name);
     psync_free(key);
-
-    debug(D_NOTICE, "BOBO: Large upload fs task done.");
   }
 
   debug(D_NOTICE, "Large upload thread exited.");
@@ -2093,7 +2089,7 @@ static void psync_fsupload_check_tasks(){
     task->ccreat=0;
     psync_list_add_tail(&tasks, &task->list);
 
-    debug(D_NOTICE, "BOBO: Process fs task: taskid: [%lu], type: [%llu]", (unsigned long)task->id, task->type);
+    debug(D_NOTICE, "Process fs task: taskid: [%lu], type: [%llu]", (unsigned long)task->id, task->type);
   }
 
   current_upload_batch=&tasks;

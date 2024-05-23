@@ -242,7 +242,6 @@ void psync_status_recalc_to_upload(){
   psync_sql_bind_uint(res, 1, PSYNC_UPLOAD_FILE);
 
   if ((row=psync_sql_fetch_rowint(res))){
-    debug(D_NOTICE, "BOBO: Got count from DB.");
     filestou=row[0];
     bytestou=row[1];
   }
@@ -250,8 +249,6 @@ void psync_status_recalc_to_upload(){
     filestou=0;
     bytestou=0;
   }
-
-  debug(D_NOTICE, "BOBO: Bytes to upload selected: [%llu], Files to Upload: [%lu]", bytestou, filestou);
 
   psync_sql_free_result(res);
   fscpath=psync_setting_get_string(_PS(fscachepath));

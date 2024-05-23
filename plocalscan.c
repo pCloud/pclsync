@@ -41,9 +41,11 @@
 #include "pssl.h"
 #include <string.h>
 #include <ctype.h>
-//Bobo
 #include "ptools.h"
-//Bobo
+
+//Flags to control the cancelation of upload
+int p_uptaks_scanning = 0;
+int p_uptaks_stop = 0;
 
 typedef struct {
   psync_list list;
@@ -1362,16 +1364,19 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 
   psync_list_init(&disklist);
 
-  debug(D_NOTICE, "BOBO: Recursive Scan Start! Path: [%s], Level: [%d], Remote folder Id: [%llu]", path, level, parent_folder_id);
+  debug(D_NOTICE, "Scan Start! Path: [%s], Level: [%d], Remote folder Id: [%llu]", path, level, parent_folder_id);
 
   ret = psync_list_dir(path, scanner_local_entry_to_list, &disklist);
-
-  debug(D_NOTICE, "BOBO: psync_list_dir ret: [%d]", ret);
 
   list_elem = disklist.next;
   list_next = list_elem->next;
 
   while (list_elem != &disklist) {
+    if (p_uptaks_stop != 0) {
+      debug(D_NOTICE, "Cancel action detected. Stop scaning. Level: [%d]", level);
+      break;
+    }
+
     elem = psync_list_element(list_elem, sync_folderlist, list);
 
     ret = psync_is_name_to_ignore(elem->name);
@@ -1382,7 +1387,7 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
       continue;
     }
 
-    debug(D_NOTICE, "BOBO: List element Name: [%s], Is Folder: [%u], Parent fId: [%llu]", elem->name, elem->isfolder, elem->parentfolderid);
+    //debug(D_NOTICE, "List element Name: [%s], Is Folder: [%u], Parent fId: [%llu]", elem->name, elem->isfolder, elem->parentfolderid);
 
     nextpath = psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR, elem->name, NULL);
 
@@ -1390,11 +1395,11 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
       ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, level, parent_folder_id, elem->name, path);
       *taskcnt = *taskcnt + 1;
 
-      debug(D_NOTICE, "BOBO: Folder detected [%s]. Scan it.", nextpath);
+      //debug(D_NOTICE, "Folder detected [%s]. Scan it.", nextpath);
       uptask_scan(level + 1, nextpath, ret, local_folder_id, taskcnt);
     }
     else {
-      debug(D_NOTICE, "BOBO: File detected [%s]. ", nextpath);
+      //debug(D_NOTICE, "File detected [%s]. ", nextpath);
 
       ret = psync_stat(nextpath, &stat_struct);
 
@@ -1406,7 +1411,9 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
     list_next = list_elem->next;
   }
 
-  debug(D_NOTICE, "BOBO: Done scanning.");
+  psync_list_for_each_element_call(&disklist, sync_folderlist, list, psync_free);
+
+  debug(D_NOTICE, "Done scanning.");
 }
 /**********************************************************************/
 void do_create_upload_from_list(void* ptr) {
@@ -1421,14 +1428,18 @@ void do_create_upload_from_list(void* ptr) {
 
   psync_pstat st; //OS compatible stat struct
 
-  debug(D_NOTICE, "BOBO: Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
+  debug(D_NOTICE, "Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
+
+  p_uptaks_scanning = 1;
 
   for (i = 0; i < upl_data->path_cnt; i++) {
-    debug(D_NOTICE, "BOBO: Process path: [%s].", upl_data->paths[i]);
+    if (p_uptaks_stop != 0) {
+      debug(D_NOTICE, "Cancel action detected. Stop scaning.");
+
+      continue;
+    }
 
     ret = psync_stat(upl_data->paths[i], &stat_struct);
-
-    debug(D_NOTICE, "BOBO: stat ret: [%d]", ret);
 
     if (ret == 0) {
       folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
@@ -1438,7 +1449,7 @@ void do_create_upload_from_list(void* ptr) {
         name = upl_data->paths[i]+path_size+strlen(PSYNC_DIRECTORY_SEPARATOR);
       }
       else {
-        debug(D_NOTICE, "BOBO: Path empty. Skip it.");
+        debug(D_NOTICE, "Path is empty. Skip it.");
         continue;
       }
 
@@ -1458,19 +1469,13 @@ void do_create_upload_from_list(void* ptr) {
         continue;
       }
 
-      debug(D_NOTICE, "BOBO: Got Path: [%s] Name: [%s]", folder, name);
-
       if (psync_stat_isfolder(&stat_struct)) {
-        debug(D_NOTICE, "Create upload task PSYNC_CREATE_REMOTE_FOLDER");
-
         ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, 0, upl_data->dest_folid, name, folder);
         taskcnt++;
 
         uptask_scan(0, upl_data->paths[i], ret, 0, &taskcnt);
       }
       else {
-        debug(D_NOTICE, "Create upload task PSYNC_UPLOAD_FILE");
-
         ret = is_file_to_ignore(&st);
 
         if (ret == -1) {
@@ -1488,29 +1493,38 @@ void do_create_upload_from_list(void* ptr) {
       psync_free(st.path);
     }
     else {
-      debug(D_NOTICE, "BOBO: Failed to stat path. Skipping it.");
+      debug(D_NOTICE, "Failed to stat path. Skipping it.");
     }
 
     psync_free(upl_data->paths[i]);
   }
 
-  debug(D_NOTICE, "BOBO: Finished Upload task init. Tasks created: [%d] Send some signals.", taskcnt);
+  debug(D_NOTICE, "Finished Upload task init. Tasks created: [%d] Send some signals.", taskcnt);
 
   psync_free(upl_data);
 
   if (taskcnt == 0) {
-    debug(D_NOTICE, "BOBO: do_create_upload_from_list. No upload tasks were created. Send data event.");
+    debug(D_NOTICE, "No upload tasks were created. Send data event.");
 
     psync_send_data_event(PEVENT_UPL_TASKS_NO_TASKS_ADDED, NULL, NULL, 0, 0);
+
+    p_uptaks_scanning = 0;
 
     return;
   }
 
-  psync_do_run = 1; //Activate the upload thread.
-  psync_wake_upload();
+  if (p_uptaks_stop != 0) {
+    debug(D_NOTICE, "Scanning canceled. Ommit process thread wakeup.");
+  }
+  else {
+    psync_do_run = 1; //Activate the upload thread.
+    psync_wake_upload();
 
-  psync_status_recalc_to_upload_async();
+    psync_status_recalc_to_upload_async();
+  }
 
-  debug(D_NOTICE, "BOBO: do_create_upload_from_list. Done.");
+  p_uptaks_scanning = 0;
+
+  debug(D_NOTICE, "Done.");
 }
 /**********************************************************************/
