@@ -950,7 +950,7 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
 
     psync_sql_start_transaction();
 
-    if (syncid != 0) {
+    if (syncid == 0) {
       debug(D_WARNING, "Upload task. Skip looking for localfile. LocalFileId: [%llu]", localfileid);
     }
     else {
