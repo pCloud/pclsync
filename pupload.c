@@ -2112,12 +2112,12 @@ int cancel_uptasks() {
   debug(D_NOTICE, "Cancel Stop all inprogress uptasks!");
 
   if (p_uptaks_scanning != 0) {
-    debug(D_NOTICE, "Upload scan is ongoing. Stop it.");
+    debug(D_NOTICE, "[%d] Upload scans detected. Send stop signal.", p_uptaks_scanning);
 
     p_uptaks_stop = 1;
 
     while (p_uptaks_scanning != 0) {
-      debug(D_NOTICE, "Upload scan still ongoing. Wait.");
+      debug(D_NOTICE, "[%d] Upload scans still ongoing. Wait.", p_uptaks_scanning);
       psync_milisleep(200);
     }
   }

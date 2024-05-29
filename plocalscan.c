@@ -1430,13 +1430,13 @@ void do_create_upload_from_list(void* ptr) {
 
   debug(D_NOTICE, "Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
 
-  p_uptaks_scanning = 1;
+  p_uptaks_scanning = p_uptaks_scanning + 1;
 
   for (i = 0; i < upl_data->path_cnt; i++) {
     if (p_uptaks_stop != 0) {
       debug(D_NOTICE, "Cancel action detected. Stop scaning.");
 
-      continue;
+      break;
     }
 
     ret = psync_stat(upl_data->paths[i], &stat_struct);
@@ -1499,8 +1499,6 @@ void do_create_upload_from_list(void* ptr) {
     psync_free(upl_data->paths[i]);
   }
 
-  debug(D_NOTICE, "Finished Upload task init. Tasks created: [%d] Send some signals.", taskcnt);
-
   psync_free(upl_data);
 
   if (taskcnt == 0) {
@@ -1508,7 +1506,7 @@ void do_create_upload_from_list(void* ptr) {
 
     psync_send_data_event(PEVENT_UPL_TASKS_NO_TASKS_ADDED, NULL, NULL, 0, 0);
 
-    p_uptaks_scanning = 0;
+    p_uptaks_scanning = p_uptaks_scanning - 1;
 
     return;
   }
@@ -1517,14 +1515,16 @@ void do_create_upload_from_list(void* ptr) {
     debug(D_NOTICE, "Scanning canceled. Ommit process thread wakeup.");
   }
   else {
+    debug(D_NOTICE, "Finished Upload task init. Tasks created: [%d] Send some signals.", taskcnt);
+
     psync_do_run = 1; //Activate the upload thread.
     psync_wake_upload();
 
     psync_status_recalc_to_upload_async();
   }
 
-  p_uptaks_scanning = 0;
+  p_uptaks_scanning = p_uptaks_scanning - 1;
 
-  debug(D_NOTICE, "Done.");
+  debug(D_NOTICE, "Uptask scan Done. Active Uptask Scans: [%d]", p_uptaks_scanning);
 }
 /**********************************************************************/
