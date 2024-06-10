@@ -831,18 +831,24 @@ static psync_fsfileid_t get_file_at_old_location(psync_fsfileid_t fileid){
 
 void psync_fstask_stop_and_delete_file(psync_fsfileid_t fileid){
   psync_sql_res *res;
+
   debug(D_NOTICE, "trying to stop upload of task %lu", (unsigned long)-fileid);
+
   if (psync_fsupload_in_current_small_uploads_batch_locked(-fileid)){
     debug(D_NOTICE, "file is in current small uploads batch");
     return;
   }
+
   psync_fsupload_stop_upload_locked(-fileid);
+
   res=psync_sql_prep_statement("UPDATE fstask SET status=11 WHERE id=?");
   psync_sql_bind_uint(res, 1, -fileid);
   psync_sql_run_free(res);
+
   res=psync_sql_prep_statement("UPDATE fstask SET status=11 WHERE fileid=? AND status!=10");
   psync_sql_bind_int(res, 1, fileid);
   psync_sql_run_free(res);
+
   psync_fs_mark_openfile_deleted(-fileid);
 }
 
@@ -883,19 +889,23 @@ int psync_fstask_unlink(psync_fsfolderid_t folderid, const char *name){
   psync_fsfileid_t fileid, revoffileid;
   psync_fileid_t rfileid;
   size_t len;
+
   len=strlen(name);
   folder=psync_fstask_get_or_create_folder_tasks_locked(folderid);
   cr=psync_fstask_find_creat(folder, name, 0);
+
   if (cr==NULL){
     res=psync_sql_query("SELECT id FROM file WHERE parentfolderid=? AND name=?");
     psync_sql_bind_uint(res, 1, folderid);
     psync_sql_bind_lstring(res, 2, name, len);
     row=psync_sql_fetch_rowint(res);
+
     if (!row || psync_fstask_find_unlink(folder, name, 0)){
       psync_sql_free_result(res);
       psync_fstask_release_folder_tasks_locked(folder);
       return -ENOENT;
     }
+
     fileid=row[0];
     psync_sql_free_result(res);
     depend=0;
@@ -906,22 +916,27 @@ int psync_fstask_unlink(psync_fsfolderid_t folderid, const char *name){
 
     if ((unlikely(cr->fileid==0)) || (cr->fileid <= psync_fake_fileid)) { //Chek if this is a fake file, if so process it here to avoid foregn key error later.
       task=psync_fstask_find_unlink(folder, cr->name, cr->taskid);
+
       if (likely_log(task)){
         psync_tree_del(&folder->unlinks, &task->tree);
         folder->taskscnt--;
         psync_free(task);
       }
+
       psync_tree_del(&folder->creats, &cr->tree);
       psync_free(cr);
       folder->taskscnt--;
       psync_fstask_release_folder_tasks_locked(folder);
+
       return 0;
     }
+
     depend=cr->taskid;
     fileid=cr->fileid;
     psync_tree_del(&folder->creats, &cr->tree);
     psync_free(cr);
     folder->taskscnt--;
+
     if (folder->folderid>=0)
       psync_path_status_drive_folder_changed(folder->folderid);
   }
@@ -951,18 +966,25 @@ int psync_fstask_unlink(psync_fsfolderid_t folderid, const char *name){
     psync_sql_bind_uint(res, 5, rfileid);
     psync_sql_run_free(res);
   }
+
   taskid=psync_sql_insertid();
+
   if (depend)
     psync_fstask_depend(taskid, depend);
+
   if (revoffileid<0)
     psync_fstask_depend(taskid, -revoffileid);
+
   if (fileid<0 && -fileid!=depend)
     psync_fstask_depend(taskid, -fileid);
+
   psync_fstask_depend_on_name(taskid, folderid, name, len);
+
   if (unlikely_log(psync_sql_commit_transaction())){
     psync_fstask_release_folder_tasks_locked(folder);
     return -EIO;
   }
+
   len++;
   task=(psync_fstask_unlink_t *)psync_malloc(offsetof(psync_fstask_unlink_t, name)+len);
   task->taskid=taskid;
@@ -971,8 +993,10 @@ int psync_fstask_unlink(psync_fsfolderid_t folderid, const char *name){
   psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_unlink_t, name), &task->tree);
   folder->taskscnt++;
   psync_fstask_release_folder_tasks_locked(folder);
+
   if (depend==0 || fileid<0)
     psync_fsupload_wake();
+
   return 0;
 }
 
