@@ -81,4 +81,6 @@ void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, 
 event_data_struct* pop_elem(de_elem_list* list);
 
 void wait_auth_token_async(void* data);
+
+void psync_timed_data_event();
 #endif

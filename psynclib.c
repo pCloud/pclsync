@@ -306,6 +306,10 @@ int psync_init() {
   debug(D_NOTICE, "Start upload tasks status thread.");
   psync_run_thread("Upload tasks status monitor thread.", upload_tasks_status_thread);
 
+  //Bobo
+  //psync_init_data_event();
+  //Bobo
+
   return 0;
 }
 
