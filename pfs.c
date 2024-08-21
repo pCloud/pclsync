@@ -1641,17 +1641,20 @@ static void close_if_valid(psync_file_t fd){
 }
 
 static void psync_fs_free_openfile(psync_openfile_t *of){
-  debug(D_NOTICE, "releasing file %s", of->currentname);
+  debug(D_NOTICE, "releasing file [%s]", of->currentname);
+
   if (unlikely(of->writetimer!=PSYNC_INVALID_TIMER))
     debug(D_BUG, "file %s with active timer is set to free, this is not supposed to happen", of->currentname);
+
   if (of->deleted && of->fileid<0){
     psync_sql_res *res;
-    debug(D_NOTICE, "file %s marked for deletion, releasing cancel tasks", of->currentname);
+    debug(D_NOTICE, "file [%s] marked for deletion, releasing cancel tasks", of->currentname);
     res=psync_sql_prep_statement("UPDATE fstask SET status=11 WHERE id=? AND status=12");
     psync_sql_bind_uint(res, 1, -of->fileid);
     psync_sql_run_free(res);
     psync_fsupload_wake();
   }
+
   if (of->encrypted){
     if (of->encoder!=PSYNC_CRYPTO_UNLOADED_SECTOR_ENCODER && of->encoder!=PSYNC_CRYPTO_FAILED_SECTOR_ENCODER){
       assert(of->encoder!=PSYNC_CRYPTO_LOADING_SECTOR_ENCODER);
@@ -1663,15 +1666,19 @@ static void psync_fs_free_openfile(psync_openfile_t *of){
     if (of->authenticatedints)
       psync_interval_tree_free(of->authenticatedints);
   }
+
   pthread_mutex_destroy(&of->mutex);
   close_if_valid(of->datafile);
   close_if_valid(of->indexfile);
+
   if (of->writeintervals)
     psync_interval_tree_free(of->writeintervals);
+
   if (unlikely(psync_fs_need_per_folder_refresh_const() && of->fileid<psync_fake_fileid)){
     psync_fstask_creat_t *cr;
     psync_sql_lock();
     cr=psync_fstask_find_creat(of->currentfolder, of->currentname, 0);
+
     if (cr){
       psync_tree_del(&of->currentfolder->creats, &cr->tree);
       of->currentfolder->taskscnt--;
@@ -1679,6 +1686,7 @@ static void psync_fs_free_openfile(psync_openfile_t *of){
     }
     psync_sql_unlock();
   }
+
   psync_fstask_release_folder_tasks(of->currentfolder);
   psync_free(of->currentname);
   psync_free(of);
@@ -1719,13 +1727,17 @@ void psync_fs_inc_of_refcnt_and_readers(psync_openfile_t *of){
 
 void psync_fs_dec_of_refcnt_and_readers(psync_openfile_t *of){
   uint32_t refcnt;
+
   psync_fs_get_both_locks(of);
   of->runningreads--;
   refcnt=--of->refcnt;
+
   if (refcnt==0)
     psync_tree_del(&openfiles, &of->tree);
+
   psync_sql_unlock();
   pthread_mutex_unlock(&of->mutex);
+
   if (!refcnt)
     psync_fs_free_openfile(of);
 }
