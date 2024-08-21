@@ -2087,15 +2087,19 @@ static void do_send_eventdata(void * param) {
   char *str =  data->str;
 
   get_ba_member_email(data->fromuserid, &email, &emaillen);
-  fill_str(data->event_data->fromemail, email, emaillen);
-  psync_free(email);
+  if (emaillen > 0) {
+    fill_str(data->event_data->fromemail, email, emaillen);
+    psync_free(email);
+  }
 
   if(data->touserid)
     get_ba_member_email(data->touserid, &email, &emaillen);
   else
     get_ba_team_name(data->teamid, &email, &emaillen);
-  fill_str(data->event_data->toemail, email, emaillen);
-  psync_free(email);
+  if (emaillen > 0) {
+    fill_str(data->event_data->toemail, email, emaillen);
+    psync_free(email);
+  }
 
   if (email) {
     psync_diff_lock();
