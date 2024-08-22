@@ -1370,6 +1370,7 @@ static psync_socket_t connect_socket_direct(const char *host, const char *port){
       psync_task_free(tasks);
       detect_proxy();
       debug(D_WARNING, "failed to resolve %s", host);
+
       return INVALID_SOCKET;
     }
 

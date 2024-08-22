@@ -164,14 +164,29 @@ static uint32_t psync_calc_status(){
 
   if ((psync_status.filesdownloading || psync_status.filestodownload) && (psync_status.filesuploading || psync_status.filestoupload)) {
     debug(D_NOTICE, "Calc status to: PSTATUS_DOWNLOADINGANDUPLOADING");
+    //Bobo
+    debug(D_NOTICE, "BOBO: Set online flag to ONLINE");
+    psync_flag_online = 1;
+    //Bobo
+
     return PSTATUS_DOWNLOADINGANDUPLOADING;
   }
   else if (psync_status.filesdownloading || psync_status.filestodownload) {
     debug(D_NOTICE, "Calc status to: PSTATUS_DOWNLOADING");
+    //Bobo
+    debug(D_NOTICE, "BOBO: Set online flag to ONLINE");
+    psync_flag_online = 1;
+    //Bobo
+
     return PSTATUS_DOWNLOADING;
   }
   else if (psync_status.filesuploading || psync_status.filestoupload) {
     debug(D_NOTICE, "Calc status to: PSTATUS_UPLOADING");
+    //Bobo
+    debug(D_NOTICE, "BOBO: Set online flag to ONLINE");
+    psync_flag_online = 1;
+    //Bobo
+
     return PSTATUS_UPLOADING;
   }
   else {

@@ -1612,14 +1612,24 @@ static void task_run_upload_file_thread(void *ptr){
   ret = task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist, ut);
 
   if (ret){
-    debug(D_NOTICE, "Upload task failed. Sync Id: [%lu]", ut->upllist.syncid);
+    debug(D_NOTICE, "Upload task failed. Sync Id: [%lu], Ret: [%d], Status: [%d]", ut->upllist.syncid, ret, psync_flag_online);
 
     if (ut->upllist.syncid == 0) { //This is an upload task.
       if (ut->upllist.taskid != 0) {
-        debug(D_NOTICE, "Update upload task Id to failed!");
-        res = psync_sql_prep_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_FAILED)", error_code = "NTO_STR(PUPTASK_ERROR_GENERAL)" WHERE id=?"); //Set upload task status to failed.
-        psync_sql_bind_uint(res, 1, ut->upllist.taskid);
-        psync_sql_run_free(res);
+        if (psync_flag_online == 0) {
+          debug(D_NOTICE, "BOBO: Status is OFFLINE set status to WAITING!");
+
+          res = psync_sql_prep_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_WAITING)" WHERE id = ? "); //Set upload task status to waiting.
+          psync_sql_bind_uint(res, 1, ut->upllist.taskid);
+          psync_sql_run_free(res);
+        }
+        else {
+          debug(D_NOTICE, "Status is not offline set upload task Id to failed!");
+
+          res = psync_sql_prep_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_FAILED)", error_code = "NTO_STR(PUPTASK_ERROR_GENERAL)" WHERE id=?"); //Set upload task status to failed.
+          psync_sql_bind_uint(res, 1, ut->upllist.taskid);
+          psync_sql_run_free(res);
+        }
       }
       else {
         debug(D_NOTICE, "Task Id is 0 skip update!");

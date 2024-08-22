@@ -143,6 +143,9 @@ typedef struct {
 #define PSTATUS_RELOCATION             19
 #define PSTATUS_RELOCATED              20
 
+//Bobo
+int psync_flag_online;
+//Bobo
 
 #define PSTATUS_ACCOUT_TFAERR          PSTATUS_TFA_REQUIRED
 #define PSTATUS_ACCOUT_EXPIRED         PSTATUS_ACCOUNT_EXPIRED

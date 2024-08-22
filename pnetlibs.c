@@ -179,8 +179,13 @@ psync_socket *psync_apipool_get(){
       return ret;
   }
   ret=psync_get_api();
-  if (unlikely_log(!ret))
+  if (unlikely_log(!ret)){
+    //Bobo
+    debug(D_NOTICE, "BOBO: Set online flag to OFFLINE");
+    psync_flag_online = 0;
+    //Bobo
     psync_timer_notify_exception();
+  }
   return ret;
 }
 
