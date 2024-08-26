@@ -2044,10 +2044,8 @@ static int psync_socket_readall_ssl(psync_socket *sock, void *buff, int num){
           continue;
       }
       else{
-        //Bobo
-        debug(D_NOTICE, "BOBO: Set online flag to OFFLINE");
+        debug(D_NOTICE, "Set online flag to OFFLINE");
         psync_flag_online = 0;
-        //Bobo
 
         psync_sock_set_err(P_CONNRESET);
         return -1;
@@ -2104,20 +2102,17 @@ static int psync_socket_writeall_ssl(psync_socket *sock, const void *buff, int n
     if (r==PSYNC_SSL_FAIL){
       if (psync_ssl_errno==PSYNC_SSL_ERR_WANT_READ || psync_ssl_errno==PSYNC_SSL_ERR_WANT_WRITE){
         if (wait_sock_ready_for_ssl(sock->sock)){
-          //Bobo
-          debug(D_NOTICE, "BOBO: Set online flag to OFFLINE");
+          debug(D_NOTICE, "Set online flag to OFFLINE");
           psync_flag_online = 0;
-          //Bobo
+
           return -1;
         }
         else
           continue;
       }
       else{
-        //Bobo
-        debug(D_NOTICE, "BOBO: Set online flag to OFFLINE");
+        debug(D_NOTICE, "Set online flag to OFFLINE");
         psync_flag_online = 0;
-        //Bobo
 
         psync_sock_set_err(P_CONNRESET);
         return -1;

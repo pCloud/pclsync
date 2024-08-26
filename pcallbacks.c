@@ -521,14 +521,13 @@ void data_event_thread(void* ptr) {
     if ((plasr_diff_devent_t != -1) && 
        ((psync_time() - plasr_diff_devent_t) >= PDIFF_DATA_EVENT_DELAY)
       ) {
-      debug(D_NOTICE, "BOBO: Diff data event delay passed. Send data event.");
       data_event_fptr(PEVENT_FS_ADD_OBJ, NULL, NULL, 0, 0);
 
       plasr_diff_devent_t = -1;
     }
     else{
       if (plasr_diff_devent_t != -1) {
-        debug(D_NOTICE, "BOBO: Diff data event too early. Wait. Diff: Last: [%lld]-[%lld] = [%lld]", psync_time(), plasr_diff_devent_t, (psync_time() - plasr_diff_devent_t));
+        debug(D_NOTICE, "Diff data event too early. Wait.");
       }
     }
 
@@ -580,7 +579,6 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
 }
 /**********************************************************************************************/
 void psync_timed_data_event() {
-  debug(D_NOTICE, "BOBO: Set last diff data event time to now.");
   plasr_diff_devent_t = psync_time();
 }
 /**********************************************************************************************/

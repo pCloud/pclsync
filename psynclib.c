@@ -306,11 +306,8 @@ int psync_init() {
   debug(D_NOTICE, "Start upload tasks status thread.");
   psync_run_thread("Upload tasks status monitor thread.", upload_tasks_status_thread);
 
-  //Bobo
-  debug(D_NOTICE, "BOBO: Set online flag to OFFLINE");
   psync_flag_online = 0;
   //psync_init_data_event();
-  //Bobo
 
   return 0;
 }

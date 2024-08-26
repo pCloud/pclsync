@@ -2122,7 +2122,7 @@ static void psync_fsupload_thread(){
 
     psync_fsupload_check_tasks();
 
-    //Clean up stuck tasks at every cycle.Bobo: Need to confirm if the is realy needed.
+    //Clean up stuck tasks at every cycle. Need to confirm if the is realy needed.
     clean_stuck_tasks();
 
     pthread_mutex_lock(&upload_mutex);

@@ -1617,7 +1617,7 @@ static void task_run_upload_file_thread(void *ptr){
     if (ut->upllist.syncid == 0) { //This is an upload task.
       if (ut->upllist.taskid != 0) {
         if (psync_flag_online == 0) {
-          debug(D_NOTICE, "BOBO: Status is OFFLINE set status to WAITING!");
+          debug(D_NOTICE, "Status is OFFLINE set status to WAITING!");
 
           res = psync_sql_prep_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_WAITING)" WHERE id = ? "); //Set upload task status to waiting.
           psync_sql_bind_uint(res, 1, ut->upllist.taskid);
