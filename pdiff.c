@@ -1225,7 +1225,7 @@ static void process_deletefolder(const binresult *entry){
     }
     return;
   }
-  
+
   if (!st){
     st=psync_sql_prep_statement("DELETE FROM folder WHERE id=?");
 
@@ -1237,9 +1237,11 @@ static void process_deletefolder(const binresult *entry){
     if (!st2)
       return;
   }
-  
+
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
   folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
+
+  debug(D_NOTICE, "BOBO: process_deletefolder. Folder Id: [%llu]", folderid);
 
   if (lost_and_found_fid == folderid) {
     debug(D_NOTICE, "Lost and found folder deleted. Reset lost_and_found_fid!");
@@ -1257,13 +1259,16 @@ static void process_deletefolder(const binresult *entry){
 
   if (psync_is_folder_in_downloadlist(folderid)){
     psync_del_folder_from_downloadlist(folderid);
+
     res=psync_sql_query("SELECT syncid, localfolderid FROM syncedfolder WHERE folderid=?");
     psync_sql_bind_uint(res, 1, folderid);
+
     while ((row=psync_sql_fetch_rowint(res))){
       stmt=psync_sql_prep_statement("DELETE FROM syncedfolder WHERE syncid=? AND folderid=?");
       psync_sql_bind_uint(stmt, 1, row[0]);
       psync_sql_bind_uint(stmt, 2, folderid);
       psync_sql_run_free(stmt);
+
       if (psync_sql_affected_rows()==1){
         path=psync_get_path_by_folderid(folderid, NULL);
         psync_task_delete_local_folder(row[0], folderid, row[1], path);
@@ -1273,8 +1278,10 @@ static void process_deletefolder(const binresult *entry){
     }
     psync_sql_free_result(res);
   }
+
   psync_sql_bind_uint(st, 1, folderid);
   psync_sql_run(st);
+
   if (psync_sql_affected_rows()){
     psync_sql_bind_uint(st2, 1, psync_find_result(meta, "modified", PARAM_NUM)->num);
     psync_sql_bind_uint(st2, 2, psync_find_result(meta, "parentfolderid", PARAM_NUM)->num);
@@ -2293,16 +2300,19 @@ static void process_acceptedshareout(const binresult *entry){
   int isincomming = 0;
   uint64_t folderowneruserid = 0, owneruserid, folderid;
 
+  debug(D_NOTICE, "BOBO: process_acceptedshareout.");
+
   if (!entry)
     return;
+
   share=psync_find_result(entry, "share", PARAM_HASH);
   q=psync_sql_prep_statement("DELETE FROM sharerequest WHERE id=?");
   psync_sql_bind_uint(q, 1, psync_find_result(share, "sharerequestid", PARAM_NUM)->num);
   psync_sql_run(q);
   aff=psync_sql_affected_rows();
   psync_sql_free_result(q);
-  if (aff) {
 
+  if (aff) {
     folderid = psync_find_result(share, "folderid", PARAM_NUM)->num;
     psync_get_folder_ownerid(folderid, &folderowneruserid);
     psync_get_current_userid(&owneruserid);
@@ -2479,8 +2489,12 @@ static void process_removebsharein(const binresult *entry){
 
 static void process_removedshareout(const binresult *entry){
   const binresult *share;
+
+  debug(D_NOTICE, "BOBO: process_removedshareout.");
+
   if (!entry)
     return;
+
   share=psync_find_result(entry, "share", PARAM_HASH);
   send_share_notify(PEVENT_SHARE_REMOVEOUT, share, 0);
   delete_shared_folder(share);
@@ -2488,8 +2502,12 @@ static void process_removedshareout(const binresult *entry){
 
 static void process_removebshareout(const binresult *entry){
   const binresult *share;
+
+  debug(D_NOTICE, "BOBO: process_removebshareout.");
+
   if (!entry)
     return;
+
   share=psync_find_result(entry, "share", PARAM_HASH);
   send_share_notify(PEVENT_SHARE_REMOVEOUT, share, 1);
   delete_bsshared_folder(share);
@@ -2636,10 +2654,13 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 
   if (entries->length>=10000)
     psync_sql_statement("DELETE FROM setting WHERE id='lastanalyze'");
-
+ 
   for (i=0; i<entries->length; i++){
     entry=entries->array[i];
     etype=psync_find_result(entry, "event", PARAM_STR);
+
+    debug(D_NOTICE, "BOBO: Got event: [%s]", etype->str);
+
     for (j=0; j<event_list_size; j++)
       if (etype->length==event_list[j].len && !memcmp(etype->str, event_list[j].name, etype->length)){
         const binresult* meta, * name;
@@ -2652,9 +2673,11 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
       }
   }
 
-  for (j=0; j<event_list_size; j++)
-    if (event_list[j].used)
+  for (j = 0; j < event_list_size; j++) {
+    if (event_list[j].used) {
       event_list[j].process(NULL);
+    }
+  }
 
   psync_set_uint_value("diffid", newdiffid);
   psync_set_uint_value("usedquota", used_quota);
@@ -3124,8 +3147,6 @@ restart:
     goto restart;
   }
 
-
-
   check_overquota();
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
   initialdownload=0;
@@ -3235,11 +3256,15 @@ restart:
           psync_free(res);
         }
         else if (entries->length==13 && !strcmp(entries->str, "notifications")){
+          debug(D_NOTICE, "BOBO: Processing [notification].");
+
           ids.notificationid=psync_find_result(res, "notificationid", PARAM_NUM)->num;
           // do not free res
           psync_notifications_notify(res);
         }
         else if (entries->length==8 && !strcmp(entries->str, "publinks")){
+          debug(D_NOTICE, "BOBO: Processing [publinks].");
+
           ids.publinkid=psync_find_result(res, "publinkid", PARAM_NUM)->num;
           ret = cache_links(&err);
 
@@ -3251,6 +3276,8 @@ restart:
           }
         }
         else if (entries->length==11 && !strcmp(entries->str, "uploadlinks")){
+          debug(D_NOTICE, "BOBO: Processing [uploadlinks].");
+
           ids.uploadlinkid=psync_find_result(res, "uploadlinkid", PARAM_NUM)->num;
           ret = cache_upload_links(&err);
 
@@ -3262,15 +3289,21 @@ restart:
           }
         }
         else if (entries->length==5 && !strcmp(entries->str, "teams")){
+          debug(D_NOTICE, "BOBO: Processing [teams].");
+
           cache_account_teams();
           cache_ba_my_teams();
           psync_notify_cache_change(PACCOUNT_CHANGE_TEAMS);
         }
         else if (entries->length==5 && !strcmp(entries->str, "users")){
+          debug(D_NOTICE, "BOBO: Processing [users].");
+
           cache_account_emails();
           psync_notify_cache_change(PACCOUNT_CHANGE_EMAILS);
         }
         else if (entries->length==8 && !strcmp(entries->str, "contacts")){
+          debug(D_NOTICE, "BOBO: Processing [contacts].");
+
           cache_contacts();
           psync_notify_cache_change(PACCOUNT_CHANGE_CONTACTS);
         }

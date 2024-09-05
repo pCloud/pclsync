@@ -518,9 +518,7 @@ void data_event_thread(void* ptr) {
   int i;
 
   while (1) {
-    if ((plasr_diff_devent_t != -1) && 
-       ((psync_time() - plasr_diff_devent_t) >= PDIFF_DATA_EVENT_DELAY)
-      ) {
+    if ((plasr_diff_devent_t != -1) && ((psync_time() - plasr_diff_devent_t) >= PDIFF_DATA_EVENT_DELAY)) {
       data_event_fptr(PEVENT_FS_ADD_OBJ, NULL, NULL, 0, 0);
 
       plasr_diff_devent_t = -1;
