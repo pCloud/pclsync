@@ -581,7 +581,7 @@ static psync_socket *get_connected_socket(){
         psync_sql_run_free(q);
       }
     }
-    else{
+    //else{
       debug(D_NOTICE, "Save user data in DB.");
 
       used_quota=0;
@@ -661,7 +661,7 @@ static psync_socket *get_connected_socket(){
 			psync_sql_free_result(q);
 
       debug(D_NOTICE, "Save user data in DB. Done.");
-    }
+    //}
 
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
       psync_sql_rollback_transaction();
