@@ -625,9 +625,9 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "username");
       psync_sql_bind_string(q, 2, psync_find_result(res, "email", PARAM_STR)->str);
       psync_sql_run(q);
-      psync_sql_bind_string(q, 1, "language");
+      /*psync_sql_bind_string(q, 1, "language");
       psync_sql_bind_string(q, 2, psync_find_result(res, "language", PARAM_STR)->str);
-      psync_sql_run(q);
+      psync_sql_run(q);*/
 			psync_sql_bind_string(q, 1, "plan");
 			psync_sql_bind_uint(q, 2, psync_find_result(res, "plan", PARAM_NUM)->num);
 			psync_sql_run(q);
