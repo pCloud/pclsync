@@ -546,14 +546,17 @@ static int check_file_if_exists(const unsigned char *hashhex, uint64_t fsize, ps
   uint64_t filesize, hash;
   unsigned char shashhex[PSYNC_HASH_DIGEST_HEXLEN];
   int ret;
+
   res=psync_sql_query_rdlock("SELECT id, size FROM file WHERE parentfolderid=? AND name=?");
   psync_sql_bind_uint(res, 1, folderid);
   psync_sql_bind_string(res, 2, name);
   row=psync_sql_fetch_rowint(res);
+
   if (row && row[1]==fsize){
     fileid=row[0];
     psync_sql_free_result(res);
     ret=psync_get_remote_file_checksum(fileid, shashhex, &filesize, &hash);
+
     if (ret==PSYNC_NET_OK){
       if (filesize==fsize && !memcmp(hashhex, shashhex, PSYNC_HASH_DIGEST_HEXLEN)){
         debug(D_NOTICE, "file %lu/%s already exists and matches local checksum, not doing anything", (unsigned long)folderid, name);
@@ -629,11 +632,28 @@ static void add_bytes_uploaded(uint64_t bytes){
 
 static int upload_file(const char *localpath, const unsigned char *hashhex, uint64_t fsize, psync_folderid_t folderid, const char *name,
                        psync_fileid_t localfileid, psync_syncid_t syncid, upload_list_t *upload, psync_stat_t *st, binparam pr){
-  binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("filename", name), P_BOOL("nopartial", 1), P_STR("timeformat", "timestamp"),
+  int rename_if_exists;
+
+
+  debug(D_WARNING, "BOBO: Upload small file. Sync id: [%lu]", syncid);
+
+  if (syncid != 0) {
+    debug(D_WARNING, "BOBO: Upload task. Set renameifexists to: 1");
+    rename_if_exists = 1;
+  }
+  else { //This is an Uploads task.
+    debug(D_WARNING, "BOBO: Upload task. Set renameifexists to: 0");
+    rename_if_exists = 0;
+  }
+
+  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("filename", name), P_BOOL("nopartial", 1), P_STR("timeformat", "timestamp"),
 #if defined(PSYNC_HAS_BIRTHTIME)
                      P_NUM("ctime", psync_stat_birthtime(st)),
 #endif
-                     P_NUM("mtime", psync_stat_mtime(st)), {pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num}} /* specially for Visual Studio compiler */};
+    //P_NUM("mtime", psync_stat_mtime(st)), {pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num}} /* specially for Visual Studio compiler */ };
+  //P_NUM("mtime", psync_stat_mtime(st)), P_BOOL("renameifexists", rename_if_exists), {pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num}} /* specially for Visual Studio compiler */ };
+  P_NUM("mtime", psync_stat_mtime(st)), P_BOOL("renameifexists", 1), {pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num}} /* specially for Visual Studio compiler */ };
+
   psync_socket *api;
   void *buff;
   binresult *res;
@@ -731,7 +751,9 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   hash=psync_find_result(meta, "hash", PARAM_NUM)->num;
   rsize=psync_find_result(meta, "size", PARAM_NUM)->num;
   hashhexsrv=psync_find_result(psync_find_result(res, "checksums", PARAM_ARRAY)->array[0], PSYNC_CHECKSUM, PARAM_STR)->str;
+  
   psync_sql_start_transaction();
+  
   sres=psync_sql_prep_statement("REPLACE INTO hashchecksum (hash, size, checksum) VALUES (?, ?, ?)");
   psync_sql_bind_uint(sres, 1, hash);
   psync_sql_bind_uint(sres, 2, rsize);
@@ -741,7 +763,13 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   if (psync_check_result(meta, "conflicted", PARAM_BOOL)){
     psync_sql_commit_transaction();
 
-    set_local_file_conflicted(localfileid, fileid, hash, localpath, psync_find_result(meta, "name", PARAM_STR)->str, upload->taskid);
+    debug(D_NOTICE, "BOBO: Upload Backend returned - conflicted.");
+    if (syncid != 0) {
+      set_local_file_conflicted(localfileid, fileid, hash, localpath, psync_find_result(meta, "name", PARAM_STR)->str, upload->taskid);
+    }
+    else {
+      debug(D_WARNING, "BOBO: Upload task. Uplaods task detected don't rename the local file.");
+    }
   }
   else{
     set_local_file_remote_id(localfileid, fileid, hash);
@@ -1506,7 +1534,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
         name=nname;
       }
     }
-    
+
     psync_sql_free_result(res);
   }
 
@@ -1548,9 +1576,11 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
   debug(D_NOTICE, "Uploading File Name: [%s] Path: [%s]", name, localpath);
 
   if (fsize<=PSYNC_MIN_SIZE_FOR_CHECKSUMS){
+    debug(D_NOTICE, "BOBO: Upload small File.");
     ret=upload_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, &st, pr);
   }
   else{
+    debug(D_NOTICE, "BOBO: Upload Big File.");
     if (uploadid && !memcmp(phashhex, uhashhex, PSYNC_HASH_DIGEST_HEXLEN)){
       ret=upload_big_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, uploadid, ufsize, &st, pr);
     }

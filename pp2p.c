@@ -387,67 +387,56 @@ static void psync_p2p_thread(){
   psync_socket_t tcpsock, socks[2], *inconn;
   socklen_t sl;
   int sret;
+
   psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
   tcpsock=INVALID_SOCKET;
-/*  udpsock=psync_create_socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-  if (unlikely_log(udpsock==INVALID_SOCKET)){*/
-    udpsock=psync_create_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (unlikely_log(udpsock==INVALID_SOCKET))
+
+  udpsock=psync_create_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+  if (unlikely_log(udpsock==INVALID_SOCKET))
       goto ex;
-    setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on));
-    memset(&addr4, 0, sizeof(addr4));
-    addr4.sin_family=AF_INET;
-    addr4.sin_port  =htons(PSYNC_P2P_PORT);
-    addr4.sin_addr.s_addr=INADDR_ANY;
-    if (unlikely_log(bind(udpsock, (struct sockaddr *)&addr4, sizeof(addr4))==SOCKET_ERROR))
-      goto ex;
-/*  }
-  else{
-    setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on));
-    memset(&addr, 0, sizeof(addr));
-    addr.sin6_family=AF_INET6;
-    addr.sin6_port  =htons(PSYNC_P2P_PORT);
-    addr.sin6_addr  =in6addr_any;
-    if (unlikely_log(bind(udpsock, (struct sockaddr *)&addr, sizeof(addr))==SOCKET_ERROR))
-      goto ex;
-  }
-  tcpsock=psync_create_socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-  if (unlikely_log(tcpsock==INVALID_SOCKET)){*/
-    tcpsock=psync_create_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (unlikely_log(tcpsock==INVALID_SOCKET))
-      goto ex;
-    setsockopt(tcpsock, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on));
-    memset(&addr4, 0, sizeof(addr4));
-    addr4.sin_family=AF_INET;
-    addr4.sin_port  =htons(0);
-    addr4.sin_addr.s_addr=INADDR_ANY;
-    if (unlikely_log(bind(tcpsock, (struct sockaddr *)&addr4, sizeof(addr4))==SOCKET_ERROR))
-      goto ex;
-    sl=sizeof(addr4);
-    if (unlikely_log(getsockname(tcpsock, (struct sockaddr *)&addr4, &sl)==SOCKET_ERROR))
-      goto ex;
-    tcpport=ntohs(addr4.sin_port);
-/*  }
-  else{
-    setsockopt(tcpsock, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on));
-    memset(&addr, 0, sizeof(addr));
-    addr.sin6_family=AF_INET6;
-    addr.sin6_port  =htons(0);
-    addr.sin6_addr  =in6addr_any;
-    if (unlikely_log(bind(tcpsock, (struct sockaddr *)&addr, sizeof(addr))==SOCKET_ERROR))
-      goto ex;
-    sl=sizeof(addr);
-    if (unlikely_log(getsockname(tcpsock, (struct sockaddr *)&addr, &sl)==SOCKET_ERROR))
-      goto ex;
-    tcpport=ntohs(addr.sin6_port);
-  }*/
+
+  setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on));
+  memset(&addr4, 0, sizeof(addr4));
+  addr4.sin_family=AF_INET;
+  addr4.sin_port  =htons(PSYNC_P2P_PORT);
+  addr4.sin_addr.s_addr=INADDR_ANY;
+  
+  if (unlikely_log(bind(udpsock, (struct sockaddr *)&addr4, sizeof(addr4))==SOCKET_ERROR))
+    goto ex;
+
+  tcpsock=psync_create_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+  if (unlikely_log(tcpsock==INVALID_SOCKET))
+    goto ex;
+
+  setsockopt(tcpsock, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on));
+  memset(&addr4, 0, sizeof(addr4));
+
+  addr4.sin_family=AF_INET;
+  addr4.sin_port  =htons(0);
+  addr4.sin_addr.s_addr=INADDR_ANY;
+
+  if (unlikely_log(bind(tcpsock, (struct sockaddr *)&addr4, sizeof(addr4))==SOCKET_ERROR))
+    goto ex;
+
+  sl=sizeof(addr4);
+
+  if (unlikely_log(getsockname(tcpsock, (struct sockaddr *)&addr4, &sl)==SOCKET_ERROR))
+    goto ex;
+
+  tcpport=ntohs(addr4.sin_port);
+
   if (unlikely_log(listen(tcpsock, 2)))
     goto ex;
+
   socks[0]=udpsock;
   socks[1]=tcpsock;
+
   while (psync_do_run){
     if (unlikely(!psync_setting_get_bool(_PS(p2psync)))){
       pthread_mutex_lock(&p2pmutex);
+
       if (!psync_setting_get_bool(_PS(p2psync))){
         running=0;
         psync_close_socket(tcpsock);
@@ -457,15 +446,20 @@ static void psync_p2p_thread(){
       }
       pthread_mutex_unlock(&p2pmutex);
     }
+
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
     sret=psync_select_in(socks, 2, -1);
+
+    //Bobo
     if (unlikely_log(sret==-1)){
       psync_milisleep(1);
       continue;
     }
+
     if (sret==0){
       paddrlen=sizeof(paddr);
       ret=recvfrom(udpsock, buff, sizeof(buff), 0, (struct sockaddr *)&paddr, &paddrlen);
+
       if (likely_log(ret!=SOCKET_ERROR))
         psync_p2p_process_packet(buff, ret);
       else
@@ -474,6 +468,7 @@ static void psync_p2p_thread(){
     else if (sret==1){
       inconn=psync_new(psync_socket_t);
       *inconn=accept(tcpsock, NULL, NULL);
+
       if (unlikely_log(*inconn==INVALID_SOCKET))
         psync_free(inconn);
       else

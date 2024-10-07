@@ -2869,15 +2869,19 @@ static void psync_diff_refresh_thread(void *ptr){
   refresh_folders_ptr_t *fr;
   psync_folderid_t lastfolderid;
   uint32_t i;
+
   psync_milisleep(1000);
+
   fr=(refresh_folders_ptr_t *)ptr;
   qsort(fr->refresh_folders, fr->refresh_last, sizeof(psync_folderid_t), cmp_folderid);
   lastfolderid=(psync_folderid_t)-1;
+
   for (i=0; i<fr->refresh_last; i++)
     if (fr->refresh_folders[i]!=lastfolderid){
       psync_fs_refresh_folder(fr->refresh_folders[i]);
       lastfolderid=fr->refresh_folders[i];
     }
+
   psync_free(fr->refresh_folders);
   psync_free(fr);
 }

@@ -101,7 +101,7 @@ void instance_thread(void* lpvParam)
   
   cl = (int *)lpvParam;
   
-  while ( (rc=read(*cl,curbuf,(POVERLAY_BUFSIZE - bytes_read))) > 0) {
+  while ((rc=read(*cl,curbuf,(POVERLAY_BUFSIZE - bytes_read))) > 0) {
     bytes_read += rc;
     //debug(D_NOTICE, "Read %u bytes: %u %s", bytes_read, rc, curbuf );
     curbuf = curbuf + rc;
