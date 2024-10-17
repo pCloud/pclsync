@@ -293,7 +293,7 @@ int create_backend_event(const char*  binapi,
 
   paramsLocal = (binparam*)malloc((tpCnt) * sizeof(binparam)); //Allocate size for all parameters.
 
-  //Set the mandatory pramaters.
+  //Set the mandatory parameters.
   paramsLocal[0] = (binparam)P_STR(EPARAM_CATEG, category);
   paramsLocal[1] = (binparam)P_STR(EPARAM_ACTION, action);
   paramsLocal[2] = (binparam)P_STR(EPARAM_LABEL, label);

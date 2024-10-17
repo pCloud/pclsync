@@ -632,28 +632,6 @@ static void add_bytes_uploaded(uint64_t bytes){
 
 static int upload_file(const char *localpath, const unsigned char *hashhex, uint64_t fsize, psync_folderid_t folderid, const char *name,
                        psync_fileid_t localfileid, psync_syncid_t syncid, upload_list_t *upload, psync_stat_t *st, binparam pr){
-  int rename_if_exists;
-
-
-  debug(D_WARNING, "BOBO: Upload small file. Sync id: [%lu]", syncid);
-
-  if (syncid != 0) {
-    debug(D_WARNING, "BOBO: Upload task. Set renameifexists to: 1");
-    rename_if_exists = 1;
-  }
-  else { //This is an Uploads task.
-    debug(D_WARNING, "BOBO: Upload task. Set renameifexists to: 0");
-    rename_if_exists = 0;
-  }
-
-  binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("filename", name), P_BOOL("nopartial", 1), P_STR("timeformat", "timestamp"),
-#if defined(PSYNC_HAS_BIRTHTIME)
-                     P_NUM("ctime", psync_stat_birthtime(st)),
-#endif
-    //P_NUM("mtime", psync_stat_mtime(st)), {pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num}} /* specially for Visual Studio compiler */ };
-  //P_NUM("mtime", psync_stat_mtime(st)), P_BOOL("renameifexists", rename_if_exists), {pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num}} /* specially for Visual Studio compiler */ };
-  P_NUM("mtime", psync_stat_mtime(st)), P_BOOL("renameifexists", 1), {pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num}} /* specially for Visual Studio compiler */ };
-
   psync_socket *api;
   void *buff;
   binresult *res;
@@ -664,6 +642,49 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   size_t rd;
   ssize_t rrd;
   psync_file_t fd;
+  binparam* params;
+//Bobo
+  int prmCnt = 0;
+
+  debug(D_WARNING, "BOBO: Upload Small File Id: [%llu]", folderid);
+
+#if defined(PSYNC_HAS_BIRTHTIME)
+  prmCnt = 1;
+#endif
+  
+  if (syncid != 0) {
+    prmCnt = prmCnt + 7;
+    params = (binparam*)malloc((prmCnt) * sizeof(binparam)); //Allocate size for all parameters.
+
+    params[0] = (binparam)P_STR("auth", psync_my_auth);
+    params[1] = (binparam)P_NUM("folderid", folderid);
+    params[2] = (binparam)P_STR("filename", name);
+    params[3] = (binparam)P_BOOL("nopartial", 1);
+    params[4] = (binparam)P_STR("timeformat", "timestamp");
+
+    params[5] = (binparam)P_NUM("mtime", psync_stat_mtime(st));
+    params[6] = (binparam){ pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num} };
+
+#if defined(PSYNC_HAS_BIRTHTIME)
+    params[7] = (binparam)P_NUM("ctime", psync_stat_birthtime(st));
+#endif
+  }
+  else {
+    prmCnt = prmCnt + 6;
+    params = (binparam*)malloc((prmCnt) * sizeof(binparam)); //Allocate size for all parameters.
+
+    params[0] = (binparam)P_STR("auth", psync_my_auth);
+    params[1] = (binparam)P_NUM("folderid", folderid);
+    params[2] = (binparam)P_STR("filename", name);
+    params[3] = (binparam)P_BOOL("nopartial", 1);
+    params[4] = (binparam)P_STR("timeformat", "timestamp");
+    params[5] = (binparam)P_NUM("mtime", psync_stat_mtime(st));
+
+#if defined(PSYNC_HAS_BIRTHTIME)
+    params[6] = (binparam)P_NUM("ctime", psync_stat_birthtime(st));
+#endif
+  }
+//Bobo
 
   fd=psync_file_open(localpath, P_O_RDONLY, 0);
 
@@ -677,8 +698,13 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   if (unlikely(!api))
     goto err0;
 
-  if (unlikely_log(!do_send_command(api, "uploadfile", strlen("uploadfile"), params, ARRAY_SIZE(params), fsize, 0)))
+  //if (unlikely_log(!do_send_command(api, "uploadfile", strlen("uploadfile"), params, ARRAY_SIZE(params), fsize, 0)))
+  if (unlikely_log(!do_send_command(api, "uploadfile", strlen("uploadfile"), params, prmCnt, fsize, 0))) {
+    psync_free(params);
     goto err1;
+  }
+
+  psync_free(params);
 
   bw=0;
   buff=psync_malloc(PSYNC_COPY_BUFFER_SIZE);
@@ -763,12 +789,12 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   if (psync_check_result(meta, "conflicted", PARAM_BOOL)){
     psync_sql_commit_transaction();
 
-    debug(D_NOTICE, "BOBO: Upload Backend returned - conflicted.");
+    debug(D_NOTICE, "Upload Backend returned - conflicted.");
     if (syncid != 0) {
       set_local_file_conflicted(localfileid, fileid, hash, localpath, psync_find_result(meta, "name", PARAM_STR)->str, upload->taskid);
     }
     else {
-      debug(D_WARNING, "BOBO: Upload task. Uplaods task detected don't rename the local file.");
+      debug(D_WARNING, "Upload task. Don't rename the local file.");
     }
   }
   else{
@@ -873,22 +899,63 @@ static int upload_get_checksum(psync_socket *api, psync_uploadid_t uploadid, uin
 }
 
 static int upload_save(psync_socket *api, psync_fileid_t localfileid, const char *localpath, const unsigned char *hashhex, uint64_t size,
-                       psync_uploadid_t uploadid, psync_folderid_t folderid, const char *name, uint64_t taskid, psync_stat_t *st, binparam pr){
-  binparam params[]={P_STR("auth", psync_my_auth), P_NUM("folderid", folderid), P_STR("name", name), P_NUM("uploadid", uploadid), P_STR("timeformat", "timestamp"),
-#if defined(PSYNC_HAS_BIRTHTIME)
-                     P_NUM("ctime", psync_stat_birthtime(st)),
-#endif
-                     P_NUM("mtime", psync_stat_mtime(st)), {pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num}} /* specially for Visual Studio compiler */};
+                       psync_uploadid_t uploadid, psync_folderid_t folderid, const char *name, uint64_t taskid, psync_stat_t *st, binparam pr, psync_syncid_t syncid){
   psync_sql_res *sres;
   binresult *res;
   const binresult *meta;
   psync_fileid_t fileid;
   uint64_t result, hash;
   int ret;
+
+//Bobo
+  binparam* params;
+  int prmCnt = 0;
+
+  debug(D_WARNING, "BOBO: Folder Id: [%llu] Name: [%s]", folderid, name);
+
+#if defined(PSYNC_HAS_BIRTHTIME)
+  prmCnt = 1;
+#endif
+  if (syncid != 0) {
+    prmCnt = prmCnt + 7;
+    params = (binparam*)malloc((prmCnt) * sizeof(binparam)); //Allocate size for all parameters.
+
+    params[0] = (binparam)P_STR("auth", psync_my_auth);
+    params[1] = (binparam)P_NUM("folderid", folderid);
+    params[2] = (binparam)P_STR("name", name);
+    params[3] = (binparam)P_NUM("uploadid", uploadid);
+    params[4] = (binparam)P_STR("timeformat", "timestamp");
+    params[5] = (binparam)P_NUM("mtime", psync_stat_mtime(st));
+    params[6] = (binparam){ pr.paramtype, pr.paramnamelen, pr.opts, pr.paramname, {pr.num} };
+
+#if defined(PSYNC_HAS_BIRTHTIME)
+    params[7] = (binparam)P_NUM("ctime", psync_stat_birthtime(st));
+#endif
+  }
+  else {
+    prmCnt = prmCnt + 6;
+    params = (binparam*)malloc((prmCnt) * sizeof(binparam)); //Allocate size for all parameters.
+
+    params[0] = (binparam)P_STR("auth", psync_my_auth);
+    params[1] = (binparam)P_NUM("folderid", folderid);
+    params[2] = (binparam)P_STR("name", name);
+    params[3] = (binparam)P_NUM("uploadid", uploadid);
+    params[4] = (binparam)P_STR("timeformat", "timestamp");
+    params[5] = (binparam)P_NUM("mtime", psync_stat_mtime(st));
+#if defined(PSYNC_HAS_BIRTHTIME)
+    params[6] = (binparam)P_NUM("ctime", psync_stat_birthtime(st));
+#endif
+  }
+
   psync_diff_lock();
-  res=send_command(api, "upload_save", params);
+  //res = send_command(api, "upload_save", params);
+  res = do_send_command(api, "upload_save", strlen("upload_save"), params, prmCnt, -1, 1);
+
+  psync_free(params);
+//Bobo
   if (res){
     result=psync_find_result(res, "result", PARAM_NUM)->num;
+
     if (unlikely(result)){
       debug(D_WARNING, "command upload_save returned code %u", (unsigned)result);
       psync_process_api_error(result);
@@ -900,10 +967,12 @@ static int upload_save(psync_socket *api, psync_fileid_t localfileid, const char
       hash=psync_find_result(meta, "hash", PARAM_NUM)->num;
       psync_sql_start_transaction();
       sres=psync_sql_prep_statement("REPLACE INTO hashchecksum (hash, size, checksum) VALUES (?, ?, ?)");
+
       psync_sql_bind_uint(sres, 1, hash);
       psync_sql_bind_uint(sres, 2, size);
       psync_sql_bind_lstring(sres, 3, (const char *)hashhex, PSYNC_HASH_DIGEST_HEXLEN);
       psync_sql_run_free(sres);
+
       if (psync_check_result(meta, "conflicted", PARAM_BOOL)){
         psync_sql_commit_transaction();
         set_local_file_conflicted(localfileid, fileid, hash, localpath, psync_find_result(meta, "name", PARAM_STR)->str, taskid);
@@ -912,6 +981,7 @@ static int upload_save(psync_socket *api, psync_fileid_t localfileid, const char
         set_local_file_remote_id(localfileid, fileid, hash);
         psync_sql_commit_transaction();
       }
+
       ret=PSYNC_NET_OK;
       psync_diff_wake();
     }
@@ -939,7 +1009,7 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
   psync_file_t fd;
   int ret;
 
-  debug(D_NOTICE, "Uploading file [%s] with repeating block inspection", localpath);
+  debug(D_NOTICE, "Uploading big file [%s] with repeating block inspection", localpath);
 
   if (uploadoffset){
     debug(D_NOTICE, "Resuming from position [%lu]", (unsigned long)uploadoffset);
@@ -1243,8 +1313,14 @@ restart:
   else
     ret=PSYNC_NET_OK;
   psync_file_close(fd);
-  if (ret==PSYNC_NET_OK)
-    ret=upload_save(api, localfileid, localpath, hashhex, fsize, uploadid, folderid, name, upload->taskid, st, pr);
+
+  //Bobo
+
+  if (ret == PSYNC_NET_OK) {
+    ret = upload_save(api, localfileid, localpath, hashhex, fsize, uploadid, folderid, name, upload->taskid, st, pr, syncid);
+  }
+  //Bobo
+
   if (ret==PSYNC_NET_TEMPFAIL){
     psync_apipool_release_bad(api);
     return -1;
@@ -1253,6 +1329,7 @@ restart:
     psync_apipool_release(api);
     return 0;
   }
+
 err1:
   psync_file_close(fd);
   psync_list_for_each_element_call(&rlist, psync_upload_range_list_t, list, psync_free);
@@ -1558,29 +1635,29 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
   res=psync_sql_query_rdlock("SELECT hash FROM localfile WHERE hash IS NOT NULL AND id=?");
   psync_sql_bind_uint(res, 1, localfileid);
 
-  if ((row=psync_sql_fetch_rowint(res))){
-    pr.paramtype=PARAM_NUM;
-    pr.paramnamelen=6;
-    pr.paramname="ifhash";
-    pr.num=row[0];
+  if ((row = psync_sql_fetch_rowint(res))) {
+    pr.paramtype = PARAM_NUM;
+    pr.paramnamelen = 6;
+    pr.paramname = "ifhash";
+    pr.num = row[0];
   }
-  else{
-    pr.paramtype=PARAM_STR;
-    pr.paramnamelen=6;
-    pr.paramname="ifhash";
-    pr.opts=3;
-    pr.str="new";
+  else {
+    pr.paramtype = PARAM_STR;
+    pr.paramnamelen = 6;
+    pr.paramname = "ifhash";
+    pr.opts = 3;
+    pr.str = "new";
   }
 
   psync_sql_free_result(res);
   debug(D_NOTICE, "Uploading File Name: [%s] Path: [%s]", name, localpath);
 
   if (fsize<=PSYNC_MIN_SIZE_FOR_CHECKSUMS){
-    debug(D_NOTICE, "BOBO: Upload small File.");
+    debug(D_NOTICE, "Upload small File.");
     ret=upload_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, &st, pr);
   }
   else{
-    debug(D_NOTICE, "BOBO: Upload Big File.");
+    debug(D_NOTICE, "Upload Big File.");
     if (uploadid && !memcmp(phashhex, uhashhex, PSYNC_HASH_DIGEST_HEXLEN)){
       ret=upload_big_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, uploadid, ufsize, &st, pr);
     }

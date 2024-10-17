@@ -450,7 +450,6 @@ static void psync_p2p_thread(){
     psync_wait_statuses_array(requiredstatuses, ARRAY_SIZE(requiredstatuses));
     sret=psync_select_in(socks, 2, -1);
 
-    //Bobo
     if (unlikely_log(sret==-1)){
       psync_milisleep(1);
       continue;
