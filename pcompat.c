@@ -972,9 +972,8 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
 #if IS_DEBUG
   psync_nanotime(&start);
 #endif
-  //Bobo
+
   res=select(sock+1, &rfds, NULL, NULL, &tv);
-  //Bobo
 
   if (res==1){
 #if IS_DEBUG

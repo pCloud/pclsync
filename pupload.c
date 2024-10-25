@@ -643,10 +643,7 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   ssize_t rrd;
   psync_file_t fd;
   binparam* params;
-//Bobo
   int prmCnt = 0;
-
-  debug(D_WARNING, "BOBO: Upload Small File Id: [%llu]", folderid);
 
 #if defined(PSYNC_HAS_BIRTHTIME)
   prmCnt = 1;
@@ -684,7 +681,6 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
     params[6] = (binparam)P_NUM("ctime", psync_stat_birthtime(st));
 #endif
   }
-//Bobo
 
   fd=psync_file_open(localpath, P_O_RDONLY, 0);
 
@@ -698,7 +694,6 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
   if (unlikely(!api))
     goto err0;
 
-  //if (unlikely_log(!do_send_command(api, "uploadfile", strlen("uploadfile"), params, ARRAY_SIZE(params), fsize, 0)))
   if (unlikely_log(!do_send_command(api, "uploadfile", strlen("uploadfile"), params, prmCnt, fsize, 0))) {
     psync_free(params);
     goto err1;
@@ -906,12 +901,8 @@ static int upload_save(psync_socket *api, psync_fileid_t localfileid, const char
   psync_fileid_t fileid;
   uint64_t result, hash;
   int ret;
-
-//Bobo
   binparam* params;
   int prmCnt = 0;
-
-  debug(D_WARNING, "BOBO: Folder Id: [%llu] Name: [%s]", folderid, name);
 
 #if defined(PSYNC_HAS_BIRTHTIME)
   prmCnt = 1;
@@ -948,11 +939,11 @@ static int upload_save(psync_socket *api, psync_fileid_t localfileid, const char
   }
 
   psync_diff_lock();
-  //res = send_command(api, "upload_save", params);
+
   res = do_send_command(api, "upload_save", strlen("upload_save"), params, prmCnt, -1, 1);
 
   psync_free(params);
-//Bobo
+
   if (res){
     result=psync_find_result(res, "result", PARAM_NUM)->num;
 
@@ -1314,12 +1305,9 @@ restart:
     ret=PSYNC_NET_OK;
   psync_file_close(fd);
 
-  //Bobo
-
   if (ret == PSYNC_NET_OK) {
     ret = upload_save(api, localfileid, localpath, hashhex, fsize, uploadid, folderid, name, upload->taskid, st, pr, syncid);
   }
-  //Bobo
 
   if (ret==PSYNC_NET_TEMPFAIL){
     psync_apipool_release_bad(api);
