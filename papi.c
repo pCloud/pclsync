@@ -563,10 +563,13 @@ binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdle
       return NULL;
     }
   }
+  
   psync_free(sdata);
+  
   if (readres&1){
     return get_result(sock);
-  } else {
+  } 
+  else {
     return PTR_OK;
   }
 }
