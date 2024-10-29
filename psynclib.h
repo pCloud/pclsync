@@ -144,7 +144,7 @@ typedef struct {
 #define PSTATUS_RELOCATED              20
 
 //Flag used to signal task processing that the lib is offline. Tasks will no be failed while this flag is set in order to be retried after the lib comes online again.
-int psync_flag_online;
+extern int psync_flag_online;
 
 #define PSTATUS_ACCOUT_TFAERR          PSTATUS_TFA_REQUIRED
 #define PSTATUS_ACCOUT_EXPIRED         PSTATUS_ACCOUNT_EXPIRED

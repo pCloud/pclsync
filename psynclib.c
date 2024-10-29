@@ -73,6 +73,9 @@
 time_t lastBupDelEventTime = 0;
 time_t bupNotifDelay = 300;
 
+//Flag used to signal task processing that the lib is offline. Tasks will no be failed while this flag is set in order to be retried after the lib comes online again.
+int psync_flag_online;
+
 typedef struct {
   psync_list list;
   char str[];
