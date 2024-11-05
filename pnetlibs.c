@@ -750,7 +750,9 @@ static psync_uint_t get_download_bytes_this_sec(){
 static int psync_socket_readall_download_th(psync_socket *sock, void *buff, int num, int th){
   psync_int_t dwlspeed, readbytes, pending, lpending, rd, rrd;
   psync_uint_t thissec, ds;
+
   dwlspeed=psync_setting_get_int(_PS(maxdownloadspeed));
+
   if (dwlspeed==0){
     if (th)
       lpending=psync_socket_pendingdata_buf_thread(sock);
@@ -779,16 +781,20 @@ static int psync_socket_readall_download_th(psync_socket *sock, void *buff, int 
     while (num){
       while ((thissec=get_download_bytes_this_sec())>=dwlspeed)
         psync_timer_wait_next_sec();
+
       if (num>dwlspeed-thissec)
         rrd=dwlspeed-thissec;
       else
         rrd=num;
+
       if (th)
         rd=psync_socket_read_thread(sock, buff, rrd);
       else
-        rd=psync_socket_read(sock, buff, rrd);
+        rd= psync_socket_read_v2(sock, buff, rrd, PSYNC_SOCK_READ_TIMEOUT_30);
+
       if (rd<=0)
         return readbytes?readbytes:rd;
+
       num-=rd;
       buff=(char *)buff+rd;
       readbytes+=rd;
@@ -796,12 +802,15 @@ static int psync_socket_readall_download_th(psync_socket *sock, void *buff, int 
     }
     return readbytes;
   }
+
   if (th)
     readbytes=psync_socket_readall_thread(sock, buff, num);
   else
     readbytes=psync_socket_readall(sock, buff, num);
+
   if (readbytes>0)
     psync_account_downloaded_bytes(readbytes);
+
   return readbytes;
 }
 
@@ -970,7 +979,7 @@ psync_http_socket *psync_http_connect(const char *host, const char *path, uint64
   }
   else
     rl=snprintf(readbuff, PSYNC_HTTP_RESP_BUFFER, "GET %s HTTP/1.1\015\012Host: %s\015\012Connection: Keep-Alive\015\012%s\015\012", path, host, addhdr);
-  if (psync_socket_writeall(sock, readbuff, rl)!=rl || (rb=psync_socket_read(sock, readbuff, PSYNC_HTTP_RESP_BUFFER-1))<=0)
+  if (psync_socket_writeall(sock, readbuff, rl)!=rl || (rb= psync_socket_read_v2(sock, readbuff, PSYNC_HTTP_RESP_BUFFER-1, PSYNC_SOCK_READ_TIMEOUT_30))<=0)
     goto err1;
   readbuff[rb]=0;
   ptr=readbuff;
@@ -1026,7 +1035,7 @@ cont:
   }
   if (rb==PSYNC_HTTP_RESP_BUFFER)
     goto err1;
-  rl=psync_socket_read(sock, readbuff+rb, PSYNC_HTTP_RESP_BUFFER-rb);
+  rl= psync_socket_read_v2(sock, readbuff+rb, PSYNC_HTTP_RESP_BUFFER-rb, PSYNC_SOCK_READ_TIMEOUT_30);
   if (rl<=0)
     goto err1;
   rb+=rl;
@@ -1426,7 +1435,8 @@ int psync_http_next_request(psync_http_socket *sock){
   uint32_t keepalive;
   int rl, rb, isval;
   char ch, lch;
-  if (unlikely((rb=psync_socket_read(sock->sock, sock->readbuff, PSYNC_HTTP_RESP_BUFFER-1))<=0)){
+
+  if (unlikely((rb= psync_socket_read_v2(sock->sock, sock->readbuff, PSYNC_HTTP_RESP_BUFFER-1, PSYNC_SOCK_READ_TIMEOUT_30))<=0)){
     debug(D_WARNING, "read from socket for %d bytes returned %d", (int)(PSYNC_HTTP_RESP_BUFFER-1), rb);
     goto err0;
   }
@@ -1493,7 +1503,7 @@ cont:
   }
   if (unlikely_log(rb==PSYNC_HTTP_RESP_BUFFER))
     goto err0;
-  rl=psync_socket_read(sock->sock, sock->readbuff+rb, PSYNC_HTTP_RESP_BUFFER-rb);
+  rl= psync_socket_read_v2(sock->sock, sock->readbuff+rb, PSYNC_HTTP_RESP_BUFFER-rb, PSYNC_SOCK_READ_TIMEOUT_30);
   if (unlikely_log(rl<=0))
     goto err0;
   rb+=rl;

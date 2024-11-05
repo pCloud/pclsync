@@ -1387,6 +1387,38 @@ int call_ebackend(const char* method, binparam* paramas, int param_cnt, binresul
 
   return 0;
 }
+//Bobo
+int call_ebackend_v2(const char* method, binparam* paramas, int param_cnt, binresult** resData, int timeout) {
+  binresult* res;
+  psync_socket* sock;
+  size_t resLen;
+
+  debug(D_NOTICE, "BOBO: call_ebackend_v2. Start.");
+
+  sock = psync_api_connect(PSYNC_API_HOST, psync_setting_get_bool(0));
+
+  if (unlikely_log(!sock)) {
+    debug(D_ERROR, "Could not connect to the server.");
+
+    return -1;
+  }
+
+  debug(D_NOTICE, "call_ebackend. Send command [%s]", method);
+
+  res = do_send_command_v2(sock, method, strlen(method), paramas, param_cnt, -1, 1, timeout);
+
+  psync_socket_close(sock);
+
+  if (!res) {
+    return 6002;//Backend code for timeout
+  }
+
+  *resData = (binresult*)malloc(res->length * sizeof(binresult));
+  memcpy(*resData, res, (res->length * sizeof(binresult)));
+
+  return 0;
+}
+//Bobo
 /***********************************************************************/
 int get_login_req_id(char** reqId) {
   int res = -1;
@@ -1434,7 +1466,9 @@ int wait_auth_token(char* request_id) {
 
   debug(D_NOTICE, "Wait login token.");
 
-  res = call_ebackend(WEB_LOGIN_WAIT_AUTH, params, 3, &resData);
+  //Bobo
+  res = call_ebackend_v2(WEB_LOGIN_WAIT_AUTH, params, 3, &resData, PSYNC_SOCK_READ_TIMEOUT_300);
+  //Bobo
 
   if (res != 0) {
     return res;
