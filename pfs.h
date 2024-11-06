@@ -42,7 +42,7 @@
 #include "plibs.h"
 #include <pthread.h>
 
-#include <fuse.h>
+//#include <fuse.h>
 
 #if defined(P_OS_POSIX)
 #define psync_fs_need_per_folder_refresh() psync_fs_need_per_folder_refresh_f()

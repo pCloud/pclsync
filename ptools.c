@@ -22,6 +22,8 @@
 #include "plocalscan.h"
 #include "psynclib.h"
 
+#include "psyncer.h"
+
 #if defined(P_OS_WINDOWS)
 #define _CRT_SECURE_NO_WARNINGS
 #pragma comment(lib, "iphlpapi.lib")

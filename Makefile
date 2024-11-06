@@ -5,6 +5,9 @@ RANLIB=ranlib
 USESSL=mbed
 
 CFLAGS=-Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg
+
+#CFLAGS=-Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types
+
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -fsanitize=address -mtune=core2 -I../sqlite
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I../sqlite/ -fPIC
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -mtune=core2 -I../sqlite -pg -m32 -D_FILE_OFFSET_BITS=64
@@ -34,6 +37,8 @@ else
     ifeq ($(UNAME_S),Darwin)
         CFLAGS += -DP_OS_MACOSX -I/usr/local/ssl/include/
         CFLAGS += -DP_OS_MACOSX -I/usr/local/include/osxfuse/
+		CFLAGS += -DP_OS_MACOSX -Wno-error=int-conversion
+		CFLAGS += -DP_OS_MACOSX -Wno-error=incompatible-function-pointer-types
 	LDFLAGS += -lssl -lcrypto -losxfuse -lsqlite3 -framework Cocoa -L/usr/local/ssl/lib
         #USESSL=securetransport
     endif
