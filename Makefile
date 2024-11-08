@@ -4,10 +4,8 @@ RANLIB=ranlib
 #USESSL=openssl
 USESSL=mbed
 
-CFLAGS=-Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg
-
+#CFLAGS=-Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg
 #CFLAGS=-Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types
-
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -fsanitize=address -mtune=core2 -I../sqlite
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I../sqlite/ -fPIC
 #CFLAGS=-Wall -Wpointer-arith -O2 -g -mtune=core2 -I../sqlite -pg -m32 -D_FILE_OFFSET_BITS=64
@@ -25,8 +23,10 @@ ifeq ($(OS),Windows_NT)
     RANLIB=strip --strip-unneeded
     LDFLAGS=-s
 else
-    UNAME_S := $(shell uname -s)
-    UNAME_V := $(shell uname -v)
+    UNAME_S	:= $(shell uname -s)
+    UNAME_V	:= $(shell uname -v)
+	UNAME_P	:= $(shell uname -p)
+
     ifeq ($(UNAME_S),Linux)
         CFLAGS += -DP_OS_LINUX -D_FILE_OFFSET_BITS=64
             ifneq (,$(findstring Debian,$(UNAME_V)))
@@ -34,12 +34,19 @@ else
             endif
 	LDFLAGS += -lssl -lcrypto -lfuse -lpthread -lsqlite3 -lzlib
     endif
+
     ifeq ($(UNAME_S),Darwin)
+		ifeq ($(UNAME_P),arm)
+			CFLAGS	= -Wall -Wpointer-arith -Os -g -I../sqlite -pg
+		else
+			CFLAGS	= -Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg
+		endif
+
         CFLAGS += -DP_OS_MACOSX -I/usr/local/ssl/include/
         CFLAGS += -DP_OS_MACOSX -I/usr/local/include/osxfuse/
 		CFLAGS += -DP_OS_MACOSX -Wno-error=int-conversion
 		CFLAGS += -DP_OS_MACOSX -Wno-error=incompatible-function-pointer-types
-	LDFLAGS += -lssl -lcrypto -losxfuse -lsqlite3 -framework Cocoa -L/usr/local/ssl/lib
+		LDFLAGS += -lssl -lcrypto -losxfuse -lsqlite3 -framework Cocoa -L/usr/local/ssl/lib
         #USESSL=securetransport
     endif
 endif
