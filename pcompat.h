@@ -558,11 +558,10 @@ int psync_check_local_dir_empty(char* path);
 
 int is_file_to_ignore(psync_pstat* st);
 
-//Bobo
+
 int psync_socket_readall_v2(psync_socket* sock, void* buff, int num, int timeout);
 
 int psync_wait_socket_read_timeout_v2(psync_socket_t sock, int timeout);
 
 int psync_socket_read_v2(psync_socket* sock, void* buff, int num, int timeout);
-//Bobo
 #endif

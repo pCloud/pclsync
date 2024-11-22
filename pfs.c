@@ -1934,6 +1934,7 @@ static int psync_read_newfile(psync_openfile_t *of, char *buf, uint64_t size, ui
 
 static int psync_read_staticfile(psync_openfile_t *of, char *buf, uint64_t size, uint64_t offset){
   int ret;
+
   if (of->currentsize<offset)
     ret=0;
   else{
@@ -1941,9 +1942,13 @@ static int psync_read_staticfile(psync_openfile_t *of, char *buf, uint64_t size,
       ret=of->currentsize-offset;
     else
       ret=size;
+
+    debug(D_NOTICE, "BOBO: Copy from file to buffer. Static Data: [%llu] Offset: [%llu]", of->staticdata, offset);
     memcpy(buf, of->staticdata+offset, ret);
   }
+  
   pthread_mutex_unlock(&of->mutex);
+  
   return ret;
 }
 
@@ -1971,6 +1976,7 @@ static int psync_fs_read(const char *path, char *buf, size_t size, fuse_off_t of
     of->currentsec=currenttime;
     of->bytesthissec=size;
   }
+
   if (of->encrypted){
     if (of->newfile)
       return psync_fs_crypto_read_newfile_locked(of, buf, size, offset);
@@ -2972,12 +2978,15 @@ static int psync_fs_set_time_locked(psync_fsfolderid_t folderid, const char *nam
   psync_fstask_rmdir_t *rm;
   psync_sql_res *res;
   psync_uint_row row;
+
   folder=psync_fstask_get_folder_tasks_rdlocked(folderid);
+
   if (folder){
     if ((creat=psync_fstask_find_creat(folder, name, 0))){
       if (creat->fileid>0){
         res=psync_sql_query_nolock("SELECT mtime, ctime FROM file WHERE id=?");
         psync_sql_bind_uint(res, 1, creat->fileid);
+
         if ((row=psync_sql_fetch_rowint(res))){
           uint64_t ctm=row[crtime];
           psync_sql_free_result(res);
@@ -2985,16 +2994,18 @@ static int psync_fs_set_time_locked(psync_fsfolderid_t folderid, const char *nam
         }
         else{
           psync_sql_free_result(res);
-          debug(D_WARNING, "found creat in folderid %lu for %s with fileid %lu not present in the database",
-                (unsigned long)folderid, name, (unsigned long)creat->fileid);
+          debug(D_WARNING, "found creat in folderid %lu for %s with fileid %lu not present in the database", (unsigned long)folderid, name, (unsigned long)creat->fileid);
           return -ENOENT;
         }
       }
       else
         return psync_fs_set_filetime_locked(creat->fileid, tv, crtime, 0);
     }
-    if ((mkdir=psync_fstask_find_mkdir(folder, name, 0)))
+
+    if ((mkdir = psync_fstask_find_mkdir(folder, name, 0))) {
       return psync_fs_set_foldertime_locked(mkdir->folderid, tv, crtime, 0);
+    }
+
     un=psync_fstask_find_unlink(folder, name, 0);
     rm=psync_fstask_find_rmdir(folder, name, 0);
   }
@@ -3002,33 +3013,41 @@ static int psync_fs_set_time_locked(psync_fsfolderid_t folderid, const char *nam
     un=NULL;
     rm=NULL;
   }
+
   if (!un && folderid>=0){
     res=psync_sql_query_nolock("SELECT id, mtime, ctime FROM file WHERE parentfolderid=? AND name=?");
     psync_sql_bind_uint(res, 1, folderid);
     psync_sql_bind_string(res, 2, name);
+
     if ((row=psync_sql_fetch_rowint(res))){
       uint64_t fileid=row[0];
       uint64_t ctm=row[1+crtime];
       psync_sql_free_result(res);
       return psync_fs_set_filetime_locked(fileid, tv, crtime, ctm);
     }
+
     psync_sql_free_result(res);
   }
+
   if (!rm && folderid>=0){
     res=psync_sql_query_nolock("SELECT id, permissions, mtime, ctime FROM folder WHERE parentfolderid=? AND name=?");
     psync_sql_bind_uint(res, 1, folderid);
     psync_sql_bind_string(res, 2, name);
+
     if ((row=psync_sql_fetch_rowint(res))){
       uint64_t folderid=row[0];
       uint64_t permissions=row[1];
       uint64_t ctm=row[2+crtime];
       psync_sql_free_result(res);
+
       if (!(permissions&PSYNC_PERM_MODIFY))
         return -EACCES;
+
       return psync_fs_set_foldertime_locked(folderid, tv, crtime, ctm);
     }
     psync_sql_free_result(res);
   }
+
   return -ENOENT;
 }
 
@@ -3037,15 +3056,19 @@ static int psync_fs_set_time(const char *path, const struct timespec *tv, int cr
   int ret;
   psync_sql_lock();
   CHECK_LOGIN_LOCKED();
+
   fpath=psync_fsfolder_resolve_path(path);
+
   if (!fpath)
     ret=-ENOENT;
   else if (!(fpath->permissions&PSYNC_PERM_MODIFY))
     ret=-EACCES;
   else
     ret=psync_fs_set_time_locked(fpath->folderid, fpath->name, tv, crtime);
+
   psync_sql_unlock();
   psync_free(fpath);
+
   return ret;
 }
 

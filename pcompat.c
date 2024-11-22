@@ -973,14 +973,11 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
   psync_nanotime(&start);
 #endif
 
-  debug(D_NOTICE, "BOBO: psync_wait_socket_readable_microsec. Time out: [%d]", tv.tv_sec);
-
-  //Bobo
-  //Bobo
   res=select(sock+1, &rfds, NULL, NULL, &tv);
 
   if (res==1){
 #if IS_DEBUG
+    debug(D_NOTICE, "psync_wait_socket_readable_microsec. Time out: [%d]", tv.tv_sec);
     psync_nanotime(&end);
     msec=(end.tv_sec-start.tv_sec)*1000+end.tv_nsec/1000000-start.tv_nsec/1000000;
     if (msec>=30000)
@@ -1004,14 +1001,13 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
 #define psync_wait_socket_readable(sock, sec) psync_wait_socket_readable_microsec(sock, sec, 0)
 
 int psync_wait_socket_read_timeout(psync_socket_t sock){
-  //Bobo
   return psync_wait_socket_readable(sock, PSYNC_SOCK_READ_TIMEOUT);
 }
-//Bobo
+
 int psync_wait_socket_read_timeout_v2(psync_socket_t sock, int timeout) {
   return psync_wait_socket_readable(sock, timeout);
 }
-//Bobo
+
 static psync_socket_t connect_res(struct addrinfo *res){
   psync_socket_t sock;
 #if defined(SOCK_NONBLOCK)
@@ -1580,7 +1576,6 @@ static int wait_sock_ready_for_ssl(psync_socket_t sock){
 
   tv.tv_usec=0;
 
-  //Bobo
   res=select(sock+1, rfds, wfds, NULL, &tv);
   
   if (res==1)
@@ -1593,15 +1588,12 @@ static int wait_sock_ready_for_ssl(psync_socket_t sock){
   
   return PRINT_RETURN_CONST(SOCKET_ERROR);
 }
-//Bobo
 static int wait_sock_ready_for_ssl_v2(psync_socket_t sock, int timeout) {
   fd_set fds, * rfds, * wfds;
   struct timeval tv;
   int res;
   FD_ZERO(&fds);
   FD_SET(sock, &fds);
-
-  debug(D_NOTICE, "BOBO: Wait Socket ready SSL timeout. Timeout: [%d]", timeout);
 
   if (psync_ssl_errno == PSYNC_SSL_ERR_WANT_READ) {
     rfds = &fds;
@@ -1621,8 +1613,6 @@ static int wait_sock_ready_for_ssl_v2(psync_socket_t sock, int timeout) {
 
   tv.tv_usec = 0;
 
-  debug(D_NOTICE, "BOBO: Wait Socket ready SSL timeout. Timeout: [%d]", timeout);
-  //Bobo
   res = select(sock + 1, rfds, wfds, NULL, &tv);
 
   if (res == 1)
@@ -1635,7 +1625,6 @@ static int wait_sock_ready_for_ssl_v2(psync_socket_t sock, int timeout) {
 
   return PRINT_RETURN_CONST(SOCKET_ERROR);
 }
-//Bobo
 
 psync_socket *psync_socket_connect(const char *host, int unsigned port, int ssl){
   psync_socket *ret;
@@ -1887,11 +1876,9 @@ static int psync_socket_read_ssl(psync_socket *sock, void *buff, int num){
       return r;
   }
 }
-//Bobo
+
 static int psync_socket_read_ssl_v2(psync_socket* sock, void* buff, int num, int timeout) {
   int r;
-
-  debug(D_NOTICE, "BOBO: psync_socket_read_ssl_v2. Start.");
 
   psync_socket_try_write_buffer(sock);
 
@@ -1922,7 +1909,7 @@ static int psync_socket_read_ssl_v2(psync_socket* sock, void* buff, int num, int
       return r;
   }
 }
-//Bobo
+
 static int psync_socket_read_plain(psync_socket *sock, void *buff, int num){
   int r;
   while (1){
@@ -1946,11 +1933,8 @@ static int psync_socket_read_plain(psync_socket *sock, void *buff, int num){
       return r;
   }
 }
-//Bobo
 static int psync_socket_read_plain_v2(psync_socket* sock, void* buff, int num, int timeout) {
   int r;
-
-  debug(D_NOTICE, "BOBO: psync_socket_read_plain_v2. Start.");
 
   while (1) {
     psync_socket_try_write_buffer(sock);
@@ -1975,25 +1959,21 @@ static int psync_socket_read_plain_v2(psync_socket* sock, void* buff, int num, i
       return r;
   }
 }
-//Bobo
+
 int psync_socket_read(psync_socket *sock, void *buff, int num){
-  //Bobo
   if (sock->ssl)
     return psync_socket_read_ssl(sock, buff, num);
   else
     return psync_socket_read_plain(sock, buff, num);
 }
-//Bobo
-int psync_socket_read_v2(psync_socket* sock, void* buff, int num, int timeout) {
-  
-  debug(D_NOTICE, "BOBO: psync_socket_read_v2. Start.");
 
+int psync_socket_read_v2(psync_socket* sock, void* buff, int num, int timeout) {
   if (sock->ssl)
     return psync_socket_read_ssl_v2(sock, buff, num, timeout);
   else
     return psync_socket_read_plain_v2(sock, buff, num, timeout);
 }
-//Bobo
+
 static int psync_socket_read_noblock_ssl(psync_socket *sock, void *buff, int num){
   int r;
   r=psync_ssl_read(sock->ssl, buff, num);
@@ -2061,7 +2041,7 @@ static int psync_socket_read_ssl_thread(psync_socket *sock, void *buff, int num)
       return r;
   }
 }
-//Bobo
+
 static int psync_socket_read_ssl_thread_v2(psync_socket* sock, void* buff, int num, int timeout) {
   int r;
   pthread_mutex_lock(&socket_mutex);
@@ -2091,7 +2071,7 @@ static int psync_socket_read_ssl_thread_v2(psync_socket* sock, void* buff, int n
       return r;
   }
 }
-//Bobo
+
 static int psync_socket_read_plain_thread(psync_socket *sock, void *buff, int num){
   int r;
   pthread_mutex_lock(&socket_mutex);
@@ -2116,14 +2096,11 @@ static int psync_socket_read_plain_thread(psync_socket *sock, void *buff, int nu
       return r;
   }
 }
-//Bobo
 static int psync_socket_read_plain_thread_v2(psync_socket* sock, void* buff, int num, int timeout) {
   int r;
   pthread_mutex_lock(&socket_mutex);
   psync_socket_try_write_buffer(sock);
   pthread_mutex_unlock(&socket_mutex);
-
-  debug(D_NOTICE, "BOBO: Socket read plain timeout.");
 
   while (1) {
     if (sock->pending)
@@ -2146,21 +2123,21 @@ static int psync_socket_read_plain_thread_v2(psync_socket* sock, void* buff, int
       return r;
   }
 }
-//Bobo
+
 int psync_socket_read_thread(psync_socket *sock, void *buff, int num){
   if (sock->ssl)
     return psync_socket_read_ssl_thread(sock, buff, num);
   else
     return psync_socket_read_plain_thread(sock, buff, num);
 }
-//Bobo
+
 int psync_socket_read_thread_v2(psync_socket* sock, void* buff, int num, int timeout) {
   if (sock->ssl)
     return psync_socket_read_ssl_thread_v2(sock, buff, num, timeout);
   else
     return psync_socket_read_plain_thread_v2(sock, buff, num, timeout);
 }
-//Bobo
+
 static int psync_socket_write_to_buf(psync_socket *sock, const void *buff, int num){
   psync_socket_buffer *b;
   assert(sock->buffer);
@@ -2263,12 +2240,10 @@ static int psync_socket_readall_ssl(psync_socket *sock, void *buff, int num){
 
   return br;
 }
-//Bobo
+
 static int psync_socket_readall_ssl_v2(psync_socket* sock, void* buff, int num, int timeout) {
   int br, r;
   br = 0;
-
-  debug(D_NOTICE, "BOBO: psync_socket_readall_ssl_v2. Start.");
 
   psync_socket_try_write_buffer(sock);
 
@@ -2305,7 +2280,7 @@ static int psync_socket_readall_ssl_v2(psync_socket* sock, void* buff, int num, 
 
   return br;
 }
-//Bobo
+
 static int psync_socket_readall_plain(psync_socket *sock, void *buff, int num){
   int br, r;
   br=0;
@@ -2330,7 +2305,7 @@ static int psync_socket_readall_plain(psync_socket *sock, void *buff, int num){
   }
   return br;
 }
-//Bobo
+
 static int psync_socket_readall_plain_v2(psync_socket* sock, void* buff, int num, int timeout) {
   int br, r;
   br = 0;
@@ -2361,7 +2336,7 @@ static int psync_socket_readall_plain_v2(psync_socket* sock, void* buff, int num
 
   return br;
 }
-//Bobo
+
 int psync_socket_readall(psync_socket* sock, void* buff, int num) {
   if (sock->ssl) {
     return psync_socket_readall_ssl(sock, buff, num);
@@ -2370,10 +2345,8 @@ int psync_socket_readall(psync_socket* sock, void* buff, int num) {
     return psync_socket_readall_plain(sock, buff, num);
   }
 }
-//Bobo
-int psync_socket_readall_v2(psync_socket* sock, void* buff, int num, int timeout) {
-  debug(D_NOTICE, "BOBO: psync_socket_readall_v2. Start.");
 
+int psync_socket_readall_v2(psync_socket* sock, void* buff, int num, int timeout) {
   if (sock->ssl) {
     return psync_socket_readall_ssl_v2(sock, buff, num, timeout);
   }
@@ -2381,7 +2354,7 @@ int psync_socket_readall_v2(psync_socket* sock, void* buff, int num, int timeout
     return psync_socket_readall_plain_v2(sock, buff, num, timeout);
   }
 }
-//Bobo
+
 static int psync_socket_writeall_ssl(psync_socket *sock, const void *buff, int num){
   int br, r;
   br=0;

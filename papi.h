@@ -100,9 +100,7 @@ typedef struct {
 #define prepare_command_data_alloc(cmd, params, datalen, alloclen, retlen) \
   do_prepare_command(cmd, strlen(cmd), params, sizeof(params)/sizeof(binparam), datalen, alloclen, retlen)
 
-//Bobo
 binresult* do_send_command_v2(psync_socket* sock, const char* command, size_t cmdlen, const binparam* params, size_t paramcnt, int64_t datalen, int readres, int timeout);
-//Bobo
 
 #define psync_find_result(res, name, type) psync_do_find_result(res, name, type, __FILE__, __FUNCTION__, __LINE__)
 #define psync_check_result(res, name, type) psync_do_check_result(res, name, type, __FILE__, __FUNCTION__, __LINE__)

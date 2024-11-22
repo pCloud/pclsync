@@ -407,13 +407,11 @@ binresult *get_result(psync_socket *sock){
   
   return res;
 }
-//Bobo
+
 binresult* get_result_v2(psync_socket* sock, int timeout) {
   unsigned char* data;
   binresult* res;
   uint32_t ressize;
-
-  debug(D_NOTICE, "BOBO: get_result_v2. Start.");
 
   if (unlikely_log(psync_socket_readall_v2(sock, &ressize, sizeof(uint32_t), timeout) != sizeof(uint32_t))) {
     return NULL;
@@ -431,7 +429,7 @@ binresult* get_result_v2(psync_socket* sock, int timeout) {
 
   return res;
 }
-//Bobo
+
 binresult *get_result_thread(psync_socket *sock){
   unsigned char *data;
   binresult *res;
@@ -605,12 +603,10 @@ binresult *do_send_command(psync_socket *sock, const char *command, size_t cmdle
     return PTR_OK;
   }
 }
-//Bobo
+
 binresult* do_send_command_v2(psync_socket* sock, const char* command, size_t cmdlen, const binparam* params, size_t paramcnt, int64_t datalen, int readres, int timeout) {
   unsigned char* sdata;
   size_t plen;
-
-  debug(D_NOTICE, "BOBO: do_send_command_v2. Start.");
 
   sdata = do_prepare_command(command, cmdlen, params, paramcnt, datalen, 0, &plen);
 
@@ -640,7 +636,7 @@ binresult* do_send_command_v2(psync_socket* sock, const char* command, size_t cm
     return PTR_OK;
   }
 }
-//Bobo
+
 void psync_do_dump_binresult(const binresult *res, const char *file, const char *function, int unsigned line){
   uint32_t i;
   psync_debug(file, function, line, D_NOTICE, "dumping existing fields of the hash");
