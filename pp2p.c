@@ -451,7 +451,7 @@ static void psync_p2p_thread(){
     sret=psync_select_in(socks, 2, -1);
 
     if (unlikely_log(sret==-1)){
-      psync_milisleep(1);
+      psync_milisleep(10000); //Bobo 10 sec delay before retry.
       continue;
     }
 
