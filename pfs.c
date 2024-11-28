@@ -2902,6 +2902,9 @@ static int psync_fs_statfs(const char *path, struct statvfs *stbuf){
   stbuf->f_bavail=stbuf->f_bfree;
   stbuf->f_flag=ST_NOSUID;
   stbuf->f_namemax=1024;
+
+  debug(D_NOTICE, "BOBO: Stat FS returnd: Total blocks: [%llu] Free blocks: [%llu]", stbuf->f_blocks, stbuf->f_bfree);
+
   return 0;
 }
 

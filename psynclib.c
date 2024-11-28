@@ -3162,6 +3162,9 @@ userinfo_t* psync_get_userinfo() {
       return NULL;
     }
 
+    debug(D_NOTICE, "BOBO: Dumping userinfo fields.");
+    psync_dump_result(res);
+
     cres = psync_find_result(res, "email", PARAM_STR);
     email = cres->str;
     lemail = (cres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
@@ -3171,14 +3174,18 @@ userinfo_t* psync_get_userinfo() {
     cres = psync_find_result(res, "language", PARAM_STR);
     language = cres->str;
     llanguage = (cres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
+
     info = (userinfo_t*)psync_malloc(sizeof(userinfo_t) + lemail + lcurrency + llanguage);
     ptr = (char*)(info + 1);
+
     memcpy(ptr, email, lemail);
     info->email = ptr;
     ptr += lemail;
+
     memcpy(ptr, currency, lcurrency);
     info->currency = ptr;
     ptr += lcurrency;
+
     memcpy(ptr, language, llanguage);
     info->language = ptr;
 
