@@ -2782,9 +2782,11 @@ int psync_select_in(psync_socket_t *sockets, int cnt, int64_t timeoutmillisec){
         return i;
   }
   else if (i == 0) {
-    debug(D_NOTICE, "P2P Failed listening with error code: [%d]", psync_sock_err());
+    debug(D_NOTICE, "P2P socket timed out.");
     psync_sock_set_err(P_TIMEDOUT);
   }
+
+  debug(D_NOTICE, "P2P Failed listening with error code: [%d]", psync_sock_err());
 
   return SOCKET_ERROR;
 }
