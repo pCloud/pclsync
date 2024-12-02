@@ -1453,14 +1453,20 @@ uint64_t psync_get_uint_value(const char *valuename){
   psync_sql_res *res;
   psync_uint_row row;
   uint64_t ret;
+
   res=psync_sql_query_rdlock("SELECT value FROM setting WHERE id=?");
   psync_sql_bind_string(res, 1, valuename);
   row=psync_sql_fetch_rowint(res);
+
   if (row)
     ret=row[0];
   else
     ret=0;
+
   psync_sql_free_result(res);
+
+  debug(D_NOTICE, "BOBO: Got Uint Value Form Settings: [%s] = [%llu]", valuename, ret);
+
   return ret;
 }
 

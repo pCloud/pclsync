@@ -589,18 +589,24 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "userid");
       psync_sql_bind_uint(q, 2, userid);
       psync_sql_run(q);
-      psync_sql_bind_string(q, 1, "last_logged_location_id");
-      psync_sql_bind_uint(q, 2, lid);
-      psync_sql_run(q);
+      
       psync_sql_bind_string(q, 1, "quota");
       psync_sql_bind_uint(q, 2, current_quota);
       psync_sql_run(q);
       psync_sql_bind_string(q, 1, "freequota");
       psync_sql_bind_uint(q, 2, free_quota);
       psync_sql_run(q);
-      psync_sql_bind_string(q, 1, "usedquota");
-      psync_sql_bind_uint(q, 2, 0);
-      psync_sql_run(q);
+      
+      if (!luserid) {
+        psync_sql_bind_string(q, 1, "last_logged_location_id");
+        psync_sql_bind_uint(q, 2, lid);
+        psync_sql_run(q);
+
+        psync_sql_bind_string(q, 1, "usedquota");
+        psync_sql_bind_uint(q, 2, 0);
+        psync_sql_run(q);
+      }
+
       result=psync_find_result(res, "premium", PARAM_BOOL)->num;
       psync_sql_bind_string(q, 1, "premium");
       psync_sql_bind_uint(q, 2, result);
@@ -2698,6 +2704,7 @@ static void check_overquota(){
   if (isover!=lisover){
     lisover=isover;
     if (isover) {
+      debug(D_NOTICE, "BOBO: Account full. Set overquota!");
       psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_OVERQUOTA);
     }
     else
@@ -3129,7 +3136,7 @@ restart:
   } while (result);
 
   psync_fs_refresh_folder(0);
-  debug(D_NOTICE, "initial sync finished");
+  debug(D_NOTICE, "Initial diff finished");
 
   if (psync_diff_check_quota(sock)){
     psync_socket_close(sock);

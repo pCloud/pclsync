@@ -66,15 +66,26 @@ static int timer_running=0;
 
 PSYNC_NOINLINE static void timer_sleep_detected(time_t lt){
   struct exception_list *e;
+
   debug(D_NOTICE, "sleep detected, current_time=%lu, last_current_time=%lu", (unsigned long)psync_current_time, (unsigned long)lt);
+
   pthread_mutex_lock(&timer_ex_mutex);
+
   e=sleeplist;
+
   while (e){
     e->func();
     e=e->next;
   }
+
   pthread_mutex_unlock(&timer_ex_mutex);
+
   psync_cache_clean_all();
+  //Bobo
+  debug(D_NOTICE, "BOBO: Try to notify explorer of the Drive.");
+  //psync_refresh_drive();
+  debug(D_NOTICE, "BOBO: Notify Done.");
+  //Bobo
   psync_timer_notify_exception();
 }
 

@@ -29,6 +29,7 @@
 #pragma comment(lib, "iphlpapi.lib")
 
 #include <Iphlpapi.h>
+#include "shlobj_core.h" //Bobo
 #endif
 
 #if defined(P_OS_LINUX)
@@ -46,6 +47,20 @@
 stuck_list_type* stuck_sync_tasks = NULL;
 static pthread_mutex_t stuck_elem_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/*************************************************************/
+void psync_refresh_drive() {
+#if defined(P_OS_WINDOWS)
+  char* fsroot = NULL;
+  fsroot = psync_fs_getmountpoint();
+
+
+  debug(D_NOTICE, "Refresh mount point. Path: [%s]", fsroot);
+
+  SHChangeNotify(SHCNE_DRIVEADD, SHCNF_PATH, fsroot, NULL);
+
+  debug(D_NOTICE, "Refresh mount point. Done.");
+#endif
+}
 /*************************************************************/
 char* get_zipLogsFilePath(char* fName) {
   char* zipFilePath;
