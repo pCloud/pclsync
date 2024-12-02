@@ -83,7 +83,7 @@ PSYNC_NOINLINE static void timer_sleep_detected(time_t lt){
   psync_cache_clean_all();
   //Bobo
   debug(D_NOTICE, "BOBO: Try to notify explorer of the Drive.");
-  //psync_refresh_drive();
+  psync_refresh_drive();
   debug(D_NOTICE, "BOBO: Notify Done.");
   //Bobo
   psync_timer_notify_exception();
