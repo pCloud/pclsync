@@ -2704,7 +2704,7 @@ static void check_overquota(){
   if (isover!=lisover){
     lisover=isover;
     if (isover) {
-      debug(D_NOTICE, "BOBO: Account full. Set overquota!");
+      debug(D_NOTICE, "Account full. Set overquota!");
       psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_OVERQUOTA);
     }
     else

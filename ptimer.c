@@ -81,11 +81,10 @@ PSYNC_NOINLINE static void timer_sleep_detected(time_t lt){
   pthread_mutex_unlock(&timer_ex_mutex);
 
   psync_cache_clean_all();
-  //Bobo
-  debug(D_NOTICE, "BOBO: Try to notify explorer of the Drive.");
+
+  debug(D_NOTICE, "Try to notify explorer of the Drive.");
   psync_refresh_drive();
-  debug(D_NOTICE, "BOBO: Notify Done.");
-  //Bobo
+
   psync_timer_notify_exception();
 }
 

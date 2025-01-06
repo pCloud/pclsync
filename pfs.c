@@ -1943,7 +1943,6 @@ static int psync_read_staticfile(psync_openfile_t *of, char *buf, uint64_t size,
     else
       ret=size;
 
-    debug(D_NOTICE, "BOBO: Copy from file to buffer. Static Data: [%llu] Offset: [%llu]", of->staticdata, offset);
     memcpy(buf, of->staticdata+offset, ret);
   }
   
@@ -2902,8 +2901,6 @@ static int psync_fs_statfs(const char *path, struct statvfs *stbuf){
   stbuf->f_bavail=stbuf->f_bfree;
   stbuf->f_flag=ST_NOSUID;
   stbuf->f_namemax=1024;
-
-  debug(D_NOTICE, "BOBO: Stat FS returnd: Total blocks: [%llu] Free blocks: [%llu]", stbuf->f_blocks, stbuf->f_bfree);
 
   return 0;
 }

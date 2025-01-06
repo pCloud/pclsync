@@ -1465,8 +1465,6 @@ uint64_t psync_get_uint_value(const char *valuename){
 
   psync_sql_free_result(res);
 
-  debug(D_NOTICE, "BOBO: Got Uint Value Form Settings: [%s] = [%llu]", valuename, ret);
-
   return ret;
 }
 
@@ -3168,7 +3166,7 @@ userinfo_t* psync_get_userinfo() {
       return NULL;
     }
 
-    debug(D_NOTICE, "BOBO: Dumping userinfo fields.");
+    debug(D_NOTICE, "Get userinfo. Dumping userinfo fields.");
     psync_dump_result(res);
 
     cres = psync_find_result(res, "email", PARAM_STR);
