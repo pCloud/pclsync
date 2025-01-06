@@ -29,7 +29,8 @@
 #pragma comment(lib, "iphlpapi.lib")
 
 #include <Iphlpapi.h>
-#include "shlobj_core.h" //Bobo
+//#include "shlobj_core.h" //Bobo
+#include "ShlObj.h"
 #endif
 
 #if defined(P_OS_LINUX)
