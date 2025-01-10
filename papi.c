@@ -639,29 +639,31 @@ binresult* do_send_command_v2(psync_socket* sock, const char* command, size_t cm
 
 void psync_do_dump_binresult(const binresult *res, const char *file, const char *function, int unsigned line){
   uint32_t i;
-  psync_debug(file, function, line, D_NOTICE, "dumping existing fields of the hash");
+  
+  debug(file, function, line, D_NOTICE, "dumping existing fields of the hash");
+  
   for (i=0; i<res->length; i++)
     switch (res->hash[i].value->type){
       case PARAM_HASH:
-        psync_debug(file, function, line, D_NOTICE, "  %s=[hash]", res->hash[i].key);
+        debug(D_NOTICE, "  %s=[hash]", res->hash[i].key);
         break;
       case PARAM_ARRAY:
-        psync_debug(file, function, line, D_NOTICE, "  %s=[array]", res->hash[i].key);
+        debug(D_NOTICE, "  %s=[array]", res->hash[i].key);
         break;
       case PARAM_DATA:
-        psync_debug(file, function, line, D_NOTICE, "  %s=[data]", res->hash[i].key);
+        debug(D_NOTICE, "  %s=[data]", res->hash[i].key);
         break;
       case PARAM_NUM:
-        psync_debug(file, function, line, D_NOTICE, "  %s=%llu", res->hash[i].key, (long long unsigned)res->hash[i].value->num);
+        debug(D_NOTICE, "  %s=%llu", res->hash[i].key, (long long unsigned)res->hash[i].value->num);
         break;
       case PARAM_STR:
-        psync_debug(file, function, line, D_NOTICE, "  %s=\"%s\"", res->hash[i].key, res->hash[i].value->str);
+        debug(D_NOTICE, "  %s=\"%s\"", res->hash[i].key, res->hash[i].value->str);
         break;
       case PARAM_BOOL:
-        psync_debug(file, function, line, D_NOTICE, "  %s=%s", res->hash[i].key, res->hash[i].value->num?"true":"false");
+        debug(D_NOTICE, "  %s=%s", res->hash[i].key, res->hash[i].value->num?"true":"false");
         break;
       default:
-        psync_debug(file, function, line, D_NOTICE, "  %s=!unknown type %u", res->hash[i].key, (unsigned)res->hash[i].value->type);
+        debug(D_NOTICE, "  %s=!unknown type %u", res->hash[i].key, (unsigned)res->hash[i].value->type);
         break;
     }
 }
