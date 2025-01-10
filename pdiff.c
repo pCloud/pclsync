@@ -536,6 +536,8 @@ static psync_socket *get_connected_socket(){
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
 	  cres = psync_check_result(res, "freequota", PARAM_NUM);
 
+    debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
+
     debug(D_NOTICE, "Got Current Quota: [%llu]", current_quota);
 
     if (cres){
@@ -1825,10 +1827,16 @@ static void process_modifyuserinfo(const binresult *entry){
 
   if (!entry)
     return;
+
+  debug(D_NOTICE, "BOBO: Dump modifyuserinfo. Diff Id: [%llu]---------------------------", psync_find_result(entry, "diffid", PARAM_NUM)->num);
+  psync_dump_result(entry);
+  debug(D_NOTICE, "BOBO: Dump modifyuserinfo Done.---------------------------");
+
   res=psync_find_result(entry, "userinfo", PARAM_HASH);
   q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
 
   cres=psync_check_result(res, "userid", PARAM_NUM);
+
   if (cres){
     psync_sql_bind_string(q, 1, "userid");
     psync_sql_bind_uint(q, 2, cres->num);
@@ -2674,6 +2682,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 
   psync_set_uint_value("diffid", newdiffid);
   psync_set_uint_value("usedquota", used_quota);
+  debug(D_NOTICE, "BOBO: Set used_quota to: [%llu]", used_quota);
   //update_ba_emails();
   //update_ba_teams();
   psync_path_status_clear_path_cache();
@@ -2689,6 +2698,8 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 
   used_quota=psync_sql_cellint("SELECT value FROM setting WHERE id='usedquota'", 0);
 
+  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
+
   if (oused_quota!=used_quota)
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
 
@@ -2700,6 +2711,8 @@ static void check_overquota(){
   int isover=(used_quota>=current_quota);
 
   debug(D_NOTICE, "Check Account Full: Used Quota: [%llu], Current Quota: [%llu]", used_quota, current_quota);
+
+  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
 
   if (isover!=lisover){
     lisover=isover;
@@ -2996,11 +3009,17 @@ static int psync_diff_check_quota(psync_socket *sock){
       used_quota=uq->num;
   }
 
+  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
+
   if (used_quota!=oused_quota){
     debug(D_WARNING, "corrected locally calculated quota from %lu to %lu", (unsigned long)oused_quota, (unsigned long)used_quota);
     psync_set_uint_value("usedquota", used_quota);
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
+
+    debug(D_NOTICE, "BOBO: Set used_quota to: [%llu]", used_quota);
   }
+
+  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
 
   uq=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
 
@@ -3093,6 +3112,8 @@ restart:
   }
 
   used_quota=psync_sql_cellint("SELECT value FROM setting WHERE id='usedquota'", 0);
+
+  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
 
   do{
     binparam diffparams[]={P_STR("timeformat", "timestamp"), P_NUM("limit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids.diffid)};
