@@ -140,6 +140,7 @@ static uint32_t psync_calc_status(){
       return -1;
     }
   }
+
   if (statuses[PSTATUS_TYPE_ACCFULL]!=PSTATUS_ACCFULL_QUOTAOK){
     if (statuses[PSTATUS_TYPE_ACCFULL] == PSTATUS_ACCFULL_OVERQUOTA) {
       debug(D_NOTICE, "Calc status to: PSTATUS_ACCOUNT_FULL");
@@ -328,11 +329,17 @@ void psync_set_status(uint32_t statusid, uint32_t status){
   if (status_waiters)
     pthread_cond_broadcast(&statuscond);
 
+
   psync_status.remoteisfull=(statuses[PSTATUS_TYPE_ACCFULL]==PSTATUS_ACCFULL_OVERQUOTA);
   psync_status.localisfull=(statuses[PSTATUS_TYPE_DISKFULL]==PSTATUS_DISKFULL_FULL);
+
+  debug(D_NOTICE, "BOBO: Calculated statuses. Remoteisfull: [%u]  Localisfull: [%u]", psync_status.remoteisfull, psync_status.localisfull);
+  
   pthread_mutex_unlock(&statusmutex);
+  
   status=psync_calc_status();
 
+  debug(D_NOTICE, "BOBO: Compare calculated statuses: [%lu] ?= [%lu]", psync_status.status, status);
   if (psync_status.status!=status){
     psync_status.status=status;
     psync_send_status_update();

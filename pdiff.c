@@ -538,8 +538,6 @@ static psync_socket *get_connected_socket(){
 
     debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
 
-    debug(D_NOTICE, "Got Current Quota: [%llu]", current_quota);
-
     if (cres){
 	    free_quota=cres->num;
       debug(D_NOTICE, "Got Free Quota: [%llu]", free_quota);
@@ -1820,7 +1818,7 @@ static void stop_crypto_thread(){
 }
 
 static void process_modifyuserinfo(const binresult *entry){
-  const binresult *res, *cres;
+  const binresult *res, *diffId, *cres;
   psync_sql_res *q;
   uint64_t u, crexp, crsub = 0;
   int crst = 0,crstat;
@@ -1828,11 +1826,10 @@ static void process_modifyuserinfo(const binresult *entry){
   if (!entry)
     return;
 
-  debug(D_NOTICE, "BOBO: Dump modifyuserinfo. Diff Id: [%llu]---------------------------", psync_find_result(entry, "diffid", PARAM_NUM)->num);
-  psync_dump_result(entry);
-  debug(D_NOTICE, "BOBO: Dump modifyuserinfo Done.---------------------------");
+  diffId = psync_find_result(entry, "diffid", PARAM_NUM);
 
   res=psync_find_result(entry, "userinfo", PARAM_HASH);
+
   q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
 
   cres=psync_check_result(res, "userid", PARAM_NUM);
@@ -1854,6 +1851,8 @@ static void process_modifyuserinfo(const binresult *entry){
   current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
   psync_sql_bind_uint(q, 2, current_quota);
   psync_sql_run(q);
+
+  debug(D_NOTICE, "BOBO: Quota from modifyuserinfo: [%llu]", current_quota);
 
   cres = psync_check_result(res, "freequota", PARAM_NUM);
 
@@ -2662,7 +2661,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
     entry=entries->array[i];
     etype=psync_find_result(entry, "event", PARAM_STR);
 
-    for (j=0; j<event_list_size; j++)
+    for (j=0; j<event_list_size; j++) /*Process createfile, modifyfile*/
       if (etype->length==event_list[j].len && !memcmp(etype->str, event_list[j].name, etype->length)){
         const binresult* meta, * name;
 
@@ -2682,6 +2681,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 
   psync_set_uint_value("diffid", newdiffid);
   psync_set_uint_value("usedquota", used_quota);
+
   debug(D_NOTICE, "BOBO: Set used_quota to: [%llu]", used_quota);
   //update_ba_emails();
   //update_ba_teams();
@@ -2710,14 +2710,12 @@ static void check_overquota(){
   static int lisover=0;
   int isover=(used_quota>=current_quota);
 
-  debug(D_NOTICE, "Check Account Full: Used Quota: [%llu], Current Quota: [%llu]", used_quota, current_quota);
-
-  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
+  debug(D_NOTICE, "BOBO: Check Account Full: Used Quota: [%llu] ?>= Current Quota: [%llu] = [%d]", used_quota, current_quota, isover);
 
   if (isover!=lisover){
     lisover=isover;
     if (isover) {
-      debug(D_NOTICE, "Account full. Set overquota!");
+      debug(D_NOTICE, "BOBO: Account full. Set overquota!");
       psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_OVERQUOTA);
     }
     else
@@ -2743,6 +2741,7 @@ static psync_socket_t setup_exeptions(){
 static int send_diff_command(psync_socket *sock, subscribed_ids ids){
   if (psync_notifications_running()){
     const char *ts=psync_notifications_get_thumb_size();
+
     if (ts){
       if (psync_is_business) {
         binparam diffparams[]={P_STR("subscribefor", "diff,notifications,publinks,uploadlinks,teams,users,contacts"), P_STR("timeformat", "timestamp"),
@@ -2773,6 +2772,7 @@ static int send_diff_command(psync_socket *sock, subscribed_ids ids){
     }
   }
   else{
+    debug(D_NOTICE, "BOBO: Notifications are not running. Is Business: [%lu]", psync_is_business);
     if (psync_is_business) {
       binparam diffparams[]={P_STR("subscribefor", "diff,publinks,uploadlinks,teams,users,contacts"), P_STR("timeformat", "timestamp"), P_NUM("difflimit", PSYNC_DIFF_LIMIT),
                             P_NUM("diffid", ids.diffid), P_NUM("publinkid", ids.publinkid), P_NUM("uploadlinkid", ids.uploadlinkid)};
@@ -2786,42 +2786,55 @@ static int send_diff_command(psync_socket *sock, subscribed_ids ids){
 }
 
 static void handle_exception(psync_socket **sock, subscribed_ids *ids, char ex){
+  debug(D_NOTICE, "BOBO: exception handler [%c]", ex);
+
   if (ex=='c'){
     if (last_event>=psync_timer_time()-1)
       return;
+
     if (psync_select_in(&(*sock)->sock, 1, 1000)!=0){
       debug(D_NOTICE, "got a psync_diff_wake() but no diff events in one second, closing socket");
       psync_socket_close(*sock);
+
       if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED)
         ids->notificationid=0;
+
       debug(D_NOTICE, "waiting for new socket");
       *sock=get_connected_socket();
       debug(D_NOTICE, "got new socket");
+
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
       psync_syncer_check_delayed_syncs();
+
       ids->diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
       send_diff_command(*sock, *ids);
     }
     return;
   }
-  debug(D_NOTICE, "exception handler %c", ex);
+
   if (ex=='r' ||
       psync_status_get(PSTATUS_TYPE_RUN)==PSTATUS_RUN_STOP ||
       psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED ||
       psync_setting_get_bool(_PS(usessl))!=psync_socket_isssl(*sock)){
+    
     psync_socket_close(*sock);
+    
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED)
       ids->notificationid=0;
+    
     debug(D_NOTICE, "waiting for new socket");
     *sock=get_connected_socket();
     debug(D_NOTICE, "got new socket");
+    
     psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
     psync_syncer_check_delayed_syncs();
+    
     ids->diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
     send_diff_command(*sock, *ids);
   }
   else if (ex=='e'){
     binparam diffparams[]={P_STR("id", "ignore")};
+
     if (!send_command_no_res(*sock, "nop", diffparams) || psync_select_in(&(*sock)->sock, 1, PSYNC_SOCK_TIMEOUT_ON_EXCEPTION*1000)!=0){
       const char *prefixes[]={"API:", "HTTP"};
       debug(D_NOTICE, "reconnecting diff");
@@ -3009,17 +3022,13 @@ static int psync_diff_check_quota(psync_socket *sock){
       used_quota=uq->num;
   }
 
-  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
-
   if (used_quota!=oused_quota){
     debug(D_WARNING, "corrected locally calculated quota from %lu to %lu", (unsigned long)oused_quota, (unsigned long)used_quota);
     psync_set_uint_value("usedquota", used_quota);
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
-
-    debug(D_NOTICE, "BOBO: Set used_quota to: [%llu]", used_quota);
   }
 
-  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
+  debug(D_NOTICE, "BOBO:psync_diff_check_quota. used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
 
   uq=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
 
@@ -3084,7 +3093,83 @@ void psync_diff_wake(){
     return;
   psync_pipe_write(exceptionsockwrite, "c", 1);
 }
+/************************************************************************************************************/
+//Bobo
+int initial_diff(psync_socket* sock, subscribed_ids *ids) {
+  uint64_t newdiffid, result;
+  const binresult* entries;
+  
+  binresult* res;
 
+  debug(D_NOTICE, "Start initial diff.");
+
+  psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
+  ids->diffid = psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
+
+  if (ids->diffid == 0) {
+    initialdownload = 1;
+  }
+
+  used_quota = psync_sql_cellint("SELECT value FROM setting WHERE id='usedquota'", 0);
+
+  debug(D_NOTICE, "BOBO: Got used quota from DB: [%llu]  current_quota:[%llu]", used_quota, current_quota);
+
+  do {
+    binparam diffparams[] = { P_STR("timeformat", "timestamp"), P_NUM("limit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids->diffid) };
+
+    if (!psync_do_run)
+      break;
+
+    debug(D_NOTICE, "Send initial diff command. DiffId: [%llu]", ids->diffid);
+    res = send_command(sock, "diff", diffparams);
+
+    if (!res) {
+      debug(D_NOTICE, "Initial Diff error. Restart.");
+      psync_socket_close(sock);
+      return 1;
+    }
+
+    result = psync_find_result(res, "result", PARAM_NUM)->num;
+
+    if (unlikely(result)) {
+      debug(D_ERROR, "diff returned error [%u] : [%s]", (unsigned int)result, psync_find_result(res, "error", PARAM_STR)->str);
+
+      psync_free(res);
+      psync_socket_close(sock);
+      psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
+
+      return 1;
+    }
+
+    entries = psync_find_result(res, "entries", PARAM_ARRAY);
+
+    if (entries->length) {
+      newdiffid = psync_find_result(res, "diffid", PARAM_NUM)->num;
+      debug(D_NOTICE, "processing diff with [%u] entries", (unsigned)entries->length);
+      ids->diffid = process_entries(entries, newdiffid);
+      debug(D_NOTICE, "got diff with [%u] entries, new diffid [%lu] [%llu]", (unsigned)entries->length, (unsigned long)ids->diffid, ids->diffid);
+    }
+
+    result = entries->length;
+    psync_free(res);
+  } while (result);
+
+  psync_fs_refresh_folder(0);
+
+  if (psync_diff_check_quota(sock)) {
+    debug(D_NOTICE, "Diff check quota failed. Reconect.");
+    psync_socket_close(sock);
+    psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
+
+    return 1;
+  }
+
+  debug(D_NOTICE, "Initial diff finished");
+
+  return 0;
+}
+//Bobo
+/************************************************************************************************************/
 static void psync_diff_thread(){
   psync_socket *sock;
   binresult *res;
@@ -3092,81 +3177,27 @@ static void psync_diff_thread(){
   uint64_t newdiffid, result;
   psync_socket_t exceptionsock, socks[2];
   subscribed_ids ids = {0, 0, 0, 0};
-  int sel, ret=0;
+  int sel, ret=0, diff_res = 1;
   char ex;
   char *err=NULL;
 
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_send_status_update();
-restart:
-  psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
-  sock=get_connected_socket();
-  
-  debug(D_NOTICE, "Connected!");
 
-  psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
-  ids.diffid=psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
+//Bobo restart:
+  while(diff_res){
+    psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
+    sock = get_connected_socket();
 
-  if (ids.diffid == 0) {
-	  initialdownload=1;
+    debug(D_NOTICE, "Connected.");
+
+    diff_res = initial_diff(sock, &ids);
   }
-
-  used_quota=psync_sql_cellint("SELECT value FROM setting WHERE id='usedquota'", 0);
-
-  debug(D_NOTICE, "BOBO: used_quota: [%llu]  current_quota:[%llu]", used_quota, current_quota);
-
-  do{
-    binparam diffparams[]={P_STR("timeformat", "timestamp"), P_NUM("limit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids.diffid)};
-
-    if (!psync_do_run)
-      break;
-
-    debug(D_NOTICE, "Send initial diff command.");
-    res=send_command(sock, "diff", diffparams);
-    debug(D_NOTICE, "Got response from command returned.");
-
-    if (!res){
-      debug(D_NOTICE, "Initial Diff error. Restart.");
-      psync_socket_close(sock);
-      goto restart;
-    }
-
-    result=psync_find_result(res, "result", PARAM_NUM)->num;
-
-    if (unlikely(result)){
-      debug(D_ERROR, "diff returned error %u: %s", (unsigned int)result, psync_find_result(res, "error", PARAM_STR)->str);
-
-      psync_free(res);
-      psync_socket_close(sock);
-      psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
-
-      goto restart;
-    }
-
-    entries=psync_find_result(res, "entries", PARAM_ARRAY);
-
-    if (entries->length){
-      newdiffid=psync_find_result(res, "diffid", PARAM_NUM)->num;
-      debug(D_NOTICE, "processing diff with %u entries", (unsigned)entries->length);
-      ids.diffid=process_entries(entries, newdiffid);
-      debug(D_NOTICE, "got diff with %u entries, new diffid %lu", (unsigned)entries->length, (unsigned long)ids.diffid);
-    }
-
-    result=entries->length;
-    psync_free(res);
-  } while (result);
-
-  psync_fs_refresh_folder(0);
-  debug(D_NOTICE, "Initial diff finished");
-
-  if (psync_diff_check_quota(sock)){
-    psync_socket_close(sock);
-    psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
-
-    goto restart;
-  }
+//Bobo
+  debug(D_ERROR, "BOBO: Send diff command. After initial diff. DiffId: [%llu]", ids.diffid);
 
   check_overquota();
+
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
   initialdownload=0;
   psync_run_analyze_if_needed();
@@ -3185,16 +3216,26 @@ restart:
 
   psync_diff_adapter_hash(adapter_hash);
   psync_timer_register(psync_diff_adapter_timer, PSYNC_DIFF_CHECK_ADAPTER_CHANGE_SEC, NULL);
+
+  debug(D_ERROR, "BOBO: Send diff command. 1. Before going into diff loop. DiffId: [%llu]", ids.diffid);
   send_diff_command(sock, ids);
+
   psync_milisleep(50);
 
   last_event=0;
 
+  //Main diff loop start
   while (psync_do_run){
     if (unlinked){
       debug(D_NOTICE, "Diff. Unlinked DB detected.");
       unlinked=0;
       initialdownload=1;
+
+      debug(D_NOTICE, "BOBO: Unlinked DB detected. Run initial Diff.");
+      diff_res = initial_diff(sock, &ids);
+
+      debug(D_NOTICE, "BOBO: Initial diff in main loop finished. Check quota:");
+      check_overquota();
     }
 
     if(psync_recache_contacts){
@@ -3239,15 +3280,21 @@ restart:
 
       if (unlikely(result)){
         if (result==6003 || result==6002){ // timeout or cancel
-          debug(D_NOTICE, "got \"%s\" from the socket", psync_find_result(res, "error", PARAM_STR)->str);
+          debug(D_NOTICE, "Got [%s] from the socket", psync_find_result(res, "error", PARAM_STR)->str);
           psync_free(res);
+
+          debug(D_ERROR, "BOBO: Send diff command. 2. When timeout or cancel received.");
           send_diff_command(sock, ids);
+          
           continue;
         }
-        debug(D_ERROR, "diff returned error %u: %s", (unsigned int)result, psync_find_result(res, "error", PARAM_STR)->str);
+
+        debug(D_ERROR, "diff returned error [%u]:[%s]", (unsigned int)result, psync_find_result(res, "error", PARAM_STR)->str);
+
         psync_free(res);
         handle_exception(&sock, &ids, 'r');
         socks[1]=sock->sock;
+
         continue;
       }
 
@@ -3259,10 +3306,13 @@ restart:
 
           if (entries->length){
             newdiffid=psync_find_result(res, "diffid", PARAM_NUM)->num;
+
             ids.diffid=process_entries(entries, newdiffid);
 
             psync_diff_refresh_fs(entries);
             psync_diff_check_quota(sock);
+
+            debug(D_NOTICE, "BOBO: Check overquota ongoing diff.");
             check_overquota();
 
             if (initialdownload)
@@ -3318,6 +3368,8 @@ restart:
           debug(D_NOTICE, "got no from, did we send a nop recently?");
           psync_free(res);
         }
+
+        debug(D_ERROR, "BOBO: Send diff command. 3. End of ongoing diff.");
         send_diff_command(sock, ids);
       }
       else{

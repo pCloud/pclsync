@@ -1470,7 +1470,9 @@ uint64_t psync_get_uint_value(const char *valuename){
 
 void psync_set_uint_value(const char *valuename, uint64_t value){
   psync_sql_res *res;
+
   res=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
+
   psync_sql_bind_string(res, 1, valuename);
   psync_sql_bind_uint(res, 2, value);
   psync_sql_run_free(res);

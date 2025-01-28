@@ -292,7 +292,8 @@ static void status_change_thread(void *ptr){
       break;
 
     status_fill_formatted_str(&psync_status, downloadstr, uploadstr);
-    debug(D_NOTICE, "sending status update, dwlstr: %s, uplstr: %s", psync_status.downloadstr, psync_status.uploadstr);
+    debug(D_NOTICE, "sending status update, dwlstr: [%s], uplstr: [%s]", psync_status.downloadstr, psync_status.uploadstr);
+    debug(D_NOTICE, "BOBO: Remote is full: [%u]", psync_status.remoteisfull);
 
     callback(&psync_status);
   }
@@ -308,6 +309,7 @@ void psync_set_status_callback(pstatus_change_callback_t callback){
 void psync_send_status_update(){
   if (statusthreadrunning){
     pthread_mutex_lock(&statusmutex);
+
     if (++statuschanges==0){
       statuschanges++;
 
