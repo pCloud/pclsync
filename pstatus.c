@@ -332,14 +332,11 @@ void psync_set_status(uint32_t statusid, uint32_t status){
 
   psync_status.remoteisfull=(statuses[PSTATUS_TYPE_ACCFULL]==PSTATUS_ACCFULL_OVERQUOTA);
   psync_status.localisfull=(statuses[PSTATUS_TYPE_DISKFULL]==PSTATUS_DISKFULL_FULL);
-
-  debug(D_NOTICE, "BOBO: Calculated statuses. Remoteisfull: [%u]  Localisfull: [%u]", psync_status.remoteisfull, psync_status.localisfull);
   
   pthread_mutex_unlock(&statusmutex);
   
   status=psync_calc_status();
 
-  debug(D_NOTICE, "BOBO: Compare calculated statuses: [%lu] ?= [%lu]", psync_status.status, status);
   if (psync_status.status!=status){
     psync_status.status=status;
     psync_send_status_update();

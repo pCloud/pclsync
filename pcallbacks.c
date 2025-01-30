@@ -293,7 +293,6 @@ static void status_change_thread(void *ptr){
 
     status_fill_formatted_str(&psync_status, downloadstr, uploadstr);
     debug(D_NOTICE, "sending status update, dwlstr: [%s], uplstr: [%s]", psync_status.downloadstr, psync_status.uploadstr);
-    debug(D_NOTICE, "BOBO: Remote is full: [%u]", psync_status.remoteisfull);
 
     callback(&psync_status);
   }
