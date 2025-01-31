@@ -973,7 +973,6 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
   psync_nanotime(&start);
 #endif
 
-  //Bobo
   res=select(sock+1, &rfds, NULL, NULL, &tv);
 
   if (res==1){
@@ -1002,7 +1001,6 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
 #define psync_wait_socket_readable(sock, sec) psync_wait_socket_readable_microsec(sock, sec, 0)
 
 int psync_wait_socket_read_timeout(psync_socket_t sock){
-  //Bobo
   return psync_wait_socket_readable(sock, PSYNC_SOCK_READ_TIMEOUT);
 }
 

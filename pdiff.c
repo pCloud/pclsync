@@ -81,8 +81,13 @@ static int initialdownload=0;
 static paccount_cache_callback_t psync_cache_callback=NULL;
 static uint32_t psync_is_business=0;
 static unsigned char adapter_hash[PSYNC_FAST_HASH256_LEN];
+
+
 int unlinked=0;
 int tfa = 0;
+
+//Is account already overquota, to avoid spamming overquota message. 
+int g_is_over_quota = 0;
 
 void do_register_account_events_callback(paccount_cache_callback_t callback){
   psync_cache_callback=callback;
@@ -2700,17 +2705,23 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 }
 
 static void check_overquota(){
-  static int lisover=0;
   int isover=(used_quota>=current_quota);
 
-  if (isover!=lisover){
-    lisover=isover;
+  debug(D_NOTICE, "BOBO: Check over quota: used_quota[%llu] ?>= current_quota [%llu] = [%d]", used_quota, current_quota, isover);
+
+  if (isover!= g_is_over_quota){
+    g_is_over_quota = isover;
+
+    debug(D_NOTICE, "BOBO: Check over quota: [%d]", isover);
+
     if (isover) {
       debug(D_NOTICE, "Account full. Set overquota!");
       psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_OVERQUOTA);
     }
-    else
+    else {
       psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_QUOTAOK);
+    }
+      
   }
 }
 
@@ -3080,7 +3091,6 @@ void psync_diff_wake(){
   psync_pipe_write(exceptionsockwrite, "c", 1);
 }
 /************************************************************************************************************/
-//Bobo
 int initial_diff(psync_socket* sock, subscribed_ids *ids) {
   uint64_t newdiffid, result;
   const binresult* entries;
@@ -3151,7 +3161,6 @@ int initial_diff(psync_socket* sock, subscribed_ids *ids) {
 
   return 0;
 }
-//Bobo
 /************************************************************************************************************/
 static void psync_diff_thread(){
   psync_socket *sock;
@@ -3167,7 +3176,6 @@ static void psync_diff_thread(){
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_send_status_update();
 
-//Bobo restart:
   while(diff_res){
     psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
     sock = get_connected_socket();
@@ -3176,9 +3184,11 @@ static void psync_diff_thread(){
 
     psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
 
+    g_is_over_quota = 0; //Reset account full constant.
+
     diff_res = initial_diff(sock, &ids);
   }
-//Bobo
+
   debug(D_ERROR, "After initial diff. DiffId: [%llu]", ids.diffid);
 
   check_overquota();
@@ -3219,6 +3229,9 @@ static void psync_diff_thread(){
       diff_res = initial_diff(sock, &ids);
 
       debug(D_NOTICE, "Initial diff in main loop finished. Check quota:");
+      
+      g_is_over_quota = 0; //Reset account full constant.
+
       check_overquota();
     }
 
