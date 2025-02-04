@@ -3853,6 +3853,8 @@ char *psync_deviceid(){
   else{
     v=atoi(un.release);
     switch (v){
+      case 25: ver = "macOS 16 Unknown"; break;
+      case 24: ver = "macOS 15 Sequoia"; break;
       case 23: ver = "macOS 14 Sonoma"; break;
       case 22: ver = "macOS 13 Ventura"; break;
       case 21: ver = "macOS 12 Monterey"; break;

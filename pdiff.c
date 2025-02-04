@@ -2707,12 +2707,8 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 static void check_overquota(){
   int isover=(used_quota>=current_quota);
 
-  debug(D_NOTICE, "BOBO: Check over quota: used_quota[%llu] ?>= current_quota [%llu] = [%d]", used_quota, current_quota, isover);
-
   if (isover!= g_is_over_quota){
     g_is_over_quota = isover;
-
-    debug(D_NOTICE, "BOBO: Check over quota: [%d]", isover);
 
     if (isover) {
       debug(D_NOTICE, "Account full. Set overquota!");

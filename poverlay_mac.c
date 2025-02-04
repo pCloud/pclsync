@@ -77,8 +77,7 @@ void overlay_main_loop()
             debug(D_ERROR,"TCP/IP socket accept error");
             continue;
         }
-        psync_run_thread1(
-                          "Pipe request handle routine",
+        psync_run_thread1("Pipe request handle routine",
                           instance_thread,    // thread proc
                           (LPVOID)&cl     // thread parameter
                           );
@@ -90,7 +89,6 @@ void overlay_main_loop()
 void instance_thread(void* lpvParam)
 {
     int *cl, rc;
-    //char  chbuf[POVERLAY_BUFSIZE];    //<- change to dynamic cbbuf = psync_malloc(POVERLAY_BUFSIZE);
     int bufSz = POVERLAY_BUFSIZE;
     char *chbuf = (char *)psync_malloc(bufSz);
     
@@ -106,33 +104,32 @@ void instance_thread(void* lpvParam)
     
     while ( (rc=read(*cl,curbuf,(bufSz - bytes_read))) > 0) {
         bytes_read += rc;
-        debug(D_NOTICE, "Read %u bytes: %u %s", bytes_read, rc, curbuf );
+        //debug(D_NOTICE, "Read %u bytes: %u %s", bytes_read, rc, curbuf );
         curbuf = curbuf + rc;
         if (bytes_read > 12){
             request = (message *)chbuf;
-            debug(D_NOTICE, "###SS### request->length = %d; request->value = [%s]", request->length, request->value);
             if(request->length == bytes_read)
             {
-                debug(D_ERROR, "### All %d bytes read => break", bytes_read);
                 break;
             }
             else {
                 // realloc chbuf to real size
                 bufSz = request->length;
-                debug(D_NOTICE, "### Reading buffer will be realocated to %d bytes and %d bytes remaining", bufSz, (bufSz - bytes_read));
                 chbuf = realloc(chbuf, /*request->length*/ bufSz);
+
                 if(chbuf == NULL)
                 {
-                    debug(D_ERROR, "### realloc retun NULL!");
+                    debug(D_ERROR, "Realloc retun NULL!");
                     return;
                 }
-                debug(D_NOTICE, "### Reading buffer realocated to %d bytes and %d bytes remaining", bufSz, (bufSz - bytes_read));
+
                 curbuf = &chbuf[rc];  //Move the pointer to rc position of the reallocated buffer
             }
         }
     }
+
     if (rc == -1) {
-        debug(D_ERROR,"TCP/IP socket read");
+        debug(D_ERROR,"TCP/IP socket read error.");
         close(*cl);
         return;
     }
@@ -141,22 +138,20 @@ void instance_thread(void* lpvParam)
         close(*cl);
     }
     request = (message *)chbuf;
-    
-    debug(D_NOTICE, "###SS### READING COMPLETED: request->length = %d; request->value = [%s]", request->length, request->value);
-    
+
     if (request) {
         get_answer_to_request(request, reply);
         if (reply ) {
             rc = write(*cl,reply,reply->length);
             if (rc != reply->length)
-                debug(D_ERROR,"TCP/IP  socket reply not sent.");
+                debug(D_ERROR,"TCP/IP socket reply not sent.");
             
         }
     }
     if (cl) {
         close(*cl);
     }
-    //debug(D_NOTICE, "InstanceThread exitting.\n");
+
     return;
 };
 
