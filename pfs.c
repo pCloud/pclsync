@@ -860,33 +860,43 @@ static int psync_fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
   size_t namelen;
   struct FUSE_STAT st;
   psync_fs_set_thread_name();
-  debug(D_NOTICE, "readdir %s", path);
+  debug(D_NOTICE, "readdir [%s]", path);
+
   psync_sql_rdlock();
   CHECK_LOGIN_RDLOCKED();
   folderid=psync_fsfolderid_by_path(path, &flags);
+
   if (unlikely_log(folderid==PSYNC_INVALID_FSFOLDERID)){
     psync_sql_rdunlock();
+
     if (psync_fsfolder_crypto_error())
       return PRINT_RETURN(-psync_fs_crypto_err_to_errno(psync_fsfolder_crypto_error()));
     else
       return -PRINT_RETURN_CONST(ENOENT);
   }
+
   if (flags&PSYNC_FOLDER_FLAG_ENCRYPTED){
     dec=psync_cloud_crypto_get_folder_decoder(folderid);
     if (psync_crypto_is_error(dec)){
       psync_sql_rdunlock();
+
       return PRINT_RETURN(-psync_fs_crypto_err_to_errno(psync_crypto_to_error(dec)));
     }
   }
   else
     dec=NULL;
+
   filler(buf, ".", NULL, 0);
+
   if (folderid!=0)
     filler(buf, "..", NULL, 0);
+
   folder=psync_fstask_get_folder_tasks_rdlocked(folderid);
+
   if (folderid>=0){
     res=psync_sql_query_nolock("SELECT id, permissions, ctime, mtime, subdircnt, name FROM folder WHERE parentfolderid=?");
     psync_sql_bind_uint(res, 1, folderid);
+
     while ((row=psync_sql_fetch_row(res))){
       name=psync_get_lstring(row[5], &namelen);
 #if defined(FS_MAX_ACCEPTABLE_FILENAME_LEN)
@@ -900,9 +910,11 @@ static int psync_fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
       psync_row_to_folder_stat(row, &st);
       filler_decoded(dec, filler, buf, name, &st, 0);
     }
+
     psync_sql_free_result(res);
     res=psync_sql_query_nolock("SELECT name, size, ctime, mtime, id FROM file WHERE parentfolderid=?");
     psync_sql_bind_uint(res, 1, folderid);
+
     while ((row=psync_sql_fetch_row(res))){
       name=psync_get_lstring(row[0], &namelen);
 #if defined(FS_MAX_ACCEPTABLE_FILENAME_LEN)
@@ -918,6 +930,7 @@ static int psync_fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
     psync_sql_free_result(res);
   }
+
   if (folder){
     psync_tree_for_each(trel, folder->mkdirs){
 #if defined(FS_MAX_ACCEPTABLE_FILENAME_LEN)
@@ -926,9 +939,11 @@ static int psync_fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 #endif
       if (psync_tree_element(trel, psync_fstask_mkdir_t, tree)->flags&PSYNC_FOLDER_FLAG_INVISIBLE)
         continue;
+
       psync_mkdir_to_folder_stat(psync_tree_element(trel, psync_fstask_mkdir_t, tree), &st);
       filler_decoded(dec, filler, buf, psync_tree_element(trel, psync_fstask_mkdir_t, tree)->name, &st, 0);
     }
+
     psync_tree_for_each(trel, folder->creats){
 #if defined(FS_MAX_ACCEPTABLE_FILENAME_LEN)
       if (unlikely_log(strlen(psync_tree_element(trel, psync_fstask_creat_t, tree)->name)>FS_MAX_ACCEPTABLE_FILENAME_LEN))
@@ -938,9 +953,12 @@ static int psync_fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         filler_decoded(dec, filler, buf, psync_tree_element(trel, psync_fstask_creat_t, tree)->name, &st, 0);
     }
   }
+
   psync_sql_rdunlock();
+
   if (dec)
     psync_cloud_crypto_release_folder_decoder(folderid, dec);
+
   return PRINT_RETURN(0);
 }
 

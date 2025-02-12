@@ -474,16 +474,22 @@ char *psync_local_path_for_local_folder(psync_folderid_t localfolderid, psync_sy
   psync_list folderlist;
   char *ret;
   int res;
+
   psync_list_init(&folderlist);
   psync_sql_rdlock();
+
   res=psync_add_local_path_to_list_by_localfolderid(&folderlist, localfolderid, syncid);
+
   psync_sql_rdunlock();
+
   if (unlikely_log(res)){
     psync_free_string_list(&folderlist);
     return PSYNC_INVALID_PATH;
   }
+
   ret=psync_join_string_list(PSYNC_DIRECTORY_SEPARATOR, &folderlist, retlen);
   psync_free_string_list(&folderlist);
+
   return ret;
 }
 

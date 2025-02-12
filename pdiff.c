@@ -2832,12 +2832,15 @@ static void handle_exception(psync_socket **sock, subscribed_ids *ids, char ex){
 
     if (!send_command_no_res(*sock, "nop", diffparams) || psync_select_in(&(*sock)->sock, 1, PSYNC_SOCK_TIMEOUT_ON_EXCEPTION*1000)!=0){
       const char *prefixes[]={"API:", "HTTP"};
+      
       debug(D_NOTICE, "reconnecting diff");
+      
       psync_socket_close_bad(*sock);
       psync_cache_clean_starting_with_one_of(prefixes, ARRAY_SIZE(prefixes));
       *sock=get_connected_socket();
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
       psync_syncer_check_delayed_syncs();
+      
       send_diff_command(*sock, *ids);
     }
     else{
@@ -3185,7 +3188,7 @@ static void psync_diff_thread(){
     diff_res = initial_diff(sock, &ids);
   }
 
-  debug(D_ERROR, "After initial diff. DiffId: [%llu]", ids.diffid);
+  debug(D_NOTICE, "After initial diff. DiffId: [%llu]", ids.diffid);
 
   check_overquota();
 
