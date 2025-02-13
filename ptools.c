@@ -1344,8 +1344,7 @@ uint64_t Hash64(const void* key, int len, unsigned int seed) {
     return h;
   }
 /***********************************************************************/
-int do_get_crypto_price(char** currency)
-{
+int do_get_crypto_price(char** currency) {
   int price = 0, err;
   const binresult* cres, * products;
   binresult* res;
@@ -1354,23 +1353,30 @@ int do_get_crypto_price(char** currency)
   if (psync_my_auth[0]) {
     res = psync_api_run_command("getprice", params);
     if (!res) {
-      psync_free(res);
+
       return 0;
     }
+
     err = psync_find_result(res, "result", PARAM_NUM)->num;
-    if (err)
-    {
+
+    if (err) {
       psync_free(res);
       return 0;
     }
 
     *currency=strdup(psync_find_result(res, "currency", PARAM_STR)->str);
     products = psync_check_result(res, "products", PARAM_HASH);
+
     if (products) {
       cres = psync_check_result(products, "101", PARAM_HASH);
-      if (cres) price = psync_find_result(cres, "pricecents", PARAM_NUM)->num;
+      if (cres) {
+        price = psync_find_result(cres, "pricecents", PARAM_NUM)->num;
+      }
     }
+
+    psync_free(res);
   }
+
   return price;
 }
 /***********************************************************************/
