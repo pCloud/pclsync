@@ -186,7 +186,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  void psync_log_tasks();
 
- uint64_t Hash64(const void* key, int len, unsigned int seed);
+ uint64_t Hash64(const void* key, int len);
  /**********************************************************************************************************/
  int do_get_crypto_price(char** currency);
 

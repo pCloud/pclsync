@@ -2893,7 +2893,7 @@ err1:
 
       full_path = psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR, name, NULL);
 
-      elem = create_stuck_elem(Hash64(full_path, strlen(full_path), psync_timer_time), STUCK_MSG_NO_PERMISSION, item_type, 0, path, name);
+      elem = create_stuck_elem(Hash64(full_path, strlen(full_path)), STUCK_MSG_NO_PERMISSION, item_type, 0, path, name);
 
       add_stuck_elem(elem);
     }

@@ -871,12 +871,12 @@ static void scan_created_folder(sync_folderlist *fl){
     return;
   }
 
-  localpath = nvl_str(psync_local_path_for_local_folder(fl->localid, fl->syncid, NULL), STUCK_ITEM_UNKNOWN_PATH);
+  localpath = psync_local_path_for_local_folder(fl->localid, fl->syncid, NULL);
 
   if (likely_log(localpath)){
     debug(D_NOTICE, "scanning just created folder [%s] localid [%llu] name [%s]", localpath, (unsigned long)fl->localid, fl->name);
 
-    delete_element(Hash64(localpath, strlen(localpath), psync_timer_time));
+    delete_element(Hash64(localpath, strlen(localpath)));
 
     scanner_scan_folder(localpath, 0, fl->localid, fl->syncid, fl->synctype, fl->deviceid);
     psync_free(localpath);

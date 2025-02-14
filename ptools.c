@@ -1298,8 +1298,10 @@ void psync_log_tasks() {
   debug(D_NOTICE, "*************************************");
 }
 /***********************************************************************/
-uint64_t Hash64(const void* key, int len, unsigned int seed) {
+uint64_t Hash64(const void* key, int len) {
     const unsigned int m = 0x5bd1e995;
+    unsigned int seed = 1234567890;
+
     const int r = 24;
     unsigned int h1 = seed ^ len;
     unsigned int h2 = 0;

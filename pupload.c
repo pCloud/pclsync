@@ -1513,7 +1513,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
     uint64_t itemid;
 
     if (strlen(localpath) > 0) {
-      elem = create_stuck_elem(Hash64(localpath, strlen(localpath), psync_timer_time), STUCK_MSG_NO_PERMISSION, STUCK_ITEM_TYPE_FILE, 0, localpath, name);
+      elem = create_stuck_elem(Hash64(localpath, strlen(localpath)), STUCK_MSG_NO_PERMISSION, STUCK_ITEM_TYPE_FILE, 0, localpath, name);
 
       add_stuck_elem(elem);
     }
@@ -1752,7 +1752,7 @@ static void task_run_upload_file_thread(void *ptr){
       local_path = psync_local_path_for_local_file(ut->upllist.localfileid, NULL);
 
       if (local_path > 0) {
-        delete_element(Hash64(local_path, strlen(local_path), psync_timer_time));
+        delete_element(Hash64(local_path, strlen(local_path)));
       }
     }
 
