@@ -140,7 +140,9 @@ void instance_thread(LPVOID lpvParam)
   }
 
   // debug(D_NOTICE, "InstanceThread created, receiving and processing messages.\n");
+
   hPipe = (HANDLE)lpvParam;
+
   while (1)
   {
     do

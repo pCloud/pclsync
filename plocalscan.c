@@ -359,8 +359,6 @@ static void scanner_db_folder_to_list(psync_syncid_t syncid, psync_folderid_t lo
   while ((row=psync_sql_fetch_row(res))){
     name=psync_get_lstring(row[5], &namelen);
 
-    debug(D_NOTICE, "BOBO: Got file name from DB: [%s]", name);
-
     if (unlikely(psync_is_lname_to_ignore(name, namelen))){
       debug(D_NOTICE, "found a name [%s] matching ignore pattern in localfile, will try to delete", name);
       try_delete_localfile(psync_get_number(row[0]));
@@ -493,14 +491,10 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
 
     cmp=psync_filename_cmp(fdisk->name, fdb->name);
 
-    debug(D_NOTICE, "BOBO: Process file names DB:[%s] ?= Local:[%s]", fdb->name, fdisk->name);
-
     if (cmp==0){
       if (fdisk->isfolder==fdb->isfolder){
         fdisk->localid=fdb->localid;
         fdisk->remoteid=fdb->remoteid;
-
-        debug(D_NOTICE, "BOBO: Check file for modified: Mtime DB: [%llu] ?= Local:[%llu], Size: DB: [%llu] ?= Local:[%llu], Inode: DB: [%llu] ?= Local:[%llu]", fdb->mtimenat, fdisk->mtimenat, fdb->size, fdisk->size, fdb->inode, fdisk->inode);
 
         if (!fdisk->isfolder && (fdisk->mtimenat!=fdb->mtimenat || fdisk->size!=fdb->size || fdisk->inode!=fdb->inode)){
           add_modified_file(fdisk, fdb, folderid, localfolderid, syncid, synctype);
@@ -678,8 +672,6 @@ static void scan_upload_file(sync_folderlist *fl){
 static void p_create_scanner_reminder() {
   static int flag = 0; //Already scheduled flag.
 
-  debug(D_NOTICE, "BOBO: Reminder thread Start. Check flag [%d].", flag);
-
   if (flag) {
     debug(D_NOTICE, "BOBO: Reminder thread already scheduled. Return.");
 
@@ -698,8 +690,6 @@ static void p_create_scanner_reminder() {
 
   flag = 0;
 
-  debug(D_NOTICE, "BOBO: Reminder thread Done.");
-
   return;
 }
 /**********************************************************************/
@@ -711,18 +701,7 @@ static void scan_upload_modified_file(sync_folderlist *fl){
   debug(D_NOTICE, "file modified Name: [%s]  FileId: [%lu]", fl->name, (unsigned long)fl->localid);
 
   psync_delete_upload_tasks_for_file(fl->localid);
-
-  /*
-  res=psync_sql_prep_statement("UPDATE localfile SET size=?, inode=?, mtime=?, mtimenative=? WHERE id=?");
-
-  psync_sql_bind_uint(res, 1, fl->size);
-  psync_sql_bind_uint(res, 2, fl->inode);
-  psync_sql_bind_uint(res, 3, psync_mtime_native_to_mtime(fl->mtimenat));
-  psync_sql_bind_uint(res, 4, fl->mtimenat);
-  psync_sql_bind_uint(res, 5, fl->localid);
-  psync_sql_run_free(res);
-  */
-
+  
   localpath = psync_local_path_for_local_file(fl->localid, NULL);
 
   psync_stat(localpath, &st);
@@ -730,7 +709,11 @@ static void scan_upload_modified_file(sync_folderlist *fl){
 
   if (!psync_stat(localpath, &st) && psync_stat_mtime(&st) >= psync_timer_time() - PSYNC_UPLOAD_OLDER_THAN_300_SEC) {
     debug(D_NOTICE, "BOBO: Modified File [%s] is too new, skipping creating upload task. Create reminder.", localpath);
+
     psync_run_thread("Scanner reminder", p_create_scanner_reminder);
+
+    create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_PAUSED);
+
     debug(D_NOTICE, "BOBO: Done.");
   }
   else {
@@ -747,9 +730,13 @@ static void scan_upload_modified_file(sync_folderlist *fl){
     psync_sql_run_free(res);
     //Bobo
 
-    psync_task_upload_file_silent(fl->syncid, fl->localid, fl->name);
-    psync_path_status_sync_folder_task_added(fl->syncid, fl->localparentfolderid);
+    //psync_task_upload_file_silent(fl->syncid, fl->localid, fl->name);
+    create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_WAITING);
+    //psync_path_status_sync_folder_task_added(fl->syncid, fl->localparentfolderid);
   }
+
+  debug(D_NOTICE, "BOBO: Set folder status to uploading.");
+  psync_path_status_sync_folder_task_added(fl->syncid, fl->localparentfolderid);
 }
 
 static void scan_delete_file(sync_folderlist *fl){
@@ -1131,7 +1118,6 @@ restart:
       for (i=0; i<SCAN_LIST_CNT; i++)
         psync_list_for_each_element_call(&scan_lists[i], sync_folderlist, list, psync_free);
 
-      debug(D_NOTICE, "BOBO: 1. Scanner is sleeping for: [%lu] ms.", restartsleep);
       psync_milisleep(restartsleep);
 
       if (restartsleep<16000)
@@ -1191,7 +1177,6 @@ restart:
     for (i=0; i<SCAN_LIST_CNT; i++)
       psync_list_for_each_element_call(&scan_lists[i], sync_folderlist, list, psync_free);
 
-    debug(D_NOTICE, "BOBO: 2. Scanner is sleeping for: [%lu] ms.", restartsleep);
     psync_milisleep(restartsleep);
 
     if (restartsleep<16000)

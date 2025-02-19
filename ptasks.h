@@ -65,6 +65,13 @@
 #define PSYNC_UPLOAD_FILE_FAILED   101
 #define PSYNC_DOWNLOAD_FILE_FAILED 201
 
+//Bobo
+#define PSYNC_TASK_WAITING 0
+#define PSYNC_TASK_INPROGR 1
+#define PSYNC_TASK_PAUSED  2
+#define PSYNC_TASK_FAILED  3
+//Bobo
+
 void psync_task_create_local_folder(psync_syncid_t syncid, psync_folderid_t folderid, psync_folderid_t localfolderid);
 void psync_task_delete_local_folder(psync_syncid_t syncid, psync_folderid_t folderid, psync_folderid_t localfolderid, const char *remotepath);
 void psync_task_delete_local_folder_recursive(psync_syncid_t syncid, psync_folderid_t folderid, psync_folderid_t localfolderid);
@@ -91,4 +98,7 @@ void psync_task_rename_remote_folder(psync_syncid_t oldsyncid, psync_syncid_t ne
 void psync_task_delete_remote_file(psync_syncid_t syncid, psync_fileid_t fileid);
 void psync_task_delete_remote_folder(psync_syncid_t syncid, psync_folderid_t folderid);
 
+//Bobo
+void create_task_full(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, uint64_t newitemid, const char* name, int inprogress);
+//Bobo
 #endif

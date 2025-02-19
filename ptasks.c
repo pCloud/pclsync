@@ -33,6 +33,25 @@
 #include "pcallbacks.h"
 #include "ppathstatus.h"
 
+
+void create_task_full(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, uint64_t newitemid, const char* name, int inprogress) {
+  psync_sql_res* res;
+
+  debug(D_NOTICE, "BOBO: Create task full: Name: [%s], Inprogress: [%d].", name, inprogress);
+
+  res = psync_sql_prep_statement("INSERT OR REPLACE INTO task (type, syncid, itemid, localitemid, newitemid, name, inprogress) VALUES (?, ?, ?, ?, ?, ?, ?)");
+
+  psync_sql_bind_uint(res, 1, type);
+  psync_sql_bind_uint(res, 2, syncid);
+  psync_sql_bind_uint(res, 3, entryid);
+  psync_sql_bind_uint(res, 4, localentryid);
+  psync_sql_bind_uint(res, 5, newitemid);
+  psync_sql_bind_string(res, 6, name);
+  psync_sql_bind_uint(res, 7, inprogress);
+
+  psync_sql_run_free(res);
+}
+
 static void create_task1(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid){
   psync_sql_res *res;
 

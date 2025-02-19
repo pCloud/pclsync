@@ -236,6 +236,7 @@ static folder_tasks_t *get_folder_tasks(psync_folderid_t folderid, int create) {
   folder_tasks_t *ft;
   tr=folder_tasks;
   atr=&folder_tasks;
+
   while (tr) {
     ft=psync_tree_element(tr, folder_tasks_t, tree);
     if (folderid<ft->folderid) {
@@ -256,6 +257,7 @@ static folder_tasks_t *get_folder_tasks(psync_folderid_t folderid, int create) {
       return ft;
     }
   }
+
   if (create) {
     ft=psync_new(folder_tasks_t);
     *atr=&ft->tree;
@@ -568,29 +570,43 @@ void psync_path_status_sync_folder_task_added(psync_syncid_t syncid, psync_folde
 static void load_sync_tasks() {
   psync_sql_res *res;
   psync_uint_row row;
+
   res=psync_sql_query_nolock("SELECT syncid, localitemid FROM task WHERE type=?");
   psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE);
-  while ((row=psync_sql_fetch_rowint(res)))
+
+  while ((row = psync_sql_fetch_rowint(res))) {
     psync_path_status_sync_folder_task_added_locked(row[0], row[1]);
+  }
+
   psync_sql_free_result(res);
+
   res=psync_sql_query_nolock("SELECT lf.syncid, lf.localparentfolderid FROM task t, localfile lf WHERE t.type=? AND t.localitemid=lf.id AND t.syncid=lf.syncid");
   psync_sql_bind_uint(res, 1, PSYNC_UPLOAD_FILE);
-  while ((row=psync_sql_fetch_rowint(res)))
+
+  while ((row = psync_sql_fetch_rowint(res))) {
+    debug(D_NOTICE, "BOBO: Found tasks for Local Folder Id: [%llu]", row[1]);
     psync_path_status_sync_folder_task_added_locked(row[0], row[1]);
+  }
+
   psync_sql_free_result(res);
 }
 
 static int local_folder_has_tasks(psync_syncid_t syncid, psync_folderid_t localfolderid) {
   psync_sql_res *res;
   psync_uint_row row;
+
   res=psync_sql_query_nolock("SELECT 1 FROM task WHERE type=? AND syncid=? AND localitemid=?");
   psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE);
   psync_sql_bind_uint(res, 2, syncid);
   psync_sql_bind_uint(res, 3, localfolderid);
   row=psync_sql_fetch_rowint(res);
   psync_sql_free_result(res);
-  if (row)
+
+  if (row) {
+    debug(D_NOTICE, "BOBO: Found tasks for Local Folder Id: [%llu]", localfolderid);
     return 1;
+  }
+
   res=psync_sql_query_nolock("SELECT 1 FROM localfile lf, task t WHERE lf.syncid=? AND lf.localparentfolderid=? AND lf.id=t.localitemid AND "
                              "t.syncid=? AND t.type=?");
   psync_sql_bind_uint(res, 1, syncid);
@@ -599,8 +615,12 @@ static int local_folder_has_tasks(psync_syncid_t syncid, psync_folderid_t localf
   psync_sql_bind_uint(res, 4, PSYNC_UPLOAD_FILE);
   row=psync_sql_fetch_rowint(res);
   psync_sql_free_result(res);
-  if (row)
+
+  if (row) {
+    debug(D_NOTICE, "BOBO: Found tasks and local files for Local Folder Id: [%llu]", localfolderid);
     return 1;
+  }
+
   return 0;
 }
 
@@ -745,6 +765,7 @@ static inline int valid_last_char(char ch) {
 
 static psync_path_status_t rdunlock_return(psync_path_status_t st) {
   psync_sql_rdunlock();
+
   return st;
 }
 
@@ -846,20 +867,26 @@ static psync_path_status_t psync_path_status_drive(const char *path, size_t path
   const char *name;
   size_t namelen;
   int wrlocked, found;
+
   while (is_slash(*path)) {
     path++;
     path_len--;
   }
+
   wrlocked=0;
   psync_sql_rdlock();
+
   if (!get_folder_tasks(0, 0))
     return rdunlock_return(PSYNC_PATH_STATUS_IN_SYNC);
+
   if (!path_len)
     return psync_path_status_drive_folder_locked(0);
+
 restart:
   poff=0;
   folderid=0;
   flags=ENTRY_FLAG_FOLDER;
+
   for (off=0; off<path_len; off++)
     if (is_slash(path[off])) {
       if (off && is_slash(path[off-1])) {
@@ -1132,9 +1159,11 @@ restart:
       } else {
         if (psync_is_lname_to_ignore(path+poff, off-poff))
           return rdunlock_return(PSYNC_PATH_STATUS_IN_SYNC|PSYNC_PATH_STATUS_IS_IGNORED);
+
         comp_hash(path+poff, off-poff, hash, folderid, sync_hash_seed);
         h=(hash[0]+hash[2])%PATH_HASH_SIZE;
         found=0;
+
         psync_list_for_each_element (ce, &path_cache_hash[h], path_cache_entry_t, list_hash)
           if (!memcmp(hash, ce->hash, sizeof(hash)) && (ce->flags&ENTRY_FLAG_FOLDER) && extract_syncid(ce->itemid)==syncid) {
             if (wrlocked) {
@@ -1147,17 +1176,21 @@ restart:
             poff=off+1;
             break;
           }
+
         if (found)
           continue;
+
         res=psync_sql_query_nolock("SELECT id FROM localfolder WHERE syncid=? AND localparentfolderid=? AND name=?");
         psync_sql_bind_uint(res, 1, syncid);
         psync_sql_bind_uint(res, 2, extract_localfolderid(folderid));
         psync_sql_bind_lstring(res, 3, path+poff, off-poff);
         row=psync_sql_fetch_rowint(res);
+
         if (!row) {
           psync_sql_free_result(res);
           return rdunlock_return_in_prog();
         }
+
         if (!wrlocked) {
           psync_sql_free_result(res);
           wrlocked=1;
@@ -1167,6 +1200,7 @@ restart:
           }
           goto restart;
         }
+
         folderid=combine_syncid_lf(syncid, row[0]);
         flags=ENTRY_FLAG_FOLDER;
         psync_sql_free_result(res);
@@ -1180,13 +1214,17 @@ restart:
         poff=off+1;
       }
     }
+
   if (poff==path_len)
     return psync_path_status_sync_folder_locked(syncid, extract_localfolderid(folderid));
+
   if (psync_is_lname_to_ignore(path+poff, path_len-poff))
     return rdunlock_return(PSYNC_PATH_STATUS_IN_SYNC|PSYNC_PATH_STATUS_IS_IGNORED);
+
   comp_hash(path+poff, path_len-poff, hash, folderid, sync_hash_seed);
   h=(hash[0]+hash[2])%PATH_HASH_SIZE;
   found=0;
+
   psync_list_for_each_element (ce, &path_cache_hash[h], path_cache_entry_t, list_hash)
     if (!memcmp(hash, ce->hash, sizeof(hash)) && extract_syncid(ce->itemid)==syncid) {
       if (wrlocked) {
@@ -1198,6 +1236,7 @@ restart:
       found=1;
       break;
     }
+
   if (found) {
     if (flags&ENTRY_FLAG_FOLDER)
       return psync_path_status_sync_folder_locked(syncid, extract_localfolderid(folderid));
@@ -1206,21 +1245,26 @@ restart:
     else
       return rdunlock_return(PSYNC_PATH_STATUS_IN_SYNC);
   }
+
   res=psync_sql_query_nolock("SELECT id FROM localfolder WHERE syncid=? AND localparentfolderid=? AND name=?");
   psync_sql_bind_uint(res, 1, syncid);
   psync_sql_bind_uint(res, 2, extract_localfolderid(folderid));
   psync_sql_bind_lstring(res, 3, path+poff, path_len-poff);
+
   if ((row=psync_sql_fetch_rowint(res))) {
     folderid=row[0];
     psync_sql_free_result(res);
+
     if (!wrlocked) {
       wrlocked=1;
+
       if (psync_sql_tryupgradelock()) {
         psync_sql_rdunlock();
         psync_sql_lock();
       }
       goto restart;
     }
+
     ce=psync_list_remove_head_element(&path_cache_lru, path_cache_entry_t, list_lru);
     psync_list_add_tail(&path_cache_lru, &ce->list_lru);
     psync_list_del(&ce->list_hash);
@@ -1228,16 +1272,20 @@ restart:
     memcpy(ce->hash, hash, sizeof(hash));
     ce->itemid=combine_syncid_lf(syncid, folderid);
     ce->flags=ENTRY_FLAG_FOLDER;
+
     return psync_path_status_sync_folder_locked(syncid, folderid);
   }
+
   psync_sql_free_result(res);
   res=psync_sql_query_nolock("SELECT id FROM localfile WHERE syncid=? AND localparentfolderid=? AND name=?");
   psync_sql_bind_uint(res, 1, syncid);
   psync_sql_bind_uint(res, 2, extract_localfolderid(folderid));
   psync_sql_bind_lstring(res, 3, path+poff, path_len-poff);
+
   if ((row=psync_sql_fetch_rowint(res))) {
     flags=row[0];
     psync_sql_free_result(res);
+
     if (!wrlocked) {
       wrlocked=1;
       if (psync_sql_tryupgradelock()) {
@@ -1246,6 +1294,7 @@ restart:
       }
       goto restart;
     }
+
     ce=psync_list_remove_head_element(&path_cache_lru, path_cache_entry_t, list_lru);
     psync_list_add_tail(&path_cache_lru, &ce->list_lru);
     psync_list_del(&ce->list_hash);
@@ -1253,12 +1302,14 @@ restart:
     memcpy(ce->hash, hash, sizeof(hash));
     ce->itemid=combine_syncid_lf(syncid, flags);
     ce->flags=sync_file_in_progress(syncid, extract_localfolderid(folderid), flags, path+poff, path_len-poff)?ENTRY_FLAG_PROG:0;
+
     if (ce->flags&ENTRY_FLAG_PROG)
       return rdunlock_return_in_prog();
     else
       return rdunlock_return(PSYNC_PATH_STATUS_IN_SYNC);
   }
   psync_sql_free_result(res);
+
   return rdunlock_return_in_prog();
 }
 
@@ -1318,11 +1369,15 @@ psync_path_status_t psync_path_status_get(const char *path) {
   path_sync_list_t *sn;
   size_t i, len;
   len=strlen(path);
+
+  //debug(D_NOTICE, "BOBO: Get Path Status for: [%s]", path);
+
   if (drive_path) {
     if (len>=drive_path_len && !memcmp(drive_path, path, drive_path_len) && valid_last_char(path[drive_path_len]))
       return psync_path_status_drive(path+drive_path_len, len-drive_path_len);
   } else {
     dp=psync_fs_getmountpoint();
+
     if (dp) {
       // assign the len before the mutex, so we use it as a barrier
       drive_path_len=strlen(dp);
@@ -1333,11 +1388,14 @@ psync_path_status_t psync_path_status_get(const char *path) {
       }
       psync_sql_unlock();
       psync_free(dp);
+
       if (len>=drive_path_len && !memcmp(drive_path, path, drive_path_len) && valid_last_char(path[drive_path_len]))
         return psync_path_status_drive(path+drive_path_len, len-drive_path_len);
     }
   }
+
   sn=syncs;
+
   if (!sn) {
     psync_sql_rdlock();
     sn=syncs;
@@ -1345,16 +1403,21 @@ psync_path_status_t psync_path_status_get(const char *path) {
     if (!sn)
       goto slower_check;
   }
+
   for (i=0; i<sn->sync_cnt; i++)
     if (sn->syncs[i].path_len<=len && !memcmp(sn->syncs[i].path, path, sn->syncs[i].path_len) && valid_last_char(path[sn->syncs[i].path_len]))
       return psync_path_status_sync(path+sn->syncs[i].path_len, len-sn->syncs[i].path_len, sn->syncs[i].folderid, sn->syncs[i].syncid, sn->syncs[i].flags);
+
 slower_check:
   if (drive_path && psync_path_is_prefix_of(drive_path, drive_path_len, &path, &len))
     return psync_path_status_drive(path, len);
+
   sn=syncs;
+
   if (sn)
     for (i=0; i<sn->sync_cnt; i++)
       if (sn->syncs[i].path_len<=len && psync_path_is_prefix_of(sn->syncs[i].path, sn->syncs[i].path_len, &path, &len))
         return psync_path_status_sync(path, len, sn->syncs[i].folderid, sn->syncs[i].syncid, sn->syncs[i].flags);
+
   return PSYNC_PATH_STATUS_NOT_OURS;
 }
