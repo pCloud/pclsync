@@ -34,10 +34,8 @@
 #include "ppathstatus.h"
 
 
-void create_task_full(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, uint64_t newitemid, const char* name, int inprogress) {
+void psync_create_task_full(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, uint64_t newitemid, const char* name, int inprogress) {
   psync_sql_res* res;
-
-  debug(D_NOTICE, "BOBO: Create task full: Name: [%s], Inprogress: [%d].", name, inprogress);
 
   res = psync_sql_prep_statement("INSERT OR REPLACE INTO task (type, syncid, itemid, localitemid, newitemid, name, inprogress) VALUES (?, ?, ?, ?, ?, ?, ?)");
 

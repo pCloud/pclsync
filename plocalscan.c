@@ -673,18 +673,16 @@ static void p_create_scanner_reminder() {
   static int flag = 0; //Already scheduled flag.
 
   if (flag) {
-    debug(D_NOTICE, "BOBO: Reminder thread already scheduled. Return.");
-
     return;
   }
 
   flag = 1;
 
-  debug(D_NOTICE, "BOBO: Reminder thread about to sleep for [%d] sec.", PSYNC_UPLOAD_OLDER_THAN_300_SEC + 60);
+  debug(D_NOTICE, "Reminder thread about to sleep for [%d] sec.", PSYNC_UPLOAD_OLDER_THAN_300_SEC + 60);
 
   psync_milisleep((PSYNC_UPLOAD_OLDER_THAN_300_SEC + 60) * 1000);
 
-  debug(D_NOTICE, "BOBO: Reminder thread wokeup. Call wake localscan.");
+  debug(D_NOTICE, "Reminder thread wokeup. Call wake localscan.");
 
   psync_wake_localscan();
 
@@ -705,21 +703,12 @@ static void scan_upload_modified_file(sync_folderlist *fl){
   localpath = psync_local_path_for_local_file(fl->localid, NULL);
 
   psync_stat(localpath, &st);
-  debug(D_NOTICE, "BOBO: Modified File [%s] found. Local File Mtime: [%llu] Current Time: [%llu]", localpath, psync_stat_mtime(&st), psync_timer_time());
-
   if (!psync_stat(localpath, &st) && psync_stat_mtime(&st) >= psync_timer_time() - PSYNC_UPLOAD_OLDER_THAN_300_SEC) {
-    debug(D_NOTICE, "BOBO: Modified File [%s] is too new, skipping creating upload task. Create reminder.", localpath);
-
     psync_run_thread("Scanner reminder", p_create_scanner_reminder);
 
-    create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_PAUSED);
-
-    debug(D_NOTICE, "BOBO: Done.");
+    psync_create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_PAUSED);
   }
   else {
-    debug(D_NOTICE, "BOBO: Modified File [%s] is old enough, create upload task.", localpath);
-
-    //Bobo
     res = psync_sql_prep_statement("UPDATE localfile SET size=?, inode=?, mtime=?, mtimenative=? WHERE id=?");
 
     psync_sql_bind_uint(res, 1, fl->size);
@@ -728,14 +717,9 @@ static void scan_upload_modified_file(sync_folderlist *fl){
     psync_sql_bind_uint(res, 4, fl->mtimenat);
     psync_sql_bind_uint(res, 5, fl->localid);
     psync_sql_run_free(res);
-    //Bobo
 
-    //psync_task_upload_file_silent(fl->syncid, fl->localid, fl->name);
-    create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_WAITING);
-    //psync_path_status_sync_folder_task_added(fl->syncid, fl->localparentfolderid);
+    psync_create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_WAITING);
   }
-
-  debug(D_NOTICE, "BOBO: Set folder status to uploading.");
   psync_path_status_sync_folder_task_added(fl->syncid, fl->localparentfolderid);
 }
 
@@ -1048,7 +1032,6 @@ restart:
   pthread_mutex_lock(&scan_mutex);
 
   while (scan_stoppers) {
-    debug(D_NOTICE, "BOBO: Scanner is waiting for signal.");
     pthread_cond_wait(&scan_cond, &scan_mutex);
   }
     
@@ -1082,7 +1065,6 @@ restart:
       continue;
     }
 
-    debug(D_NOTICE, "BOBO: Scan folder: [%s]", l->localpath);
     scanner_scan_folder(l->localpath, l->folderid, 0, l->syncid, l->synctype, psync_stat_device_full(&st));
   }
   
@@ -1254,7 +1236,6 @@ static int scanner_wait(){
   pthread_mutex_lock(&scan_mutex);
 
   if (!scan_wakes) {
-    debug(D_NOTICE, "BOBO: Scanner conditional wait for: [%llu] s.", tm.tv_sec);
     ret = !pthread_cond_timedwait(&scan_cond, &scan_mutex, &tm);
   }
   else {

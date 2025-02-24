@@ -584,7 +584,6 @@ static void load_sync_tasks() {
   psync_sql_bind_uint(res, 1, PSYNC_UPLOAD_FILE);
 
   while ((row = psync_sql_fetch_rowint(res))) {
-    debug(D_NOTICE, "BOBO: Found tasks for Local Folder Id: [%llu]", row[1]);
     psync_path_status_sync_folder_task_added_locked(row[0], row[1]);
   }
 
@@ -603,7 +602,6 @@ static int local_folder_has_tasks(psync_syncid_t syncid, psync_folderid_t localf
   psync_sql_free_result(res);
 
   if (row) {
-    debug(D_NOTICE, "BOBO: Found tasks for Local Folder Id: [%llu]", localfolderid);
     return 1;
   }
 
@@ -617,7 +615,6 @@ static int local_folder_has_tasks(psync_syncid_t syncid, psync_folderid_t localf
   psync_sql_free_result(res);
 
   if (row) {
-    debug(D_NOTICE, "BOBO: Found tasks and local files for Local Folder Id: [%llu]", localfolderid);
     return 1;
   }
 
@@ -1369,8 +1366,6 @@ psync_path_status_t psync_path_status_get(const char *path) {
   path_sync_list_t *sn;
   size_t i, len;
   len=strlen(path);
-
-  //debug(D_NOTICE, "BOBO: Get Path Status for: [%s]", path);
 
   if (drive_path) {
     if (len>=drive_path_len && !memcmp(drive_path, path, drive_path_len) && valid_last_char(path[drive_path_len]))
