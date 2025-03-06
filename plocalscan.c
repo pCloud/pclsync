@@ -645,7 +645,7 @@ static void scan_rename_file(sync_folderlist *rnfr, sync_folderlist *rnto){
 static void scan_upload_file(sync_folderlist *fl){
   psync_sql_res *res;
   psync_fileid_t localfileid;
-  debug(D_NOTICE, "file created %s", fl->name);
+  debug(D_NOTICE, "File Created [%s]", fl->name);
   /* it is possible that files that are reported as new are already uploading
    * -- is it? when? how? and with what localid?
   psync_delete_upload_tasks_for_file(fl->localid);

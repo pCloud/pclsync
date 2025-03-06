@@ -129,7 +129,9 @@ static int task_wait_no_uploads(uint64_t taskid){
   psync_sql_res *res;
   psync_uint_row row;
   uint64_t cnt;
+
   pthread_mutex_lock(&current_uploads_mutex);
+
   while (psync_status.filesuploading){
     current_uploads_waiters++;
     pthread_cond_wait(&current_uploads_cond, &current_uploads_mutex);
@@ -137,15 +139,23 @@ static int task_wait_no_uploads(uint64_t taskid){
     if (!psync_status.filesuploading)
       debug(D_NOTICE, "waited for uploads to finish");
   }
+
   pthread_mutex_unlock(&current_uploads_mutex);
-  res=psync_sql_query("SELECT COUNT(*) FROM task WHERE id<? AND type=?");
+  //Bobo
+  //res=psync_sql_query("SELECT COUNT(*) FROM task WHERE id<? AND type=?");
+  res=psync_sql_query("SELECT COUNT(*) FROM task WHERE id<? AND type=? AND inprogress != "NTO_STR(PSYNC_TASK_PAUSED));
+  //Bobo
+
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_bind_uint(res, 2, PSYNC_UPLOAD_FILE);
+
   if ((row=psync_sql_fetch_rowint(res)))
     cnt=row[0];
   else
     cnt=0;
+
   psync_sql_free_result(res);
+
   if (cnt){
     debug(D_NOTICE, "all uploads stopped, but there are still %u upload tasks", (unsigned)cnt);
     return -1;

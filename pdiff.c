@@ -3262,7 +3262,9 @@ static void psync_diff_thread(){
     }
     else if (sel==1){
       sock->pending=1;
+
       res=get_result(sock);
+
       if (unlikely_log(!res)){
         psync_timer_notify_exception();
         handle_exception(&sock, &ids, 'r');
@@ -3371,6 +3373,7 @@ static void psync_diff_thread(){
       }
     }
   }
+
   psync_socket_close(sock);
   psync_pipe_close(exceptionsock);
   psync_pipe_close(exceptionsockwrite);

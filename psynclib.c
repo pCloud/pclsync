@@ -480,6 +480,7 @@ static void psync_invalidate_auth(const char *auth){
 
 void psync_logout2(uint32_t auth_status, int doinvauth){
   tfa=0;
+
   debug(D_NOTICE, "logout");
   psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth', 'saveauth')");
 
@@ -490,12 +491,15 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
 
   memset(psync_my_auth, 0, sizeof(psync_my_auth));
   psync_cloud_crypto_stop();
+
   pthread_mutex_lock(&psync_my_auth_mutex);
   psync_free(psync_my_pass);
   psync_my_pass=NULL;
   pthread_mutex_unlock(&psync_my_auth_mutex);
+
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_set_status(PSTATUS_TYPE_AUTH, auth_status);
+
   psync_fs_pause_until_login();
   psync_stop_all_download();
   psync_stop_all_upload();
@@ -503,7 +507,9 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
   psync_cache_clean_all();
   psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   psync_restart_localscan();
+
   psync_timer_notify_exception();
+
   if (psync_fs_need_per_folder_refresh())
     psync_fs_refresh_folder(0);
 }
