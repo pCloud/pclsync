@@ -37,8 +37,6 @@
 void psync_create_task_full(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, uint64_t newitemid, const char* name, int inprogress) {
   psync_sql_res* res;
 
-  debug(D_NOTICE, "BOBO: Cerate task Full. Item Id: [%llu]", entryid);
-
   res = psync_sql_prep_statement("INSERT OR REPLACE INTO task (type, syncid, itemid, localitemid, newitemid, name, inprogress) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
   psync_sql_bind_uint(res, 1, type);
@@ -54,8 +52,6 @@ void psync_create_task_full(psync_uint_t type, psync_syncid_t syncid, uint64_t e
 
 static void create_task1(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid){
   psync_sql_res *res;
-
-  debug(D_NOTICE, "BOBO: Cerate task 1. Item Id: [%llu]", entryid);
 
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid) VALUES (?, ?, ?, ?)");
 
@@ -87,8 +83,6 @@ static void create_task2(psync_uint_t type, psync_syncid_t syncid, uint64_t entr
 static void create_task3(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, const char *name){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: Cerate task 3. Item Id: [%llu]", entryid);
-
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid, name) VALUES (?, ?, ?, ?, ?)");
 
   psync_sql_bind_uint(res, 1, type);
@@ -103,8 +97,6 @@ static void create_task3(psync_uint_t type, psync_syncid_t syncid, uint64_t entr
 static void create_task4(psync_uint_t type, uint64_t entryid, const char *name){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: Cerate task 4. Item Id: [%llu]", entryid);
-
   res=psync_sql_prep_statement("INSERT INTO task (type, itemid, localitemid, name) VALUES (?, ?, 0, ?)");
 
   psync_sql_bind_uint(res, 1, type);
@@ -117,8 +109,6 @@ static void create_task4(psync_uint_t type, uint64_t entryid, const char *name){
 static void create_task5(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: Cerate task 5. Item Id: [%llu]", entryid);
-
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid) VALUES (?, ?, ?, 0)");
 
   psync_sql_bind_uint(res, 1, type);
@@ -130,8 +120,6 @@ static void create_task5(psync_uint_t type, psync_syncid_t syncid, uint64_t entr
 
 static void create_task6(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, const char *name){
   psync_sql_res *res;
-
-  debug(D_NOTICE, "BOBO: Cerate task 6. Item Id: [%llu]", entryid);
 
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid, name) VALUES (?, ?, ?, 0, ?)");
 

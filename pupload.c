@@ -141,10 +141,9 @@ static int task_wait_no_uploads(uint64_t taskid){
   }
 
   pthread_mutex_unlock(&current_uploads_mutex);
-  //Bobo
+
   //res=psync_sql_query("SELECT COUNT(*) FROM task WHERE id<? AND type=?");
-  res=psync_sql_query("SELECT COUNT(*) FROM task WHERE id<? AND type=? AND inprogress != "NTO_STR(PSYNC_TASK_PAUSED));
-  //Bobo
+  res=psync_sql_query("SELECT COUNT(*) FROM task WHERE id<? AND type=? AND inprogress != "NTO_STR(PSYNC_TASK_PAUSED)); // Do not count paused tasks for recently modified files.
 
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_bind_uint(res, 2, PSYNC_UPLOAD_FILE);
