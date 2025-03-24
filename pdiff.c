@@ -584,7 +584,7 @@ static psync_socket *get_connected_socket(){
         psync_sql_run_free(q);
       }
     }
-    //else{
+    else{
       debug(D_NOTICE, "Save user data in DB.");
 
       used_quota=0;
@@ -600,15 +600,13 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_uint(q, 2, free_quota);
       psync_sql_run(q);
       
-      if (!luserid) {
-        psync_sql_bind_string(q, 1, "last_logged_location_id");
-        psync_sql_bind_uint(q, 2, lid);
-        psync_sql_run(q);
+      psync_sql_bind_string(q, 1, "last_logged_location_id");
+      psync_sql_bind_uint(q, 2, lid);
+      psync_sql_run(q);
 
-        psync_sql_bind_string(q, 1, "usedquota");
-        psync_sql_bind_uint(q, 2, 0);
-        psync_sql_run(q);
-      }
+      psync_sql_bind_string(q, 1, "usedquota");
+      psync_sql_bind_uint(q, 2, 0);
+      psync_sql_run(q);
 
       result=psync_find_result(res, "premium", PARAM_BOOL)->num;
       psync_sql_bind_string(q, 1, "premium");
@@ -670,7 +668,7 @@ static psync_socket *get_connected_socket(){
 			psync_sql_free_result(q);
 
       debug(D_NOTICE, "Save user data in DB. Done.");
-    //}
+    }
 
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
       psync_sql_rollback_transaction();
@@ -3016,8 +3014,10 @@ static int psync_diff_check_quota(psync_socket *sock){
     debug(D_WARNING, "userinfo returned error %u: %s", (unsigned)result, psync_find_result(res, "error", PARAM_STR)->str);
   else{
     uq=psync_check_result(res, "usedquota", PARAM_NUM);
-    if (likely_log(uq))
-      used_quota=uq->num;
+
+    if (likely_log(uq)) {
+      used_quota = uq->num;
+    }
   }
 
   if (used_quota!=oused_quota){

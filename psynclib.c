@@ -3095,11 +3095,12 @@ int psync_delete_backup_device(psync_folderid_t fId) {
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
 
   if (bFId == fId) {
-    psync_sql_start_transaction();
+    //Bobo
+    //psync_sql_start_transaction();
 
     psync_sql_statement("DELETE FROM setting WHERE id='BackupRootFoId'");
 
-    psync_sql_commit_transaction();
+    //psync_sql_commit_transaction();
   }
   else {
     debug(D_NOTICE, "Stop for different device. Id: [%lld]", bFId);

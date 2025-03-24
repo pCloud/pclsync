@@ -66,8 +66,6 @@ static void create_task1(psync_uint_t type, psync_syncid_t syncid, uint64_t entr
 static void create_task2(psync_uint_t type, psync_syncid_t syncid, uint64_t entryid, uint64_t localentryid, uint64_t newitemid, const char *name){
   psync_sql_res *res;
 
-  debug(D_NOTICE, "BOBO: Cerate task 2. Item Id: [%llu]", entryid);
-
   res=psync_sql_prep_statement("INSERT INTO task (type, syncid, itemid, localitemid, newitemid, name) VALUES (?, ?, ?, ?, ?, ?)");
 
   psync_sql_bind_uint(res, 1, type);
