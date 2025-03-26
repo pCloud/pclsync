@@ -287,7 +287,7 @@ static psync_socket *get_connected_socket(){
     deviceid = generate_device_id();
   }
 
-  debug(D_NOTICE, "using deviceid %s", deviceid);
+  debug(D_NOTICE, "using deviceid [%s]", deviceid);
 
   osversion = psync_deviceos();
   appversion=psync_appname();
@@ -678,7 +678,7 @@ static psync_socket *get_connected_socket(){
       continue;
     }
 
-    debug(D_NOTICE, "userid %lu", (unsigned long)userid);
+    debug(D_NOTICE, "userid [%lu]", (unsigned long)userid);
     cres=psync_check_result(res, "account", PARAM_HASH);
     q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
 
@@ -2705,11 +2705,13 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 static void check_overquota(){
   int isover=(used_quota>=current_quota);
 
+  debug(D_NOTICE, "BOBO: Check Quota: [%llu] =< Used Quota:[%llu]", current_quota, used_quota);
+
   if (isover!= g_is_over_quota){
     g_is_over_quota = isover;
 
     if (isover) {
-      debug(D_NOTICE, "Account full. Set overquota!");
+      debug(D_NOTICE, "Account full. Set overquota!"); 
       psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_OVERQUOTA);
     }
     else {
@@ -2989,6 +2991,13 @@ static int psync_diff_check_quota(psync_socket *sock){
   uint64_t oused_quota, result;
   oused_quota=used_quota;
 
+  //Bobo
+  int flag;
+
+quota_reset:
+  flag = 0;
+  //Bobo
+
   binparam diffparams[] = {
     P_STR("timeformat", "timestamp"), 
     P_STR("auth", psync_my_auth),
@@ -3008,6 +3017,10 @@ static int psync_diff_check_quota(psync_socket *sock){
   if (!res)
     return -1;
 
+  debug(D_WARNING, "BOBO: Dump userinfo result. Start.");
+  psync_dump_result(res);
+  debug(D_WARNING, "BOBO: Dump userinfo result. Done.");
+
   result=psync_find_result(res, "result", PARAM_NUM)->num;
 
   if (unlikely(result))
@@ -3018,10 +3031,14 @@ static int psync_diff_check_quota(psync_socket *sock){
     if (likely_log(uq)) {
       used_quota = uq->num;
     }
+    else { //Bobo
+      flag = 1;
+    }
+    //Bobo
   }
 
   if (used_quota!=oused_quota){
-    debug(D_WARNING, "corrected locally calculated quota from %lu to %lu", (unsigned long)oused_quota, (unsigned long)used_quota);
+    debug(D_WARNING, "corrected locally calculated quota from [%lu] to [%lu]", (unsigned long)oused_quota, (unsigned long)used_quota);
     psync_set_uint_value("usedquota", used_quota);
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
   }
@@ -3032,6 +3049,12 @@ static int psync_diff_check_quota(psync_socket *sock){
     psync_apipool_set_server(uq->array[0]->str);
 
   psync_free(res);
+
+  if (flag) {
+    debug(D_WARNING, "BOBO: Failed to get quota. Retry.");
+    psync_milisleep(2000);
+    goto quota_reset;
+  }
 
   return 0;
 }
@@ -3099,6 +3122,8 @@ int initial_diff(psync_socket* sock, subscribed_ids *ids) {
   debug(D_NOTICE, "Start initial diff.");
 
   ids->diffid = psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
+
+  debug(D_NOTICE, "BOBO: Got DiffId: [%llu] From DB.", ids->diffid);
 
   if (ids->diffid == 0) {
     initialdownload = 1;
@@ -3224,7 +3249,7 @@ static void psync_diff_thread(){
       unlinked=0;
       initialdownload=1;
 
-      debug(D_NOTICE, "Unlinked DB detected. Run initial Diff.");
+      debug(D_NOTICE, "Unlinked DB detected. Run initial Diff. DiffId: [%llu]", ids.diffid);
       diff_res = initial_diff(sock, &ids);
 
       debug(D_NOTICE, "Initial diff in main loop finished. Check quota:");

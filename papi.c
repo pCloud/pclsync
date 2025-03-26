@@ -700,25 +700,33 @@ const binresult *psync_do_find_result(const binresult *res, const char *name, ui
 
 const binresult *psync_do_check_result(const binresult *res, const char *name, uint32_t type, const char *file, const char *function, int unsigned line){
   uint32_t i;
+
   if (unlikely(!res || res->type!=PARAM_HASH)){
     if (D_CRITICAL<=DEBUG_LEVEL){
       const char *nm="NULL";
+
       if (res)
         nm=type_names[res->type];
+
       psync_debug(file, function, line, D_CRITICAL, "expecting hash as first parameter, got %s", nm);
     }
+
     return NULL;
   }
+
   for (i=0; i<res->length; i++)
     if (!strcmp(res->hash[i].key, name)){
       if (likely(res->hash[i].value->type==type))
         return res->hash[i].value;
       else{
-        if (D_CRITICAL<=DEBUG_LEVEL)
+        if (D_CRITICAL<=DEBUG_LEVEL){
           psync_debug(file, function, line, D_CRITICAL, "type error for key %s, expected %s got %s", name, type_names[type], type_names[res->hash[i].value->type]);
+        }
+
         return NULL;
       }
     }
+
   return NULL;
 }
 
