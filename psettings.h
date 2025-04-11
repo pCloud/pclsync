@@ -34,10 +34,14 @@
 
 //Library version x.yy.mm.z Where x is major version number, yy is year, mm is month, z is minor version number (if we need more than one release in a month)
 <<<<<<< HEAD
+<<<<<<< HEAD
 #define PSYNC_LIB_VERSION "2.25.04.1"
 =======
 #define PSYNC_LIB_VERSION "2.05.04.1"
 >>>>>>> 33bbd6a (Before merge.)
+=======
+#define PSYNC_LIB_VERSION "2.25.04.1"
+>>>>>>> 3fe6531 (Change the delay for uploading a file after last modification to 60 seconds.)
 
 /*
  #define PSYNC_API_HOST     "api74.pcloud.com"
