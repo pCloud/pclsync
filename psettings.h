@@ -33,7 +33,7 @@
 #include "pcompat.h"
 
 //Library version x.yy.mm.z Where x is major version number, yy is year, mm is month, z is minor version number (if we need more than one release in a month)
-#define PSYNC_LIB_VERSION "2.25.03.1"
+#define PSYNC_LIB_VERSION "2.25.03.2"
 
  /*
  #define PSYNC_API_HOST     "api74.pcloud.com"
@@ -110,7 +110,7 @@
 #define PSYNC_SECOND_SOCK_WRITE_BUFF_SIZE (64*1024) // better not be small
 
 #define PSYNC_UPLOAD_OLDER_THAN_SEC 5
-#define PSYNC_UPLOAD_OLDER_THAN_300_SEC 300
+#define PSYNC_UPLOAD_OLDER_THAN_PARAM_SEC 60
 
 #define PSYNC_SPEED_CALC_AVERAGE_SEC 8
 

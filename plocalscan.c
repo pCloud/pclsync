@@ -678,9 +678,9 @@ static void p_create_scanner_reminder() {
 
   flag = 1;
 
-  debug(D_NOTICE, "Reminder thread about to sleep for [%d] sec.", PSYNC_UPLOAD_OLDER_THAN_300_SEC + 60);
+  debug(D_NOTICE, "Reminder thread about to sleep for [%d] sec.", PSYNC_UPLOAD_OLDER_THAN_PARAM_SEC);
 
-  psync_milisleep((PSYNC_UPLOAD_OLDER_THAN_300_SEC + 60) * 1000);
+  psync_milisleep((PSYNC_UPLOAD_OLDER_THAN_PARAM_SEC) * 1000);
 
   debug(D_NOTICE, "Reminder thread wokeup. Call wake localscan.");
 
@@ -703,7 +703,7 @@ static void scan_upload_modified_file(sync_folderlist *fl){
   localpath = psync_local_path_for_local_file(fl->localid, NULL);
 
   psync_stat(localpath, &st);
-  if (!psync_stat(localpath, &st) && psync_stat_mtime(&st) >= psync_timer_time() - PSYNC_UPLOAD_OLDER_THAN_300_SEC) {
+  if (!psync_stat(localpath, &st) && psync_stat_mtime(&st) >= psync_timer_time() - PSYNC_UPLOAD_OLDER_THAN_PARAM_SEC) {
     psync_run_thread("Scanner reminder", p_create_scanner_reminder);
 
     psync_create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_PAUSED);
