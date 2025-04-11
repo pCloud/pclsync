@@ -2991,13 +2991,6 @@ static int psync_diff_check_quota(psync_socket *sock){
   uint64_t oused_quota, result;
   oused_quota=used_quota;
 
-  //Bobo
-  int flag;
-
-quota_reset:
-  flag = 0;
-  //Bobo
-
   binparam diffparams[] = {
     P_STR("timeformat", "timestamp"), 
     P_STR("auth", psync_my_auth),
@@ -3012,29 +3005,31 @@ quota_reset:
     P_NUM("os", P_OS_ID)
   };
 
-  res=send_command(sock, "userinfo", diffparams);
+  for (int i=0; i < 4; i++) {
+    res = send_command(sock, "userinfo", diffparams);
 
-  if (!res)
-    return -1;
-
-  debug(D_WARNING, "BOBO: Dump userinfo result. Start.");
-  psync_dump_result(res);
-  debug(D_WARNING, "BOBO: Dump userinfo result. Done.");
-
-  result=psync_find_result(res, "result", PARAM_NUM)->num;
-
-  if (unlikely(result))
-    debug(D_WARNING, "userinfo returned error %u: %s", (unsigned)result, psync_find_result(res, "error", PARAM_STR)->str);
-  else{
-    uq=psync_check_result(res, "usedquota", PARAM_NUM);
-
-    if (likely_log(uq)) {
-      used_quota = uq->num;
+    if (!res || i > 2){
+      return -1;
     }
-    else { //Bobo
-      flag = 1;
+
+    result = psync_find_result(res, "result", PARAM_NUM)->num;
+
+    if (unlikely(result)) {
+      debug(D_WARNING, "userinfo returned error %u: %s", (unsigned)result, psync_find_result(res, "error", PARAM_STR)->str);
     }
-    //Bobo
+    else {
+      uq = psync_check_result(res, "usedquota", PARAM_NUM);
+
+      if (likely_log(uq)) {
+        used_quota = uq->num;
+      }
+      else {
+        debug(D_WARNING, "BOBO: Failed to get quota. Retry: [%d].", i);
+        psync_milisleep(2000);
+
+        psync_free(res);
+      }
+    }
   }
 
   if (used_quota!=oused_quota){
@@ -3049,12 +3044,6 @@ quota_reset:
     psync_apipool_set_server(uq->array[0]->str);
 
   psync_free(res);
-
-  if (flag) {
-    debug(D_WARNING, "BOBO: Failed to get quota. Retry.");
-    psync_milisleep(2000);
-    goto quota_reset;
-  }
 
   return 0;
 }
