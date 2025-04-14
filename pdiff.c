@@ -3022,9 +3022,10 @@ static int psync_diff_check_quota(psync_socket *sock){
 
       if (likely_log(uq)) {
         used_quota = uq->num;
+        break;
       }
       else {
-        debug(D_WARNING, "BOBO: Failed to get quota. Retry: [%d].", i);
+        debug(D_WARNING, "Failed to get quota. Retry: [%d].", i);
         psync_milisleep(2000);
 
         psync_free(res);
