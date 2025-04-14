@@ -2705,7 +2705,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 static void check_overquota(){
   int isover=(used_quota>=current_quota);
 
-  debug(D_NOTICE, "BOBO: Check Quota: [%llu] =< Used Quota:[%llu]", current_quota, used_quota);
+  debug(D_NOTICE, "Check Quota: [%llu] =< Used Quota:[%llu]", current_quota, used_quota);
 
   if (isover!= g_is_over_quota){
     g_is_over_quota = isover;
@@ -3111,8 +3111,6 @@ int initial_diff(psync_socket* sock, subscribed_ids *ids) {
   debug(D_NOTICE, "Start initial diff.");
 
   ids->diffid = psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
-
-  debug(D_NOTICE, "BOBO: Got DiffId: [%llu] From DB.", ids->diffid);
 
   if (ids->diffid == 0) {
     initialdownload = 1;
