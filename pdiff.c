@@ -2990,6 +2990,7 @@ static int psync_diff_check_quota(psync_socket *sock){
   const binresult *uq;
   uint64_t oused_quota, result;
   oused_quota=used_quota;
+  int i;
 
   binparam diffparams[] = {
     P_STR("timeformat", "timestamp"), 
@@ -3005,7 +3006,7 @@ static int psync_diff_check_quota(psync_socket *sock){
     P_NUM("os", P_OS_ID)
   };
 
-  for (int i=0; i < 4; i++) {
+  for (i=0; i < 4; i++) {
     res = send_command(sock, "userinfo", diffparams);
 
     if (!res || i > 2){
