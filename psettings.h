@@ -35,11 +35,11 @@
 //Library version x.yy.mm.z Where x is major version number, yy is year, mm is month, z is minor version number (if we need more than one release in a month)
 #define PSYNC_LIB_VERSION "2.25.06.0"
 
- /*
+/*
  #define PSYNC_API_HOST     "api74.pcloud.com"
  #define PSYNC_API_PORT     8398
  #define PSYNC_API_PORT_SSL 8399
- */
+*/
 
 //#define PSYNC_API_HOST     "ebinapi71.pcloud.com"
 //#define PSYNC_API_AHOST    "eapi71.pcloud.com"
