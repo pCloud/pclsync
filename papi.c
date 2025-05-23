@@ -505,8 +505,9 @@ unsigned char *do_prepare_command(const char *command, size_t cmdlen, const binp
 
   for (i = 0; i < paramcnt; i++) {
     if (params[i].paramtype == PARAM_STR) {
-      debug(D_NOTICE, "Parameter:  Name: [%s] = [...]", params[i].paramname); //Not logging values of string parameters for security reasons.
-      //debug(D_NOTICE, "Parameter:  Name: [%s] = [%s]", params[i].paramname, params[i].str);
+      //debug(D_NOTICE, "Parameter:  Name: [%s] = [...]", params[i].paramname); //Not logging values of string parameters for security reasons.
+      //Bobo
+      debug(D_NOTICE, "Parameter:  Name: [%s] = [%s]", params[i].paramname, params[i].str);
     }
     else if (params[i].paramtype == PARAM_NUM) {
       debug(D_NOTICE, "Parameter:  Name: [%s] = [%llu]", params[i].paramname, params[i].num);

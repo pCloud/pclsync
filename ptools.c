@@ -1485,6 +1485,7 @@ int wait_auth_token(char* request_id) {
   };
 
   debug(D_NOTICE, "Wait login token.");
+  debug(D_NOTICE, "BOBO: Wait login token.");
 
   res = call_ebackend_v2(WEB_LOGIN_WAIT_AUTH, params, 3, &resData, PSYNC_SOCK_READ_TIMEOUT_300);
 
@@ -1516,7 +1517,11 @@ int wait_auth_token(char* request_id) {
 
   currentuserid = psync_get_uint_value("userid");
 
+  debug(D_CRITICAL, "BOBO: Check Current and New User Id Current UserId: [%llu] New UserId: [%llu]", currentuserid, newuserid);
+
   if (currentuserid) {
+    debug(D_CRITICAL, "BOBO: Current User Detected.");
+
     if (currentuserid != newuserid) {
       debug(D_NOTICE, "New user detected. Unlink.");
       psync_unlink();
@@ -1549,6 +1554,8 @@ int wait_auth_token(char* request_id) {
   }
 
   psync_set_auth(token, rememberme);
+
+  debug(D_CRITICAL, "BOBO: Auth Token Set To: [%s] Current UserId: [%llu] New UserId: [%llu]", psync_my_auth, currentuserid, newuserid);
   
   return result;
 }

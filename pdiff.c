@@ -77,6 +77,7 @@ static time_t last_event=0;
 static psync_uint_t needdownload=0;
 static psync_socket_t exceptionsockwrite=INVALID_SOCKET;
 static pthread_mutex_t diff_mutex=PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t diff_pause_mutex = PTHREAD_MUTEX_INITIALIZER;//Bobo
 static int initialdownload=0;
 static paccount_cache_callback_t psync_cache_callback=NULL;
 static uint32_t psync_is_business=0;
@@ -281,6 +282,8 @@ static psync_socket *get_connected_socket(){
   auth=user=pass=psync_my_2fa_token=NULL;
   psync_is_business=0;
 
+  debug(D_NOTICE, "BOBO: get_connected_socket. Start.");
+
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
 
   if (!deviceid) {
@@ -292,6 +295,8 @@ static psync_socket *get_connected_socket(){
   osversion = psync_deviceos();
   appversion=psync_appname();
   devicestring=psync_device_string();
+
+  debug(D_NOTICE, "BOBO: get_connected_socket. 2.");
 
   while (1){
     psync_free(auth);
@@ -310,6 +315,8 @@ static psync_socket *get_connected_socket(){
 
     chrUserid = psync_sql_cellstr("SELECT value FROM setting WHERE id='userid'");
 
+    debug(D_NOTICE, "BOBO: get_connected_socket. 3.");
+
     //If there is no userid row, we assume it's first login, after instalation.
     //Rise a flag so we can send a first login event later.
     if (chrUserid == NULL) {
@@ -327,6 +334,8 @@ static psync_socket *get_connected_socket(){
 
     if (!pass && psync_my_pass)
       pass=psync_strdup(psync_my_pass);
+
+    debug(D_NOTICE, "BOBO: get_connected_socket. 4.");
 
     if (!auth && (!pass || !user)){
 #if defined(P_OS_LINUX)
@@ -558,8 +567,11 @@ static psync_socket *get_connected_socket(){
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
     }
 
+    debug(D_NOTICE, "BOBO: Compare user ids. luserid:[%llu] userid[%llu]", luserid, userid);
+
     if (luserid){
       debug(D_NOTICE, "There is already logged user.");
+
       if (unlikely_log(luserid!=userid)){
         if(check_user_relocated(luserid, sock)){
 		      debug(D_NOTICE, "setting PSTATUS_AUTH_RELOCATED");
@@ -2630,12 +2642,32 @@ static struct {
 #define event_list_size ARRAY_SIZE(event_list)
 
 void psync_diff_lock(){
+  debug(D_CRITICAL, "BOBO: Try to get Diff lock.");
   pthread_mutex_lock(&diff_mutex);
+  debug(D_CRITICAL, "BOBO: Got lock.");
 }
 
 void psync_diff_unlock(){
+  debug(D_CRITICAL, "BOBO: Release Diff lock.");
   pthread_mutex_unlock(&diff_mutex);
+  debug(D_CRITICAL, "BOBO: Release Diff lock. Done.");
 }
+
+//Bobo
+void psync_diff_wait_lock() {
+  debug(D_CRITICAL, "BOBO: Try to get Diff Wait Lock.");
+  psync_diff_waiting = 1;
+  pthread_mutex_lock(&diff_pause_mutex);
+  debug(D_CRITICAL, "BOBO: Got Wait Lock.");
+}
+
+void psync_diff_wait_unlock() {
+  debug(D_CRITICAL, "BOBO: Release Diff Wait lock.");
+  psync_diff_waiting = 0;
+  pthread_mutex_unlock(&diff_pause_mutex);
+  debug(D_CRITICAL, "BOBO: Release Diff Wait lock. Done.");
+}
+//Bobo
 
 static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   const binresult *entry, *etype;
@@ -2644,6 +2676,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   oused_quota=used_quota;
   needdownload=0;
 
+  debug(D_CRITICAL, "BOBO: Process entries. Start.");
   psync_diff_lock();
 
   if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
@@ -2651,7 +2684,11 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
     return psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
   }
 
+  debug(D_CRITICAL, "BOBO: Process entries. Start Transaction.");
+
   psync_sql_start_transaction();
+
+  debug(D_CRITICAL, "BOBO: Process entries. 1");
 
   if (entries->length>=10000)
     psync_sql_statement("DELETE FROM setting WHERE id='lastanalyze'");
@@ -2660,17 +2697,29 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
     entry=entries->array[i];
     etype=psync_find_result(entry, "event", PARAM_STR);
 
-    for (j=0; j<event_list_size; j++) /*Process createfile, modifyfile*/
-      if (etype->length==event_list[j].len && !memcmp(etype->str, event_list[j].name, etype->length)){
+    for (j = 0; j < event_list_size; j++) { /*Process createfile, modifyfile*/
+      if (etype->length == event_list[j].len && !memcmp(etype->str, event_list[j].name, etype->length)) {
         const binresult* meta, * name;
 
         meta = psync_find_result(entry, "metadata", PARAM_HASH);
         name = psync_find_result(meta, "name", PARAM_STR);
 
         event_list[j].process(entry);
-        event_list[j].used=1;
+        event_list[j].used = 1;
       }
+
+      if (!psync_diff_run) {
+        debug(D_CRITICAL, "BOBO: Ongoing diff. Stop Signal Detected!");
+
+        psync_sql_rollback_transaction();
+        psync_diff_unlock();
+
+        return 0;
+      }
+    }
   }
+
+  debug(D_CRITICAL, "BOBO: Process entries. 2");
 
   for (j = 0; j < event_list_size; j++) {
     if (event_list[j].used) {
@@ -2681,11 +2730,15 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   psync_set_uint_value("diffid", newdiffid);
   psync_set_uint_value("usedquota", used_quota);
 
+  debug(D_CRITICAL, "BOBO: Process entries. 3");
+
   //update_ba_emails();
   //update_ba_teams();
   psync_path_status_clear_path_cache();
   psync_sql_commit_transaction();
   psync_diff_unlock();
+
+  debug(D_CRITICAL, "BOBO: Process entries. 4");
 
   if (needdownload){
     psync_wake_download();
@@ -2698,6 +2751,8 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 
   if (oused_quota!=used_quota)
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
+
+  debug(D_CRITICAL, "BOBO: Process entries. End.");
 
   return psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
 }
@@ -2783,6 +2838,8 @@ static int send_diff_command(psync_socket *sock, subscribed_ids ids){
 }
 
 static void handle_exception(psync_socket **sock, subscribed_ids *ids, char ex){
+  debug(D_NOTICE, "BOBO: Handle exception!");
+
   if (ex=='c'){
     if (last_event>=psync_timer_time()-1)
       return;
@@ -3070,8 +3127,10 @@ static void psync_cache_contacts(){
 static void psync_diff_adapter_hash(void *out){
   psync_fast_hash256_ctx ctx;
   psync_interface_list_t *list;
+
   list=psync_list_ip_adapters();
-/*  if (IS_DEBUG){
+
+  /*  if (IS_DEBUG){
     char buffa[NI_MAXHOST], buffb[NI_MAXHOST], buffn[NI_MAXHOST];
     size_t i;
     for (i=0; i<list->interfacecnt; i++) {
@@ -3082,6 +3141,7 @@ static void psync_diff_adapter_hash(void *out){
     }
     debug(D_NOTICE, "list end");
   } */
+
   psync_fast_hash256_init(&ctx);
   psync_fast_hash256_update(&ctx, list->interfaces, list->interfacecnt*sizeof(psync_interface_t));
   psync_fast_hash256_final(out, &ctx);
@@ -3151,8 +3211,17 @@ int initial_diff(psync_socket* sock, subscribed_ids *ids) {
 
     if (entries->length) {
       newdiffid = psync_find_result(res, "diffid", PARAM_NUM)->num;
-      debug(D_NOTICE, "processing diff with [%u] entries", (unsigned)entries->length);
+      debug(D_NOTICE, "Processing diff with [%u] entries. Diff Id: [%llu]", (unsigned)entries->length, ids->diffid);
       ids->diffid = process_entries(entries, newdiffid);
+
+      //Bobo
+      if (!psync_diff_run) {
+        debug(D_CRITICAL, "BOBO: Ongoing Initial Diff. Stop Signal Detected!");
+
+        return 1;
+      }
+      //Bobo
+
       debug(D_NOTICE, "got diff with [%u] entries, new diffid [%lu] [%llu]", (unsigned)entries->length, (unsigned long)ids->diffid, ids->diffid);
     }
 
@@ -3189,77 +3258,94 @@ static void psync_diff_thread(){
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_send_status_update();
 
-  while(diff_res){
-    psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
-    sock = get_connected_socket();
+  debug(D_NOTICE, "BOBO: Run get_connected_socket.");
+  sock = get_connected_socket();
+  debug(D_NOTICE, "BOBO: Connected.");
 
-    debug(D_NOTICE, "Connected.");
-
-    psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
-
-    g_is_over_quota = 0; //Reset account full constant.
-
-    diff_res = initial_diff(sock, &ids);
-  }
-
-  debug(D_NOTICE, "After initial diff. DiffId: [%llu]", ids.diffid);
-
-  check_overquota();
-
-  psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
-  initialdownload=0;
-  psync_run_analyze_if_needed();
-  psync_syncer_check_delayed_syncs();
-  exceptionsock=setup_exeptions();
-
-  if (unlikely(exceptionsock==INVALID_SOCKET)){
-    debug(D_ERROR, "could not create pipe");
-    psync_socket_close(sock);
-
-    return;
-  }
-
-  socks[0]=exceptionsock;
-  socks[1]=sock->sock;
-
-  psync_diff_adapter_hash(adapter_hash);
-  psync_timer_register(psync_diff_adapter_timer, PSYNC_DIFF_CHECK_ADAPTER_CHANGE_SEC, NULL);
-
-  send_diff_command(sock, ids);
-
-  psync_milisleep(50);
-
-  last_event=0;
+  initialdownload = 1;
 
   //Main diff loop start
   while (psync_do_run){
+    //Bobo
+    if (!psync_diff_run) {
+      debug(D_CRITICAL, "BOBO: Ongoing Diff Loop Paused. Sleep!");
+
+      psync_diff_wait_lock();
+
+      debug(D_CRITICAL, "BOBO: Diff Ready to Resume!");
+
+      psync_diff_wait_unlock();
+    }
+    //Bobo
+
     if (unlinked){
-      debug(D_NOTICE, "Diff. Unlinked DB detected.");
+      debug(D_NOTICE, "BOBO: Diff. Unlinked DB detected.");
       unlinked=0;
-      initialdownload=1;
 
-      debug(D_NOTICE, "Unlinked DB detected. Run initial Diff. DiffId: [%llu]", ids.diffid);
+      ids.diffid = 0;
+
+      debug(D_NOTICE, "BOBO: Unlinked DB detected. Run initial Diff. DiffId: [%llu]", ids.diffid);
+
+      psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
+
+      debug(D_CRITICAL, "BOBO: Initial Diff in main loop Start.");
       diff_res = initial_diff(sock, &ids);
+      debug(D_CRITICAL, "BOBO: Initial Diff in main loop End.");
 
-      debug(D_NOTICE, "Initial diff in main loop finished. Check quota:");
+      if (!psync_diff_run) {
+        debug(D_NOTICE, "BOBO: Diff Stopped Break!");
+        continue;
+      }
+
+      debug(D_NOTICE, "BOBO: Initial diff in main loop finished. Check quota:");
       
       g_is_over_quota = 0; //Reset account full constant.
 
       check_overquota();
     }
+    // After initial diff. Main diff loop.
+    psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);//Bobo
+
+    if (initialdownload) {
+      debug(D_NOTICE, "BOBO: Initial download. Setup Pipes.");
+
+      initialdownload = 0;
+
+      exceptionsock = setup_exeptions();
+
+      if (unlikely(exceptionsock == INVALID_SOCKET)) {
+        debug(D_ERROR, "could not create pipe");
+        psync_socket_close(sock);
+
+        return;
+      }
+
+      socks[0] = exceptionsock;
+      socks[1] = sock->sock;
+
+      psync_diff_adapter_hash(adapter_hash); //Populates the list of network adapters. Called in psync_diff_adapter_timer
+
+      psync_timer_register(psync_diff_adapter_timer, PSYNC_DIFF_CHECK_ADAPTER_CHANGE_SEC, NULL);
+
+      last_event = 0;
+
+      debug(D_NOTICE, "BOBO: Initial download. Done.");
+    }
 
     if(psync_recache_contacts){
-      debug(D_NOTICE, "Diff. Recache contacts.");
+      debug(D_NOTICE, "BOBO: Diff. Recache contacts.");
       psync_cache_contacts();
       psync_send_eventid(PEVENT_SHARE_RELOAD_ALL);
 
       psync_recache_contacts=0;
     }
 
-    if (psync_socket_pendingdata(sock))
-      sel=1;
-    else
-      sel=psync_select_in(socks, 2, -1);
+    if (psync_socket_pendingdata(sock)) {
+      sel = 1;
+    }      
+    else {
+      sel = psync_select_in(socks, 2, -1);
+    }
 
     if (sel==0){
       if (!psync_do_run)
@@ -3379,6 +3465,7 @@ static void psync_diff_thread(){
           psync_free(res);
         }
 
+        debug(D_NOTICE, "BOBO: End of main diff loop. Send Diff command again. Diff Id: [%llu]", ids.diffid);
         send_diff_command(sock, ids);
       }
       else{

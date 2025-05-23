@@ -118,6 +118,10 @@ psync_rwlock_t psync_db_lock;
 sqlite3 *psync_db;
 pstatus_t psync_status;
 int psync_do_run=1;
+//Bobo
+int psync_diff_run = 1;
+int psync_diff_waiting = 1;
+//Bobo
 int psync_recache_contacts=1;
 PSYNC_THREAD uint32_t psync_error=0;
 

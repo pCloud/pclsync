@@ -455,10 +455,13 @@ void psync_set_pass(const char *password, int save){
 void psync_set_auth(const char *auth, int save){
   clear_db(save);
 
-  if (save)
+  if (save) {
+    debug(D_NOTICE, "BOBO: Save Auth in DB.");
     psync_set_string_value("auth", auth);
-  else
+  }    
+  else {
     psync_strlcpy(psync_my_auth, auth, sizeof(psync_my_auth));
+  }
 
   debug(D_NOTICE, "STATUS: psync_set_auth");
 
@@ -594,13 +597,25 @@ void psync_unlink(){
   char* errMsg;
 
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
-  debug(D_NOTICE, "Unlink");
+  debug(D_NOTICE, "Unlink!");
 
-  psync_diff_lock();
+  //psync_diff_lock();//Bobo
+
   unlinked=1;
   tfa=0;
+
+  debug(D_NOTICE, "BOBO: Pause ongoing Diff! Diff Flag: [%d]", psync_diff_waiting);
+  psync_diff_run = 0; //Bobo
+  psync_diff_wait_lock();
+
+  while (!psync_diff_waiting) {
+    debug(D_NOTICE, "BOBO: Waiting for the diff to stop!");
+    psync_milisleep(1000);
+  }
+
   psync_stop_all_download();
   psync_stop_all_upload();
+
   //Stop the root backup folder before unlinking the database. 0 means fetch the deviceid from local DB.
   psync_stop_device(0, &errMsg);
 
@@ -619,7 +634,7 @@ void psync_unlink(){
 
   psync_sql_lock();
 
-  debug(D_NOTICE, "clearing database, locked");
+  debug(D_NOTICE, "Clearing Database, Locked");
   psync_cache_clean_all();
 
   ret=psync_sql_close();
@@ -660,7 +675,7 @@ void psync_unlink(){
   psync_my_userid=0;
   pthread_mutex_unlock(&psync_my_auth_mutex);
 
-  debug(D_NOTICE, "clearing database, finished");
+  debug(D_NOTICE, "Clearing DataBase, Finished!");
 
   psync_fs_pause_until_login();
   psync_fs_clean_tasks();
@@ -672,14 +687,23 @@ void psync_unlink(){
   psync_cache_clean_all();
   psync_notifications_clean();
   psync_pagecache_reopen_read_cache();
-  psync_diff_unlock();
+
+  debug(D_NOTICE, "BOBO: Resume Diff!");
+  psync_diff_run = 1; //Bobo
+  psync_diff_waiting = 0;//Bobo
+  psync_diff_wait_unlock();//Bobo
+  //psync_diff_unlock();//Bobo
+
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_QUOTAOK);
   psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_REQUIRED);
   psync_set_status(PSTATUS_TYPE_RUN, PSTATUS_RUN_RUN);
+
   psync_resume_localscan();
-  if (psync_fs_need_per_folder_refresh())
+
+  if (psync_fs_need_per_folder_refresh()) {
     psync_fs_refresh_folder(0);
+  }
 }
 
 int psync_tfa_has_devices() {
@@ -3265,6 +3289,9 @@ userinfo_t* psync_get_userinfo() {
 
     info->registered = psync_find_result(res, "registered", PARAM_NUM)->num;
     psync_free(res);
+
+    debug(D_NOTICE, "BOBO: Get userinfo. Returned: email: [%s] UserId: [%llu] Quota: [%llu] UsedQuota:[%llu]", info->email, info->userid, info->quota, info->usedquota);
+
     return info;
   }
 

@@ -192,6 +192,9 @@ typedef void (*psync_task_callback_t)(void *, void *);
 typedef void (*psync_transaction_callback_t)(void *);
 
 extern int psync_do_run;
+extern int psync_diff_run;//Bobo
+extern int psync_diff_waiting;//Bobo
+
 extern int psync_recache_contacts;
 extern pstatus_t psync_status;
 extern char psync_my_auth[64], psync_my_2fa_code[32], *psync_my_user, *psync_my_pass, *psync_my_2fa_token, *psync_my_verify_token;

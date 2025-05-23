@@ -858,11 +858,15 @@ static int psync_async_send_task(const void *task, size_t len){
 
 void psync_async_stop(){
   task_header_t task;
+
   task.type=TASK_TYPE_EXIT;
   task.len=0;
+
   pthread_mutex_lock(&amutex);
+
   if (running)
     psync_async_send_task_locked(&task, sizeof(task));
+
   pthread_mutex_unlock(&amutex);
 }
 

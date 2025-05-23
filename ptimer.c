@@ -195,29 +195,35 @@ psync_timer_t psync_timer_register(psync_timer_callback func, time_t numsec, voi
   psync_timer_t timer;
   uint32_t i;
   time_t n;
+
   timer=psync_new(psync_timer_structure_t);
   timer->call=func;
   timer->param=param;
   n=TIMER_ARRAY_SIZE;
+
   for (i=0; i<TIMER_LEVELS; i++){
     if (numsec<=n)
       break;
     else
       n*=TIMER_ARRAY_SIZE;
   }
+
   if (unlikely(i==TIMER_LEVELS)){
     n/=TIMER_ARRAY_SIZE;
     debug(D_ERROR, "requested timeout %lu is larger than the maximum of %lu", (unsigned long)numsec, (unsigned long)n);
     numsec=n;
     i--;
   }
+
   timer->numsec=numsec;
   timer->level=i;
   timer->opts=0;
+
   pthread_mutex_lock(&timer_mutex);
   timer->runat=psync_current_time+numsec;
   psync_list_add_tail(&timerlists[i][(timer->runat>>(i*TIMER_ARRAY_SIZE_SHIFT))%TIMER_ARRAY_SIZE], &timer->list);
   pthread_mutex_unlock(&timer_mutex);
+
   return timer;
 }
 
