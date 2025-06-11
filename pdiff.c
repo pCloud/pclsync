@@ -555,7 +555,8 @@ static psync_socket *get_connected_socket(){
       debug(D_NOTICE, "Got Free Quota: [%llu]", free_quota);
 	  }
 
-    luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
+    //luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
+    
     psync_is_business=psync_find_result(res, "business", PARAM_BOOL)->num;
 	  lid=psync_setting_get_uint(_PS(location_id));
     psync_sql_start_transaction();
@@ -563,40 +564,48 @@ static psync_socket *get_connected_socket(){
     psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
 
     if (sizeof(psync_my_auth) > 0) {
-      debug(D_NOTICE, "Auth token populated!");
+      debug(D_NOTICE, "Auth token is populated!");
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
     }
 
-    debug(D_NOTICE, "BOBO: Compare user ids. luserid:[%llu] userid[%llu]", luserid, userid);
-
+    //debug(D_NOTICE, "BOBO: Compare user ids. luserid:[%llu] userid[%llu]", luserid, userid);
+/*
     if (luserid){
-      debug(D_NOTICE, "There is already logged user.");
+      debug(D_NOTICE, "BOBO: There is already logged user.");
 
       if (unlikely_log(luserid!=userid)){
+        debug(D_NOTICE, "BOBO: The already logged user is different than the new one.");
+
         if(check_user_relocated(luserid, sock)){
-		      debug(D_NOTICE, "setting PSTATUS_AUTH_RELOCATED");
+          debug(D_NOTICE, "BOBO: User is relocated.");
+
+          debug(D_NOTICE, "setting PSTATUS_AUTH_RELOCATED");
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
         }
         else {
           debug(D_NOTICE, "user mistmatch, db userid=%lu, connected userid=%lu", (unsigned long)luserid, (unsigned long)userid);
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_MISMATCH);
         }
-        
+
         psync_sql_rollback_transaction();
         psync_socket_close(sock);
         psync_free(res);
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
         
+        debug(D_NOTICE, "BOBO: User changed. Reset connection loop.");
+
         continue;
       }
       
       if (saveauth){
+        debug(D_NOTICE, "BOBO: Save new user auth.");
+
         q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('auth', ?)");
         psync_sql_bind_string(q, 1, psync_my_auth);
         psync_sql_run_free(q);
       }
     }
-    else{
+    else {
       debug(D_NOTICE, "Save user data in DB.");
 
       used_quota=0;
@@ -644,9 +653,9 @@ static psync_socket *get_connected_socket(){
       psync_sql_bind_string(q, 1, "username");
       psync_sql_bind_string(q, 2, psync_find_result(res, "email", PARAM_STR)->str);
       psync_sql_run(q);
-      /*psync_sql_bind_string(q, 1, "language");
-      psync_sql_bind_string(q, 2, psync_find_result(res, "language", PARAM_STR)->str);
-      psync_sql_run(q);*/
+      //psync_sql_bind_string(q, 1, "language");
+      //psync_sql_bind_string(q, 2, psync_find_result(res, "language", PARAM_STR)->str);
+      //psync_sql_run(q);
 			psync_sql_bind_string(q, 1, "plan");
 			psync_sql_bind_uint(q, 2, psync_find_result(res, "plan", PARAM_NUM)->num);
 			psync_sql_run(q);
@@ -681,6 +690,92 @@ static psync_socket *get_connected_socket(){
 
       debug(D_NOTICE, "Save user data in DB. Done.");
     }
+    */
+    //Bobo
+    debug(D_NOTICE, "Save user data in DB.");
+
+    used_quota = 0;
+    q = psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
+    psync_sql_bind_string(q, 1, "userid");
+    psync_sql_bind_uint(q, 2, userid);
+    psync_sql_run(q);
+
+    psync_sql_bind_string(q, 1, "quota");
+    psync_sql_bind_uint(q, 2, current_quota);
+    psync_sql_run(q);
+    psync_sql_bind_string(q, 1, "freequota");
+    psync_sql_bind_uint(q, 2, free_quota);
+    psync_sql_run(q);
+
+    psync_sql_bind_string(q, 1, "last_logged_location_id");
+    psync_sql_bind_uint(q, 2, lid);
+    psync_sql_run(q);
+
+    psync_sql_bind_string(q, 1, "usedquota");
+    psync_sql_bind_uint(q, 2, 0);
+    psync_sql_run(q);
+
+    result = psync_find_result(res, "premium", PARAM_BOOL)->num;
+    psync_sql_bind_string(q, 1, "premium");
+    psync_sql_bind_uint(q, 2, result);
+    psync_sql_run(q);
+
+    if (result) {
+      result = psync_find_result(res, "premiumexpires", PARAM_NUM)->num;
+    }
+    else {
+      result = 0;
+    }
+
+    psync_sql_bind_string(q, 1, "premiumexpires");
+    psync_sql_bind_uint(q, 2, result);
+    psync_sql_run(q);
+    psync_sql_bind_string(q, 1, "emailverified");
+    psync_sql_bind_uint(q, 2, psync_find_result(res, "emailverified", PARAM_BOOL)->num);
+    psync_sql_run(q);
+    psync_sql_bind_string(q, 1, "registered");
+    psync_sql_bind_uint(q, 2, psync_find_result(res, "registered", PARAM_NUM)->num);
+    psync_sql_run(q);
+    psync_sql_bind_string(q, 1, "username");
+    psync_sql_bind_string(q, 2, psync_find_result(res, "email", PARAM_STR)->str);
+    psync_sql_run(q);
+    //psync_sql_bind_string(q, 1, "language");
+    //psync_sql_bind_string(q, 2, psync_find_result(res, "language", PARAM_STR)->str);
+    //psync_sql_run(q);
+    psync_sql_bind_string(q, 1, "plan");
+    psync_sql_bind_uint(q, 2, psync_find_result(res, "plan", PARAM_NUM)->num);
+    psync_sql_run(q);
+    psync_sql_bind_string(q, 1, "business");
+    psync_sql_bind_uint(q, 2, psync_find_result(res, "business", PARAM_BOOL)->num);
+    psync_sql_run(q);
+    psync_sql_bind_string(q, 1, "premiumlifetime");
+    psync_sql_bind_uint(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
+    psync_sql_run(q);
+
+    cres = psync_check_result(res, "vivapcloud", PARAM_BOOL);
+    if (cres) {
+      psync_sql_bind_string(q, 1, "vivapcloud");
+      psync_sql_bind_uint(q, 2, cres->num);
+      psync_sql_run(q);
+    }
+
+    cres = psync_check_result(res, "family", PARAM_HASH);
+
+    if (cres) {
+      psync_sql_bind_string(q, 1, "owner");
+      psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
+      psync_sql_run(q);
+    }
+
+    if (saveauth) {
+      psync_sql_bind_string(q, 1, "auth");
+      psync_sql_bind_string(q, 2, psync_my_auth);
+      psync_sql_run(q);
+    }
+    psync_sql_free_result(q);
+
+    debug(D_NOTICE, "Save user data in DB. Done.");
+    //Bobo
 
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
       psync_sql_rollback_transaction();
@@ -854,6 +949,8 @@ static psync_socket *get_connected_socket(){
     psync_my_2fa_code[0]=0;
 
     psync_sql_sync();
+
+    debug(D_NOTICE, "BOBO: get_connected_socket. End.");
 
     return sock;
   }
@@ -2642,30 +2739,28 @@ static struct {
 #define event_list_size ARRAY_SIZE(event_list)
 
 void psync_diff_lock(){
-  debug(D_CRITICAL, "BOBO: Try to get Diff lock.");
+  //debug(D_CRITICAL, "BOBO: Try to get Diff lock.");
   pthread_mutex_lock(&diff_mutex);
-  debug(D_CRITICAL, "BOBO: Got lock.");
+  //debug(D_CRITICAL, "BOBO: Got lock.");
 }
 
 void psync_diff_unlock(){
-  debug(D_CRITICAL, "BOBO: Release Diff lock.");
+  //debug(D_CRITICAL, "BOBO: Release Diff lock.");
   pthread_mutex_unlock(&diff_mutex);
-  debug(D_CRITICAL, "BOBO: Release Diff lock. Done.");
+  //debug(D_CRITICAL, "BOBO: Release Diff lock. Done.");
 }
 
 //Bobo
 void psync_diff_wait_lock() {
-  debug(D_CRITICAL, "BOBO: Try to get Diff Wait Lock.");
-  psync_diff_waiting = 1;
+  //debug(D_CRITICAL, "BOBO: Try to get Diff Wait Lock.");
   pthread_mutex_lock(&diff_pause_mutex);
-  debug(D_CRITICAL, "BOBO: Got Wait Lock.");
+  //debug(D_CRITICAL, "BOBO: Got Wait Lock.");
 }
 
 void psync_diff_wait_unlock() {
-  debug(D_CRITICAL, "BOBO: Release Diff Wait lock.");
-  psync_diff_waiting = 0;
+  //debug(D_CRITICAL, "BOBO: Release Diff Wait lock.");
   pthread_mutex_unlock(&diff_pause_mutex);
-  debug(D_CRITICAL, "BOBO: Release Diff Wait lock. Done.");
+  //debug(D_CRITICAL, "BOBO: Release Diff Wait lock. Done.");
 }
 //Bobo
 
@@ -2684,11 +2779,9 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
     return psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
   }
 
-  debug(D_CRITICAL, "BOBO: Process entries. Start Transaction.");
-
   psync_sql_start_transaction();
 
-  debug(D_CRITICAL, "BOBO: Process entries. 1");
+  //debug(D_CRITICAL, "BOBO: Process entries. 1");
 
   if (entries->length>=10000)
     psync_sql_statement("DELETE FROM setting WHERE id='lastanalyze'");
@@ -2719,7 +2812,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
     }
   }
 
-  debug(D_CRITICAL, "BOBO: Process entries. 2");
+  //debug(D_CRITICAL, "BOBO: Process entries. 2");
 
   for (j = 0; j < event_list_size; j++) {
     if (event_list[j].used) {
@@ -2730,7 +2823,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   psync_set_uint_value("diffid", newdiffid);
   psync_set_uint_value("usedquota", used_quota);
 
-  debug(D_CRITICAL, "BOBO: Process entries. 3");
+  //debug(D_CRITICAL, "BOBO: Process entries. 3");
 
   //update_ba_emails();
   //update_ba_teams();
@@ -2738,7 +2831,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   psync_sql_commit_transaction();
   psync_diff_unlock();
 
-  debug(D_CRITICAL, "BOBO: Process entries. 4");
+  //debug(D_CRITICAL, "BOBO: Process entries. 4");
 
   if (needdownload){
     psync_wake_download();
@@ -3266,13 +3359,15 @@ static void psync_diff_thread(){
 
   //Main diff loop start
   while (psync_do_run){
+    debug(D_CRITICAL, "BOBO: Diff Loop Start. Paused Flag: [%d]", psync_diff_waiting);
     //Bobo
     if (!psync_diff_run) {
       debug(D_CRITICAL, "BOBO: Ongoing Diff Loop Paused. Sleep!");
 
+      psync_diff_waiting = 1;
       psync_diff_wait_lock();
 
-      debug(D_CRITICAL, "BOBO: Diff Ready to Resume!");
+      sock = get_connected_socket();
 
       psync_diff_wait_unlock();
     }
@@ -3340,6 +3435,9 @@ static void psync_diff_thread(){
       psync_recache_contacts=0;
     }
 
+    debug(D_NOTICE, "BOBO: Set Diff status to paused. Before reading socket.");
+    psync_diff_waiting = 1; //Bobo
+
     if (psync_socket_pendingdata(sock)) {
       sel = 1;
     }      
@@ -3347,7 +3445,7 @@ static void psync_diff_thread(){
       sel = psync_select_in(socks, 2, -1);
     }
 
-    if (sel==0){
+    if (sel==0) {
       if (!psync_do_run)
         break;
 
@@ -3356,11 +3454,15 @@ static void psync_diff_thread(){
 
       handle_exception(&sock, &ids, ex);
 
+      debug(D_NOTICE, "BOBO: Exception handled. Read socket.");
+
       while (psync_select_in(socks, 1, 0)==0 && psync_pipe_read(exceptionsock, &ex, 1)==1);
+
+      debug(D_NOTICE, "BOBO: Exception handled. Read socket. Done.");
 
       socks[1]=sock->sock;
     }
-    else if (sel==1){
+    else if (sel==1) {
       sock->pending=1;
 
       res=get_result(sock);
@@ -3398,6 +3500,9 @@ static void psync_diff_thread(){
       entries=psync_check_result(res, "from", PARAM_STR);
 
       if (entries){
+        debug(D_NOTICE, "BOBO: Set Diff status to runing. After reading socket. Process entries length: [%lu]", entries->length);
+        psync_diff_waiting = 0; //Bobo
+
         if (entries->length==4 && !strcmp(entries->str, "diff")){
           entries=psync_find_result(res, "entries", PARAM_ARRAY);
 
@@ -3421,6 +3526,8 @@ static void psync_diff_thread(){
           psync_free(res);
         }
         else if (entries->length==13 && !strcmp(entries->str, "notifications")){
+          debug(D_NOTICE, "BOBO: Process notification.");
+
           ids.notificationid=psync_find_result(res, "notificationid", PARAM_NUM)->num;
           // do not free res
           psync_notifications_notify(res);

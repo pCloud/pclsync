@@ -599,12 +599,10 @@ void psync_unlink(){
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
   debug(D_NOTICE, "Unlink!");
 
-  //psync_diff_lock();//Bobo
-
   unlinked=1;
   tfa=0;
 
-  debug(D_NOTICE, "BOBO: Pause ongoing Diff! Diff Flag: [%d]", psync_diff_waiting);
+  debug(D_NOTICE, "BOBO: Pause ongoing Diff! Diff Waiting Flag: [%d]", psync_diff_waiting);
   psync_diff_run = 0; //Bobo
   psync_diff_wait_lock();
 
@@ -1512,14 +1510,19 @@ char *psync_get_string_value(const char *valuename){
   psync_sql_res *res;
   psync_str_row row;
   char *ret;
+
   res=psync_sql_query_rdlock("SELECT value FROM setting WHERE id=?");
+
   psync_sql_bind_string(res, 1, valuename);
   row=psync_sql_fetch_rowstr(res);
+
   if (row)
     ret=psync_strdup(row[0]);
   else
     ret=NULL;
+
   psync_sql_free_result(res);
+
   return ret;
 }
 

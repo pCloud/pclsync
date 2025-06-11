@@ -121,29 +121,38 @@ static void psync_notifications_set_current_list(binresult *res, const char *thu
   const binresult *notifications, *thumb;
   pnotification_callback_t cb;
   uint32_t cntnew, cnttotal, i;
+
   notifications=psync_find_result(res, "notifications", PARAM_ARRAY);
   cnttotal=notifications->length;
+
   debug(D_NOTICE, "got list with %u notifications", (unsigned)cnttotal);
+
   cntnew=0;
+
   for (i=0; i<cnttotal; i++){
     if (psync_find_result(notifications->array[i], "isnew", PARAM_BOOL)->num)
       cntnew++;
     thumb=psync_check_result(notifications->array[i], "thumb", PARAM_HASH);
+
     if (thumb && thumbpath)
       psync_notifications_download_thumb(thumb, thumbpath);
   }
+
   pthread_mutex_lock(&ntf_mutex);
   ores=ntf_processed_result;
+
   if (ntf_processing==2){
     ntf_processed_result=NULL;
     psync_free(res);
   }
   else
     ntf_processed_result=res;
+
   ntf_processing=0;
   cb=ntf_callback;
   pthread_mutex_unlock(&ntf_mutex);
   psync_free(ores);
+
   if (cb){
     debug(D_NOTICE, "calling notification callback, cnt=%u, newcnt=%u", (unsigned)cnttotal, (unsigned)cntnew);
     cb(cnttotal, cntnew);
@@ -171,13 +180,20 @@ static void psync_notifications_thread(){
 //  mininterval=30;
   thumbpath=psync_get_private_dir(PSYNC_DEFAULT_NTF_THUMB_DIR);
 //  first=1;
+
+  debug(D_NOTICE, "BOBO: Notifications thread. Start.");
+
   while (psync_do_run){
+    debug(D_NOTICE, "BOBO: Notifications thread. Loop.");
+
     pthread_mutex_lock(&ntf_mutex);
+
     if (unlikely(!ntf_callback)){
       ntf_thread_running=0;
       pthread_mutex_unlock(&ntf_mutex);
       break;
     }
+
     while (!ntf_result)
       pthread_cond_wait(&ntf_cond, &ntf_mutex);
 /*    ctime=psync_timer_time();
@@ -208,17 +224,24 @@ void psync_notifications_set_callback(pnotification_callback_t notification_call
   char *ts;
   pthread_mutex_lock(&ntf_mutex);
   ts=ntf_thumb_size;
+
+  debug(D_NOTICE, "BOBO: Notifications set callback.");
+
   if (thumbsize)
     ntf_thumb_size=psync_strdup(thumbsize);
   else
     ntf_thumb_size=NULL;
+
   if (ts)
     psync_free_after_sec(ts, 10);
+
   ntf_callback=notification_callback;
+
   if (!ntf_thread_running && notification_callback){
     ntf_thread_running=1;
     psync_run_thread("notifications", psync_notifications_thread);
   }
+
   pthread_mutex_unlock(&ntf_mutex);
 }
 
@@ -312,24 +335,35 @@ psync_notification_list_t *psync_notifications_get(){
   psync_tree *thumbs, *nx;
   psync_stat_t st;
   uint32_t cntnew, cnttotal, i;
+
+  debug(D_NOTICE, "BOBO: Get notifications!");
+
   cntnew=0;
   thumbpath=psync_get_private_dir(PSYNC_DEFAULT_NTF_THUMB_DIR);
   thumbs=PSYNC_TREE_EMPTY;
-  if (likely(thumbpath))
+
+  if (likely(thumbpath)) {
     psync_list_dir_fast(thumbpath, psync_notifications_thumb_dir_list, &thumbs);
+  }
+
   builder=psync_list_builder_create(sizeof(psync_notification_t), offsetof(psync_notification_list_t, notifications));
   pthread_mutex_lock(&ntf_mutex);
-  if (ntf_processed_result)
-    ntf_res=ntf_processed_result;
+
+  if (ntf_processed_result) {
+    ntf_res = ntf_processed_result;
+  }
   else if (ntf_result){
     ntf_res=ntf_result;
     debug(D_NOTICE, "using not processed result for now");
   }
-  else
-    ntf_res=NULL;
+  else {
+    ntf_res = NULL;
+  }
+
   if (ntf_res){
     notifications=psync_find_result(ntf_res, "notifications", PARAM_ARRAY);
     cnttotal=notifications->length;
+
     for (i=0; i<cnttotal; i++){
       ntf=notifications->array[i];
       pntf=(psync_notification_t *)psync_list_bulder_add_element(builder);
@@ -338,43 +372,60 @@ psync_notification_list_t *psync_notifications_get(){
       psync_list_add_lstring_offset(builder, offsetof(psync_notification_t, text), br->length);
       pntf->thumb=NULL;
       br=psync_check_result(ntf, "thumb", PARAM_HASH);
+
       if (br && thumbpath){
         filename=strrchr(psync_find_result(br, "path", PARAM_STR)->str, '/');
+
         if (filename++){
           psync_notification_remove_from_list(&thumbs, filename);
           filepath=psync_strcat(thumbpath, PSYNC_DIRECTORY_SEPARATOR, filename, NULL);
+
           if (!psync_stat(filepath, &st)){
             pntf->thumb=filepath;
             psync_list_add_string_offset(builder, offsetof(psync_notification_t, thumb));
           }
-          else
+          else{
             debug(D_WARNING, "could not stat thumb %s which is supposed to be downloaded", filename);
+          }
+
           psync_free(filepath);
         }
       }
+
       pntf->mtime=psync_find_result(ntf, "mtime", PARAM_NUM)->num;
       pntf->notificationid=psync_find_result(ntf, "notificationid", PARAM_NUM)->num;
       pntf->isnew=psync_find_result(ntf, "isnew", PARAM_BOOL)->num;
-      if (pntf->isnew)
+
+      if (pntf->isnew) {
         cntnew++;
+      }
+
       pntf->iconid=psync_find_result(ntf, "iconid", PARAM_NUM)->num;
       fill_actionid(ntf, pntf, builder);
     }
   }
+
   pthread_mutex_unlock(&ntf_mutex);
   thumbs=psync_tree_get_first_safe(thumbs);
+
   while (thumbs){
     nx=psync_tree_get_next_safe(thumbs);
+
     debug(D_NOTICE, "deleting unused thumb %s", psync_tree_element(thumbs, psync_thumb_list_t, tree)->name);
+
     filepath=psync_strcat(thumbpath, PSYNC_DIRECTORY_SEPARATOR, psync_tree_element(thumbs, psync_thumb_list_t, tree)->name, NULL);
+
     psync_file_delete(filepath);
     psync_free(filepath);
     psync_free(psync_tree_element(thumbs, psync_thumb_list_t, tree));
+
     thumbs=nx;
   }
+
   psync_free(thumbpath);
   res=(psync_notification_list_t *)psync_list_builder_finalize(builder);
   res->newnotificationcnt=cntnew;
+
   return res;
 }
 
