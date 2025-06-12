@@ -181,11 +181,7 @@ static void psync_notifications_thread(){
   thumbpath=psync_get_private_dir(PSYNC_DEFAULT_NTF_THUMB_DIR);
 //  first=1;
 
-  debug(D_NOTICE, "BOBO: Notifications thread. Start.");
-
   while (psync_do_run){
-    debug(D_NOTICE, "BOBO: Notifications thread. Loop.");
-
     pthread_mutex_lock(&ntf_mutex);
 
     if (unlikely(!ntf_callback)){
@@ -224,8 +220,6 @@ void psync_notifications_set_callback(pnotification_callback_t notification_call
   char *ts;
   pthread_mutex_lock(&ntf_mutex);
   ts=ntf_thumb_size;
-
-  debug(D_NOTICE, "BOBO: Notifications set callback.");
 
   if (thumbsize)
     ntf_thumb_size=psync_strdup(thumbsize);
@@ -335,8 +329,6 @@ psync_notification_list_t *psync_notifications_get(){
   psync_tree *thumbs, *nx;
   psync_stat_t st;
   uint32_t cntnew, cnttotal, i;
-
-  debug(D_NOTICE, "BOBO: Get notifications!");
 
   cntnew=0;
   thumbpath=psync_get_private_dir(PSYNC_DEFAULT_NTF_THUMB_DIR);

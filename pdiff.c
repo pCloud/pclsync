@@ -282,8 +282,6 @@ static psync_socket *get_connected_socket(){
   auth=user=pass=psync_my_2fa_token=NULL;
   psync_is_business=0;
 
-  debug(D_NOTICE, "BOBO: get_connected_socket. Start.");
-
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
 
   if (!deviceid) {
@@ -295,8 +293,6 @@ static psync_socket *get_connected_socket(){
   osversion = psync_deviceos();
   appversion=psync_appname();
   devicestring=psync_device_string();
-
-  debug(D_NOTICE, "BOBO: get_connected_socket. 2.");
 
   while (1){
     psync_free(auth);
@@ -315,8 +311,6 @@ static psync_socket *get_connected_socket(){
 
     chrUserid = psync_sql_cellstr("SELECT value FROM setting WHERE id='userid'");
 
-    debug(D_NOTICE, "BOBO: get_connected_socket. 3.");
-
     //If there is no userid row, we assume it's first login, after instalation.
     //Rise a flag so we can send a first login event later.
     if (chrUserid == NULL) {
@@ -334,8 +328,6 @@ static psync_socket *get_connected_socket(){
 
     if (!pass && psync_my_pass)
       pass=psync_strdup(psync_my_pass);
-
-    debug(D_NOTICE, "BOBO: get_connected_socket. 4.");
 
     if (!auth && (!pass || !user)){
 #if defined(P_OS_LINUX)
@@ -567,18 +559,10 @@ static psync_socket *get_connected_socket(){
       debug(D_NOTICE, "Auth token is populated!");
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
     }
-
-    //debug(D_NOTICE, "BOBO: Compare user ids. luserid:[%llu] userid[%llu]", luserid, userid);
 /*
     if (luserid){
-      debug(D_NOTICE, "BOBO: There is already logged user.");
-
       if (unlikely_log(luserid!=userid)){
-        debug(D_NOTICE, "BOBO: The already logged user is different than the new one.");
-
         if(check_user_relocated(luserid, sock)){
-          debug(D_NOTICE, "BOBO: User is relocated.");
-
           debug(D_NOTICE, "setting PSTATUS_AUTH_RELOCATED");
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
         }
@@ -591,15 +575,11 @@ static psync_socket *get_connected_socket(){
         psync_socket_close(sock);
         psync_free(res);
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-        
-        debug(D_NOTICE, "BOBO: User changed. Reset connection loop.");
 
         continue;
       }
       
       if (saveauth){
-        debug(D_NOTICE, "BOBO: Save new user auth.");
-
         q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('auth', ?)");
         psync_sql_bind_string(q, 1, psync_my_auth);
         psync_sql_run_free(q);
@@ -949,8 +929,6 @@ static psync_socket *get_connected_socket(){
     psync_my_2fa_code[0]=0;
 
     psync_sql_sync();
-
-    debug(D_NOTICE, "BOBO: get_connected_socket. End.");
 
     return sock;
   }
@@ -2739,30 +2717,20 @@ static struct {
 #define event_list_size ARRAY_SIZE(event_list)
 
 void psync_diff_lock(){
-  //debug(D_CRITICAL, "BOBO: Try to get Diff lock.");
   pthread_mutex_lock(&diff_mutex);
-  //debug(D_CRITICAL, "BOBO: Got lock.");
 }
 
 void psync_diff_unlock(){
-  //debug(D_CRITICAL, "BOBO: Release Diff lock.");
   pthread_mutex_unlock(&diff_mutex);
-  //debug(D_CRITICAL, "BOBO: Release Diff lock. Done.");
 }
 
-//Bobo
 void psync_diff_wait_lock() {
-  //debug(D_CRITICAL, "BOBO: Try to get Diff Wait Lock.");
   pthread_mutex_lock(&diff_pause_mutex);
-  //debug(D_CRITICAL, "BOBO: Got Wait Lock.");
 }
 
 void psync_diff_wait_unlock() {
-  //debug(D_CRITICAL, "BOBO: Release Diff Wait lock.");
   pthread_mutex_unlock(&diff_pause_mutex);
-  //debug(D_CRITICAL, "BOBO: Release Diff Wait lock. Done.");
 }
-//Bobo
 
 static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   const binresult *entry, *etype;
@@ -2771,7 +2739,6 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   oused_quota=used_quota;
   needdownload=0;
 
-  debug(D_CRITICAL, "BOBO: Process entries. Start.");
   psync_diff_lock();
 
   if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
@@ -2780,8 +2747,6 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   }
 
   psync_sql_start_transaction();
-
-  //debug(D_CRITICAL, "BOBO: Process entries. 1");
 
   if (entries->length>=10000)
     psync_sql_statement("DELETE FROM setting WHERE id='lastanalyze'");
@@ -2812,8 +2777,6 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
     }
   }
 
-  //debug(D_CRITICAL, "BOBO: Process entries. 2");
-
   for (j = 0; j < event_list_size; j++) {
     if (event_list[j].used) {
       event_list[j].process(NULL);
@@ -2823,15 +2786,11 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   psync_set_uint_value("diffid", newdiffid);
   psync_set_uint_value("usedquota", used_quota);
 
-  //debug(D_CRITICAL, "BOBO: Process entries. 3");
-
   //update_ba_emails();
   //update_ba_teams();
   psync_path_status_clear_path_cache();
   psync_sql_commit_transaction();
   psync_diff_unlock();
-
-  //debug(D_CRITICAL, "BOBO: Process entries. 4");
 
   if (needdownload){
     psync_wake_download();
@@ -2844,8 +2803,6 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 
   if (oused_quota!=used_quota)
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
-
-  debug(D_CRITICAL, "BOBO: Process entries. End.");
 
   return psync_sql_cellint("SELECT value FROM setting WHERE id='diffid'", 0);
 }
@@ -2931,8 +2888,6 @@ static int send_diff_command(psync_socket *sock, subscribed_ids ids){
 }
 
 static void handle_exception(psync_socket **sock, subscribed_ids *ids, char ex){
-  debug(D_NOTICE, "BOBO: Handle exception!");
-
   if (ex=='c'){
     if (last_event>=psync_timer_time()-1)
       return;
@@ -3431,6 +3386,10 @@ static void psync_diff_thread(){
       debug(D_NOTICE, "BOBO: Diff. Recache contacts.");
       psync_cache_contacts();
       psync_send_eventid(PEVENT_SHARE_RELOAD_ALL);
+
+      send_diff_command(sock, ids);
+
+      psync_milisleep(100);
 
       psync_recache_contacts=0;
     }
