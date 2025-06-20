@@ -542,6 +542,8 @@ static psync_socket *get_connected_socket(){
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
 	  cres = psync_check_result(res, "freequota", PARAM_NUM);
 
+    debug(D_NOTICE, "Get Connected Socket. Change current quota to: [%llu]", current_quota);
+
     if (cres){
 	    free_quota=cres->num;
       debug(D_NOTICE, "Got Free Quota: [%llu]", free_quota);
@@ -1940,6 +1942,8 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_uint(q, 2, current_quota);
   psync_sql_run(q);
 
+  debug(D_NOTICE, "Modify User Info. Change current quota to: [%llu]", current_quota);
+
   cres = psync_check_result(res, "freequota", PARAM_NUM);
 
   if (cres){
@@ -2767,7 +2771,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
       }
 
       if (!psync_diff_run) {
-        debug(D_CRITICAL, "BOBO: Ongoing diff. Stop Signal Detected!");
+        debug(D_CRITICAL, "Ongoing diff. Stop Signal Detected!");
 
         psync_sql_rollback_transaction();
         psync_diff_unlock();
@@ -3262,13 +3266,9 @@ int initial_diff(psync_socket* sock, subscribed_ids *ids) {
       debug(D_NOTICE, "Processing diff with [%u] entries. Diff Id: [%llu]", (unsigned)entries->length, ids->diffid);
       ids->diffid = process_entries(entries, newdiffid);
 
-      //Bobo
       if (!psync_diff_run) {
-        debug(D_CRITICAL, "BOBO: Ongoing Initial Diff. Stop Signal Detected!");
-
         return 1;
       }
-      //Bobo
 
       debug(D_NOTICE, "got diff with [%u] entries, new diffid [%lu] [%llu]", (unsigned)entries->length, (unsigned long)ids->diffid, ids->diffid);
     }
@@ -3306,18 +3306,14 @@ static void psync_diff_thread(){
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_send_status_update();
 
-  debug(D_NOTICE, "BOBO: Run get_connected_socket.");
   sock = get_connected_socket();
-  debug(D_NOTICE, "BOBO: Connected.");
 
   initialdownload = 1;
 
   //Main diff loop start
   while (psync_do_run){
-    debug(D_CRITICAL, "BOBO: Diff Loop Start. Paused Flag: [%d]", psync_diff_waiting);
-    //Bobo
     if (!psync_diff_run) {
-      debug(D_CRITICAL, "BOBO: Ongoing Diff Loop Paused. Sleep!");
+      debug(D_CRITICAL, "Ongoing Diff Loop Paused. Sleep!");
 
       psync_diff_waiting = 1;
       psync_diff_wait_lock();
@@ -3326,28 +3322,22 @@ static void psync_diff_thread(){
 
       psync_diff_wait_unlock();
     }
-    //Bobo
 
     if (unlinked){
-      debug(D_NOTICE, "BOBO: Diff. Unlinked DB detected.");
       unlinked=0;
-
       ids.diffid = 0;
 
-      debug(D_NOTICE, "BOBO: Unlinked DB detected. Run initial Diff. DiffId: [%llu]", ids.diffid);
+      debug(D_NOTICE, "Unlinked DB detected. Run initial Diff. DiffId: [%llu]", ids.diffid);
 
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
 
-      debug(D_CRITICAL, "BOBO: Initial Diff in main loop Start.");
       diff_res = initial_diff(sock, &ids);
-      debug(D_CRITICAL, "BOBO: Initial Diff in main loop End.");
+      debug(D_CRITICAL, "Initial Diff in main loop End.");
 
       if (!psync_diff_run) {
-        debug(D_NOTICE, "BOBO: Diff Stopped Break!");
+        debug(D_NOTICE, "Diff Stopped Break!");
         continue;
       }
-
-      debug(D_NOTICE, "BOBO: Initial diff in main loop finished. Check quota:");
       
       g_is_over_quota = 0; //Reset account full constant.
 
@@ -3357,8 +3347,6 @@ static void psync_diff_thread(){
     psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);//Bobo
 
     if (initialdownload) {
-      debug(D_NOTICE, "BOBO: Initial download. Setup Pipes.");
-
       initialdownload = 0;
 
       exceptionsock = setup_exeptions();
@@ -3378,12 +3366,9 @@ static void psync_diff_thread(){
       psync_timer_register(psync_diff_adapter_timer, PSYNC_DIFF_CHECK_ADAPTER_CHANGE_SEC, NULL);
 
       last_event = 0;
-
-      debug(D_NOTICE, "BOBO: Initial download. Done.");
     }
 
     if(psync_recache_contacts){
-      debug(D_NOTICE, "BOBO: Diff. Recache contacts.");
       psync_cache_contacts();
       psync_send_eventid(PEVENT_SHARE_RELOAD_ALL);
 
@@ -3394,7 +3379,6 @@ static void psync_diff_thread(){
       psync_recache_contacts=0;
     }
 
-    debug(D_NOTICE, "BOBO: Set Diff status to paused. Before reading socket.");
     psync_diff_waiting = 1; //Bobo
 
     if (psync_socket_pendingdata(sock)) {
@@ -3413,11 +3397,7 @@ static void psync_diff_thread(){
 
       handle_exception(&sock, &ids, ex);
 
-      debug(D_NOTICE, "BOBO: Exception handled. Read socket.");
-
       while (psync_select_in(socks, 1, 0)==0 && psync_pipe_read(exceptionsock, &ex, 1)==1);
-
-      debug(D_NOTICE, "BOBO: Exception handled. Read socket. Done.");
 
       socks[1]=sock->sock;
     }
@@ -3459,7 +3439,6 @@ static void psync_diff_thread(){
       entries=psync_check_result(res, "from", PARAM_STR);
 
       if (entries){
-        debug(D_NOTICE, "BOBO: Set Diff status to runing. After reading socket. Process entries length: [%lu]", entries->length);
         psync_diff_waiting = 0; //Bobo
 
         if (entries->length==4 && !strcmp(entries->str, "diff")){
@@ -3485,8 +3464,6 @@ static void psync_diff_thread(){
           psync_free(res);
         }
         else if (entries->length==13 && !strcmp(entries->str, "notifications")){
-          debug(D_NOTICE, "BOBO: Process notification.");
-
           ids.notificationid=psync_find_result(res, "notificationid", PARAM_NUM)->num;
           // do not free res
           psync_notifications_notify(res);
@@ -3531,7 +3508,6 @@ static void psync_diff_thread(){
           psync_free(res);
         }
 
-        debug(D_NOTICE, "BOBO: End of main diff loop. Send Diff command again. Diff Id: [%llu]", ids.diffid);
         send_diff_command(sock, ids);
       }
       else{

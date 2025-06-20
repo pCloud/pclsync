@@ -456,7 +456,6 @@ void psync_set_auth(const char *auth, int save){
   clear_db(save);
 
   if (save) {
-    debug(D_NOTICE, "BOBO: Save Auth in DB.");
     psync_set_string_value("auth", auth);
   }    
   else {
@@ -602,12 +601,11 @@ void psync_unlink(){
   unlinked=1;
   tfa=0;
 
-  debug(D_NOTICE, "BOBO: Pause ongoing Diff! Diff Waiting Flag: [%d]", psync_diff_waiting);
   psync_diff_run = 0; //Bobo
   psync_diff_wait_lock();
 
   while (!psync_diff_waiting) {
-    debug(D_NOTICE, "BOBO: Waiting for the diff to stop!");
+    debug(D_NOTICE, "Waiting for the diff to stop!");
     psync_milisleep(1000);
   }
 
@@ -686,7 +684,7 @@ void psync_unlink(){
   psync_notifications_clean();
   psync_pagecache_reopen_read_cache();
 
-  debug(D_NOTICE, "BOBO: Resume Diff!");
+  debug(D_NOTICE, "Resume Diff!");
   psync_diff_run = 1; //Bobo
   psync_diff_waiting = 0;//Bobo
   psync_diff_wait_unlock();//Bobo
@@ -3293,7 +3291,7 @@ userinfo_t* psync_get_userinfo() {
     info->registered = psync_find_result(res, "registered", PARAM_NUM)->num;
     psync_free(res);
 
-    debug(D_NOTICE, "BOBO: Get userinfo. Returned: email: [%s] UserId: [%llu] Quota: [%llu] UsedQuota:[%llu]", info->email, info->userid, info->quota, info->usedquota);
+    debug(D_NOTICE, "Get userinfo. Returned: email: [%s] UserId: [%llu] Quota: [%llu] UsedQuota:[%llu]", info->email, info->userid, info->quota, info->usedquota);
 
     return info;
   }
