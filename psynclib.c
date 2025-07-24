@@ -2925,11 +2925,11 @@ int psync_create_backup(char*  path,
     free(retData);
 
     if (syncFId < 0) {
-      *errMsg = psync_strdup("Error creating backup.");
+      *errMsg = psync_strdup("Error creating Backup.");
       return -1;
     }
 
-    debug(D_NOTICE, "Created sync with id[%d].", syncFId);
+    debug(D_NOTICE, "Created Backup with id: [%d].", syncFId);
   }
   else if(res == 2002) {
   // The backup folder for the machine was deleted for wathever reason. Delete the id stored in DB and create the new one.
@@ -3088,6 +3088,8 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
 
   psync_syncid_t* syncId;
   psync_syncid_t* syncIdT;
+
+  debug(D_ERROR, "BOBO: psync_delete_sync_by_folderid!");
 
   sqlRes = psync_sql_query_nolock("SELECT id FROM syncfolder WHERE folderid = ?");
   psync_sql_bind_uint(sqlRes, 1, fId);

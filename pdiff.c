@@ -1117,6 +1117,8 @@ static void process_modifyfolder(const binresult *entry){
   uint32_t i, cnt;
   int oldsync, newsync;
 
+  debug(D_NOTICE, "BOBO: Process modify folder. Begin.");
+
   if (!entry){
     process_createfolder(NULL);
 
@@ -1126,13 +1128,16 @@ static void process_modifyfolder(const binresult *entry){
     }
     return;
   }
+
   if (!st){
     st=psync_sql_prep_statement("UPDATE folder SET parentfolderid=?, userid=?, permissions=?, name=?, ctime=?, mtime=?, flags=? WHERE id=?");
     if (!st)
       return;
   }
+
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
   flags=extract_meta_folder_flags(meta);
+
   if (psync_find_result(meta, "ismine", PARAM_BOOL)->num){
     userid=psync_my_userid;
     perms=PSYNC_PERM_ALL;
@@ -1141,6 +1146,7 @@ static void process_modifyfolder(const binresult *entry){
     userid=psync_find_result(meta, "userid", PARAM_NUM)->num;
     perms=psync_get_permissions(meta);
   }
+
   name=psync_find_result(meta, "name", PARAM_STR);
   folderid=psync_find_result(meta, "folderid", PARAM_NUM)->num;
   parentfolderid=psync_find_result(meta, "parentfolderid", PARAM_NUM)->num;
@@ -1152,6 +1158,8 @@ static void process_modifyfolder(const binresult *entry){
     oldparentfolderid=psync_get_number(vrow[0]);
     oldname=psync_dup_string(vrow[1]);
     oldflags=psync_get_number(vrow[2]);
+
+    debug(D_NOTICE, "BOBO: Modify folder. Name: [%s], FolderId: [%llu]", oldname, folderid);
 
 #if defined(P_OS_MACOSX)
     psync_timed_data_event();
@@ -1173,7 +1181,7 @@ static void process_modifyfolder(const binresult *entry){
   psync_sql_free_result(res);
 
   if ((oldflags & PSYNC_FOLDER_FLAG_BACKUP_ROOT) != 0 && (flags & PSYNC_FOLDER_FLAG_BACKUP_ROOT) == 0) {
-    debug(D_NOTICE, "Stop backup root");
+    debug(D_NOTICE, "Stop backup root.");
     psync_delete_sync_by_folderid(folderid);
     //psync_run_thread1("psync_async_backup_delete", psync_delete_sync_by_folderid, folderid);
   }
@@ -1888,6 +1896,8 @@ void psync_diff_delete_file(const binresult *meta){
 
 void psync_diff_update_folder(const binresult *meta){
   create_entry();
+
+  debug(D_NOTICE, "BOBO: Diff update folder.");
 
   process_modifyfolder(&entry);
   process_modifyfolder(NULL);
@@ -2787,6 +2797,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
     }
   }
 
+  debug(D_NOTICE, "BOBO: Update Diff Id in DB After processing entries. Diff Id: [%llu] Used Quota:[%llu]", newdiffid, used_quota);
   psync_set_uint_value("diffid", newdiffid);
   psync_set_uint_value("usedquota", used_quota);
 
@@ -3115,6 +3126,8 @@ static int psync_diff_check_quota(psync_socket *sock){
     P_NUM("os", P_OS_ID)
   };
 
+  debug(D_NOTICE, "BOBO: psync_diff_check_quota.");
+
   for (i=0; i < 4; i++) {
     res = send_command(sock, "userinfo", diffparams);
 
@@ -3129,6 +3142,7 @@ static int psync_diff_check_quota(psync_socket *sock){
     }
     else {
       uq = psync_check_result(res, "usedquota", PARAM_NUM);
+      debug(D_NOTICE, "BOBO: Got used quota: [%llu]", uq);
 
       if (likely_log(uq)) {
         used_quota = uq->num;
@@ -3143,7 +3157,7 @@ static int psync_diff_check_quota(psync_socket *sock){
     }
   }
 
-  if (used_quota!=oused_quota){
+  if (used_quota != oused_quota){
     debug(D_WARNING, "corrected locally calculated quota from [%lu] to [%lu]", (unsigned long)oused_quota, (unsigned long)used_quota);
     psync_set_uint_value("usedquota", used_quota);
     psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
@@ -3151,8 +3165,9 @@ static int psync_diff_check_quota(psync_socket *sock){
 
   uq=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
 
-  if (uq->length)
+  if (uq->length){
     psync_apipool_set_server(uq->array[0]->str);
+  }
 
   psync_free(res);
 
@@ -3263,7 +3278,7 @@ int initial_diff(psync_socket* sock, subscribed_ids *ids) {
 
     if (entries->length) {
       newdiffid = psync_find_result(res, "diffid", PARAM_NUM)->num;
-      debug(D_NOTICE, "Processing diff with [%u] entries. Diff Id: [%llu]", (unsigned)entries->length, ids->diffid);
+      debug(D_NOTICE, "Processing diff with [%u] entries. Diff Id: [%llu] New Diff Id: [%llu]", (unsigned)entries->length, ids->diffid, newdiffid);
       ids->diffid = process_entries(entries, newdiffid);
 
       if (!psync_diff_run) {
@@ -3343,6 +3358,15 @@ static void psync_diff_thread(){
 
       check_overquota();
     }
+    else {
+      ids.diffid = psync_get_uint_value("diffid");
+      debug(D_NOTICE, "BOBO: No initial diff. Got Diff Id from DB: [%llu]", ids.diffid);
+      psync_diff_check_quota(sock);
+
+      debug(D_NOTICE, "BOBO: Quota updated. Check for overquota now.");
+      check_overquota();
+    }
+
     // After initial diff. Main diff loop.
     psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);//Bobo
 
@@ -3352,7 +3376,7 @@ static void psync_diff_thread(){
       exceptionsock = setup_exeptions();
 
       if (unlikely(exceptionsock == INVALID_SOCKET)) {
-        debug(D_ERROR, "could not create pipe");
+        debug(D_ERROR, "Could not create pipe");
         psync_socket_close(sock);
 
         return;
@@ -3371,6 +3395,8 @@ static void psync_diff_thread(){
     if(psync_recache_contacts){
       psync_cache_contacts();
       psync_send_eventid(PEVENT_SHARE_RELOAD_ALL);
+
+      debug(D_NOTICE, "BOBO: Send diff command in Recache contacts. Diff Id: [%llu]", ids.diffid);
 
       send_diff_command(sock, ids);
 
@@ -3422,6 +3448,7 @@ static void psync_diff_thread(){
           debug(D_NOTICE, "Got [%s] from the socket", psync_find_result(res, "error", PARAM_STR)->str);
           psync_free(res);
 
+          debug(D_NOTICE, "BOBO: Send diff command timeout or cancel. Diff Id: [%llu]", ids.diffid);
           send_diff_command(sock, ids);
           
           continue;
@@ -3447,6 +3474,7 @@ static void psync_diff_thread(){
           if (entries->length){
             newdiffid=psync_find_result(res, "diffid", PARAM_NUM)->num;
 
+            debug(D_NOTICE, "BOBO: Process Diff Entries. Current diff id: [%llu] Got diff id: [%llu]", ids.diffid, newdiffid);
             ids.diffid=process_entries(entries, newdiffid);
 
             psync_diff_refresh_fs(entries);
@@ -3454,8 +3482,9 @@ static void psync_diff_thread(){
 
             check_overquota();
 
-            if (initialdownload)
-              initialdownload=0;
+            if (initialdownload) {
+              initialdownload = 0;
+            }
           }
           else{
             debug(D_NOTICE, "diff with 0 entries, did we send a nop recently?");
@@ -3507,6 +3536,8 @@ static void psync_diff_thread(){
           debug(D_NOTICE, "got no from, did we send a nop recently?");
           psync_free(res);
         }
+
+        debug(D_NOTICE, "BOBO: Send diff command in After processing Diff message. Diff Id: [%llu]", ids.diffid);
 
         send_diff_command(sock, ids);
       }

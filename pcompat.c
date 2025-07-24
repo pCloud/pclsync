@@ -4074,10 +4074,13 @@ void psync_rebuild_icons(){
 int psync_invalidate_os_cache(const char *path){
 #if defined(P_OS_WINDOWS)
   wchar_t *wpath;
-  debug(D_NOTICE, "got invalidate for path %s", path);
+
+  //debug(D_NOTICE, "got invalidate for path %s", path);
+
   wpath=utf8_to_wchar_path(path);
   SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATH, wpath, NULL);
   psync_free(wpath);
+
   return 0;
 #elif defined(P_OS_MACOSX)
   int pfds[2];
