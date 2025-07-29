@@ -3089,8 +3089,6 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
   psync_syncid_t* syncId;
   psync_syncid_t* syncIdT;
 
-  debug(D_ERROR, "BOBO: psync_delete_sync_by_folderid!");
-
   sqlRes = psync_sql_query_nolock("SELECT id FROM syncfolder WHERE folderid = ?");
   psync_sql_bind_uint(sqlRes, 1, fId);
   row = psync_sql_fetch_rowint(sqlRes);
