@@ -372,6 +372,8 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
 }
 
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize){
+  debug(D_NOTICE, "BOBO: Notification set callback.");
+
   psync_notifications_set_callback(notification_callback, thumbsize);
 }
 

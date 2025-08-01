@@ -125,6 +125,8 @@ static void psync_notifications_set_current_list(binresult *res, const char *thu
   notifications=psync_find_result(res, "notifications", PARAM_ARRAY);
   cnttotal=notifications->length;
 
+  debug(D_NOTICE, "BOBO: Got list with [%u] notifications", (unsigned)cnttotal);
+
   debug(D_NOTICE, "got list with %u notifications", (unsigned)cnttotal);
 
   cntnew=0;
@@ -181,10 +183,16 @@ static void psync_notifications_thread(){
   thumbpath=psync_get_private_dir(PSYNC_DEFAULT_NTF_THUMB_DIR);
 //  first=1;
 
+  debug(D_NOTICE, "BOBO: Notification thread.");
+
   while (psync_do_run){
     pthread_mutex_lock(&ntf_mutex);
 
+    debug(D_NOTICE, "BOBO: Notification thread. Process.");
+
     if (unlikely(!ntf_callback)){
+      debug(D_NOTICE, "BOBO: Notification thread. Stop.");
+
       ntf_thread_running=0;
       pthread_mutex_unlock(&ntf_mutex);
       break;

@@ -2853,6 +2853,8 @@ static int send_diff_command(psync_socket *sock, subscribed_ids ids){
   if (psync_notifications_running()){
     const char *ts=psync_notifications_get_thumb_size();
 
+    debug(D_NOTICE, "BOBO: Subscribe for. notificationid: [%lu], notificationthumbsize: [%s]", ids.notificationid, ts);
+
     if (ts){
       if (psync_is_business) {
         binparam diffparams[]={P_STR("subscribefor", "diff,notifications,publinks,uploadlinks,teams,users,contacts"), P_STR("timeformat", "timestamp"),
@@ -3316,10 +3318,14 @@ static void psync_diff_thread(){
 
   initialdownload = 1;
 
+  debug(D_ERROR, "BOBO: Start Main Diff Loop. Unlinked: [%d]", unlinked);
+
   //Main diff loop start
   while (psync_do_run){
+    debug(D_NOTICE, "BOBO: Diff loop start.");
+
     if (!psync_diff_run) {
-      debug(D_CRITICAL, "Ongoing Diff Loop Paused. Sleep!");
+      debug(D_NOTICE, "BOBO: Ongoing Diff Loop Paused. Sleep!");
 
       psync_diff_waiting = 1;
       psync_diff_wait_lock();
@@ -3329,12 +3335,21 @@ static void psync_diff_thread(){
       psync_diff_wait_unlock();
     }
 
-    if (unlinked){
-      unlinked=0;
+    if (unlinked) {
+      unlinked = 0;
       ids.diffid = 0;
+      initialdownload = 1;
+      psync_recache_contacts = 1;
 
-      debug(D_NOTICE, "Unlinked DB detected. Run initial Diff. DiffId: [%llu]", ids.diffid);
+      debug(D_NOTICE, "BOBO: Unlinked DB detected. Run initial Diff. DiffId: [%llu]", ids.diffid);
+    }
+    else {
+      ids.diffid = psync_get_uint_value("diffid");
+      debug(D_NOTICE, "BOBO: No unlink diff. Got Diff Id from DB: [%llu]", ids.diffid);
+    }
 
+
+    if (initialdownload) {
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
 
       diff_res = initial_diff(sock, &ids);
@@ -3347,21 +3362,9 @@ static void psync_diff_thread(){
       
       g_is_over_quota = 0; //Reset account full constant.
 
-      check_overquota();
-    }
-    else {
-      ids.diffid = psync_get_uint_value("diffid");
-      debug(D_NOTICE, "No initial diff. Got Diff Id from DB: [%llu]", ids.diffid);
       psync_diff_check_quota(sock);
 
       check_overquota();
-    }
-
-    // After initial diff. Main diff loop.
-    psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);//Bobo
-
-    if (initialdownload) {
-      initialdownload = 0;
 
       exceptionsock = setup_exeptions();
 
@@ -3380,12 +3383,22 @@ static void psync_diff_thread(){
       psync_timer_register(psync_diff_adapter_timer, PSYNC_DIFF_CHECK_ADAPTER_CHANGE_SEC, NULL);
 
       last_event = 0;
+
+      initialdownload = 0;
     }
 
+    debug(D_NOTICE, "BOBO: Diff Id: [%llu]", ids.diffid);
+
+    // After initial diff. Main diff loop.
+    psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);//Bobo
+
     if(psync_recache_contacts){
+      debug(D_NOTICE, "BOBO: Recache contacts.");
+
       psync_cache_contacts();
       psync_send_eventid(PEVENT_SHARE_RELOAD_ALL);
 
+      debug(D_NOTICE, "BOBO: Send Diff Command. Id: [%llu]", ids.diffid);
       send_diff_command(sock, ids);
 
       psync_milisleep(100);
@@ -3395,14 +3408,18 @@ static void psync_diff_thread(){
 
     psync_diff_waiting = 1; //Bobo
 
+    debug(D_NOTICE, "BOBO: Diff Wait on Socket.");
     if (psync_socket_pendingdata(sock)) {
+      debug(D_NOTICE, "BOBO: Diff Got data. Sel 1");
       sel = 1;
     }      
     else {
+      debug(D_NOTICE, "BOBO: Diff Got data. Sel != 1");
       sel = psync_select_in(socks, 2, -1);
     }
 
     if (sel==0) {
+      debug(D_NOTICE, "BOBO: Diff Read Pipe.");
       if (!psync_do_run)
         break;
 
@@ -3416,6 +3433,7 @@ static void psync_diff_thread(){
       socks[1]=sock->sock;
     }
     else if (sel==1) {
+      debug(D_NOTICE, "BOBO: Diff Process Sel: 1.");
       sock->pending=1;
 
       res=get_result(sock);
@@ -3430,6 +3448,8 @@ static void psync_diff_thread(){
 
       last_event=psync_timer_time();
       result=psync_find_result(res, "result", PARAM_NUM)->num;
+
+      debug(D_NOTICE, "BOBO: Diff Got Result: [%llu]", result);
 
       if (unlikely(result)){
         if (result==6003 || result==6002){ // timeout or cancel
@@ -3456,6 +3476,7 @@ static void psync_diff_thread(){
         psync_diff_waiting = 0; //Bobo
 
         if (entries->length==4 && !strcmp(entries->str, "diff")){
+          debug(D_NOTICE, "BOBO: Diff. Got Entries.");
           entries=psync_find_result(res, "entries", PARAM_ARRAY);
 
           if (entries->length){
@@ -3479,11 +3500,15 @@ static void psync_diff_thread(){
           psync_free(res);
         }
         else if (entries->length==13 && !strcmp(entries->str, "notifications")){
+          debug(D_NOTICE, "BOBO: Diff. Got Notification.");
+
           ids.notificationid=psync_find_result(res, "notificationid", PARAM_NUM)->num;
           // do not free res
           psync_notifications_notify(res);
         }
         else if (entries->length==8 && !strcmp(entries->str, "publinks")){
+          debug(D_NOTICE, "BOBO: Diff. Got Publinks.");
+
           ids.publinkid=psync_find_result(res, "publinkid", PARAM_NUM)->num;
           ret = cache_links(&err);
 
@@ -3495,6 +3520,8 @@ static void psync_diff_thread(){
           }
         }
         else if (entries->length==11 && !strcmp(entries->str, "uploadlinks")){
+          debug(D_NOTICE, "BOBO: Diff. Got UpLinks.");
+
           ids.uploadlinkid=psync_find_result(res, "uploadlinkid", PARAM_NUM)->num;
           ret = cache_upload_links(&err);
 
@@ -3506,15 +3533,21 @@ static void psync_diff_thread(){
           }
         }
         else if (entries->length==5 && !strcmp(entries->str, "teams")){
+          debug(D_NOTICE, "BOBO: Diff. Got Teams.");
+
           cache_account_teams();
           cache_ba_my_teams();
           psync_notify_cache_change(PACCOUNT_CHANGE_TEAMS);
         }
         else if (entries->length==5 && !strcmp(entries->str, "users")){
+          debug(D_NOTICE, "BOBO: Diff. Got Users.");
+
           cache_account_emails();
           psync_notify_cache_change(PACCOUNT_CHANGE_EMAILS);
         }
         else if (entries->length==8 && !strcmp(entries->str, "contacts")){
+          debug(D_NOTICE, "BOBO: Diff. Got Contacts.");
+
           cache_contacts();
           psync_notify_cache_change(PACCOUNT_CHANGE_CONTACTS);
         }
@@ -3530,6 +3563,8 @@ static void psync_diff_thread(){
         debug(D_NOTICE, "got no from, did we send a nop recently?");
       }
     }
+
+    debug(D_NOTICE, "BOBO: End of Loop. Diff Id: [%llu]", ids.diffid);
   }
 
   psync_socket_close(sock);
