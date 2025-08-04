@@ -125,8 +125,6 @@ static void psync_notifications_set_current_list(binresult *res, const char *thu
   notifications=psync_find_result(res, "notifications", PARAM_ARRAY);
   cnttotal=notifications->length;
 
-  debug(D_NOTICE, "BOBO: Got list with [%u] notifications", (unsigned)cnttotal);
-
   debug(D_NOTICE, "got list with %u notifications", (unsigned)cnttotal);
 
   cntnew=0;
@@ -176,23 +174,12 @@ static void psync_notifications_set_current_list(binresult *res, const char *thu
 static void psync_notifications_thread(){
   char *thumbpath;
   binresult *res;
-//  time_t ctime, lastnotify, mininterval;
-//  int first;
-//  lastnotify=0;
-//  mininterval=30;
   thumbpath=psync_get_private_dir(PSYNC_DEFAULT_NTF_THUMB_DIR);
-//  first=1;
-
-  debug(D_NOTICE, "BOBO: Notification thread.");
 
   while (psync_do_run){
     pthread_mutex_lock(&ntf_mutex);
 
-    debug(D_NOTICE, "BOBO: Notification thread. Process.");
-
     if (unlikely(!ntf_callback)){
-      debug(D_NOTICE, "BOBO: Notification thread. Stop.");
-
       ntf_thread_running=0;
       pthread_mutex_unlock(&ntf_mutex);
       break;
@@ -200,25 +187,12 @@ static void psync_notifications_thread(){
 
     while (!ntf_result)
       pthread_cond_wait(&ntf_cond, &ntf_mutex);
-/*    ctime=psync_timer_time();
-    if (ctime<lastnotify+mininterval && has_new(ntf_result)){
-      pthread_mutex_unlock(&ntf_mutex);
-      debug(D_NOTICE, "sleeping %u seconds to throttle notifications", (unsigned)(lastnotify+mininterval-ctime+1));
-      psync_milisleep((lastnotify+mininterval-ctime+1)*1000);
-      if (mininterval<5*60)
-        mininterval*=2;
-      pthread_mutex_lock(&ntf_mutex);
-    }
-    else
-      mininterval=30;*/
+
     res=ntf_result;
     ntf_result=NULL;
     ntf_processing=1;
     pthread_mutex_unlock(&ntf_mutex);
-/*    if (first)
-      first=0;
-    else
-      lastnotify=ctime;*/
+
     psync_notifications_set_current_list(res, thumbpath);
   }
   psync_free(thumbpath);
