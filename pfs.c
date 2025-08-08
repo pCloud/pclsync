@@ -445,11 +445,11 @@ static void psync_row_to_folder_stat(psync_variant_row row, struct FUSE_STAT *st
 static void psync_row_to_file_stat(psync_variant_row row, struct FUSE_STAT *stbuf, uint32_t flags){
   uint64_t size;
 
-  stbuf->st_ino=fileid_to_inode(psync_get_number(row[4]));
   size=psync_get_number(row[1]);
   if (flags&PSYNC_FOLDER_FLAG_ENCRYPTED)
     size=psync_fs_crypto_plain_size(size);
   memset(stbuf, 0, sizeof(struct FUSE_STAT));
+  stbuf->st_ino=fileid_to_inode(psync_get_number(row[4]));
 #ifdef FUSE_STAT_HAS_BIRTHTIME
   stbuf->st_birthtime=psync_get_number(row[2]);
 #endif
