@@ -130,6 +130,7 @@ static pthread_mutex_t psync_db_checkpoint_mutex;
 static int in_transaction=0;
 static int transaction_failed=0;
 static psync_list tran_callbacks;
+psync_folderid_t lost_and_found_fid;
 
 char *psync_strdup(const char *str){
   size_t len;
@@ -430,7 +431,7 @@ int psync_sql_connect(const char *db){
   if (strcmp(sqlite3_libversion(), SQLITE_VERSION)) {
     debug(D_CRITICAL, "Using wrong SQLite lib version: [%s] != [%s]", sqlite3_libversion(), SQLITE_VERSION);
   }
-    
+
 
   if (!sqlite3_threadsafe()){
     debug(D_CRITICAL, "sqlite is compiled without thread support");
@@ -478,9 +479,9 @@ int psync_sql_connect(const char *db){
 
     if (dbver<PSYNC_DATABASE_VERSION){
       uint64_t i;
-      
+
       debug(D_NOTICE, "database version %d detected, upgrading to %d", (int)dbver, (int)PSYNC_DATABASE_VERSION);
-      
+
       for (i=dbver; i<PSYNC_DATABASE_VERSION; i++)
         if (psync_sql_statement(psync_db_upgrade[i])){
           debug(D_ERROR, "error running statement %s on sqlite %s", psync_db_upgrade[i], sqlite3_libversion());
