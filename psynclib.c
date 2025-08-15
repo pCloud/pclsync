@@ -69,7 +69,7 @@
 #include "ptools.h"
 #include "papi.h"
 
-//Variable containing UNIX time of the last backup file deleted event 
+//Variable containing UNIX time of the last backup file deleted event
 time_t lastBupDelEventTime = 0;
 time_t bupNotifDelay = 300;
 
@@ -258,15 +258,15 @@ int psync_init() {
       pthread_mutex_unlock(&psync_libstate_mutex);
     return_error(PERROR_DATABASE_OPEN);
   }
-  
+
   debug(D_WARNING, "Stop all inprogress tasks. Set Inprogress = 0.");
   psync_sql_statement("UPDATE task SET inprogress=0 WHERE inprogress=1");
 
   debug(D_WARNING, "Reset inprogress upload tasks.");
   psync_sql_statement("UPDATE upload_tasks SET status = "NTO_STR(PUPTASK_STATUS_WAITING)" WHERE status = "NTO_STR(PUPTASK_STATUS_INPROGRESS));
-  
+
   psync_timer_init();
-  
+
   if (unlikely_log(psync_ssl_init())){
     if (IS_DEBUG)
       pthread_mutex_unlock(&psync_libstate_mutex);
@@ -340,12 +340,12 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
     psync_set_status_callback(status_callback);
     debug(D_NOTICE, "Status callback set.");
   }
-    
+
   if (event_callback) {
     psync_set_event_callback(event_callback);
     debug(D_NOTICE, "Event callback set.");
   }
-    
+
   psync_syncer_init();
   debug(D_NOTICE, "Syncer init done.");
   psync_diff_init();
@@ -459,7 +459,7 @@ void psync_set_auth(const char *auth, int save){
 
   if (save) {
     psync_set_string_value("auth", auth);
-  }    
+  }
   else {
     psync_strlcpy(psync_my_auth, auth, sizeof(psync_my_auth));
   }
@@ -2716,7 +2716,7 @@ int psync_send_publink(const char *code, const char *mail, const char *message, 
 	return psync_run_command("sendpublink", params, err);
 }
 /***********************************************************************************************************************************************/
-int psync_is_folder_syncable(char*  localPath, 
+int psync_is_folder_syncable(char*  localPath,
                              char** errMsg) {
   psync_sql_res* sql;
   psync_str_row  srow;
@@ -2844,7 +2844,7 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
   return 0;
 }
 /***********************************************************************************************************************************************/
-int psync_create_backup(char*  path, 
+int psync_create_backup(char*  path,
                         char** errMsg) {
   psync_folderid_t bFId;
   psync_syncid_t   syncFId;
@@ -2879,7 +2879,7 @@ int psync_create_backup(char*  path,
     }
   }
 
-  parse_os_path(path, &folders, DELIM_DIR, 1);
+  parse_os_path(path, &folders, PSYNC_DIRECTORY_SEPARATORC, 1);
 
   if (folders.cnt > 1) {
     oParCnt = 1;
@@ -2972,7 +2972,7 @@ int psync_delete_backup(psync_syncid_t syncId,
 
     psync_sql_free_result(sqlRes);
   }
- 
+
   if(res == 0) {
     eventParams reqPar = {
       2, //Number of parameters we are passing below.
@@ -3002,7 +3002,7 @@ int psync_delete_backup(psync_syncid_t syncId,
   }
 
   debug(D_NOTICE, "Stop sync result: [%d].", res);
-  
+
   return res;
 }
 /***********************************************************************************************************************************************/
@@ -3103,7 +3103,7 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
   }
 
   syncId = row[0];
-  
+
   psync_sql_free_result(sqlRes);
 
   syncIdT = psync_new(psync_syncid_t);
@@ -3156,7 +3156,7 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
     }
 
     psync_send_data_event(event_id, path, name, is_folder, NULL);
-    
+
     lastBupDelEventTime = currTime;
   }
   else {
@@ -3173,9 +3173,9 @@ userinfo_t* psync_get_userinfo() {
     binresult* res;
     uint64_t err;
     userinfo_t *info;
-    
+
     binparam params[] = {
-      P_STR("auth", psync_my_auth), 
+      P_STR("auth", psync_my_auth),
       P_STR("timeformat", "timestamp"),
       P_STR("osversion", psync_deviceos()),
       P_STR("appversion", psync_appname()),
@@ -3187,7 +3187,7 @@ userinfo_t* psync_get_userinfo() {
       P_BOOL("getlastsubscription", 1),
       P_NUM("os", P_OS_ID)
     };
-    
+
     res = psync_api_run_command("userinfo", params);
 
     if (!res){
@@ -3351,7 +3351,7 @@ int psync_get_login_req_id(char** reqId) {
 /******************************************************************************************************************/
 int psync_wait_auth_token(char* request_id) {
   int res = -1;
-  
+
   res = wait_auth_token(request_id);
 
   debug(D_NOTICE, "Got login token. Res: [%d]", res);

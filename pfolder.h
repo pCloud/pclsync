@@ -56,7 +56,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
 pfolder_list_t *psync_list_local_folder(const char *path, psync_listtype_t listtype) PSYNC_NONNULL(1);
 pentry_t *psync_folder_stat_path(const char *remotepath);
 
-psync_folder_list_t* psync_list_get_list(char* syncTypes);
+psync_folder_list_t* psync_list_get_list(const char *syncTypes);
 
 psync_folderid_t psync_wait_folder_in_local_db(psync_folderid_t folderid);
 

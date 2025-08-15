@@ -51,17 +51,6 @@
 #define EPARAM_USER_ID    "userid"
 #define EPARAM_REMEMBERME "rememberme"
 
-#if defined(P_OS_WINDOWS)
-#define DELIM_DIR   '\\'
-#endif
-
-#if defined(P_OS_LINUX)
-#define DELIM_DIR  '/'
-#endif
-
-#if defined(P_OS_MACOSX)
-#define DELIM_DIR  '/'
-#endif
 typedef struct _eventParams {
   int paramCnt;
   binparam Params[100];
@@ -78,7 +67,7 @@ typedef struct stuck_item_type {
   int      msg_id;
   int      item_type;
   int      retry_cnt;
-  uint64_t next_elem;
+  struct stuck_item_type* next_elem;
   const char* path;
   const char* name;
 } stuck_item;
@@ -122,11 +111,11 @@ int backend_call(const char* binapi,
   binresult**  resData,
   char** err);
 /**********************************************************************************************************/
-char* getMACaddr();
+char* getMACaddr(void);
 /**********************************************************************************************************/
-char* get_machine_name();
+char* get_machine_name(void);
 /**********************************************************************************************************/
-void parse_os_path(char* path, folderPath* folders, char* delim, int mode);
+void parse_os_path(char* path, folderPath* folders, char delim, int mode);
 /**********************************************************************************************************/
 void send_psyncs_event(const char* binapi,
                        const char* auth);
@@ -158,9 +147,9 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  void log_list_elem(stuck_item* elem);
 
- void log_list();
+ void log_list(void);
 
- stuck_item* get_last_element();
+ stuck_item* get_last_element(void);
 
  void add_stuck_elem(stuck_item* elem);
 
@@ -170,9 +159,9 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  stuck_item* search_list(uint64_t id);
 
- void init_stuck_list();
+ void init_stuck_list(void);
 
- stuck_return_list* get_stuck_list();
+ stuck_return_list* get_stuck_list(void);
 
  char* nvl_str(char* str, const char* def);
 
@@ -182,9 +171,9 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  char* dns_lookup(const char* addr_host, int port);
 
- void clean_stuck_list();
+ void clean_stuck_list(void);
 
- void psync_log_tasks();
+ void psync_log_tasks(void);
 
  uint64_t Hash64(const void* key, int len);
  /**********************************************************************************************************/
@@ -196,11 +185,9 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  int wait_auth_token(char* request_id);
  /**********************************************************************************************************/
- static wchar_t* utf8_to_wchar(const char* str);
- 
- int uploadLogsToDrive();
+ int uploadLogsToDrive(void);
 
- int deleteLogs();
+ int deleteLogs(void);
  /**********************************************************************************************************/
  //Upload tasks methods. Start.
  typedef struct uptask_item_type {
@@ -216,14 +203,14 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
    int item_cnt;
    uptask_item list[1000];
  } uptask_item_list;
- 
+
  int create_upload_task(int type, int status, uint64_t size, int level, uint64_t parentfid, char* fname, char* path);
 
- void upload_tasks_status_thread();
+ void upload_tasks_status_thread(void);
 
  uptask_item_list* get_uptask_item_list(int status);
 
- void log_uptasks();
+ void log_uptasks(void);
 
  uint64_t create_local_file_in_db(uint64_t parent_folder_id);
 
@@ -234,7 +221,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  int check_dest_folder_syncable(char* path);
  /**********************************************************************************************************/
- void psync_refresh_drive();
+ void psync_refresh_drive(void);
  /**********************************************************************************************************/
  /**********************************************************************************************************/
  /**********************************************************************************************************/

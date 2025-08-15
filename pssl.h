@@ -70,9 +70,6 @@ typedef psync_encrypted_data_t psync_rsa_signature_t;
 
 #define psync_ssl_alloc_binary_rsa psync_ssl_alloc_encrypted_symmetric_key
 
-//Lock used to serialize access to RSA decrypt key function
-static pthread_mutex_t rsa_decr_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 int psync_ssl_init();
 void psync_ssl_memclean(void *ptr, size_t len);
 int psync_ssl_connect(psync_socket_t sock, void **sslconn, const char *hostname);

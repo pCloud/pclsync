@@ -1,7 +1,7 @@
 /* Copyright (c) 2013-2015 pCloud Ltd.
  * All rights reserved.
  *
- * Library containing tool functions, not used in the main 
+ * Library containing tool functions, not used in the main
  * functionality. Keeping statistics, getting data for them etc.
  */
 #include "ptools.h"
@@ -12,7 +12,7 @@
 #include "pnetlibs.h"
 #include <stdio.h>
 #include "pcallbacks.h"
- 
+
 #include "pupload.h"
 #include "miniz.h"
 
@@ -113,7 +113,7 @@ int zipLogs(char* zipLogsFname) {
 
   debug(D_NOTICE, "Check log file size: [%s]", srcFname1);
   ret = psync_stat(srcFname1, &st);
-  
+
   fsize = psync_stat_size(&st);
 
   if (fsize > MAX_LOG_SIZE) {
@@ -258,13 +258,13 @@ char* getMACaddr() {
   while (!feof(stream) && !ferror(stream)) {
     byteRead = fread(buffer, 1, 128, stream);
   }
-  
+
   buffer[byteRead] = 0;
 #endif
 
   if (buffer[0] == 0) {
     return psync_strdup("GENERIC_MAC");
-    
+
   }
   else {
     return psync_strdup(buffer);
@@ -375,7 +375,7 @@ int create_backend_event(const char*  binapi,
 
   free(keyParams);
   free(paramsLocal);
-  
+
   if (unlikely_log(!res)) {
     psync_socket_close(sock);
 
@@ -593,7 +593,7 @@ char* get_machine_name() {
   return psync_strdup(pcName);
 }
 /*************************************************************/
-void parse_os_path(char* path, folderPath* folders, char* delim, int mode) {
+void parse_os_path(char* path, folderPath* folders, char delim, int mode) {
   char fName[255];
   char* buff;
   int i = 0, j = 0, k = 0;
@@ -606,7 +606,7 @@ void parse_os_path(char* path, folderPath* folders, char* delim, int mode) {
     if (path[i] != delim) {
       if ((path[i] == ':') && (mode == 1)) {
         //In case we meet a ":" as in C:\ we set the name to Drive + the string before the ":"
-        fName[k] = NULL;
+        fName[k] = 0;
         buff = psync_strcat("Drive ", &fName, NULL);
         psync_strlcpy(fName, buff, strlen(buff)+1);
 
@@ -651,7 +651,7 @@ void send_psyncs_event(const char* binapi,
   int intRes;
   int syncCnt = 0;
 
-  errMsg = (char*)malloc(1024 * sizeof(char)); 
+  errMsg = (char*)malloc(1024 * sizeof(char));
   errMsg[0] = 0;
 
   time(&rawtime);
@@ -802,15 +802,10 @@ char* get_file_name_from_path(char* path){
     return NULL;
   }
 
-  path = path + strlen(path)-1;
+  name = path + strlen(path)-1;
 
-  while (*path != NULL) {
-    if ((*path == '\\') || (*path == '/')) {
-      break;
-    }
-
-    name = path;
-    path--;
+  while (name>path && name[-1]!='\\' && name[-1]!='/') {
+    name--;
   }
 
   return strdup(name);
@@ -820,7 +815,7 @@ char* get_folder_name_from_path(char* path) {
   char* folder;
   int sepFound = 0;
 
-  while (*path != NULL) {
+  while (*path != 0) {
     if ((*path == '\\') || (*path == '/')) {
       folder = ++path;
       sepFound = 1;
@@ -861,7 +856,7 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
       stuck_elem->name = strdup(STUCK_ITEM_UNKNOWN_FILE);
     }
   }
-  
+
   if (path) {
     stuck_elem->path = strdup(path);
   }
@@ -877,17 +872,17 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
 void free_stuck_elem(stuck_item* elem) {
   psync_free(elem->name);
   psync_free(elem->path);
-  
+
   psync_free(elem);
 }
 /***********************************************************************/
 void log_list_elem(stuck_item* elem) {
   debug(D_NOTICE, "****** Stuck llist element ********");
-  debug(D_NOTICE,"Item Id  : [%llu]", elem->id);
+  debug(D_NOTICE,"Item Id  : [%llu]", (long long unsigned)elem->id);
   debug(D_NOTICE,"Elem Type: [%d]", elem->item_type);
   debug(D_NOTICE,"Msg Id   : [%d]", elem->msg_id);
   debug(D_NOTICE,"Retry Cnt: [%d]", elem->retry_cnt);
-  debug(D_NOTICE,"Next Elem: [%llu]", elem->next_elem);
+  debug(D_NOTICE,"Next Elem: [%p]", elem->next_elem);
   debug(D_NOTICE,"Elem Name: [%s]", elem->name);
   debug(D_NOTICE,"Elem Path: [%s]", elem->path);
   debug(D_NOTICE, "**********************************");
@@ -905,7 +900,7 @@ void log_list() {
       break;
     }
 
-    list = (stuck_item*)list->next_elem;
+    list = list->next_elem;
     i++;
     debug(D_NOTICE, "******************** Stuck Next elem item id *********************");
   }
@@ -921,7 +916,7 @@ stuck_item* get_last_element() {
   }
 
   while (1) {
-    local_list = (stuck_item*)local_list->next_elem;
+    local_list = local_list->next_elem;
 
     if (local_list->next_elem == NULL) {
       break;
@@ -977,7 +972,7 @@ void add_stuck_elem(stuck_item* elem) {
       stuck_sync_tasks->list->next_elem = (stuck_item*)elem;
     }
     else {
-      last_elem = get_last_element(stuck_sync_tasks);// ???? if last_elem == -1
+      last_elem = get_last_element();// ???? if last_elem == -1
       if(last_elem){
         last_elem->next_elem = (stuck_item*)elem;
       }
@@ -1033,8 +1028,9 @@ void delete_element(uint64_t id) {
 
   stuck_item* local_list = stuck_sync_tasks->list;
   stuck_item* last_element = NULL;
-   
-  debug(D_NOTICE, "Delete element with Id: [%llu], Stuck Cnt: [%d], Total Cnt: [%d]", id, stuck_sync_tasks->stuck_cnt, stuck_sync_tasks->total_cnt);
+
+  debug(D_NOTICE, "Delete element with Id: [%llu], Stuck Cnt: [%d], Total Cnt: [%d]",
+        (unsigned long long)id, stuck_sync_tasks->stuck_cnt, stuck_sync_tasks->total_cnt);
 
   if (local_list == NULL) {
     pthread_mutex_unlock(&stuck_elem_list_mutex);
@@ -1109,8 +1105,7 @@ void delete_element(uint64_t id) {
 }
 /*************************************************************/
 void clean_stuck_list() {
-  stuck_item* local_list;
-  uint64_t next_elem;
+  stuck_item *local_list, *next_elem;
 
   if (stuck_sync_tasks->list == NULL) {
     return;
@@ -1125,7 +1120,7 @@ void clean_stuck_list() {
 
     free_stuck_elem(local_list);
 
-    local_list = (stuck_item*)next_elem;
+    local_list = next_elem;
 
     if (next_elem == NULL) {
       break;
@@ -1553,7 +1548,7 @@ int wait_auth_token(char* request_id) {
   psync_set_auth(token, rememberme);
 
   debug(D_CRITICAL, "Auth Token Set To: [%s] Current UserId: [%llu] New UserId: [%llu]", psync_my_auth, currentuserid, newuserid);
-  
+
   return result;
 }
 /**********************************************************************/
@@ -1610,7 +1605,7 @@ int create_upload_task(int type, int status, uint64_t size, int level, uint64_t 
   psync_sql_bind_lstring(res, 6, fname, strlen(fname));
   psync_sql_bind_lstring(res, 7, path, strlen(path));
 
-  if (unlikely(psync_sql_run_free(res))) { 
+  if (unlikely(psync_sql_run_free(res))) {
     psync_sql_rollback_transaction();
 
     debug(D_NOTICE, "Transaction failed.");

@@ -896,7 +896,7 @@ typedef struct {
   psync_synctype_t synctype;
 } psync_tmp_folder_t;
 
-psync_folder_list_t *psync_list_get_list(char* syncTypes){
+psync_folder_list_t *psync_list_get_list(const char *syncTypes){
   psync_sql_res *res;
   psync_variant_row row;
   psync_tmp_folder_t *folders;
@@ -908,22 +908,19 @@ psync_folder_list_t *psync_list_get_list(char* syncTypes){
   uint32_t alloced, lastfolder, i;
 
   char sqlLocal[1024];
-  char* sql;
-  int sqlLen;
 
   folders=NULL;
   alloced=lastfolder=0;
   strlens=0;
 
   if (strlen(syncTypes) > 0) {
-    sqlLen = psync_slprintf(sqlLocal, 1024, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (%s)", syncTypes);
+    psync_slprintf(sqlLocal, 1024, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL AND synctype IN (%s)", syncTypes);
   }
   else {
-    sqlLen = psync_slprintf(sqlLocal, 1024, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
+    psync_slprintf(sqlLocal, 1024, "SELECT id, folderid, localpath, synctype FROM syncfolder WHERE folderid IS NOT NULL");
   }
 
-  sql = psync_strdup(sqlLocal);
-  res = psync_sql_query_rdlock(sql);
+  res = psync_sql_query_rdlock(sqlLocal);
 
   while ((row=psync_sql_fetch_row(res))){
     if (alloced==lastfolder){
