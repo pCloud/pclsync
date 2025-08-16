@@ -1,7 +1,7 @@
 /* Copyright (c) 2013-2014 Anton Titov.
  * Copyright (c) 2013-2014 pCloud Ltd.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -12,7 +12,7 @@
  *     * Neither the name of pCloud Ltd nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -43,7 +43,7 @@
 #define PSYNC_TEXT_COL "COLLATE NOCASE"
 #endif
 
-#define PSYNC_DATABASE_VERSION 23
+#define PSYNC_DATABASE_VERSION 24
 
 #define PSYNC_DATABASE_CONFIG \
 "\
@@ -63,11 +63,13 @@ BEGIN;\
 CREATE TABLE IF NOT EXISTS setting (id VARCHAR(16) PRIMARY KEY, value TEXT) " P_SQL_WOWROWID ";\
 CREATE TABLE IF NOT EXISTS folder (id INTEGER PRIMARY KEY, parentfolderid INTEGER, userid INTEGER, permissions INTEGER, \
   name VARCHAR(1024) "PSYNC_TEXT_COL", ctime INTEGER, mtime INTEGER, flags INTEGER DEFAULT 0, subdircnt INTEGER DEFAULT 0);\
+CREATE INDEX IF NOT EXISTS kfoldername ON folder(parentfolderid, name);\
 CREATE INDEX IF NOT EXISTS kfolderfolderid ON folder(parentfolderid);\
 CREATE TABLE IF NOT EXISTS file (id INTEGER PRIMARY KEY, parentfolderid INTEGER, userid INTEGER, size INTEGER, hash INTEGER, flags INTEGER DEFAULT 0,\
   name VARCHAR(1024) "PSYNC_TEXT_COL", ctime INTEGER, mtime INTEGER, category INTEGER, thumb INTEGER, icon VARCHAR(32),\
   artist TEXT, album TEXT, title TEXT, genre TEXT, trackno INTEGER, width INTEGER, height INTEGER, duration REAL,\
   fps REAL, videocodec TEXT, audiocodec TEXT, videobitrate INTEGER, audiobitrate INTEGER, audiosamplerate INTEGER, rotate INTEGER);\
+CREATE INDEX IF NOT EXISTS kfilename ON file(parentfolderid, name);\
 CREATE INDEX IF NOT EXISTS kfilefolderid ON file(parentfolderid);\
 CREATE INDEX IF NOT EXISTS kfilecategory ON file(category);\
 CREATE INDEX IF NOT EXISTS kfileartist ON file(artist, album);\
@@ -158,7 +160,7 @@ COMMIT;\
  *   10- rename tasks are inserted as two rows, first one, the "rename from" is with status 10
  *   11- cancelled task
  *   12- file that is new, still open and marked deleted
- * 
+ *
  */
 
 static const char *psync_db_upgrade[PSYNC_DATABASE_VERSION]={
@@ -308,6 +310,10 @@ CREATE INDEX IF NOT EXISTS UploadTasksTypeIdx ON upload_tasks(type);\
 CREATE INDEX IF NOT EXISTS UploadTasksStatusIdx ON upload_tasks(status);\
 CREATE INDEX IF NOT EXISTS UploadTasksLevelIdx ON upload_tasks(level);\
 UPDATE setting SET value=23 WHERE id='dbversion'; \
-COMMIT;"//DB Version 23 End
+COMMIT;",//DB Version 23 End
+"BEGIN; \
+CREATE INDEX IF NOT EXISTS kfoldername ON folder(parentfolderid, name);\
+CREATE INDEX IF NOT EXISTS kfilename ON file(parentfolderid, name);\
+COMMIT;"//DB Version 24 End
 };
 #endif
