@@ -977,7 +977,6 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
 
   if (res==1){
 #if IS_DEBUG
-    debug(D_NOTICE, "psync_wait_socket_readable_microsec. Time out: [%d]", tv.tv_sec);
     psync_nanotime(&end);
     msec=(end.tv_sec-start.tv_sec)*1000+end.tv_nsec/1000000-start.tv_nsec/1000000;
     if (msec>=30000)
@@ -1577,15 +1576,15 @@ static int wait_sock_ready_for_ssl(psync_socket_t sock){
   tv.tv_usec=0;
 
   res=select(sock+1, rfds, wfds, NULL, &tv);
-  
+
   if (res==1)
     return 0;
-  
+
   if (res==0){
     debug(D_WARNING, "socket timeouted");
     psync_sock_set_err(P_TIMEDOUT);
   }
-  
+
   return PRINT_RETURN_CONST(SOCKET_ERROR);
 }
 static int wait_sock_ready_for_ssl_v2(psync_socket_t sock, int timeout) {
@@ -3805,13 +3804,13 @@ char *psync_deviceid(){
     vminor=(DWORD)(HIBYTE(LOWORD(vers)));
     buildnumber=(DWORD)(LOBYTE(HIWORD(vers)));
   }
-  
+
   if (GetSystemMetrics(SM_TABLETPC))
     hardware="Tablet";
   else if (GetSystemPowerStatus(&bat) || (bat.BatteryFlag&128))
     hardware="Desktop";
   else
-    hardware="Laptop";  
+    hardware="Laptop";
 
   if (vmajor==6){
     switch (vminor){

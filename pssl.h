@@ -40,6 +40,8 @@
 #include "pssl-mbedtls.h"
 #elif defined(P_SSL_SECURETRANSPORT)
 #include "pssl-securetransport.h"
+#elif defined(P_SSL_WOLFSSL)
+#include "pssl-wolfssl.h"
 #else
 #error "Please specify SSL library to use"
 #include "pssl-openssl.h"
@@ -114,5 +116,5 @@ psync_aes256_encoder psync_ssl_aes256_create_decoder(psync_symmetric_key_t key);
 void psync_ssl_aes256_free_decoder(psync_aes256_encoder aes);
 psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa, const unsigned char *data);
 
-psync_symmetric_key_t psync_ssl_rsa_decrypt_symm_key_lock(psync_rsa_privatekey_t* rsa, const psync_encrypted_symmetric_key_t* enckey);
+psync_symmetric_key_t psync_ssl_rsa_decrypt_symm_key_lock(psync_rsa_privatekey_t rsa, const psync_encrypted_symmetric_key_t enckey);
 #endif

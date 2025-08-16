@@ -275,7 +275,7 @@ static binresult *psync_get_keys_bin_auth(const char *auth){
 	}
 	else{
 		psync_apipool_release(api);
-	}  
+	}
   return res;
 }
 
@@ -458,18 +458,19 @@ static int crypto_keys_match(){
   key->keylen=64;
   psync_ssl_rand_weak(key->key, key->keylen);
   enckey=psync_ssl_rsa_encrypt_symmetric_key(crypto_pubkey, key);
-  if (enckey==PSYNC_INVALID_ENC_SYM_KEY){
+  if (unlikely_log(enckey==PSYNC_INVALID_ENC_SYM_KEY)){
     psync_free(key);
     return 0;
   }
 
-  deckey= psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, enckey);
+  deckey=psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, enckey);
 
   psync_free(enckey);
-  if (deckey==PSYNC_INVALID_SYM_KEY){
+  if (unlikely_log(deckey==PSYNC_INVALID_SYM_KEY)){
     psync_free(key);
     return 0;
   }
+  debug(D_NOTICE, "%lu %lu", key->keylen, deckey->keylen);
   res=key->keylen==deckey->keylen && !memcmp(key->key, deckey->key, key->keylen);
   psync_ssl_free_symmetric_key(deckey);
   psync_free(key);
@@ -899,7 +900,7 @@ static psync_symmetric_key_t psync_crypto_get_folder_symkey_locked(psync_folderi
   psync_symmetric_key_t symkey;
 
   psync_get_string_id(buff, "FKEY", folderid);
-  
+
   symkey=(psync_symmetric_key_t)psync_cache_get(buff);
 
   if (symkey)
@@ -1156,7 +1157,7 @@ psync_crypto_aes256_text_decoder_t psync_cloud_crypto_get_folder_decoder(psync_f
     psync_get_string_id(buff, "FLDD", folderid);
 
     dec=(psync_crypto_aes256_text_decoder_t)psync_cache_get(buff);
-    
+
     if (dec)
       return dec;
   }
@@ -1714,7 +1715,7 @@ int psync_pcloud_crypto_reencode_key(const unsigned char *rsapub, size_t rsapubl
       psync_ssl_memclean(rsaprivdec, rsaprivlen);
       psync_free(rsaprivdec);
       if (unlikely(priv==PSYNC_INVALID_RSA))
-        goto err_ph_1;   
+        goto err_ph_1;
       break;
     }
     default:
@@ -1827,7 +1828,7 @@ int  psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpa
   unsigned char *privkey=NULL;
   unsigned char *salt=NULL;
   priv_key_ver1 *privatekey_struct=NULL;
-  pub_key_ver1 *pubkey_struct=NULL;  
+  pub_key_ver1 *pubkey_struct=NULL;
   size_t pubkeylen=0, privkeylen=0, saltlen=0;
   int cres;
   psync_sql_res *res;
@@ -1839,7 +1840,7 @@ int  psync_crypto_change_passphrase(const char* oldpassphrase, const char* newpa
   const binresult *data;
 
   if (!newpassphrase||!newpassphrase[0])
-    return PSYNC_CRYPTO_BAD_PASSPHRASE;  
+    return PSYNC_CRYPTO_BAD_PASSPHRASE;
 retry:
   if (psync_sql_trylock()){
     psync_milisleep(1);
@@ -1902,7 +1903,7 @@ retry:
     data=psync_find_result(bres, "publickey", PARAM_STR);
     pubkey=psync_base64_decode((const unsigned char *)data->str, data->length, &pubkeylen);
     data=psync_find_result(bres, "salt", PARAM_STR);
-    salt=psync_base64_decode((const unsigned char *)data->str, data->length, &saltlen);    
+    salt=psync_base64_decode((const unsigned char *)data->str, data->length, &saltlen);
     psync_free(bres);
     if (unlikely(!privkey || !pubkey)){
       psync_free(privkey);

@@ -2,15 +2,9 @@ CC=gcc
 AR=ar rcu
 RANLIB=ranlib
 #USESSL=openssl
-USESSL=mbed
+#USESSL=mbed
+USESSL=wolfssl
 
-#CFLAGS=-Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg
-#CFLAGS=-Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types
-#CFLAGS=-Wall -Wpointer-arith -O2 -g -fsanitize=address -mtune=core2 -I../sqlite
-#CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I../sqlite/ -fPIC
-#CFLAGS=-Wall -Wpointer-arith -O2 -g -mtune=core2 -I../sqlite -pg -m32 -D_FILE_OFFSET_BITS=64
-#CFLAGS=-O2 -g -pg
-#CFLAGS=-Wall -Wpointer-arith -O2 -g -mtune=core2 -I../../psync32/zlib -I../../psync32/sqlite -m32 -D_FILE_OFFSET_BITS=64
 
 LIB_A=psynclib.a
 #LIB_A=libpsynclib.a
@@ -25,15 +19,15 @@ ifeq ($(OS),Windows_NT)
 else
     UNAME_S	:= $(shell uname -s)
     UNAME_V	:= $(shell uname -v)
-	UNAME_P	:= $(shell uname -p)
+    UNAME_P	:= $(shell uname -p)
 
     ifeq ($(UNAME_S),Linux)
-		CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I../sqlite -DP_ELECTRON -fPIC
+        CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I../sqlite -DP_ELECTRON -fPIC
         CFLAGS += -DP_OS_LINUX -D_FILE_OFFSET_BITS=64
             ifneq (,$(findstring Debian,$(UNAME_V)))
                 CFLAGS += -DP_OS_DEBIAN
             endif
-	LDFLAGS += -lssl -lcrypto -lfuse -lpthread -lsqlite3 -lzlib
+        LDFLAGS += -lfuse -lpthread -lsqlite3 -lzlib
     endif
 
     ifeq ($(UNAME_S),Darwin)
@@ -47,7 +41,7 @@ else
         CFLAGS += -DP_OS_MACOSX -I/usr/local/include/osxfuse/
 		CFLAGS += -DP_OS_MACOSX -Wno-error=int-conversion
 		CFLAGS += -DP_OS_MACOSX -Wno-error=incompatible-function-pointer-types
-		LDFLAGS += -lssl -lcrypto -losxfuse -lsqlite3 -framework Cocoa -L/usr/local/ssl/lib
+		LDFLAGS += -losxfuse -lsqlite3 -framework Cocoa -L/usr/local/ssl/lib
         #USESSL=securetransport
     endif
 endif
@@ -73,6 +67,10 @@ endif
 ifeq ($(USESSL),mbed)
   OBJ += pssl-mbedtls.o
   CFLAGS += -DP_SSL_MBEDTLS -I../mbedtls/include/
+endif
+ifeq ($(USESSL),wolfssl)
+  OBJ += pssl-wolfssl.o
+  CFLAGS += -DP_SSL_WOLFSSL -I../wolfssl/ -I../wolfssl/wolfssl/
 endif
 
 OBJ1=overlay_client.o
