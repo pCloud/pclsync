@@ -575,7 +575,9 @@ psync_rsa_privatekey_t psync_ssl_rsa_binary_to_private(psync_binary_rsa_key_t bi
 psync_symmetric_key_t psync_ssl_gen_symmetric_key_from_pass(const char *password, size_t keylen,
                                                              const unsigned char *salt, size_t saltlen,
                                                              size_t iterations) {
-  psync_symmetric_key_t key = (psync_symmetric_key_t)psync_locked_malloc(keylen + offsetof(psync_symmetric_key_struct_t, key));
+  psync_symmetric_key_t key = (psync_symmetric_key_t)psync_locked_malloc(
+    keylen<PSYNC_SHA512_DIGEST_LEN?PSYNC_SHA512_DIGEST_LEN:keylen +
+    offsetof(psync_symmetric_key_struct_t, key));
   key->keylen = keylen;
 
   wc_PBKDF2(key->key, (const byte *)password, strlen(password),
