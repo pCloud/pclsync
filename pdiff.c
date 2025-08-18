@@ -820,6 +820,9 @@ static psync_socket *get_connected_socket(){
     psync_sql_bind_string(q, 1, "cryptosubscription");
     psync_sql_bind_uint(q, 2, psync_find_result(res, "cryptosubscription", PARAM_BOOL)->num);
     psync_sql_run(q);
+    psync_sql_bind_string(q, 1, "cryptolifetime");
+    psync_sql_bind_uint(q, 2, psync_find_result(res, "cryptolifetime", PARAM_BOOL)->num);
+    psync_sql_run(q);
     cres=psync_check_result(res, "cryptoexpires", PARAM_NUM);
     psync_sql_bind_string(q, 1, "cryptoexpires");
     psync_sql_bind_uint(q, 2, cres?cres->num:0);
@@ -2015,6 +2018,9 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_string(q, 1, "cryptosubscription");
   crsub =  psync_find_result(res, "cryptosubscription", PARAM_BOOL)->num;
   psync_sql_bind_uint(q, 2, crsub);
+  psync_sql_run(q);
+  psync_sql_bind_string(q, 1, "cryptolifetime");
+  psync_sql_bind_uint(q, 2, psync_find_result(res, "cryptolifetime", PARAM_BOOL)->num);
   psync_sql_run(q);
   cres=psync_check_result(res, "cryptoexpires", PARAM_NUM);
   crexp = cres?cres->num:0;
