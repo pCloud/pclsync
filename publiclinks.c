@@ -777,7 +777,6 @@ int cache_links(char **err /*OUT*/) {
       psync_sql_bind_uint(q, 19, 0);
 
     psync_sql_run_free(q);
-    psync_free(bres);
   }
   return linkscnt;
 }
