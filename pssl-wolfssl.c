@@ -576,7 +576,7 @@ psync_symmetric_key_t psync_ssl_gen_symmetric_key_from_pass(const char *password
                                                              const unsigned char *salt, size_t saltlen,
                                                              size_t iterations) {
   psync_symmetric_key_t key = (psync_symmetric_key_t)psync_locked_malloc(
-    keylen<PSYNC_SHA512_DIGEST_LEN?PSYNC_SHA512_DIGEST_LEN:keylen +
+    (keylen<PSYNC_SHA512_DIGEST_LEN?PSYNC_SHA512_DIGEST_LEN:keylen) +
     offsetof(psync_symmetric_key_struct_t, key));
   key->keylen = keylen;
 
