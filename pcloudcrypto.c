@@ -360,7 +360,7 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
   psync_ssl_free_rsa(rsa);
 
   if (unlikely(rsaprivate==PSYNC_INVALID_RSA || rsapublic==PSYNC_INVALID_RSA)){
-    debug(D_WARNING, "psync_ssl_rsa_get_private or psync_ssl_rsa_get_public failed");
+    debug(D_WARNING, "psync_ssl_rsa_get_private or psync_ssl_rsa_get_public failed (%p, %p)", rsaprivate, rsapublic);
     if (rsaprivate!=PSYNC_INVALID_RSA)
       psync_ssl_rsa_free_private(rsaprivate);
     if (rsapublic!=PSYNC_INVALID_RSA)
@@ -391,8 +391,8 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
 
   debug(D_NOTICE, "encoded private key, uploading keys");
 
-  ret=psync_cloud_crypto_setup_upload(rsaprivatebin->data, rsaprivatebin->datalen, rsapublicbin->data, rsapublicbin->datalen, salt, hint, &cryptoexpires,
-                                      publicsha1, privatesha1);
+  ret=psync_cloud_crypto_setup_upload(rsaprivatebin->data, rsaprivatebin->datalen, rsapublicbin->data,
+                                        rsapublicbin->datalen, salt, hint, &cryptoexpires, publicsha1, privatesha1);
   if (unlikely(ret!=PSYNC_CRYPTO_SETUP_SUCCESS)){
     debug(D_WARNING, "keys upload failed with error %d", ret);
     psync_ssl_rsa_free_binary(rsaprivatebin);

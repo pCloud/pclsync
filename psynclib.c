@@ -217,7 +217,7 @@ void psync_apiserver_init(){
 }
 
 #if defined(P_OS_WINDOWS)
-int psync_init(char* appDrive) {
+int psync_init(const char* appDrive) {
 #else
 int psync_init() {
 #endif

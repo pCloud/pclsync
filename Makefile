@@ -22,6 +22,7 @@ else
     UNAME_P	:= $(shell uname -p)
 
     ifeq ($(UNAME_S),Linux)
+#        CFLAGS=-Wall -Wpointer-arith -fsanitize=address -O1 -fno-omit-frame-pointer -g -I../sqlite -DP_ELECTRON -fPIC
         CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I../sqlite -DP_ELECTRON -fPIC
         CFLAGS += -DP_OS_LINUX -D_FILE_OFFSET_BITS=64
             ifneq (,$(findstring Debian,$(UNAME_V)))

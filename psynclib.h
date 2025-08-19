@@ -771,7 +771,7 @@ void psync_set_software_string(const char *str);
 void psync_set_os_string(const char *str);
 
 #if defined(P_OS_WINDOWS)
-int psync_init(char* appDrive);
+int psync_init(const char* appDrive);
 #else
 int psync_init();
 #endif

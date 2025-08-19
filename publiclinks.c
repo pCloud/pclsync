@@ -718,7 +718,7 @@ int cache_links(char **err /*OUT*/) {
   }
   publinks=psync_find_result(bres, "publinks", PARAM_ARRAY);
   linkscnt = publinks->length;
-  if (!linkscnt){
+  if (!linkscnt) {
     psync_free(bres);
     return 0;
   }
@@ -731,6 +731,7 @@ int cache_links(char **err /*OUT*/) {
                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     if (!q) {
       debug(D_WARNING, "cache links sql prep return NULL");
+      psync_free(bres);
       return -1;
     }
     psync_sql_bind_uint(q, 1, psync_find_result(link, "linkid", PARAM_NUM)->num);
@@ -778,6 +779,7 @@ int cache_links(char **err /*OUT*/) {
 
     psync_sql_run_free(q);
   }
+  psync_free(bres);
   return linkscnt;
 }
 

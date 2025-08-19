@@ -435,7 +435,6 @@ psync_rsa_t psync_ssl_gen_rsa(int bits) {
     psync_free(key);
     return PSYNC_INVALID_RSA;
   }
-
   return key;
 }
 
@@ -449,8 +448,10 @@ psync_rsa_publickey_t psync_ssl_rsa_get_public(psync_rsa_t rsa) {
   byte e[256], n[4096];
   word32 eSz = sizeof(e), nSz = sizeof(n);
 
-  if (wc_RsaExportKey(rsa, e, &eSz, n, &nSz, NULL, NULL, NULL, NULL, NULL, NULL) != 0)
+  if (wc_RsaFlattenPublicKey(rsa, e, &eSz, n, &nSz) != 0) {
+    debug(D_WARNING, "wc_RsaFlattenPublicKey failed");
     return PSYNC_INVALID_RSA;
+  }
 
   pub = psync_new(RsaKey);
   wc_InitRsaKey(pub, NULL);
@@ -472,12 +473,14 @@ psync_rsa_privatekey_t psync_ssl_rsa_get_private(psync_rsa_t rsa) {
   RsaKey *priv;
   byte der[4096];
   word32 derSz = sizeof(der);
+  word32 idx = 0;
+  int len;
 
   priv = psync_new(RsaKey);
   wc_InitRsaKey(priv, NULL);
 
-  if (wc_RsaKeyToDer(rsa, der, derSz) <= 0 ||
-      wc_RsaPrivateKeyDecode(der, &derSz, priv, sizeof(der)) != 0) {
+  if ((len=wc_RsaKeyToDer(rsa, der, derSz)) <= 0 ||
+      wc_RsaPrivateKeyDecode(der, &idx, priv, len) != 0) {
     wc_FreeRsaKey(priv);
     psync_free(priv);
     return PSYNC_INVALID_RSA;
@@ -575,9 +578,7 @@ psync_rsa_privatekey_t psync_ssl_rsa_binary_to_private(psync_binary_rsa_key_t bi
 psync_symmetric_key_t psync_ssl_gen_symmetric_key_from_pass(const char *password, size_t keylen,
                                                              const unsigned char *salt, size_t saltlen,
                                                              size_t iterations) {
-  psync_symmetric_key_t key = (psync_symmetric_key_t)psync_locked_malloc(
-    (keylen<PSYNC_SHA512_DIGEST_LEN?PSYNC_SHA512_DIGEST_LEN:keylen) +
-    offsetof(psync_symmetric_key_struct_t, key));
+  psync_symmetric_key_t key = (psync_symmetric_key_t)psync_locked_malloc(keylen+offsetof(psync_symmetric_key_struct_t, key));
   key->keylen = keylen;
 
   wc_PBKDF2(key->key, (const byte *)password, strlen(password),
@@ -717,7 +718,7 @@ psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa,
   sigLen = keySize;
 
   if (wc_RsaSSL_Sign(data, PSYNC_SHA256_DIGEST_LEN, ret->data, sigLen, rsa, &psync_wolf_rng.rng) <= 0) {
-    free(ret);
+    psync_free(ret);
     return (psync_rsa_signature_t)(void *)PSYNC_CRYPTO_NOT_STARTED;
   }
 

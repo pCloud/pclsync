@@ -1963,9 +1963,9 @@ static int psync_read_staticfile(psync_openfile_t *of, char *buf, uint64_t size,
 
     memcpy(buf, of->staticdata+offset, ret);
   }
-  
+
   pthread_mutex_unlock(&of->mutex);
-  
+
   return ret;
 }
 
@@ -2548,7 +2548,7 @@ static int psync_fs_unlink(const char *path){
   if (fpath) {
     psync_free(fpath);
   }
-  
+
   debug(D_NOTICE, "unlink [%s]=[%d]", path, ret);
   return ret;
 }
@@ -2745,7 +2745,7 @@ static int psync_fs_is_nonempty_folder(psync_fsfolderid_t parent_folderid, const
   res=psync_sql_query("SELECT id FROM folder WHERE parentfolderid=? AND name=?");
   psync_sql_bind_uint(res, 1, parent_folderid);
   psync_sql_bind_string(res, 2, name);
-  
+
   if ((row = psync_sql_fetch_rowint(res))) {
     ret = psync_fs_is_folder_nonempty(row[0]);
   }
@@ -2785,17 +2785,17 @@ static int psync_fs_rename(const char *old_path, const char *new_path){
 
   if (!fold_path || !fnew_path)
     goto err_enoent;
-  
+
   if ((fold_path->flags&PSYNC_FOLDER_FLAG_ENCRYPTED)!=(fnew_path->flags&PSYNC_FOLDER_FLAG_ENCRYPTED)){
     ret=-PSYNC_FS_ERR_MOVE_ACROSS_CRYPTO;
     goto finish;
   }
-  
+
   if (fold_path->folderid!=fnew_path->folderid && ((fold_path->flags|fnew_path->flags)&(PSYNC_FOLDER_FLAG_BACKUP_DEVICE_LIST|PSYNC_FOLDER_FLAG_BACKUP_DEVICE))){
     ret=-EACCES;
     goto finish;
   }
-  
+
   folder=psync_fstask_get_folder_tasks_locked(fold_path->folderid);
 
   new_fid = psync_get_folderid(fnew_path->folderid, fnew_path->name);
@@ -3342,6 +3342,7 @@ static char *psync_fuse_get_mountpoint(){
   char *mp;
   mp=psync_strdup(psync_setting_get_string(_PS(fsroot)));
   if (psync_stat(mp, &st) && psync_mkdir(mp)){
+    debug(D_WARNING, "cannot access/create %s", mp);
     psync_free(mp);
     return NULL;
   }
@@ -3643,15 +3644,14 @@ static int psync_fs_do_start(){
   unmount(mp, MNT_FORCE);
 #endif
 
-  is_mp_empty = psync_check_local_dir_empty(mp);
-
   debug(D_NOTICE, "Mounting: [%s]", mp);
+  is_mp_empty = psync_check_local_dir_empty(mp);
 
   psync_fuse_channel=fuse_mount(mp, &args);
 
   if (unlikely_log(!psync_fuse_channel)){
     debug(D_NOTICE, "Failed to mount fuse. Mount Point: [%s]", mp);
-    /*Send event to warn the user that the drive failed to mount because of files in the mount path. 
+    /*Send event to warn the user that the drive failed to mount because of files in the mount path.
     This is an assumption since mount does not return proper error code*/
     if (is_mp_empty) {
       debug(D_NOTICE, "There are files in the mount path. Warn the user.");
@@ -3727,7 +3727,7 @@ int psync_fs_start(){
   int ret;
 
   pthread_mutex_lock(&start_mutex);
-  
+
   if (started){
     ret=-1;
   }
