@@ -717,9 +717,10 @@ psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa,
   ret->datalen = keySize;
   sigLen = keySize;
 
-  if (wc_RsaSSL_Sign(data, PSYNC_SHA256_DIGEST_LEN, ret->data, sigLen, rsa, &psync_wolf_rng.rng) <= 0) {
+  if (wc_RsaPSS_Sign(data, PSYNC_SHA256_DIGEST_LEN, ret->data, sigLen, WC_HASH_TYPE_SHA256,
+                     WC_MGF1NONE, rsa, &psync_wolf_rng.rng) <= 0) {
     psync_free(ret);
-    return (psync_rsa_signature_t)(void *)PSYNC_CRYPTO_NOT_STARTED;
+    return (psync_rsa_signature_t)(void *)PERROR_SSL_INIT_FAILED;
   }
 
   return ret;
