@@ -498,11 +498,9 @@ psync_binary_rsa_key_t psync_ssl_rsa_public_to_binary(psync_rsa_publickey_t rsa)
   int derSz;
   psync_binary_rsa_key_t ret;
 
-  derSz = wc_RsaPublicKeyDerSize(rsa, 1);
-  if (derSz <= 0 || derSz > sizeof(der))
-    return PSYNC_INVALID_BIN_RSA;
+  derSz=wc_RsaKeyToPublicDer_ex(rsa, der, derSz, 0);
 
-  if (wc_RsaKeyToPublicDer(rsa, der, derSz) <= 0)
+  if (derSz <= 0)
     return PSYNC_INVALID_BIN_RSA;
 
   ret = psync_locked_malloc(offsetof(psync_encrypted_data_struct_t, data) + derSz);
