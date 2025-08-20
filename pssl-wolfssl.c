@@ -710,15 +710,15 @@ psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa,
   if (keySize <= 0)
     return (psync_rsa_signature_t)(void *)PERROR_NO_MEMORY;
 
-  ret = (psync_rsa_signature_t)psync_malloc(offsetof(psync_symmetric_key_struct_t, key) + keySize);
+  ret = (psync_rsa_signature_t)psync_malloc(offsetof(psync_encrypted_data_struct_t, data) + keySize);
   if (!ret)
     return (psync_rsa_signature_t)(void *)PERROR_NO_MEMORY;
 
   sigLen = keySize;
 
   if ((keySize=wc_RsaPSS_Sign(data, PSYNC_SHA256_DIGEST_LEN, ret->data, sigLen, WC_HASH_TYPE_SHA256,
-                     WC_MGF1NONE, rsa, &psync_wolf_rng.rng)) <= 0) {
-    debug(D_WARNING, "wc_RsaPSS_Sign failed with %d", keySize);
+                     WC_MGF1SHA256, rsa, &psync_wolf_rng.rng)) <= 0) {
+    debug(D_WARNING, "wc_RsaPSS_Sign failed with %d (%p %p %p)", keySize, data, ret->data, rsa);
     psync_free(ret);
     return (psync_rsa_signature_t)(void *)PERROR_SSL_INIT_FAILED;
   }
