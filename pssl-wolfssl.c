@@ -498,7 +498,7 @@ psync_binary_rsa_key_t psync_ssl_rsa_public_to_binary(psync_rsa_publickey_t rsa)
   int derSz;
   psync_binary_rsa_key_t ret;
 
-  derSz=wc_RsaKeyToPublicDer_ex(rsa, der, derSz, 0);
+  derSz=wc_RsaKeyToPublicDer_ex(rsa, der, sizeof(der), 0);
 
   if (derSz <= 0)
     return PSYNC_INVALID_BIN_RSA;
