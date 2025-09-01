@@ -36,8 +36,11 @@
 #include <ctype.h>
 
 #include <wolfssl/options.h>
+<<<<<<< HEAD
 //#include <wolfssl/wolfcrypt/settings.h>
 //#include "pwolfssl_config.h"
+=======
+>>>>>>> b5a74fc (Add function: int psync_get_filename_by_id(psync_fileid_t fileId, char** filename) to be used in photos implementation. Code cleanup.)
 
 #include <wolfssl/ssl.h>
 #include <wolfssl/wolfcrypt/random.h>
