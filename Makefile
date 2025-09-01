@@ -9,6 +9,9 @@ USESSL=wolfssl
 LIB_A=psynclib.a
 #LIB_A=libpsynclib.a
 
+FUSE_INCLUDE_DIR ?= /usr/local/include/osxfuse
+SQLITE_INCLUDE_DIR ?= ../sqlite
+
 
 ifeq ($(OS),Windows_NT)
     CFLAGS += -DP_OS_WINDOWS
@@ -23,7 +26,7 @@ else
 
     ifeq ($(UNAME_S),Linux)
 #        CFLAGS=-Wall -Wpointer-arith -fsanitize=address -O1 -fno-omit-frame-pointer -g -I../sqlite -DP_ELECTRON -fPIC
-        CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I../sqlite -DP_ELECTRON -fPIC
+        CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -DP_ELECTRON -fPIC
         CFLAGS += -DP_OS_LINUX -D_FILE_OFFSET_BITS=64
             ifneq (,$(findstring Debian,$(UNAME_V)))
                 CFLAGS += -DP_OS_DEBIAN
@@ -33,13 +36,13 @@ else
 
     ifeq ($(UNAME_S),Darwin)
 		ifeq ($(UNAME_P),arm)
-			CFLAGS	= -Wall -Wpointer-arith -Os -g -I../sqlite -pg
+			CFLAGS	= -Wall -Wpointer-arith -Os -g -I$(SQLITE_INCLUDE_DIR) -pg
 		else
-			CFLAGS	= -Wall -Wpointer-arith -Os -g -mtune=core2 -I../sqlite -pg
+			CFLAGS	= -Wall -Wpointer-arith -Os -g -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -pg
 		endif
 
         CFLAGS += -DP_OS_MACOSX -I/usr/local/ssl/include/
-        CFLAGS += -DP_OS_MACOSX -I/usr/local/include/osxfuse/
+        CFLAGS += -DP_OS_MACOSX -I$(FUSE_INCLUDE_DIR)
 		CFLAGS += -DP_OS_MACOSX -Wno-error=int-conversion
 		CFLAGS += -DP_OS_MACOSX -Wno-error=incompatible-function-pointer-types
 		LDFLAGS += -losxfuse -lsqlite3 -framework Cocoa -L/usr/local/ssl/lib
@@ -70,8 +73,20 @@ ifeq ($(USESSL),mbed)
   CFLAGS += -DP_SSL_MBEDTLS -I../mbedtls/include/
 endif
 ifeq ($(USESSL),wolfssl)
+  WOLFSSL_CFLAGS = -DP_SSL_WOLFSSL
+
+  ifdef WOLFSSL_INCLUDE_DIR
+    WOLFSSL_CFLAGS += -I$(WOLFSSL_INCLUDE_DIR)
+  else
+    WOLFSSL_CFLAGS += -I../wolfssl/ -I../wolfssl/wolfssl/
+  endif
+
   OBJ += pssl-wolfssl.o
-  CFLAGS += -DP_SSL_WOLFSSL -I../wolfssl/ -I../wolfssl/wolfssl/
+  CFLAGS += $(WOLFSSL_CFLAGS)
+endif
+
+ifdef DEBUG_LEVEL
+    CFLAGS += -DDEBUG_LEVEL=$(DEBUG_LEVEL)
 endif
 
 OBJ1=overlay_client.o
