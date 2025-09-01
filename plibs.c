@@ -2551,7 +2551,7 @@ static void macosx_os_log(int unsigned level, const char *fmt, va_list args){
 
   vsnprintf(msg, sizeof(msg), fmt, args);
   msg[sizeof(msg)-1]=0;
-  const char *msg_c
+  const char *msg_c=msg;
   // Using another format string to go around the static assertion that the format argument is a string constant
   os_log_with_type(OS_LOG_DEFAULT, type, msg_c);
 }
