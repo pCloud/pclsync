@@ -36,6 +36,9 @@
 #include <ctype.h>
 
 #include <wolfssl/options.h>
+//#include <wolfssl/wolfcrypt/settings.h>
+//#include "pwolfssl_config.h"
+
 #include <wolfssl/ssl.h>
 #include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/pwdbased.h>
@@ -176,6 +179,7 @@ int psync_ssl_init() {
                                        (const unsigned char *)psync_ssl_trusted_certs[i],
                                        strlen(psync_ssl_trusted_certs[i]),
                                        WOLFSSL_FILETYPE_PEM) != WOLFSSL_SUCCESS) {
+
       debug(D_ERROR, "failed to load certificate %lu", (unsigned long)i);
     }
   }

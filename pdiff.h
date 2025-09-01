@@ -36,8 +36,8 @@ void psync_diff_lock();
 void psync_diff_unlock();
 void psync_diff_wake();
 
-void psync_diff_wait_lock();//Bobo
-void psync_diff_wait_unlock();//Bobo
+void psync_diff_wait_lock();
+void psync_diff_wait_unlock();
 
 void psync_diff_create_file(const binresult *meta);
 void psync_diff_update_file(const binresult *meta);

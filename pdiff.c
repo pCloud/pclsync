@@ -3403,7 +3403,7 @@ static void psync_diff_thread(){
       psync_recache_contacts=0;
     }
 
-    psync_diff_waiting = 1; //Bobo
+    psync_diff_waiting = 1;
 
     if (psync_socket_pendingdata(sock)) {
       sel = 1;
@@ -3463,7 +3463,7 @@ static void psync_diff_thread(){
       entries=psync_check_result(res, "from", PARAM_STR);
 
       if (entries){
-        psync_diff_waiting = 0; //Bobo
+        psync_diff_waiting = 0;
 
         if (entries->length==4 && !strcmp(entries->str, "diff")){
           entries=psync_find_result(res, "entries", PARAM_ARRAY);
