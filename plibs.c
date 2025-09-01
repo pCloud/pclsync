@@ -39,6 +39,11 @@
 #include <stddef.h>
 #include "pcompat.h"
 
+#if defined(P_OS_MACOSX) && IS_DEBUG
+#include <os/log.h>
+#define MACOSX_OS_LOG_ENABLED
+#endif // P_OS_MACOSX && IS_DEBUG
+
 #define return_error(err) do {psync_error=err; return -1;} while (0)
 
 #define SQL_NO_LOCK    0
@@ -2523,6 +2528,33 @@ static void time_format(time_t tm, unsigned long ns, char *result){
   memcpy(result, " +0000", 7); // copies the null byte
 }
 
+#ifdef MACOSX_OS_LOG_ENABLED
+static void macosx_os_log(int unsigned level, const char *fmt, va_list args){
+  os_log_type_t type;
+  char msg[512];
+
+  switch (level) {
+  case D_BUG:
+  case D_CRITICAL:
+    type=OS_LOG_TYPE_FAULT;
+    break;
+  case D_ERROR:
+    type=OS_LOG_TYPE_ERROR;
+    break;
+  case D_WARNING:
+    type=OS_LOG_TYPE_INFO;
+    break;
+  default:
+    type=OS_LOG_TYPE_DEBUG;
+    break;
+  }
+
+  vsnprintf(msg, sizeof(msg), fmt, args);
+  msg[sizeof(msg)-1]=0;
+  os_log_with_type(OS_LOG_DEFAULT, type, msg);
+}
+#endif // MACOSX_OS_LOG_ENABLED
+
 int psync_debug(const char *file, const char *function, int unsigned line, int unsigned level, const char *fmt, ...){
   static const struct {
     psync_uint_t level;
@@ -2567,6 +2599,11 @@ int psync_debug(const char *file, const char *function, int unsigned line, int u
   vfprintf(log, format, ap);
   va_end(ap);
   fflush(log);
+#ifdef MACOSX_OS_LOG_ENABLED
+  va_start(ap, fmt);
+  macosx_os_log(level, fmt, ap);
+  va_end(ap);
+#endif // MACOSX_OS_LOG_ENABLED
   return 1;
 }
 
