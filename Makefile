@@ -85,6 +85,10 @@ ifeq ($(USESSL),wolfssl)
   CFLAGS += $(WOLFSSL_CFLAGS)
 endif
 
+ifdef DEBUG_LEVEL
+    CFLAGS += -DDEBUG_LEVEL=$(DEBUG_LEVEL)
+endif
+
 OBJ1=overlay_client.o
 
 all: $(LIB_A)
