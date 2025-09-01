@@ -2531,7 +2531,7 @@ static void time_format(time_t tm, unsigned long ns, char *result){
 #ifdef MACOSX_OS_LOG_ENABLED
 static void macosx_os_log(int unsigned level, const char *fmt, va_list args){
   os_log_type_t type;
-  char msg[512];
+  char msg[1024];
 
   switch (level) {
   case D_BUG:
@@ -2551,7 +2551,9 @@ static void macosx_os_log(int unsigned level, const char *fmt, va_list args){
 
   vsnprintf(msg, sizeof(msg), fmt, args);
   msg[sizeof(msg)-1]=0;
-  os_log_with_type(OS_LOG_DEFAULT, type, msg);
+  const char *msg_c
+  // Using another format string to go around the static assertion that the format argument is a string constant
+  os_log_with_type(OS_LOG_DEFAULT, type, msg_c);
 }
 #endif // MACOSX_OS_LOG_ENABLED
 
