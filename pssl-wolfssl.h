@@ -29,7 +29,7 @@
 
 #include "plibs.h"
 
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/options.h>
 
 #include <wolfssl/wolfcrypt/sha.h>
 #include <wolfssl/wolfcrypt/sha256.h>
