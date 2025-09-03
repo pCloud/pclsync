@@ -1268,6 +1268,7 @@ int psync_fs_open(const char *path, struct fuse_file_info *fi){
       }
       psync_sql_free_result(res);
       if (unlikely_log(!row)){
+        debug(D_NOTICE, "open for %s returning ENOENT: 1", path);
         ret=-ENOENT;
         goto ex0;
       }
@@ -1286,6 +1287,7 @@ int psync_fs_open(const char *path, struct fuse_file_info *fi){
       }
       psync_sql_free_result(res);
       if (unlikely_log(!row)){
+        debug(D_NOTICE, "open for %s returning ENOENT: 2", path);
         ret=-ENOENT;
         goto ex0;
       }
