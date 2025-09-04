@@ -1274,7 +1274,6 @@ int psync_fs_open(const char *path, struct fuse_file_info *fi){
     }
     else if (cr->fileid<0){
       if (cr->fileid<psync_fake_fileid) {
-        debug(D_NOTICE, "opening fake file %llu %s", (unsigned long)cr->fileid, fpath->name);
         of=psync_fs_create_file(cr->fileid, 0, 0, 0, 0, 0, psync_fstask_get_ref_locked(folder), fpath->name, PSYNC_CRYPTO_INVALID_ENCODER);
         psync_fstask_release_folder_tasks_locked(folder);
         psync_sql_unlock();
