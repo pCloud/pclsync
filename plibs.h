@@ -51,6 +51,7 @@
 }
 
 #ifndef DEBUG_LEVEL
+//Set debug Level
 #define DEBUG_LEVEL D_NOTICE
 #endif
 
@@ -192,8 +193,8 @@ typedef void (*psync_task_callback_t)(void *, void *);
 typedef void (*psync_transaction_callback_t)(void *);
 
 extern int psync_do_run;
-extern int psync_diff_run;//Bobo
-extern int psync_diff_waiting;//Bobo
+extern int psync_diff_run;
+extern int psync_diff_waiting;
 
 extern int psync_recache_contacts;
 extern pstatus_t psync_status;

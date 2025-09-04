@@ -603,7 +603,7 @@ void psync_unlink(){
   unlinked=1;
   tfa=0;
 
-  psync_diff_run = 0; //Bobo
+  psync_diff_run = 0;
   psync_diff_wait_lock();
 
   while (!psync_diff_waiting) {
@@ -687,10 +687,9 @@ void psync_unlink(){
   psync_pagecache_reopen_read_cache();
 
   debug(D_NOTICE, "Resume Diff!");
-  psync_diff_run = 1; //Bobo
-  psync_diff_waiting = 0;//Bobo
-  psync_diff_wait_unlock();//Bobo
-  //psync_diff_unlock();//Bobo
+  psync_diff_run = 1;
+  psync_diff_waiting = 0;
+  psync_diff_wait_unlock();
 
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_set_status(PSTATUS_TYPE_ACCFULL, PSTATUS_ACCFULL_QUOTAOK);
@@ -3122,7 +3121,6 @@ int psync_delete_backup_device(psync_folderid_t fId) {
   bFId = psync_sql_cellint("SELECT value FROM setting WHERE id='BackupRootFoId'", 0);
 
   if (bFId == fId) {
-    //Bobo
     //psync_sql_start_transaction();
 
     psync_sql_statement("DELETE FROM setting WHERE id='BackupRootFoId'");
@@ -3472,5 +3470,39 @@ void clean_uptasks(int status) {
 void psync_cancel_uptasks() {
   cancel_uptasks();
 }
-/******************************************************************************************************************/
 //Upload tasks methods. End.
+/******************************************************************************************************************/
+int psync_get_filename_by_id(psync_fileid_t fileId, char** filename) {
+  psync_sql_res* res = NULL;
+  psync_uint_row row;
+  uint64_t result;
+
+  if (fileId <= 0) {
+    debug(D_NOTICE, "Invalid FileId Prvided: [%llu]", fileId);
+
+    return 1;
+  }
+
+  res = psync_sql_query_rdlock("SELECT name FROM file WHERE id = ?;");
+  psync_sql_bind_uint(res, 1, fileId);
+
+  if ((row = psync_sql_fetch_rowstr(res))) {
+    *filename = psync_strdup(row[0]);
+
+    debug(D_NOTICE, "Got filename: [%s]", *filename);
+  }
+  else {
+    debug(D_NOTICE, "File not found! Id: [%llu]", fileId);
+    psync_sql_free_result(res);
+
+    return 2;
+  }
+
+  psync_sql_free_result(res);
+
+  return 0;
+}
+/******************************************************************************************************************/
+/******************************************************************************************************************/
+/******************************************************************************************************************/
+/******************************************************************************************************************/

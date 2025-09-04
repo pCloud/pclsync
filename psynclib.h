@@ -1739,6 +1739,8 @@ void clean_uptasks(int status);
 
 void psync_cancel_uptasks();
 /*******************************************************************************/
+int psync_get_filename_by_id(psync_fileid_t fileId, char** filename);
+/*******************************************************************************/
 #ifdef __cplusplus
 }
 #endif
