@@ -458,6 +458,7 @@ typedef struct {
 } psync_share_list_t;
 
 typedef struct {
+  const char *brwzr;
   const char *url;
   const char *notes;
   const char *versionstr;

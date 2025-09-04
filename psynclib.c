@@ -1820,9 +1820,9 @@ psync_new_version_t *psync_check_new_version_str(const char *os, const char *cur
 
 static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpath){
   psync_new_version_t *ver;
-  const char *notes, *versionstr;
-  size_t lurl, lnotes, lversion, llpath, llocalpath;
-  const binresult *cres, *pres, *hres;
+  const char *notes, *versionstr, *bver;
+  size_t lurl, lnotes, lversion, llpath, llocalpath, lver;
+  const binresult *cres, *pres, *hres, *mres, *bres, *vres;
   char *ptr;
   unsigned long usize;
   cres=psync_find_result(res, "download", PARAM_HASH);
@@ -1839,14 +1839,36 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
   cres=psync_find_result(res, "versionstr", PARAM_STR);
   versionstr=cres->str;
   lversion=(cres->length+sizeof(void *))/sizeof(void *)*sizeof(void *);
+  mres = psync_find_result(res, "minwebviewbrowserver", PARAM_HASH);
+  if (mres) {
+    bres = psync_find_result(mres, "chromium", PARAM_HASH);
+    if (!bres) {
+      bres = psync_find_result(mres, "webkit", PARAM_HASH);
+    }
+    if (bres) {
+      vres = psync_find_result(bres, "version", PARAM_STR);
+      debug(D_NOTICE, "Min browser detected version: %s", vres->str);
+      bver = vres->str;
+      lver = (vres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
+    }
+    
+  }
+
   if (localpath){
     llpath=strlen(localpath);
     llocalpath=(llpath+sizeof(void *))/sizeof(void *)*sizeof(void *);
   }
   else
     llpath=llocalpath=0;
-  ver=(psync_new_version_t *)psync_malloc(sizeof(psync_new_version_t)+lurl+lnotes+lversion+llocalpath);
+  ver=(psync_new_version_t *)psync_malloc(sizeof(psync_new_version_t)+lurl+lnotes+lversion+llocalpath+lver);
   ptr=(char *)(ver+1);
+  if (bver) {
+    memcpy(ptr, bver, lnotes);
+    ver->brwzr = ptr;
+    ptr += lver;
+  }
+  else
+    ver->brwzr = NULL;
   ver->url=ptr;
   memcpy(ptr, "https://", sizeof("https://")-1);
   ptr+=sizeof("https://")-1;
