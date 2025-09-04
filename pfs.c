@@ -1274,12 +1274,12 @@ int psync_fs_open(const char *path, struct fuse_file_info *fi){
     }
     else if (cr->fileid<0){
       if (cr->fileid<psync_fake_fileid) {
+        debug(D_NOTICE, "opening fake file %llu %s", (unsigned long)cr->fileid, fpath->name);
         of=psync_fs_create_file(cr->fileid, 0, 0, 0, 0, 0, psync_fstask_get_ref_locked(folder), fpath->name, PSYNC_CRYPTO_INVALID_ENCODER);
         psync_fstask_release_folder_tasks_locked(folder);
         psync_sql_unlock();
         psync_free(fpath);
         fi->fh=openfile_to_fh(of);
-        debug(D_NOTICE, "opening fake file %llu %s", (unsigned long)cr->fileid, fpath->name);
         return 0;
       }
       status=type=0; // prevent (stupid) warnings
@@ -1536,7 +1536,6 @@ static int psync_fs_creat_fake_locked(psync_fspath_t *fpath, struct fuse_file_in
   psync_sql_unlock();
   psync_free(fpath);
   fi->fh=openfile_to_fh(of);
-  debug(D_NOTICE, "setting fake file handle to %lli", fi->fh);
 
   return 0;
 }
@@ -3296,13 +3295,9 @@ void psync_fs_refresh_folder(psync_folderid_t folderid){
   else{
     debug(D_NOTICE, "creating fake file %s", fpath);
     fd=psync_file_open(fpath, P_O_WRONLY, P_O_CREAT);
-    debug(D_NOTICE, "fake file fd is %lli", fd);
     if (fd!=INVALID_HANDLE_VALUE){
-      debug(D_NOTICE, "closing fake file");
       psync_file_close(fd);
-      debug(D_NOTICE, "deleting fake file");
       psync_file_delete(fpath);
-      debug(D_NOTICE, "fake file deleted");
     }
   }
   psync_free(fpath);
