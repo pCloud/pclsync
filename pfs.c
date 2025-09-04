@@ -1273,6 +1273,14 @@ int psync_fs_open(const char *path, struct fuse_file_info *fi){
       }
     }
     else if (cr->fileid<0){
+      if (cr->fileid<psync_fake_fileid) {
+        of=psync_fs_create_file(cr->fileid, 0, 0, 0, 0, 0, psync_fstask_get_ref_locked(folder), fpath->name, PSYNC_CRYPTO_INVALID_ENCODER);
+        psync_fstask_release_folder_tasks_locked(folder);
+        psync_sql_unlock();
+        psync_free(fpath);
+        fi->fh=openfile_to_fh(of);
+        return 0;
+      }
       status=type=0; // prevent (stupid) warnings
       res=psync_sql_query("SELECT type, status, fileid, int1, int2 FROM fstask WHERE id=?");
       psync_sql_bind_uint(res, 1, -cr->fileid);
