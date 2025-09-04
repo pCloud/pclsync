@@ -1268,14 +1268,20 @@ int psync_fs_open(const char *path, struct fuse_file_info *fi){
       }
       psync_sql_free_result(res);
       if (unlikely_log(!row)){
-        debug(D_NOTICE, "open for %s returning ENOENT: 1", path);
         ret=-ENOENT;
         goto ex0;
       }
     }
     else if (cr->fileid<0){
-      if (cr->fileid<psync_fake_fileid)
-        debug(D_NOTICE, "received open request for fake file with file handle %lli", fi->fh);
+      if (cr->fileid<psync_fake_fileid) {
+        of=psync_fs_create_file(cr->fileid, 0, 0, 0, 0, 0, psync_fstask_get_ref_locked(folder), fpath->name, PSYNC_CRYPTO_INVALID_ENCODER);
+        psync_fstask_release_folder_tasks_locked(folder);
+        psync_sql_unlock();
+        psync_free(fpath);
+        fi->fh=openfile_to_fh(of);
+        debug(D_NOTICE, "opening fake file %llu %s", (unsigned long)cr->fileid, fpath->name);
+        return 0;
+      }
       status=type=0; // prevent (stupid) warnings
       res=psync_sql_query("SELECT type, status, fileid, int1, int2 FROM fstask WHERE id=?");
       psync_sql_bind_uint(res, 1, -cr->fileid);
@@ -1289,7 +1295,6 @@ int psync_fs_open(const char *path, struct fuse_file_info *fi){
       }
       psync_sql_free_result(res);
       if (unlikely_log(!row)){
-        debug(D_NOTICE, "open for %s returning ENOENT: 2", path);
         ret=-ENOENT;
         goto ex0;
       }
