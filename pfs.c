@@ -1274,6 +1274,8 @@ int psync_fs_open(const char *path, struct fuse_file_info *fi){
       }
     }
     else if (cr->fileid<0){
+      if (cr->fileid<psync_fake_fileid)
+        debug(D_NOTICE, "received open request for fake file with file handle %lli", fi->fh);
       status=type=0; // prevent (stupid) warnings
       res=psync_sql_query("SELECT type, status, fileid, int1, int2 FROM fstask WHERE id=?");
       psync_sql_bind_uint(res, 1, -cr->fileid);
@@ -1529,6 +1531,7 @@ static int psync_fs_creat_fake_locked(psync_fspath_t *fpath, struct fuse_file_in
   psync_sql_unlock();
   psync_free(fpath);
   fi->fh=openfile_to_fh(of);
+  debug(D_NOTICE, "setting fake file handle to %lli", fi->fh);
 
   return 0;
 }
