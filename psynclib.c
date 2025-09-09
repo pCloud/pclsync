@@ -1850,8 +1850,7 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
       debug(D_NOTICE, "Min browser detected version: %s", vres->str);
       bver = vres->str;
       lver = (vres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
-    }
-    
+    }    
   }
 
   if (localpath){
@@ -1863,7 +1862,7 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
   ver=(psync_new_version_t *)psync_malloc(sizeof(psync_new_version_t)+lurl+lnotes+lversion+llocalpath+lver);
   ptr=(char *)(ver+1);
   if (bver) {
-    memcpy(ptr, bver, lnotes);
+    memcpy(ptr, bver, lver);
     ver->brwzr = ptr;
     ptr += lver;
   }
@@ -1891,6 +1890,42 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
   ver->version=psync_find_result(res, "version", PARAM_NUM)->num;
   ver->updatesize=usize;
   return ver;
+}
+
+static psync_new_version_t* psync_res_to_bver(const binresult* res){
+  psync_new_version_t* ver;
+  const char* bver;
+  size_t lver;
+  const binresult *mres, *bres, *vres;
+  char* ptr;
+  mres = psync_find_result(res, "minwebviewbrowserver", PARAM_HASH);
+  if (mres) {
+    bres = psync_find_result(mres, "chromium", PARAM_HASH);
+    if (!bres) {
+      bres = psync_find_result(mres, "webkit", PARAM_HASH);
+    }
+    if (bres) {
+      vres = psync_find_result(bres, "version", PARAM_STR);
+      debug(D_NOTICE, "Min browser detected version: %s", vres->str);
+      bver = vres->str;
+      lver = (vres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
+    }
+  }
+  ver = (psync_new_version_t*)psync_malloc(sizeof(psync_new_version_t) + lver);
+  ptr = (char*)(ver + 1);
+  if (bver) {
+    memcpy(ptr, bver, lver);
+    ver->brwzr = ptr;
+    ptr += lver;
+  }
+  else
+    ver->brwzr = NULL;
+  ver->notes = NULL;
+  ver->localpath = NULL;
+  ver->url = NULL;
+  ver->versionstr = NULL;
+  ver->version = -1;
+  ver->updatesize = 0;
 }
 
 int check_new_version_on_us_socket(binresult **pres, const char *os, unsigned long currentversion){
@@ -2052,8 +2087,9 @@ psync_new_version_t *psync_check_new_version_download(const char *os, unsigned l
     return NULL;
   }
   if (!psync_find_result(res, "newversion", PARAM_BOOL)->num){
+    ver = psync_res_to_bver(res);
     psync_free(res);
-    return NULL;
+    return ver;
   }
   ret=psync_download_new_version(psync_find_result(res, "download", PARAM_HASH), &lfilename);
   if (unlikely(ret==-1))
