@@ -692,11 +692,11 @@ static psync_socket *get_connected_socket(){
     psync_sql_bind_string(q, 1, "last_logged_location_id");
     psync_sql_bind_uint(q, 2, lid);
     psync_sql_run(q);
-
+    /*
     psync_sql_bind_string(q, 1, "usedquota");
     psync_sql_bind_uint(q, 2, 0);
     psync_sql_run(q);
-
+    */
     result = psync_find_result(res, "premium", PARAM_BOOL)->num;
     psync_sql_bind_string(q, 1, "premium");
     psync_sql_bind_uint(q, 2, result);
