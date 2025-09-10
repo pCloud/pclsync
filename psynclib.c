@@ -1916,7 +1916,7 @@ static psync_new_version_t* psync_res_to_bver(const binresult* res){
   if (bver) {
     memcpy(ptr, bver, lver);
     ver->brwzr = ptr;
-    ptr += lver;
+    //ptr += lver;
   }
   else
     ver->brwzr = NULL;
@@ -1924,7 +1924,7 @@ static psync_new_version_t* psync_res_to_bver(const binresult* res){
   ver->localpath = NULL;
   ver->url = NULL;
   ver->versionstr = NULL;
-  ver->version = -1;
+  ver->version = 0;
   ver->updatesize = 0;
 
   return ver;
