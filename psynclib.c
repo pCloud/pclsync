@@ -1842,7 +1842,7 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
   mres = psync_find_result(res, "minwebviewbrowserver", PARAM_HASH);
   if (mres) {
     bres = psync_find_result(mres, "chromium", PARAM_HASH);
-    if (!bres) {
+    if (!bres->hash) {
       bres = psync_find_result(mres, "webkit", PARAM_HASH);
     }
     if (bres) {
@@ -1901,7 +1901,7 @@ static psync_new_version_t* psync_res_to_bver(const binresult* res){
   mres = psync_find_result(res, "minwebviewbrowserver", PARAM_HASH);
   if (mres) {
     bres = psync_find_result(mres, "chromium", PARAM_HASH);
-    if (!bres) {
+    if (!bres->hash) {
       bres = psync_find_result(mres, "webkit", PARAM_HASH);
     }
     if (bres) {
@@ -1926,6 +1926,8 @@ static psync_new_version_t* psync_res_to_bver(const binresult* res){
   ver->versionstr = NULL;
   ver->version = -1;
   ver->updatesize = 0;
+
+  return ver;
 }
 
 int check_new_version_on_us_socket(binresult **pres, const char *os, unsigned long currentversion){
