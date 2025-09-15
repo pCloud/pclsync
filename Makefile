@@ -36,9 +36,9 @@ else
 
     ifeq ($(UNAME_S),Darwin)
 		ifeq ($(UNAME_P),arm)
-			CFLAGS	= -Wall -Wpointer-arith -Os -g -I$(SQLITE_INCLUDE_DIR) -pg
+			CFLAGS += -Wall -Wpointer-arith -Os -g -I$(SQLITE_INCLUDE_DIR) -pg
 		else
-			CFLAGS	= -Wall -Wpointer-arith -Os -g -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -pg
+			CFLAGS += -Wall -Wpointer-arith -Os -g -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -pg
 		endif
 
         CFLAGS += -DP_OS_MACOSX -I/usr/local/ssl/include/
