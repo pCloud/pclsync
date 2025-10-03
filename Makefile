@@ -11,6 +11,7 @@ LIB_A=psynclib.a
 
 FUSE_INCLUDE_DIR ?= /usr/local/include/osxfuse
 SQLITE_INCLUDE_DIR ?= ../sqlite
+GCC_OPTIMIZATION_LEVEL ?= s
 
 
 ifeq ($(OS),Windows_NT)
@@ -36,9 +37,9 @@ else
 
     ifeq ($(UNAME_S),Darwin)
 		ifeq ($(UNAME_P),arm)
-			CFLAGS += -Wall -Wpointer-arith -Os -g -I$(SQLITE_INCLUDE_DIR) -pg
+			CFLAGS += -Wall -Wpointer-arith -O$(GCC_OPTIMIZATION_LEVEL) -g -I$(SQLITE_INCLUDE_DIR) -pg
 		else
-			CFLAGS += -Wall -Wpointer-arith -Os -g -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -pg
+			CFLAGS += -Wall -Wpointer-arith -O$(GCC_OPTIMIZATION_LEVEL) -g -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -pg
 		endif
 
         CFLAGS += -DP_OS_MACOSX -I/usr/local/ssl/include/
