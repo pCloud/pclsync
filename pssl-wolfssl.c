@@ -206,21 +206,31 @@ static void psync_set_ssl_error(ssl_connection_t *conn, int err) {
   }
 }
 
-static int psync_wolf_recv_cb(WOLFSSL *ssl, char *buf, int sz, void *ctx) {
-  ssl_connection_t *conn = (ssl_connection_t *)ctx;
+static int psync_wolf_recv_cb(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
+  ssl_connection_t* conn = (ssl_connection_t*)ctx;
   ssize_t ret;
   int err;
 
   ret = psync_read_socket(conn->sock, buf, sz);
+
   if (ret == -1) {
     err = psync_sock_err();
+
     if (err == P_WOULDBLOCK || err == P_AGAIN || err == P_INTR)
       return WOLFSSL_CBIO_ERR_WANT_READ;
     else
       return WOLFSSL_CBIO_ERR_GENERAL;
   }
-  else
+  else if (ret == 0) {
+    debug(D_NOTICE, "BOBO: Wolf Read Sock. Return SSL_ERROR_WANT_READ");
+
+    return WOLFSSL_CBIO_ERR_CONN_CLOSE;
+    //return WOLFSSL_ERROR_WANT_READ
+    //return SSL_ERROR_WANT_READ;
+  }
+  else {
     return (int)ret;
+  }
 }
 
 static int psync_wolf_send_cb(WOLFSSL *ssl, char *buf, int sz, void *ctx) {
