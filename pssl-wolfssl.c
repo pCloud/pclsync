@@ -222,11 +222,9 @@ static int psync_wolf_recv_cb(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
       return WOLFSSL_CBIO_ERR_GENERAL;
   }
   else if (ret == 0) {
-    debug(D_NOTICE, "BOBO: Wolf Read Sock. Return SSL_ERROR_WANT_READ");
+    debug(D_NOTICE, "WolfSSL Socket is closed. Return WOLFSSL_CBIO_ERR_CONN_CLOSE");
 
     return WOLFSSL_CBIO_ERR_CONN_CLOSE;
-    //return WOLFSSL_ERROR_WANT_READ
-    //return SSL_ERROR_WANT_READ;
   }
   else {
     return (int)ret;
