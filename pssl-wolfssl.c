@@ -536,20 +536,31 @@ psync_binary_rsa_key_t psync_ssl_rsa_private_to_binary(psync_rsa_privatekey_t rs
 
   return ret;
 }
-
 psync_rsa_publickey_t psync_ssl_rsa_load_public(const unsigned char *keydata, size_t keylen) {
   RsaKey *key;
   word32 idx = 0;
+  int res;
 
   key = psync_new(RsaKey);
   wc_InitRsaKey(key, NULL);
 
-  if (wc_RsaPublicKeyDecode(keydata, &idx, key, keylen) != 0) {
+  res = wc_RsaPublicKeyDecode(keydata, &idx, key, keylen);
+
+  debug(D_NOTICE, "Decode Public Key. Res: [%d]", res);
+
+  if (res != 0) {
     wc_FreeRsaKey(key);
     psync_free(key);
     return PSYNC_INVALID_RSA;
   }
 
+  /*
+  if (wc_RsaPublicKeyDecode(keydata, &idx, key, keylen) != 0) {
+    wc_FreeRsaKey(key);
+    psync_free(key);
+    return PSYNC_INVALID_RSA;
+  }
+  */
   return key;
 }
 

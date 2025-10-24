@@ -189,6 +189,7 @@ static int psync_cloud_crypto_download_keys(unsigned char **rsapriv, size_t *rsa
   int tries;
   tries=0;
   debug(D_NOTICE, "dowloading keys");
+
   while (1){
     api=psync_apipool_get();
     if (!api)
@@ -217,12 +218,16 @@ static int psync_cloud_crypto_download_keys(unsigned char **rsapriv, size_t *rsa
   }
   data=psync_find_result(res, "privatekey", PARAM_STR);
   rsaprivstruct=psync_base64_decode((const unsigned char *)data->str, data->length, &rsaprivstructlen);
+
   data=psync_find_result(res, "publickey", PARAM_STR);
-  rsapubstruct=psync_base64_decode((const unsigned char *)data->str, data->length, &rsapubstructlen);
+  rsapubstruct = psync_base64_decode(data->str, data->length, &rsapubstructlen);
+
   psync_free(res);
   sha1_hex_null_term(rsaprivstruct, rsaprivstructlen, privatesha1);
   sha1_hex_null_term(rsapubstruct, rsapubstructlen, publicsha1);
-  debug(D_NOTICE, "rsapubstruct=%s", rsapubstruct);
+
+  debug(D_NOTICE, "rsapubstruct=[%s]", rsapubstruct);
+
   switch (*((uint32_t *)rsapubstruct)){
     case PSYNC_CRYPTO_PUB_TYPE_RSA4096:
       if (offsetof(pub_key_ver1, key)>=rsapubstructlen)
@@ -237,6 +242,7 @@ static int psync_cloud_crypto_download_keys(unsigned char **rsapriv, size_t *rsa
       psync_free(rsapubstruct);
       return PRINT_RETURN_CONST(PSYNC_CRYPTO_START_UNKNOWN_KEY_FORMAT);
   }
+
   switch (*((uint32_t *)rsaprivstruct)){
     case PSYNC_CRYPTO_TYPE_RSA4096_64BYTESALT_20000IT:
       if (offsetof(priv_key_ver1, key)>=rsaprivstructlen)
@@ -528,6 +534,7 @@ retry:
   }
   psync_sql_free_result(res);
   psync_sql_unlock();
+
   if (rowcnt<4){
     if (unlikely(rowcnt!=0)){
       debug(D_BUG, "only some of records found in the database, should not happen");
@@ -535,7 +542,9 @@ retry:
       psync_free(rsapub);
       psync_free(salt);
     }
+
     ret=psync_cloud_crypto_download_keys(&rsapriv, &rsaprivlen, &rsapub, &rsapublen, &salt, &saltlen, &iterations, publicsha1, privatesha1, &flags);
+
     if (ret!=PSYNC_CRYPTO_START_SUCCESS){
       pthread_rwlock_unlock(&crypto_lock);
       debug(D_WARNING, "downloading key failed, error %d", ret);
@@ -548,7 +557,9 @@ retry:
     debug(D_NOTICE, "got keys from the database");
     assert(rowcnt==4);
   }
+
   crypto_pubkey=psync_ssl_rsa_load_public(rsapub, rsapublen);
+
   if (crypto_pubkey==PSYNC_INVALID_RSA){
     pthread_rwlock_unlock(&crypto_lock);
     debug(D_WARNING, "could not load public key");
@@ -557,6 +568,7 @@ retry:
     psync_free(salt);
     return PRINT_RETURN_CONST(PSYNC_CRYPTO_START_UNKNOWN_KEY_FORMAT);
   }
+
   aeskey=psync_ssl_gen_symmetric_key_from_pass(password, PSYNC_AES256_KEY_SIZE+PSYNC_AES256_BLOCK_SIZE, salt, saltlen, iterations);
   enc=psync_crypto_aes256_ctr_encoder_decoder_create(aeskey);
   psync_ssl_free_symmetric_key(aeskey);
@@ -567,6 +579,7 @@ retry:
   crypto_privkey=psync_ssl_rsa_load_private(rsaprivdec, rsaprivlen);
   psync_ssl_memclean(rsaprivdec, rsaprivlen);
   psync_locked_free(rsaprivdec);
+
   if (crypto_privkey==PSYNC_INVALID_RSA){
     psync_ssl_rsa_free_public(crypto_pubkey);
     crypto_pubkey=PSYNC_INVALID_RSA;
@@ -577,6 +590,7 @@ retry:
     psync_free(salt);
     return PRINT_RETURN_CONST(PSYNC_CRYPTO_START_BAD_PASSWORD);
   }
+
   if (!crypto_keys_match()){
     psync_ssl_rsa_free_public(crypto_pubkey);
     crypto_pubkey=PSYNC_INVALID_RSA;
@@ -589,6 +603,7 @@ retry:
     psync_free(salt);
     return PRINT_RETURN_CONST(PSYNC_CRYPTO_START_KEYS_DONT_MATCH);
   }
+
   crypto_started_l=1;
   crypto_started_un=1;
   pthread_rwlock_unlock(&crypto_lock);
