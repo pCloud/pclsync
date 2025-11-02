@@ -176,7 +176,6 @@ static void load_str_to(const psync_variant *v, unsigned char **ptr, size_t *len
   memcpy(*ptr, str, l);
   *len=l;
 }
-
 static int psync_cloud_crypto_download_keys(unsigned char **rsapriv, size_t *rsaprivlen, unsigned char **rsapub, size_t *rsapublen,
                                             unsigned char **salt, size_t *saltlen, size_t *iterations, char *publicsha1, char *privatesha1, uint32_t *flags){
   binparam params[]={P_STR("auth", psync_my_auth)};
@@ -188,6 +187,7 @@ static int psync_cloud_crypto_download_keys(unsigned char **rsapriv, size_t *rsa
   size_t rsaprivstructlen, rsapubstructlen;
   int tries;
   tries=0;
+
   debug(D_NOTICE, "dowloading keys");
 
   while (1){
@@ -216,13 +216,15 @@ static int psync_cloud_crypto_download_keys(unsigned char **rsapriv, size_t *rsa
     }
     return PRINT_RETURN_CONST(PSYNC_CRYPTO_START_UNKNOWN_ERROR);
   }
-  data=psync_find_result(res, "privatekey", PARAM_STR);
-  rsaprivstruct=psync_base64_decode((const unsigned char *)data->str, data->length, &rsaprivstructlen);
 
-  data=psync_find_result(res, "publickey", PARAM_STR);
-  rsapubstruct = psync_base64_decode(data->str, data->length, &rsapubstructlen);
+  data = psync_find_result(res, "privatekey", PARAM_STR);
+  rsaprivstruct = psync_base64_decode((const unsigned char*)data->str, data->length, &rsaprivstructlen);
+   
+  data = psync_find_result(res, "publickey", PARAM_STR);
+  rsapubstruct = psync_base64_decode((const unsigned char*)data->str, data->length, &rsapubstructlen);
 
   psync_free(res);
+
   sha1_hex_null_term(rsaprivstruct, rsaprivstructlen, privatesha1);
   sha1_hex_null_term(rsapubstruct, rsapubstructlen, publicsha1);
 
@@ -372,7 +374,7 @@ int psync_cloud_crypto_setup(const char *password, const char *hint){
     if (rsapublic!=PSYNC_INVALID_RSA)
       psync_ssl_rsa_free_public(rsapublic);
     psync_crypto_aes256_ctr_encoder_decoder_free(enc);
-    return PSYNC_CRYPTO_SETUP_KEYGEN_FAILED;
+    return PSYNC_CRYPTO_SETUP_KEYGEN_FAILED;  
   }
 
   rsaprivatebin=psync_ssl_rsa_private_to_binary(rsaprivate);

@@ -525,28 +525,62 @@ void psync_p2p_change(){
 
 static int psync_p2p_check_rsa(){
   static pthread_mutex_t rsa_lock=PTHREAD_MUTEX_INITIALIZER;
+
+  int ret;
+  RNG* rng = (RNG*)malloc(sizeof(RNG));
+
   pthread_mutex_lock(&rsa_lock);
+
   if (psync_rsa_private==PSYNC_INVALID_RSA){
     psync_rsa_t rsa;
     psync_rsa_privatekey_t rsapriv;
     psync_rsa_publickey_t rsapub;
     psync_binary_rsa_key_t rsapubbin;
-    debug(D_NOTICE, "generating %ubit RSA key", PSYNC_P2P_RSA_SIZE);
+
+    debug(D_NOTICE, "Generating [%ubit] RSA key", PSYNC_P2P_RSA_SIZE);
     rsa=psync_ssl_gen_rsa(PSYNC_P2P_RSA_SIZE);
-    debug(D_NOTICE, "key generated");
+    debug(D_NOTICE, "Key Generated");
+
     if (unlikely_log(rsa==PSYNC_INVALID_RSA))
       goto rete;
+
+    debug(D_NOTICE, "BOBO: P2P. Init RSA RNG.");
+    ret = wc_InitRng(rng);
+    if (ret != 0) {
+      debug(D_NOTICE, "BOBO: P2P. Init RSA RNG failed.");
+      return -1;
+    }
+
     rsapriv=psync_ssl_rsa_get_private(rsa);
+
+    debug(D_NOTICE, "BOBO: P2P. Set RSA private key RNG.");
+    ret = wc_RsaSetRNG(rsapriv, rng);
+    if (ret != 0) {
+      debug(D_NOTICE, "BOBO: Falied to set RNG to private key. Error: [%d]", ret);
+    }
+
     rsapub=psync_ssl_rsa_get_public(rsa);
+
+    debug(D_NOTICE, "BOBO: P2P. Set RSA public key RNG.");
+    ret = wc_RsaSetRNG(rsapub, rng);
+    if (ret != 0) {
+      debug(D_NOTICE, "BOBO: Falied to set RNG to public key. Error: [%d]", ret);
+    }
+
     if (likely_log(rsapub!=PSYNC_INVALID_RSA))
       rsapubbin=psync_ssl_rsa_public_to_binary(rsapub);
     else
       rsapubbin=PSYNC_INVALID_BIN_RSA;
+
     psync_ssl_free_rsa(rsa);
+
     if (likely_log(rsapriv!=PSYNC_INVALID_RSA && rsapub!=PSYNC_INVALID_RSA && rsapubbin!=PSYNC_INVALID_BIN_RSA)){
+      debug(D_NOTICE, "BOBO: P2P. Update global keys.");
+
       psync_rsa_private=rsapriv;
       psync_rsa_public=rsapub;
       psync_rsa_public_bin=rsapubbin;
+
       goto ret0;
     }
     else{
@@ -686,9 +720,12 @@ int psync_p2p_check_download(psync_fileid_t fileid, const unsigned char *filehas
   unsigned char *token;
   socklen_t slen;
   int sret;
+
   if (!psync_setting_get_bool(_PS(p2psync)))
     return PSYNC_NET_PERMFAIL;
+
   debug(D_NOTICE, "sending P2P_CHECK for file with hash %."NTO_STR(PSYNC_HASH_DIGEST_HEXLEN)"s", filehashhex);
+
   pct1.type=P2P_CHECK;
   memcpy(pct1.hashstart, filehashhex, PSYNC_P2P_HEXHASH_BYTES);
   pct1.filesize=fsize;
@@ -702,23 +739,29 @@ int psync_p2p_check_download(psync_fileid_t fileid, const unsigned char *filehas
   sockets=psync_new_cnt(psync_socket_t, il->interfacecnt);
   FD_ZERO(&rfds);
   msock=0;
+
   for (i=0; i<il->interfacecnt; i++){
     sockets[i]=INVALID_SOCKET;
     sock=psync_create_socket(il->interfaces[i].address.ss_family, SOCK_DGRAM, IPPROTO_UDP);
+
     if (unlikely(sock==INVALID_SOCKET)){
       debug(D_NOTICE, "could not create a socket for address family %u", (unsigned)il->interfaces[i].address.ss_family);
       continue;
     }
+
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on));
     setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char *)&on, sizeof(on));
+
     if (unlikely_log(bind(sock, (struct sockaddr *)&il->interfaces[i].address, il->interfaces[i].addrsize)==SOCKET_ERROR)){
       psync_close_socket(sock);
       continue;
     }
+
     if (il->interfaces[i].broadcast.ss_family==AF_INET)
       ((struct sockaddr_in *)(&il->interfaces[i].broadcast))->sin_port=htons(PSYNC_P2P_PORT);
     else if (il->interfaces[i].broadcast.ss_family==AF_INET6)
       ((struct sockaddr_in6 *)(&il->interfaces[i].broadcast))->sin6_port=htons(PSYNC_P2P_PORT);
+
     if (sendto(sock, (const char *)&pct1, sizeof(pct1), 0, (struct sockaddr *)&il->interfaces[i].broadcast, il->interfaces[i].addrsize)!=SOCKET_ERROR){
       sockets[i]=sock;
       FD_SET(sock, &rfds);
@@ -728,14 +771,19 @@ int psync_p2p_check_download(psync_fileid_t fileid, const unsigned char *filehas
     else
       psync_close_socket(sock);
   }
+
   if (unlikely_log(!msock))
     goto err_perm;
+
   tv.tv_sec=PSYNC_P2P_INITIAL_TIMEOUT/1000;
   tv.tv_usec=(PSYNC_P2P_INITIAL_TIMEOUT%1000)*1000;
   sret=select(msock, &rfds, NULL, NULL, &tv);
+
   if (sret==0 || unlikely_log(sret==SOCKET_ERROR))
     goto err_perm;
+
   bresp=P2P_RESP_NOPE;
+
   for (i=0; i<il->interfacecnt; i++)
     if (sockets[i]!=INVALID_SOCKET && FD_ISSET(sockets[i], &rfds)){
       slen=sizeof(addr);
@@ -760,11 +808,14 @@ int psync_p2p_check_download(psync_fileid_t fileid, const unsigned char *filehas
       else if (resp.type==P2P_RESP_WAIT && bresp==P2P_RESP_NOPE)
         bresp=P2P_RESP_WAIT;
     }
+
   for (i=0; i<il->interfacecnt; i++)
     if (sockets[i]!=INVALID_SOCKET)
       psync_close_socket(sockets[i]);
+
   psync_free(il);
   psync_free(sockets);
+
   if (bresp==P2P_RESP_NOPE)
     goto err_perm2;
   else if (bresp==P2P_RESP_WAIT){
@@ -774,16 +825,20 @@ int psync_p2p_check_download(psync_fileid_t fileid, const unsigned char *filehas
     psync_milisleep(PSYNC_P2P_SLEEP_WAIT_DOWNLOAD+rnd);
     goto err_temp2;
   }
+
   if (psync_p2p_check_rsa())
     goto err_perm2;
+
   sret=psync_p2p_get_download_token(fileid, filehashhex, fsize, &token, &tlen);
   debug(D_NOTICE, "got token");
+
   if (unlikely_log(sret!=PSYNC_NET_OK)){
     if (sret==PSYNC_NET_TEMPFAIL)
       goto err_temp2;
     else
       goto err_perm2;
   }
+
   if (addr.sin6_family==AF_INET6){
     sock=psync_create_socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
     addr.sin6_port=htons(resp.port);
@@ -796,13 +851,17 @@ int psync_p2p_check_download(psync_fileid_t fileid, const unsigned char *filehas
     debug(D_ERROR, "unknown address family %u", (unsigned)addr.sin6_family);
     goto err_perm2;
   }
+
   if (unlikely_log(sock==INVALID_SOCKET))
     goto err_perm3;
+
   if (unlikely(connect(sock, (struct sockaddr *)&addr, slen)==SOCKET_ERROR)){
     debug(D_WARNING, "could not connect to %s port %u", p2p_get_address(&addr), (unsigned)resp.port);
     goto err_perm3;
   }
+
   debug(D_NOTICE, "connected to peer");
+
   pct2.type=P2P_GET;
   memcpy(pct2.hashstart, filehashhex, PSYNC_P2P_HEXHASH_BYTES);
   pct2.filesize=fsize;
@@ -811,14 +870,18 @@ int psync_p2p_check_download(psync_fileid_t fileid, const unsigned char *filehas
   memcpy(pct2.rand, pct1.rand, sizeof(pct1.rand));
   memcpy(pct2.genhash, pct1.genhash, sizeof(pct1.genhash));
   memcpy(pct2.computername, computername, PSYNC_HASH_DIGEST_HEXLEN);
+
   if (socket_write_all(sock, &pct2, sizeof(pct2)) ||
       socket_write_all(sock, psync_rsa_public_bin->data, psync_rsa_public_bin->datalen) ||
       socket_write_all(sock, token, tlen)){
     debug(D_WARNING, "writing to socket failed");
     goto err_temp3;
   }
+
   psync_free(token);
+
   sret=psync_p2p_download(sock, fileid, filehashhex, fsize, filename);
+
   psync_close_socket(sock);
   return sret;
 err_perm3:

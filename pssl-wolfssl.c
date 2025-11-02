@@ -156,7 +156,7 @@ int psync_ssl_init() {
   psync_get_random_seed(seed, seed, sizeof(seed), 0);
 
   wc_InitRngNonce(&psync_wolf_rng.rng, seed, sizeof(seed));
-
+  debug(D_ERROR, "BOBO: Wolf RNG populated.");
 
   /* Create global SSL context */
   psync_wolf_ctx = wolfSSL_CTX_new(wolfTLS_client_method());
@@ -445,6 +445,7 @@ psync_rsa_t psync_ssl_gen_rsa(int bits) {
     psync_free(key);
     return PSYNC_INVALID_RSA;
   }
+
   return key;
 }
 
@@ -544,6 +545,10 @@ psync_rsa_publickey_t psync_ssl_rsa_load_public(const unsigned char *keydata, si
   key = psync_new(RsaKey);
   wc_InitRsaKey(key, NULL);
 
+  for (; idx < keylen && !keydata[idx]; idx++);
+
+  debug(D_NOTICE, "BOBO: Skipped [%d] leading 0 bytes.", idx);
+
   res = wc_RsaPublicKeyDecode(keydata, &idx, key, keylen);
 
   debug(D_NOTICE, "Decode Public Key. Res: [%d]", res);
@@ -554,13 +559,6 @@ psync_rsa_publickey_t psync_ssl_rsa_load_public(const unsigned char *keydata, si
     return PSYNC_INVALID_RSA;
   }
 
-  /*
-  if (wc_RsaPublicKeyDecode(keydata, &idx, key, keylen) != 0) {
-    wc_FreeRsaKey(key);
-    psync_free(key);
-    return PSYNC_INVALID_RSA;
-  }
-  */
   return key;
 }
 
@@ -659,9 +657,11 @@ psync_symmetric_key_t psync_ssl_rsa_decrypt_data(psync_rsa_privatekey_t rsa,
                                                  const unsigned char *data, size_t datalen) {
   unsigned char buff[512];
   psync_symmetric_key_t ret;
+
   int rret=wc_RsaPrivateDecrypt_ex(data, datalen, buff, sizeof(buff), rsa,
                               WC_RSA_OAEP_PAD, WC_HASH_TYPE_SHA,
                               WC_MGF1SHA1, NULL, 0);
+
   if (rret<0) {
     debug(D_WARNING, "wc_RsaPrivateDecrypt_ex failed with %d", rret);
     return PSYNC_INVALID_SYM_KEY;
