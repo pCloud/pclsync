@@ -544,27 +544,27 @@ static int psync_p2p_check_rsa(){
     if (unlikely_log(rsa==PSYNC_INVALID_RSA))
       goto rete;
 
-    debug(D_NOTICE, "BOBO: P2P. Init RSA RNG.");
+    debug(D_NOTICE, "P2P. Init RSA RNG.");
     ret = wc_InitRng(rng);
     if (ret != 0) {
-      debug(D_NOTICE, "BOBO: P2P. Init RSA RNG failed.");
+      debug(D_NOTICE, "P2P. Init RSA RNG failed. Ret: [%d]", ret);
       return -1;
     }
 
     rsapriv=psync_ssl_rsa_get_private(rsa);
 
-    debug(D_NOTICE, "BOBO: P2P. Set RSA private key RNG.");
+    debug(D_NOTICE, "P2P. Set RSA private key RNG.");
     ret = wc_RsaSetRNG(rsapriv, rng);
     if (ret != 0) {
-      debug(D_NOTICE, "BOBO: Falied to set RNG to private key. Error: [%d]", ret);
+      debug(D_NOTICE, "Falied to set RNG to private key. Error: [%d]", ret);
     }
 
     rsapub=psync_ssl_rsa_get_public(rsa);
 
-    debug(D_NOTICE, "BOBO: P2P. Set RSA public key RNG.");
+    debug(D_NOTICE, "P2P. Set RSA public key RNG.");
     ret = wc_RsaSetRNG(rsapub, rng);
     if (ret != 0) {
-      debug(D_NOTICE, "BOBO: Falied to set RNG to public key. Error: [%d]", ret);
+      debug(D_NOTICE, "Falied to set RNG to public key. Error: [%d]", ret);
     }
 
     if (likely_log(rsapub!=PSYNC_INVALID_RSA))
@@ -575,8 +575,6 @@ static int psync_p2p_check_rsa(){
     psync_ssl_free_rsa(rsa);
 
     if (likely_log(rsapriv!=PSYNC_INVALID_RSA && rsapub!=PSYNC_INVALID_RSA && rsapubbin!=PSYNC_INVALID_BIN_RSA)){
-      debug(D_NOTICE, "BOBO: P2P. Update global keys.");
-
       psync_rsa_private=rsapriv;
       psync_rsa_public=rsapub;
       psync_rsa_public_bin=rsapubbin;
