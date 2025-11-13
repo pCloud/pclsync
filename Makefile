@@ -24,6 +24,7 @@ else
     UNAME_S	:= $(shell uname -s)
     UNAME_V	:= $(shell uname -v)
     UNAME_P	:= $(shell uname -p)
+    ARCH ?= $(UNAME_P)
 
     ifeq ($(UNAME_S),Linux)
 #        CFLAGS=-Wall -Wpointer-arith -fsanitize=address -O1 -fno-omit-frame-pointer -g -I../sqlite -DP_ELECTRON -fPIC
@@ -36,7 +37,7 @@ else
     endif
 
     ifeq ($(UNAME_S),Darwin)
-		ifeq ($(UNAME_P),arm)
+		ifeq ($(ARCH),arm)
 			CFLAGS += -Wall -Wpointer-arith -O$(GCC_OPTIMIZATION_LEVEL) -g -I$(SQLITE_INCLUDE_DIR) -pg
 		else
 			CFLAGS += -Wall -Wpointer-arith -O$(GCC_OPTIMIZATION_LEVEL) -g -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -pg
