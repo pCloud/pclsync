@@ -3596,7 +3596,6 @@ static int psync_fs_do_start(){
     fuse_opt_add_arg(&args, "-oallow_root");
   fuse_opt_add_arg(&args, "-onolocalcaches");
   fuse_opt_add_arg(&args, "-ohard_remove");
-  fuse_opt_add_arg(&args, "-obackend=fskit"); //Activates FSkit
 #endif
 
   memset(&psync_oper, 0, sizeof(psync_oper));
