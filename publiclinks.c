@@ -1057,6 +1057,81 @@ int do_psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
   return result;
 }
 
+int do_psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, int deleteexpire, uint64_t maxspace, char** err /*OUT*/) {
+  psync_socket* api;
+  binresult* bres;
+  uint64_t result;
+  const char* errorret;
+
+  *err = 0;
+
+  if (deleteexpire) {
+    binparam params[] = { P_STR("auth", psync_my_auth), P_NUM("uploadlinkid", uploadlinkid), P_NUM("deleteexpire", deleteexpire) };
+    api = psync_apipool_get();
+    if (unlikely(!api)) {
+      debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+      *err = psync_strndup("Connection error.", 17);
+      return -2;
+    }
+
+    bres = send_command(api, "changeuploadlink", params);
+  }
+  else {
+    binparam* t;
+    int numparam = 3 + !!expire + !!maxspace;
+    int pind = 1;
+
+    t = (binparam*)psync_malloc(numparam * sizeof(binparam));
+    init_param_str(t, "auth", psync_my_auth);
+    init_param_num(t + pind++, "uploadlinkid", uploadlinkid);
+    init_param_str(t + pind++, "comment", comment);
+    if (expire)
+      init_param_num(t + pind++, "expire", expire);
+    if (maxspace)
+      init_param_num(t + pind++, "maxspace", maxspace);
+    api = psync_apipool_get();
+    if (unlikely(!api)) {
+      debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
+      *err = psync_strndup("Connection error.", 17);
+      return -2;
+    }
+    bres = do_send_command(api, "changeuploadlink", sizeof("changeuploadlink") - 1, t, pind, -1, 1);
+    psync_free(t);
+  }
+
+  if (likely(bres))
+    psync_apipool_release(api);
+  else {
+    psync_apipool_release_bad(api);
+    debug(D_WARNING, "Send command returned in valid result.\n");
+    *err = psync_strndup("Connection error.", 17);
+    return -2;
+  }
+  result = psync_find_result(bres, "result", PARAM_NUM)->num;
+  if (unlikely(result)) {
+    errorret = psync_find_result(bres, "error", PARAM_STR)->str;
+    *err = psync_strndup(errorret, strlen(errorret));
+    debug(D_WARNING, "command createuploadlink returned error code %u", (unsigned)result);
+    psync_process_api_error(result);
+    if (psync_handle_api_result(result) == PSYNC_NET_TEMPFAIL)
+      return -result;
+    else {
+      *err = psync_strndup("Connection error.", 17);
+      return -1;
+    }
+  }
+   // rescode = psync_find_result(bres, "link", PARAM_STR)->str;
+   // *link = psync_strndup(rescode, strlen(rescode));
+
+
+  result = 0;
+  result = psync_find_result(bres, "uploadlinkid", PARAM_NUM)->num;
+
+  psync_free(bres);
+
+  return result;
+}
+
 static int create_link(psync_list_builder_t *builder, void *element, psync_variant_row row){
   link_info_t *link;
   const char *str;

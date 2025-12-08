@@ -2546,6 +2546,10 @@ int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
   return do_psync_delete_upload_link(uploadlinkid, err);
 }
 
+int psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, int deleteexpire, uint64_t maxspace, char** err /*OUT*/) {
+  return do_psync_change_upload_link(uploadlinkid, comment, expire, deleteexpire, maxspace, err);
+}
+
 int psync_delete_all_links_folder(psync_folderid_t folderid, char**err) {
   return do_delete_all_folder_links(folderid, err);
 }
