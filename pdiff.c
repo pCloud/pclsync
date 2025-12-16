@@ -1944,6 +1944,13 @@ static void process_modifyuserinfo(const binresult *entry){
     psync_sql_run(q);
   }
 
+  cres = psync_check_result(entry, "additionaltraffic", PARAM_BOOL);
+  if (cres) {
+    psync_sql_bind_string(q, 1, "additionaltraffic");
+    psync_sql_bind_uint(q, 2, cres->num);
+    psync_sql_run(q);
+  }
+
   psync_sql_bind_string(q, 1, "quota");
   current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
   psync_sql_bind_uint(q, 2, current_quota);
