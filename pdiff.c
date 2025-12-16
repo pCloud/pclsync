@@ -833,6 +833,21 @@ static psync_socket *get_connected_socket(){
     psync_sql_bind_string(q, 1, "hasactivesubscription");
     psync_sql_bind_uint(q, 2, sub);
     psync_sql_run(q);
+
+    cres = psync_check_result(res, "efh", PARAM_BOOL);
+    if (cres) {
+      psync_sql_bind_string(q, 1, "efh");
+      psync_sql_bind_uint(q, 2, cres->num);
+      psync_sql_run(q);
+    }
+
+    cres = psync_check_result(res, "additionaltraffic", PARAM_BOOL);
+    if (cres) {
+      psync_sql_bind_string(q, 1, "additionaltraffic");
+      psync_sql_bind_uint(q, 2, cres->num);
+      psync_sql_run(q);
+    }
+
     psync_sql_free_result(q);
     psync_sql_commit_transaction();
     pthread_mutex_lock(&psync_my_auth_mutex);
