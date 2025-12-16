@@ -1919,6 +1919,7 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_res *q;
   uint64_t u, crexp, crsub = 0;
   int crst = 0,crstat;
+  int sub;
 
   if (!entry)
     return;
@@ -2034,6 +2035,12 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_string(q, 1, "cryptoexpires");
   psync_sql_bind_uint(q, 2, crexp);
   psync_sql_run(q);
+
+  sub = check_active_subscribtion(res);
+  psync_sql_bind_string(q, 1, "hasactivesubscription");
+  psync_sql_bind_uint(q, 2, sub);
+  psync_sql_run(q);
+
   if (psync_is_business || crsub){
     if (crst)
       crstat = 5;
