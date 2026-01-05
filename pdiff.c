@@ -2051,10 +2051,10 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_uint(q, 2, crexp);
   psync_sql_run(q);
 
-  sub = check_active_subscribtion(res);
+  /*sub = check_active_subscribtion(res);
   psync_sql_bind_string(q, 1, "hasactivesubscription");
   psync_sql_bind_uint(q, 2, sub);
-  psync_sql_run(q);
+  psync_sql_run(q);*/
 
   if (psync_is_business || crsub){
     if (crst)
