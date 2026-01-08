@@ -2546,8 +2546,12 @@ int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
   return do_psync_delete_upload_link(uploadlinkid, err);
 }
 
-int psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, int deleteexpire, uint64_t maxspace, char** err /*OUT*/) {
-  return do_psync_change_upload_link(uploadlinkid, comment, expire, deleteexpire, maxspace, err);
+int psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, uint64_t maxspace, char** err /*OUT*/) {
+  return do_psync_change_upload_link(uploadlinkid, comment, expire, maxspace, err);
+}
+
+int psync_upload_link_deleteexpire(int64_t uploadlinkid, char** err /*OUT*/) {
+  return do_psync_upload_link_deleteexpire(uploadlinkid, err);
 }
 
 int psync_delete_all_links_folder(psync_folderid_t folderid, char**err) {
@@ -3322,6 +3326,9 @@ userinfo_t* psync_get_userinfo() {
       info->freequota = psync_find_result(res, "freequota", PARAM_NUM)->num;
     }
     else info->freequota = 0;
+
+    /*int sub = check_active_subscribtion(res);
+    info->has...*/
 
     cres = psync_check_result(res, "journey", PARAM_HASH);
     if (cres) {

@@ -1457,8 +1457,8 @@ int psync_change_link(unsigned long long linkid, unsigned long long expire, int 
   int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err);
 int64_t psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/);
 int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/);
-int psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, int deleteexpire, uint64_t maxspace, char** err /*OUT*/);
-
+int psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, uint64_t maxspace, char** err /*OUT*/);
+int psync_upload_link_deleteexpire(int64_t uploadlinkid, char** err /*OUT*/);
 int psync_delete_all_links_folder(psync_folderid_t folderid, char**err);
 int psync_delete_all_links_file(psync_fileid_t fileid, char**err);
 
