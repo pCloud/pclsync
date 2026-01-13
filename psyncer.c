@@ -363,7 +363,7 @@ int psync_left_str_is_prefix(const char* str1, const char* str2) {
   while (len1 > 1 && (str1[len1 - 1] == '/' || str1[len1 - 1] == PSYNC_DIRECTORY_SEPARATORC))
     len1--;
 
-  while (len2 > 1 && (str2[len2 - 1] == '/' || str1[len2 - 1] == PSYNC_DIRECTORY_SEPARATORC))
+  while (len2 > 1 && (str2[len2 - 1] == '/' || str2[len2 - 1] == PSYNC_DIRECTORY_SEPARATORC))
     len2--;
 
   if (len2 < len1) {
