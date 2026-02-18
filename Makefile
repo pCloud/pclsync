@@ -60,6 +60,10 @@ ifeq ($(USESSL),openssl)
   SRCS += pssl-openssl.c
   CFLAGS += -DP_SSL_OPENSSL
 endif
+ifeq ($(USESSL),openssl3)
+  SRCS += pssl-openssl3.c
+  CFLAGS += -DP_SSL_OPENSSL3
+endif
 ifeq ($(USESSL),securetransport)
   SRCS += pssl-securetransport.o
   CFLAGS += -DP_SSL_SECURETRANSPORT
