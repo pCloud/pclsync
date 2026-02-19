@@ -36,7 +36,6 @@
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
-#include <pthread.h>
 
 #define SSL_CIPHERS \
   "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:"\
@@ -57,59 +56,12 @@ typedef struct {
 } ssl_connection_t;
 
 static SSL_CTX *globalctx=NULL;
-static pthread_mutex_t *olocks;
 
 #if defined(PSYNC_AES_HW)
 int psync_ssl_hw_aes;
 #endif
 
 PSYNC_THREAD int psync_ssl_errno;
-
-static void openssl_locking_callback(int mode, int type, const char *file, int line){
-  if (mode&CRYPTO_LOCK)
-    pthread_mutex_lock(&(olocks[type]));
-  else
-    pthread_mutex_unlock(&(olocks[type]));
-}
-
-static void openssl_thread_id(CRYPTO_THREADID *id){
-  CRYPTO_THREADID_set_pointer(id, &psync_ssl_errno);
-}
-
-static int openssl_locking_default(int *num, int cnt, int type, const char *file, int line){
-  openssl_locking_callback(CRYPTO_LOCK|CRYPTO_WRITE, type, file, line);
-  cnt+=*num;
-  *num=cnt;
-  openssl_locking_callback(CRYPTO_UNLOCK|CRYPTO_WRITE, type, file, line);
-  return cnt;
-}
-
-static int openssl_locking_add(int *num, int cnt, int type, const char *file, int line){
-#if defined(P_OS_WINDOWS)
-  if (sizeof(LONG)==sizeof(int))
-    return _InterlockedAdd(num, cnt);
-  else
-    return openssl_locking_default(num, cnt, type, file, line);
-#elif defined(__GNUC__)
-  if (1)
-    return __sync_add_and_fetch(num, cnt);
-  else
-    return openssl_locking_default(num, cnt, type, file, line);
-#else
-  return openssl_locking_default(num, cnt, type, file, line);
-#endif
-}
-
-static void openssl_thread_setup(){
-  int i, n;
-  n=CRYPTO_num_locks();
-  olocks=psync_new_cnt(pthread_mutex_t, n);
-  for (i=0; i<n; i++)
-    pthread_mutex_init(&olocks[i], NULL);
-  CRYPTO_THREADID_set_callback(openssl_thread_id);
-  CRYPTO_set_locking_callback(openssl_locking_callback);
-  CRYPTO_set_add_lock_callback(openssl_locking_add);
-}
 
 #if defined(PSYNC_AES_HW_GCC)
 static int psync_ssl_detect_aes_hw(){
@@ -150,13 +102,10 @@ int psync_ssl_init(){
 #else
   debug(D_NOTICE, "hardware AES is not supported for this compiler");
 #endif
-  if (!CRYPTO_set_locked_mem_functions(psync_locked_malloc, psync_locked_free))
-    debug(D_WARNING, "failed to set locked functions for OpenSSL");
   SSL_library_init();
   OpenSSL_add_all_algorithms();
   OpenSSL_add_all_ciphers();
   SSL_load_error_strings();
-  openssl_thread_setup();
   globalctx=SSL_CTX_new(TLSv1_2_client_method());
   if (likely_log(globalctx)){
     if (unlikely_log(SSL_CTX_set_cipher_list(globalctx, SSL_CIPHERS)!=1)){
@@ -236,7 +185,7 @@ static int psync_ssl_cn_match_hostname(X509 *cert, const char *hostname){
   cnasn=X509_NAME_ENTRY_get_data(cnentry);
   if (unlikely_log(!cnasn))
     return -1;
-  cnstr=(const char *)ASN1_STRING_data(cnasn);
+  cnstr=(const char *)ASN1_STRING_get0_data(cnasn);
   if (unlikely_log(!cnstr))
     return -1;
   cnstrlen=strlen(cnstr);
@@ -424,53 +373,11 @@ void psync_ssl_rand_strong(unsigned char *buf, int num){
 
 void psync_ssl_rand_weak(unsigned char *buf, int num){
   int ret;
-  ret=RAND_pseudo_bytes(buf, num);
-  if (unlikely(ret==-1)){
+  ret=RAND_bytes(buf, num);
+  if (unlikely(ret!=1)){
     debug(D_CRITICAL, "could not generate %d weak random bytes, error %s, exiting", num, ERR_error_string(ERR_get_error(), NULL));
     exit(1);
   }
-  else if (unlikely(ret==0))
-    debug(D_WARNING, "RAND_pseudo_bytes returned weak numbers");
-}
-
-/* this function comes from OpenSSL's crypto/rsa/rsa_lib.c, this version is not (that) buggy and reformatted */
-static int RSA_memory_lock_fixed(RSA *r){
-  int i, j, k, off;
-  char *p;
-  BIGNUM *bn, **t[6], *b;
-  BN_ULONG *ul;
-  if (r->d==NULL)
-    return 1;
-  t[0]=&r->d;
-  t[1]=&r->p;
-  t[2]=&r->q;
-  t[3]=&r->dmp1;
-  t[4]=&r->dmq1;
-  t[5]=&r->iqmp;
-  k=sizeof(BIGNUM)*6;
-  off=k/sizeof(BN_ULONG)+1;
-  j=1;
-  for (i=0; i<6; i++)
-    j+=(*t[i])->top;
-  if ((p=OPENSSL_malloc_locked((off+j)*sizeof(BN_ULONG)))==NULL){
-    RSAerr(RSA_F_RSA_MEMORY_LOCK, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  bn=(BIGNUM *)p;
-  ul=(BN_ULONG *)&p[k];
-  for (i=0; i<6; i++){
-    b= *(t[i]);
-    *(t[i])= &(bn[i]);
-    memcpy((char *)&(bn[i]), (char *)b, sizeof(BIGNUM));
-    bn[i].flags=BN_FLG_STATIC_DATA;
-    bn[i].d=ul;
-    memcpy((char *)ul, b->d, sizeof(BN_ULONG)*b->top);
-    ul+=b->top;
-    BN_clear_free(b);
-  }
-  r->flags&=~(RSA_FLAG_CACHE_PRIVATE|RSA_FLAG_CACHE_PUBLIC);
-  r->bignum_data=p;
-  return 1;
 }
 
 psync_rsa_t psync_ssl_gen_rsa(int bits){
@@ -489,7 +396,6 @@ psync_rsa_t psync_ssl_gen_rsa(int bits){
     goto err2;
   if (unlikely_log(!RSA_generate_key_ex(rsa, bits, bn, NULL)))
     goto err2;
-  RSA_memory_lock_fixed(rsa);
   BN_free(bn);
   return rsa;
 err2:
@@ -498,10 +404,6 @@ err1:
   RSA_free(rsa);
 err0:
   return PSYNC_INVALID_RSA;
-}
-
-static void psync_ssl_lock_rsa(RSA *rsa){
-  RSA_memory_lock_fixed(rsa);
 }
 
 void psync_ssl_free_rsa(psync_rsa_t rsa){
@@ -517,10 +419,7 @@ void psync_ssl_rsa_free_public(psync_rsa_publickey_t key){
 }
 
 psync_rsa_privatekey_t psync_ssl_rsa_get_private(psync_rsa_t rsa){
-  RSA *rsap=RSAPrivateKey_dup(rsa);
-  if (rsap)
-    psync_ssl_lock_rsa(rsap);
-  return rsap;
+  return RSAPrivateKey_dup(rsa);
 }
 
 void psync_ssl_rsa_free_private(psync_rsa_privatekey_t key){
@@ -566,10 +465,7 @@ psync_rsa_publickey_t psync_ssl_rsa_load_public(const unsigned char *keydata, si
 }
 
 psync_rsa_privatekey_t psync_ssl_rsa_load_private(const unsigned char *keydata, size_t keylen){
-  RSA *rsa=d2i_RSAPrivateKey(NULL, &keydata, keylen);
-  if (rsa)
-    psync_ssl_lock_rsa(rsa);
-  return rsa;
+  return d2i_RSAPrivateKey(NULL, &keydata, keylen);
 }
 
 psync_rsa_publickey_t psync_ssl_rsa_binary_to_public(psync_binary_rsa_key_t bin){
