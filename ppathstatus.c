@@ -514,30 +514,39 @@ static psync_folderid_t get_sync_parent_folder(sync_data_t *sd, psync_folderid_t
   psync_uint_row row;
   parent_cache_entry_t *p;
   uint32_t h;
+
   if (folderid==0)
     return PSYNC_INVALID_FOLDERID;
+
   h=hash_folderid(folderid)%SYNC_PARENT_HASH_SIZE;
+
   psync_list_for_each_element (p, &sd->parent_cache_hash[h], parent_cache_entry_t, list_hash)
     if (p->folderid==folderid) {
       psync_list_del(&p->list_lru);
       psync_list_add_tail(&sd->parent_cache_lru, &p->list_lru);
       return p->parentfolderid;
     }
+
   res=psync_sql_query_nolock("SELECT localparentfolderid FROM localfolder WHERE id=?");
   psync_sql_bind_uint(res, 1, folderid);
   row=psync_sql_fetch_rowint(res);
-  if (unlikely(!row)) {
+
+  if (unlikely(!row || !row[0])) {
     debug(D_WARNING, "can not find parent folder for localfolderid %lu", (unsigned long)folderid);
     psync_sql_free_result(res);
+    
     return PSYNC_INVALID_FOLDERID;
   }
+
   p=psync_list_remove_head_element(&sd->parent_cache_lru, parent_cache_entry_t, list_lru);
   psync_list_del(&p->list_hash);
   p->folderid=folderid;
   p->parentfolderid=row[0];
   psync_list_add_head(&sd->parent_cache_hash[h], &p->list_hash);
   psync_list_add_tail(&sd->parent_cache_lru, &p->list_lru);
+
   psync_sql_free_result(res);
+
   return p->parentfolderid;
 }
 
@@ -630,24 +639,38 @@ static void free_sync_folder_tasks(sync_data_t *sd, folder_tasks_t *ft) {
 void psync_path_status_sync_folder_task_completed(psync_syncid_t syncid, psync_folderid_t localfolderid) {
   sync_data_t *sd;
   folder_tasks_t *ft;
-//  debug(D_NOTICE, "syncid %u localfolderid %lu lfht %d", (unsigned)syncid, (unsigned long)localfolderid, local_folder_has_tasks(syncid, localfolderid));
+
   psync_sql_lock();
+
   psync_path_status_clear_sync_path_cache();
+
   if (local_folder_has_tasks(syncid, localfolderid) || !(sd=get_sync_data(syncid, 0)) || !(ft=get_sync_folder_tasks(sd, localfolderid, 0))) {
     psync_sql_unlock();
     return;
   }
+
   ft->own_tasks=0;
+
   while (!ft->child_task_cnt && !ft->own_tasks) {
     free_sync_folder_tasks(sd, ft);
     localfolderid=get_sync_parent_folder(sd, localfolderid);
+
     if (localfolderid==PSYNC_INVALID_FOLDERID)
       break;
+
     ft=get_sync_folder_tasks(sd, localfolderid, 0);
+
+    if ((ft == NULL) || (ft->child_task_cnt == NULL)) {
+      debug(D_NOTICE, "ft is NULL. Return!");
+      return;
+    }
+
     assert(ft);
     assert(ft->child_task_cnt);
+
     ft->child_task_cnt--;
   }
+
   psync_sql_unlock();
 }
 

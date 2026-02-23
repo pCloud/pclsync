@@ -1694,9 +1694,12 @@ static void delete_upload_task(uint64_t taskid, psync_fileid_t localfileid) {
 
   res=psync_sql_query_nolock("SELECT syncid, localparentfolderid FROM localfile WHERE id=?");
   psync_sql_bind_uint(res, 1, localfileid);
+
   if ((row=psync_sql_fetch_rowint(res)))
     psync_path_status_sync_folder_task_completed(row[0], row[1]);
+
   psync_sql_free_result(res);
+
   psync_sql_unlock();
 }
 
