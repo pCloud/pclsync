@@ -1,24 +1,25 @@
 CC=gcc
 AR=ar rcu
 RANLIB=ranlib
-#USESSL=openssl
-#USESSL=mbed
-USESSL=wolfssl
-
+BUILD_DIR ?= build
+USESSL?=
 
 LIB_A=psynclib.a
-#LIB_A=libpsynclib.a
 
-FUSE_INCLUDE_DIR ?= /usr/local/include/osxfuse
-SQLITE_INCLUDE_DIR ?= ../sqlite
 GCC_OPTIMIZATION_LEVEL ?= s
 
+SRCS := pcompat.c psynclib.c plocks.c plibs.c pcallbacks.c pdiff.c pstatus.c papi.c ptimer.c pupload.c pdownload.c pfolder.c\
+            psyncer.c ptasks.c psettings.c pnetlibs.c pcache.c pscanner.c plist.c plocalscan.c plocalnotify.c pp2p.c\
+            pcrypto.c pssl.c pfileops.c ptree.c ppassword.c prunratelimit.c pmemlock.c pnotifications.c pexternalstatus.c publiclinks.c\
+            pbusinessaccount.c pcontacts.c poverlay.c pcompression.c pasyncnet.c ppathstatus.c\
+            pdevice_monitor.c ptools.c miniz.c
+SRCSFS := pfs.c ppagecache.c pfsfolder.c pfstasks.c pfsupload.c pintervaltree.c pfsxattr.c pcloudcrypto.c pfscrypto.c pcrc32c.c pfsstatic.c
 
 ifeq ($(OS),Windows_NT)
-    CFLAGS += -DP_OS_WINDOWS
+    CFLAGS=-DP_OS_WINDOWS
     LIB_A=psynclib.dll
     AR=$(CC) -shared -o
-    RANLIB=strip --strip-unneeded
+RANLIB=strip --strip-unneeded
     LDFLAGS=-s
 else
     UNAME_S	:= $(shell uname -s)
@@ -27,51 +28,46 @@ else
     ARCH ?= $(UNAME_P)
 
     ifeq ($(UNAME_S),Linux)
-#        CFLAGS=-Wall -Wpointer-arith -fsanitize=address -O1 -fno-omit-frame-pointer -g -I../sqlite -DP_ELECTRON -fPIC
-        CFLAGS=-Wall -Wpointer-arith -O2 -g -fno-stack-protector -fomit-frame-pointer -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -DP_ELECTRON -fPIC
-        CFLAGS += -DP_OS_LINUX -D_FILE_OFFSET_BITS=64
-            ifneq (,$(findstring Debian,$(UNAME_V)))
-                CFLAGS += -DP_OS_DEBIAN
-            endif
+		CFLAGS=-DP_OS_LINUX -D_FILE_OFFSET_BITS=64 -Wall -Wpointer-arith -O2 -g -fno-stack-protector -fPIC
+        ifneq ($(filter x86_64 i686 i386,$(ARCH)),)
+        	CFLAGS += -fomit-frame-pointer -mtune=core2
+        endif
+        ifneq (,$(findstring Debian,$(UNAME_V)))
+        	CFLAGS += -DP_OS_DEBIAN
+        endif
+        # Compiler flags to appease newer version of gcc with stricter checks
+        CFLAGS+=-std=gnu99 -Wno-error=int-conversion -Wno-error=incompatible-pointer-types
         LDFLAGS += -lfuse -lpthread -lsqlite3 -lzlib
     endif
 
     ifeq ($(UNAME_S),Darwin)
-		ifeq ($(ARCH),arm)
-			CFLAGS += -Wall -Wpointer-arith -O$(GCC_OPTIMIZATION_LEVEL) -g -I$(SQLITE_INCLUDE_DIR) -pg
-		else
-			CFLAGS += -Wall -Wpointer-arith -O$(GCC_OPTIMIZATION_LEVEL) -g -mtune=core2 -I$(SQLITE_INCLUDE_DIR) -pg
+		CFLAGS=-DP_OS_MACOSX -Wall -Wpointer-arith -O$(GCC_OPTIMIZATION_LEVEL) -g -pg
+		ifneq ($(filter x86_64 i686 i386,$(ARCH)),)
+			CFLAGS += -mtune=core2
 		endif
 
-        CFLAGS += -DP_OS_MACOSX -I/usr/local/ssl/include/
-        CFLAGS += -DP_OS_MACOSX -I$(FUSE_INCLUDE_DIR)
-		CFLAGS += -DP_OS_MACOSX -Wno-error=int-conversion
-		CFLAGS += -DP_OS_MACOSX -Wno-error=incompatible-function-pointer-types
+        CFLAGS+=-Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types
 		LDFLAGS += -losxfuse -lsqlite3 -framework Cocoa -L/usr/local/ssl/lib
-        #USESSL=securetransport
     endif
 endif
 
-OBJ=pcompat.o psynclib.o plocks.o plibs.o pcallbacks.o pdiff.o pstatus.o papi.o ptimer.o pupload.o pdownload.o pfolder.o\
-     psyncer.o ptasks.o psettings.o pnetlibs.o pcache.o pscanner.o plist.o plocalscan.o plocalnotify.o pp2p.o\
-     pcrypto.o pssl.o pfileops.o ptree.o ppassword.o prunratelimit.o pmemlock.o pnotifications.o pexternalstatus.o publiclinks.o\
-     pbusinessaccount.o pcontacts.o poverlay.o poverlay_lin.o poverlay_mac.o poverlay_win.o pcompression.o pasyncnet.o ppathstatus.o\
-     pdevice_monitor.o ptools.o miniz.o
-
-OBJFS=pfs.o ppagecache.o pfsfolder.o pfstasks.o pfsupload.o pintervaltree.o pfsxattr.o pcloudcrypto.o pfscrypto.o pcrc32c.o pfsstatic.o plocks.o
-
-OBJNOFS=pfsfake.o
+ifdef SQLITE_INCLUDE_DIR
+	CFLAGS+=-I$(SQLITE_INCLUDE_DIR)
+endif
+ifdef FUSE_INCLUDE_DIR
+	CFLAGS+=-I$(FUSE_INCLUDE_DIR)
+endif
 
 ifeq ($(USESSL),openssl)
-  OBJ += pssl-openssl.o
+  SRCS += pssl-openssl.c
   CFLAGS += -DP_SSL_OPENSSL
 endif
 ifeq ($(USESSL),securetransport)
-  OBJ += pssl-securetransport.o
+  SRCS += pssl-securetransport.o
   CFLAGS += -DP_SSL_SECURETRANSPORT
 endif
 ifeq ($(USESSL),mbed)
-  OBJ += pssl-mbedtls.o
+  SRCS += pssl-mbedtls.c
   CFLAGS += -DP_SSL_MBEDTLS -I../mbedtls/include/
 endif
 ifeq ($(USESSL),wolfssl)
@@ -83,7 +79,7 @@ ifeq ($(USESSL),wolfssl)
     WOLFSSL_CFLAGS += -I../wolfssl/ -I../wolfssl/wolfssl/
   endif
 
-  OBJ += pssl-wolfssl.o
+  SRCS += pssl-wolfssl.c
   CFLAGS += $(WOLFSSL_CFLAGS)
 endif
 
@@ -91,24 +87,46 @@ ifdef DEBUG_LEVEL
     CFLAGS += -DDEBUG_LEVEL=$(DEBUG_LEVEL)
 endif
 
+CFLAGS += $(EXTRA_CFLAGS)
+LDFLAGS += $(EXTRA_LDFLAGS)
+
+OBJ=$(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
+OBJFS=$(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCSFS))
+OBJNOFS=$(BUILD_DIR)/pfsfake.o
+
 OBJ1=overlay_client.o
 
-all: $(LIB_A)
+all: $(BUILD_DIR)/$(LIB_A)
 
-$(LIB_A): $(OBJ) $(OBJNOFS)
+$(BUILD_DIR) $(BUILD_DIR)/include $(BUILD_DIR)/lib:
+	mkdir -p $@
+
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/$(LIB_A): $(OBJ) $(OBJNOFS) | $(BUILD_DIR)
 	$(AR) $@ $(OBJ) $(OBJNOFS)
 	$(RANLIB) $@
 
-fs: $(OBJ) $(OBJFS)
-	$(AR) $(LIB_A) $(OBJ) $(OBJFS)
-	$(RANLIB) $(LIB_A)
+fs: $(OBJ) $(OBJFS) | $(BUILD_DIR)
+	$(AR) $(BUILD_DIR)/$(LIB_A) $(OBJ) $(OBJFS)
+	$(RANLIB) $(BUILD_DIR)/$(LIB_A)
 
 cli: fs
-	$(CC) $(CFLAGS) -o cli cli.c $(LIB_A) $(LDFLAGS)
-	
+	$(CC) $(CFLAGS) -o $(BUILD_DIR)/cli cli.c $(BUILD_DIR)/$(LIB_A) $(LDFLAGS)
+
 overlay_client:
 	cd ./lib/poverlay_linux && make
 
+install-headers: | $(BUILD_DIR)/include
+	cp *.h $(BUILD_DIR)/include/
+
+install: $(BUILD_DIR)/$(LIB_A) install-headers | $(BUILD_DIR)/lib
+	cp $(BUILD_DIR)/$(LIB_A) $(BUILD_DIR)/lib/
+
+install-fs: fs install-headers | $(BUILD_DIR)/lib
+	cp $(BUILD_DIR)/$(LIB_A) $(BUILD_DIR)/lib/
+
 clean:
-	rm -f *~ *.o $(LIB_A) ./lib/poverlay_linux/*.o ./lib/poverlay_linux/overlay_client
+	rm -rf $(BUILD_DIR) ./lib/poverlay_linux/*.o ./lib/poverlay_linux/overlay_client
 
