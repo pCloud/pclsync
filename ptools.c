@@ -85,7 +85,7 @@ char* get_zipLogsFile() {
 
   gmtime_r(&ts.tv_sec, &dt);
 
-  sprintf(tmp, "%llu_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year + 1900, dt.tm_mon + 1, dt.tm_mday, dt.tm_hour, dt.tm_min);
+  sprintf(tmp, "%"P_PRI_U64"_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year + 1900, dt.tm_mon + 1, dt.tm_mday, dt.tm_hour, dt.tm_min);
 
   zipFile = psync_strcat(tmp, ".zip", NULL);
 
@@ -117,7 +117,7 @@ int zipLogs(char* zipLogsFname) {
   fsize = psync_stat_size(&st);
 
   if (fsize > MAX_LOG_SIZE) {
-    debug(D_NOTICE, "Zipped logs too big.  File size: [%llu] > [%llu]", fsize, MAX_LOG_SIZE);
+    debug(D_NOTICE, "Zipped logs too big.  File size: [%"P_PRI_U64"] > [%ld]", fsize, MAX_LOG_SIZE);
 
     return LOGS_ZIP_TOO_BIG;
   }
@@ -512,7 +512,7 @@ int backend_call(const char*  binapi,
       *err = psync_strdup(psync_find_result(res, "error", PARAM_STR)->str);
     }
 
-    debug(D_CRITICAL, "Backend command failed. Error Code: [%lld], Error:[%s]", result, *err);
+    debug(D_CRITICAL, "Backend command failed. Error Code: [%"P_PRI_U64"], Error:[%s]", result, *err);
   }
   else {
     if(strlen(payloadName) > 0) {
@@ -699,7 +699,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
   char msgErr[1024];
   binresult* retData;
 
-  debug(D_NOTICE, "Update file date in the backend. FileId: [%lld], ctime: [%lld], mtime: [%lld]", fileid, ctime, mtime);
+  debug(D_NOTICE, "Update file date in the backend. FileId: [%"P_PRI_U64"], ctime: [%ld], mtime: [%ld]", fileid, ctime, mtime);
 
   eventParams optionalParams = {
     0
@@ -1285,7 +1285,7 @@ void psync_log_tasks() {
   res = psync_sql_query("SELECT id, type, itemid, name, inprogress FROM task");
 
   while (row = psync_sql_fetch_row(res)) {
-    debug(D_NOTICE, "Task: [%lld], Type: [%d], ItemId: [%llu], Name: [%s], Inprogress: [%d]", psync_get_number(row[0]), psync_get_number(row[1]), psync_get_number(row[2]), psync_get_string_or_null(row[3]), psync_get_number(row[4]));
+    debug(D_NOTICE, "Task: [%"P_PRI_U64"], Type: [%"P_PRI_U64"], ItemId: [%"P_PRI_U64"], Name: [%s], Inprogress: [%"P_PRI_U64"]", psync_get_number(row[0]), psync_get_number(row[1]), psync_get_number(row[2]), psync_get_string_or_null(row[3]), psync_get_number(row[4]));
   }
 
   psync_sql_free_result(res);
@@ -1450,7 +1450,7 @@ int get_login_req_id(char** reqId) {
   result = psync_find_result(resData, "result", PARAM_NUM)->num;
 
   if (result != 0) {
-    debug(D_ERROR, "get_login_req_id. Backend returned error: [%llu]", result);
+    debug(D_ERROR, "get_login_req_id. Backend returned error: [%"P_PRI_U64"]", result);
 
     return result;
   }
@@ -1490,7 +1490,7 @@ int wait_auth_token(char* request_id) {
   result = psync_find_result(resData, "result", PARAM_NUM)->num;
 
   if (result != 0) {
-    debug(D_NOTICE, "Backend returned error: [%llu]", result);
+    debug(D_NOTICE, "Backend returned error: [%"P_PRI_U64"]", result);
 
     return result;
   }
@@ -1503,7 +1503,7 @@ int wait_auth_token(char* request_id) {
     rememberme = psync_find_result(resData, EPARAM_REMEMBERME, PARAM_BOOL)->num;
   }
 
-  debug(D_NOTICE, "Login result parameters: RememberMe: [%llu], UserId: [%llu], Location Id: [%d]", rememberme, newuserid, loc_id);
+  debug(D_NOTICE, "Login result parameters: RememberMe: [%"P_PRI_U64"], UserId: [%"P_PRI_U64"], Location Id: [%d]", rememberme, newuserid, loc_id);
 
   if (resData) {
     psync_free(resData);
@@ -1511,7 +1511,7 @@ int wait_auth_token(char* request_id) {
 
   currentuserid = psync_get_uint_value("userid");
 
-  debug(D_CRITICAL, "Check Current and New User Id Current UserId: [%llu] New UserId: [%llu]", currentuserid, newuserid);
+  debug(D_CRITICAL, "Check Current and New User Id Current UserId: [%"P_PRI_U64"] New UserId: [%"P_PRI_U64"]", currentuserid, newuserid);
 
   if (currentuserid) {
     if (currentuserid != newuserid) {
@@ -1547,7 +1547,7 @@ int wait_auth_token(char* request_id) {
 
   psync_set_auth(token, rememberme);
 
-  debug(D_CRITICAL, "Auth Token Set To: [%s] Current UserId: [%llu] New UserId: [%llu]", psync_my_auth, currentuserid, newuserid);
+  debug(D_CRITICAL, "Auth Token Set To: [%s] Current UserId: [%"P_PRI_U64"] New UserId: [%"P_PRI_U64"]", psync_my_auth, currentuserid, newuserid);
 
   return result;
 }

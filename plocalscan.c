@@ -445,9 +445,9 @@ static void add_deleted_element(const sync_folderlist *e, psync_folderid_t folde
 }
 
 static void add_modified_file(const sync_folderlist *e, const sync_folderlist *dbe, psync_folderid_t folderid, psync_folderid_t localfolderid, psync_syncid_t syncid, psync_synctype_t synctype){
-  debug(D_NOTICE, "found modified file %s on disk: size=%llu mtime=%llu inode=%llu in db: size=%llu mtime=%llu inode=%llu , name:[%s]", e->name,
-        (long long unsigned)e->size, (long long unsigned)e->mtimenat, (long long unsigned)e->inode,
-        (long long unsigned)dbe->size, (long long unsigned)dbe->mtimenat, (long long unsigned)dbe->inode, (long long unsigned)dbe->name);
+  debug(D_NOTICE, "found modified file %s on disk: size=%"P_PRI_U64" mtime=%"P_PRI_U64" inode=%"P_PRI_U64" in db: size=%"P_PRI_U64" mtime=%"P_PRI_U64" inode=%"P_PRI_U64" , name:[%s]", e->name,
+        e->size, e->mtimenat, e->inode,
+        dbe->size, dbe->mtimenat, dbe->inode, dbe->name);
   add_element_to_scan_list(SCAN_LIST_MODFILES, copy_folderlist_element(e, folderid, localfolderid, syncid, synctype));
 }
 
@@ -458,7 +458,7 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
   char *subpath;
   int cmp;
 
-  debug(D_NOTICE, "scanning folder [%s] deviceid: [%llu]", localpath, deviceid);
+  debug(D_NOTICE, "scanning folder [%s] deviceid: [%"P_PRI_U64"]", localpath, deviceid);
 
   if (unlikely_log(scanner_local_folder_to_list(localpath, &disklist))){
     stuck_item* elem;
@@ -845,7 +845,7 @@ static void scan_created_folder(sync_folderlist *fl){
   localpath = psync_local_path_for_local_folder(fl->localid, fl->syncid, NULL);
 
   if (likely_log(localpath)){
-    debug(D_NOTICE, "scanning just created folder [%s] localid [%llu] name [%s]", localpath, (unsigned long)fl->localid, fl->name);
+    debug(D_NOTICE, "scanning just created folder [%s] localid [%"P_PRI_U64"] name [%s]", localpath, fl->localid, fl->name);
 
     delete_element(Hash64(localpath, strlen(localpath)));
 
@@ -1425,7 +1425,7 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 
   psync_list_init(&disklist);
 
-  debug(D_NOTICE, "Scan Start! Path: [%s], Level: [%d], Remote folder Id: [%llu]", path, level, parent_folder_id);
+  debug(D_NOTICE, "Scan Start! Path: [%s], Level: [%d], Remote folder Id: [%"P_PRI_U64"]", path, level, parent_folder_id);
 
   ret = psync_list_dir(path, scanner_local_entry_to_list, &disklist);
 
@@ -1489,7 +1489,7 @@ void do_create_upload_from_list(void* ptr) {
 
   psync_pstat st; //OS compatible stat struct
 
-  debug(D_NOTICE, "Destination Folder Id: [%llu] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
+  debug(D_NOTICE, "Destination Folder Id: [%"P_PRI_U64"] Path list cnt: [%d].", upl_data->dest_folid, upl_data->path_cnt);
 
   p_uptaks_scanning = p_uptaks_scanning + 1;
 
@@ -1576,7 +1576,7 @@ void do_create_upload_from_list(void* ptr) {
     debug(D_NOTICE, "Scanning canceled. Ommit process thread wakeup.");
   }
   else {
-    debug(D_NOTICE, "Finished Upload task init. Tasks created: [%d] Send some signals.", taskcnt);
+    debug(D_NOTICE, "Finished Upload task init. Tasks created: [%"P_PRI_U64"] Send some signals.", taskcnt);
 
     psync_do_run = 1; //Activate the upload thread.
     psync_wake_upload();

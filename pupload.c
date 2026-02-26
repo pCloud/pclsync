@@ -1049,7 +1049,7 @@ static int upload_big_file(const char *localpath, const unsigned char *hashhex, 
     psync_sql_start_transaction();
 
     if (syncid == 0) {
-      debug(D_WARNING, "Upload task. Skip looking for localfile. LocalFileId: [%llu]", localfileid);
+      debug(D_WARNING, "Upload task. Skip looking for localfile. LocalFileId: [%" P_PRI_U64 "]", localfileid);
     }
     else {
       sql = psync_sql_query_nolock("SELECT id FROM localfile WHERE id=?");
@@ -1352,7 +1352,7 @@ static void delete_uploadids(psync_fileid_t localfileid){
   psync_full_result_int *rows;
   uint32_t i;
 
-  debug(D_NOTICE, "Delete all paralel uploads for file id: [%llu].", localfileid);
+  debug(D_NOTICE, "Delete all paralel uploads for file id: [%"P_PRI_U64"].", localfileid);
 
   res=psync_sql_query_rdlock("SELECT uploadid FROM localfileupload WHERE localfileid=?");
   psync_sql_bind_uint(res, 1, localfileid);
@@ -1496,7 +1496,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
   else
     uploadid=0;
 
-  debug(D_WARNING, "Got upload id: [%llu].", uploadid);
+  debug(D_WARNING, "Got upload id: [%"P_PRI_U64"].", uploadid);
 
   psync_sql_free_result(res);
   ufsize=0;
@@ -1714,12 +1714,12 @@ static void task_run_upload_file_thread(void *ptr){
 
   ut=(upload_task_t *)ptr;
 
-  debug(D_NOTICE, "Upload file thread. File Name: [%s], Sync Id: [%lu], Task Id: [%llu]", ut->filename, ut->upllist.syncid, ut->upllist.taskid);
+  debug(D_NOTICE, "Upload file thread. File Name: [%s], Sync Id: [%u], Task Id: [%"P_PRI_U64"]", ut->filename, ut->upllist.syncid, ut->upllist.taskid);
 
   ret = task_uploadfile(ut->upllist.syncid, ut->upllist.localfileid, ut->filename, &ut->upllist, ut);
 
   if (ret){
-    debug(D_NOTICE, "Upload task failed. Sync Id: [%lu], Ret: [%d], Status: [%d]", ut->upllist.syncid, ret, psync_flag_online);
+    debug(D_NOTICE, "Upload task failed. Sync Id: [%u], Ret: [%d], Status: [%d]", ut->upllist.syncid, ret, psync_flag_online);
 
     if (ut->upllist.syncid == 0) { //This is an upload task.
       if (ut->upllist.taskid != 0) {
@@ -1743,7 +1743,7 @@ static void task_run_upload_file_thread(void *ptr){
       }
     }
     else {
-      debug(D_NOTICE, "Update sync task inprogress = 0, task id: [%llu]", ut->upllist.taskid);
+      debug(D_NOTICE, "Update sync task inprogress = 0, task id: [%"P_PRI_U64"]", ut->upllist.taskid);
       res = psync_sql_prep_statement("UPDATE task SET inprogress=0 WHERE id=?");
       psync_sql_bind_uint(res, 1, ut->upllist.taskid);
       psync_sql_run_free(res);
@@ -1799,7 +1799,7 @@ static int task_run_uploadfile(uint64_t taskid, psync_syncid_t syncid, psync_fol
   size_t len;
   int stop;
 
-  debug(D_NOTICE, "TaskId: [%lld], Local FileId: [%llu]", taskid, localfileid);
+  debug(D_NOTICE, "TaskId: [%"P_PRI_U64"], Local FileId: [%"P_PRI_U64"]", taskid, localfileid);
 
   if(syncid == 0){
     res=psync_sql_query_rdlock("SELECT size FROM upload_tasks WHERE id=?");
@@ -1982,7 +1982,7 @@ static void upload_thread(){
       taskid=psync_get_number(row[0]);
       type=psync_get_number(row[1]);
 
-      debug(D_NOTICE, "Process upload task. Name: [%s]. Type: [%lu], TaskId: [%lld]  Item Id: [%llu]", psync_get_string_or_null(row[6]), type, taskid, psync_get_number(row[3]));
+      debug(D_NOTICE, "Process upload task. Name: [%s]. Type: [%u], TaskId: [%"P_PRI_U64"]  Item Id: [%"P_PRI_U64"]", psync_get_string_or_null(row[6]), type, taskid, psync_get_number(row[3]));
 
       if (!upload_task(taskid, type,
                          psync_get_number(row[2]),
@@ -2163,7 +2163,7 @@ int upload_logs(char* filename, char* fPath) {
     P_BOOL("frompdrive", 1)
   };
 
-  debug(D_NOTICE, "Uploading file size: [%llu]", fsize);
+  debug(D_NOTICE, "Uploading file size: [%"P_PRI_U64"]", fsize);
 
   res = do_send_command(api, "uploadclientdiagnostic", strlen("uploadclientdiagnostic"), params, ARRAY_SIZE(params), fsize, 0);
 
@@ -2243,7 +2243,7 @@ int cancel_uptasks() {
 
   psync_list_for_each_element(upl, &uploads, upload_list_t, list)
     if (upl->syncid == 0) {
-      debug(D_NOTICE, "UpTask Found Id: [%llu]", upl->taskid);
+      debug(D_NOTICE, "UpTask Found Id: [%"P_PRI_U64"]", upl->taskid);
       upl->stop = 1;
     }
 
@@ -2258,7 +2258,7 @@ int cancel_uptasks() {
 
   psync_sql_commit_transaction();
 
-  debug(D_NOTICE, "Tasks deleted: [%lu]", psync_sql_affected_rows());
+  debug(D_NOTICE, "Tasks deleted: [%u]", psync_sql_affected_rows());
 
   p_uptaks_stop = 0;
 
@@ -2289,7 +2289,7 @@ static void delete_uptaks_uploadids(psync_fileid_t localfileid) {
 /*************************************************************/
 void fail_child_uptasks(uint64_t taskid) {
   psync_sql_res* sqlres;
-  debug(D_NOTICE, "Create remote folder failed. Fail all child tasks. TaskId: [%llu]", taskid);
+  debug(D_NOTICE, "Create remote folder failed. Fail all child tasks. TaskId: [%"P_PRI_U64"]", taskid);
 
   psync_sql_start_transaction();
   
@@ -2301,7 +2301,7 @@ void fail_child_uptasks(uint64_t taskid) {
   psync_sql_bind_uint(sqlres, 4, taskid);
   psync_sql_run_free(sqlres);
 
-  debug(D_NOTICE, "Rows Updated: [%lu]", psync_sql_affected_rows());
+  debug(D_NOTICE, "Rows Updated: [%u]", psync_sql_affected_rows());
 
   psync_sql_commit_transaction();
 }

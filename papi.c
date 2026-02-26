@@ -508,10 +508,10 @@ unsigned char *do_prepare_command(const char *command, size_t cmdlen, const binp
       debug(D_NOTICE, "Parameter:  Name: [%s] = [...]", params[i].paramname); //Not logging values of string parameters for security reasons.
     }
     else if (params[i].paramtype == PARAM_NUM) {
-      debug(D_NOTICE, "Parameter:  Name: [%s] = [%llu]", params[i].paramname, params[i].num);
+      debug(D_NOTICE, "Parameter:  Name: [%s] = [%"P_PRI_U64"]", params[i].paramname, params[i].num);
     }
     else if (params[i].paramtype == PARAM_BOOL) {
-      debug(D_NOTICE, "Parameter:  Name: [%s] = [%u]", params[i].paramname, params[i].num & 1);
+      debug(D_NOTICE, "Parameter:  Name: [%s] = [%"P_PRI_U64"]", params[i].paramname, params[i].num & 1);
     }
   }
 
