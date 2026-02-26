@@ -84,7 +84,7 @@ typedef void (*psync_ssl_debug_callback_t)(void *ctx, int level, const char *mes
 void psync_ssl_set_log_threshold(int threshold);
 void psync_ssl_set_debug_callback(psync_ssl_debug_callback_t cb, void *ctx);
 
-#if defined(__GNUC__) && (defined(__amd64__) || defined(__x86_64__) || defined(__i386__))
+#if defined(WOLFSSL_AESNI) && defined(__GNUC__) && (defined(__amd64__) || defined(__x86_64__) || defined(__i386__))
 #define PSYNC_AES_HW
 #define PSYNC_AES_HW_GCC
 

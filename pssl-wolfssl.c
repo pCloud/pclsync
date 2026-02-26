@@ -496,6 +496,14 @@ psync_rsa_privatekey_t psync_ssl_rsa_get_private(psync_rsa_t rsa) {
     return PSYNC_INVALID_RSA;
   }
 
+#ifdef WC_RSA_BLINDING
+  if (wc_RsaSetRNG(priv, &psync_wolf_rng.rng) != 0) {
+    wc_FreeRsaKey(priv);
+    psync_free(priv);
+    return PSYNC_INVALID_RSA;
+  }
+#endif
+
   return priv;
 }
 
