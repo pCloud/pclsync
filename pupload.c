@@ -1760,7 +1760,7 @@ static void task_run_upload_file_thread(void *ptr){
     else {
       local_path = psync_local_path_for_local_file(ut->upllist.localfileid, NULL);
 
-      if (local_path > 0) {
+      if (local_path) {
         delete_element(Hash64(local_path, strlen(local_path)));
       }
     }
