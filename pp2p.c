@@ -527,7 +527,6 @@ static int psync_p2p_check_rsa(){
   static pthread_mutex_t rsa_lock=PTHREAD_MUTEX_INITIALIZER;
 
   int ret;
-  RNG* rng = (RNG*)malloc(sizeof(RNG));
 
   pthread_mutex_lock(&rsa_lock);
 
@@ -544,29 +543,7 @@ static int psync_p2p_check_rsa(){
     if (unlikely_log(rsa==PSYNC_INVALID_RSA))
       goto rete;
 
-    debug(D_NOTICE, "P2P. Init RSA RNG.");
-    ret = wc_InitRng(rng);
-    if (ret != 0) {
-      debug(D_NOTICE, "P2P. Init RSA RNG failed. Ret: [%d]", ret);
-      return -1;
-    }
-
     rsapriv=psync_ssl_rsa_get_private(rsa);
-
-    debug(D_NOTICE, "P2P. Set RSA private key RNG.");
-    ret = wc_RsaSetRNG(rsapriv, rng);
-    if (ret != 0) {
-      debug(D_NOTICE, "Falied to set RNG to private key. Error: [%d]", ret);
-    }
-
-    rsapub=psync_ssl_rsa_get_public(rsa);
-
-    debug(D_NOTICE, "P2P. Set RSA public key RNG.");
-    ret = wc_RsaSetRNG(rsapub, rng);
-    if (ret != 0) {
-      debug(D_NOTICE, "Falied to set RNG to public key. Error: [%d]", ret);
-    }
-
     if (likely_log(rsapub!=PSYNC_INVALID_RSA))
       rsapubbin=psync_ssl_rsa_public_to_binary(rsapub);
     else
