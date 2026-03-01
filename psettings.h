@@ -142,7 +142,10 @@
 #define PSYNC_DEFAULT_WINDOWS_DBNAME "pcloud.db"
 
 #define PSYNC_DEFAULT_DB_NAME "data.db"
+#ifndef PSYNC_DEFAULT_POSIX_DIR
 #define PSYNC_DEFAULT_POSIX_DIR ".pcloud"
+#endif
+
 #define PSYNC_DEFAULT_WINDOWS_DIR "pCloud"
 
 #define PSYNC_DEFAULT_TMP_DIR "temp"
@@ -153,10 +156,12 @@
 #define PSYNC_DEFAULT_CACHE_FOLDER "Cache"
 #define PSYNC_DEFAULT_READ_CACHE_FILE "cached"
 
+#ifndef PSYNC_DEFAULT_FS_FOLDER
 #if defined(P_OS_MACOSX)
 #define PSYNC_DEFAULT_FS_FOLDER "pCloud Drive"
 #else
 #define PSYNC_DEFAULT_FS_FOLDER "pCloudDrive"
+#endif
 #endif
 
 #define PSYNC_DEFAULT_POSIX_FOLDER_MODE 0755
