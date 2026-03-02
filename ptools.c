@@ -271,133 +271,69 @@ char* getMACaddr() {
   }
 }
 /*************************************************************/
-int create_backend_event(const char*  binapi,
-                         const char*  category,
-                         const char*  action,
-                         const char*  label,
-                         const char*  auth,
-                         int          os,
-                         time_t       etime,
+int create_backend_event(const char* binapi,
+                         const char* category,
+                         const char* action,
+                         const char* label,
+                         const char* auth,
+                         int os,
+                         time_t etime,
                          eventParams* params,
-                         char**       err) {
-  binresult*    res;
-  psync_socket* sock;
-  uint64_t      result;
-  binparam*     paramsLocal;
-  int i;
-  int pCnt = params->paramCnt; //Number of optional parameters
-  int mpCnt = 6; //Number of mandatory params
-  int tpCnt; //Total number of parameters
-  char* keyParams;
+                         char** err)
+{
+  const int pCnt = params->paramCnt;
+  const int mpCnt = 6;
   char charBuff[30][258];
 
-  sock = psync_api_connect(binapi, psync_setting_get_bool(0));
+  eventParams requiredParams;
+  requiredParams.Params[0] = (binparam)P_STR(EPARAM_CATEG, category);
+  requiredParams.Params[1] = (binparam)P_STR(EPARAM_ACTION, action);
+  requiredParams.Params[2] = (binparam)P_STR(EPARAM_LABEL, label);
+  requiredParams.Params[3] = (binparam)P_STR(EPARAM_AUTH, auth);
+  requiredParams.Params[4] = (binparam)P_NUM(EPARAM_OS, os);
+  requiredParams.Params[5] = (binparam)P_NUM(EPARAM_TIME, etime);
+  requiredParams.paramCnt = mpCnt;
 
-  if (unlikely_log(!sock)) {
-    if (err) {
-      *err = psync_strdup("Could not connect to the server.");
-    }
-
-    return -1;
-  }
-
-  if (pCnt > 0) { //We have optional parameters
-    tpCnt = pCnt + mpCnt + 1; //+1 for the "key" parameter.
-  }
-  else {
-    tpCnt = mpCnt; //Manadatory parameters only.
-  }
-
-  paramsLocal = (binparam*)malloc((tpCnt) * sizeof(binparam)); //Allocate size for all parameters.
-
-  //Set the mandatory parameters.
-  paramsLocal[0] = (binparam)P_STR(EPARAM_CATEG, category);
-  paramsLocal[1] = (binparam)P_STR(EPARAM_ACTION, action);
-  paramsLocal[2] = (binparam)P_STR(EPARAM_LABEL, label);
-  paramsLocal[3] = (binparam)P_STR(EPARAM_AUTH, auth);
-  paramsLocal[4] = (binparam)P_NUM(EPARAM_OS, os);
-  paramsLocal[5] = (binparam)P_NUM(EPARAM_TIME, etime);
-
+  char* keyParams = NULL;
   if (pCnt > 0) {
-    keyParams = (char*)malloc(258 * pCnt);
+    keyParams = (char*)psync_new_cnt(int, 258);
+    if (unlikely(!keyParams)) {
+      if (err)
+        *err = psync_strdup("Failed to allocate memory.");
+      return -1;
+    }
     keyParams[0] = 0;
 
-    for (i = 0; i < pCnt; i++) {
+    for (int i = 0; i < pCnt; i++) {
       charBuff[i][0] = 0;
-
-      if (i > 0) {
+      if (i > 0)
         strcat(keyParams, ",");
-        strcat(keyParams, params->Params[i].paramname);
-      }
-      else {
-        strcat(keyParams, params->Params[i].paramname);
-      }
-
+      strcat(keyParams, params->Params[i].paramname);
       sprintf(charBuff[i], "key%s", params->Params[i].paramname);
 
-      if (params->Params[i].paramtype == 0) {
-        paramsLocal[mpCnt + i] = (binparam)P_STR(charBuff[i], params->Params[i].str);
-
-        continue;
-      }
-
-      if (params->Params[i].paramtype == 1) {
-        paramsLocal[mpCnt + i] = (binparam)P_NUM(charBuff[i], params->Params[i].num);
-
-        continue;
-      }
-
-      if (params->Params[i].paramtype == 2) {
-        paramsLocal[mpCnt + i] = (binparam)P_BOOL(charBuff, params->Params[i].num);
-        continue;
+      switch (params->Params[i].paramtype) {
+      case PARAM_STR:
+        requiredParams.Params[mpCnt + i] = (binparam)P_STR(charBuff[i], params->Params[i].str);
+        break;
+      case PARAM_NUM:
+        requiredParams.Params[mpCnt + i] = (binparam)P_NUM(charBuff[i], params->Params[i].num);
+        break;
+      case PARAM_BOOL:
+        requiredParams.Params[mpCnt + i] = (binparam)P_BOOL(charBuff[i], params->Params[i].num);
+        break;
+      default:
+        break;
       }
     }
 
-    paramsLocal[mpCnt + pCnt] = (binparam)P_STR(EPARAM_KEY, keyParams);
+    requiredParams.Params[mpCnt + pCnt] = (binparam)P_STR(EPARAM_KEY, keyParams);
+    requiredParams.paramCnt = mpCnt + pCnt + 1;
   }
 
-  //Comment out because the parameters contain the authentication token
-  /*
-  for (i = 0; i < tpCnt; i++) {
-    if (paramsLocal[i].paramtype == 0) {
-      debug(D_NOTICE, "%d: String Param: [%s] - [%s]", i, paramsLocal[i].paramname, paramsLocal[i].str);
-      continue;
-    }
+  eventParams emptyParams = { 0 };
+  int result = backend_call(binapi, EVENT_WS, "", &requiredParams, &emptyParams, NULL, err);
 
-    if (paramsLocal[i].paramtype == 1) {
-      debug(D_NOTICE, "%d: Number Param: [%s] - [%d]", i, paramsLocal[i].paramname, paramsLocal[i].num);
-      continue;
-    }
-  }
-  */
-
-  res = do_send_command(sock, EVENT_WS, strlen(EVENT_WS), paramsLocal, tpCnt, -1, 1);
-
-  free(keyParams);
-  free(paramsLocal);
-
-  if (unlikely_log(!res)) {
-    psync_socket_close(sock);
-
-    if (err) {
-      *err = psync_strdup("Could not connect to the server.");
-    }
-
-    return -1;
-  }
-
-  result = psync_find_result(res, "result", PARAM_NUM)->num;
-
-  psync_socket_close(sock);
-
-  if (result) {
-    if (err) {
-      *err = psync_strdup(psync_find_result(res, "error", PARAM_STR)->str);
-    }
-
-    debug(D_CRITICAL, "Event command failed. Error:[%s]", *err);
-  }
-
+  psync_free(keyParams);
   return result;
 }
 /*************************************************************/
@@ -408,122 +344,68 @@ int backend_call(const char*  binapi,
                  eventParams* optionalParams,
                  binresult**  resData,
                  char**       err) {
-  int reqParCnt = requiredParams->paramCnt;
-  int optParCnt = optionalParams->paramCnt;
-  int totalParCnt = reqParCnt + optParCnt;
-  int i;
+  const int reqParCnt = requiredParams->paramCnt;
+  const int optParCnt = optionalParams->paramCnt;
+  const int totalParCnt = reqParCnt + optParCnt;
 
-  binparam* localParams;
-  binresult*    res;
-  binresult*    payload;
-  psync_socket* sock;
-  uint64_t      result;
+  binparam* localParams = NULL;
 
-  if(totalParCnt > 0) {
-    localParams = (binparam*)malloc((totalParCnt) * sizeof(binparam)); //Allocate size for all required parameters.
+  if (totalParCnt > 0) {
+    localParams = psync_new_cnt(binparam, totalParCnt);
+    if (unlikely(!localParams)) {
+      if (err)
+        *err = psync_strdup("Failed to allocate memory.");
+      return -1;
+    }
+    memcpy(localParams, requiredParams->Params, reqParCnt * sizeof(binparam));
+    memcpy(localParams + reqParCnt, optionalParams->Params, optParCnt * sizeof(binparam));
   }
 
-  //Add required parameters to the structure
-  for (i = 0; i < reqParCnt; i++) {
-    if (requiredParams->Params[i].paramtype == 0) {
-      localParams[i] = (binparam)P_STR(requiredParams->Params[i].paramname, requiredParams->Params[i].str);
-
-      continue;
-    }
-
-    if (requiredParams->Params[i].paramtype == 1) {
-      localParams[i] = (binparam)P_NUM(requiredParams->Params[i].paramname, requiredParams->Params[i].num);
-
-      continue;
-    }
-
-    if (requiredParams->Params[i].paramtype == 2) {
-      localParams[i] = (binparam)P_BOOL(requiredParams->Params[i].paramname, requiredParams->Params[i].num);
-
-      continue;
-    }
-  }
-
-  //Add optional parameters to the structure
-  for (i = reqParCnt; i < totalParCnt; i++) {
-    int j = 0;
-
-    if (optionalParams->Params[i].paramtype == 0) {
-      localParams[i] = (binparam)P_STR(optionalParams->Params[j].paramname, optionalParams->Params[j].str);
-
-      continue;
-    }
-
-    if (optionalParams->Params[i].paramtype == 1) {
-      localParams[i] = (binparam)P_NUM(optionalParams->Params[j].paramname, optionalParams->Params[j].num);
-
-      continue;
-    }
-
-    if (optionalParams->Params[i].paramtype == 2) {
-      localParams[i] = (binparam)P_BOOL(optionalParams->Params[j].paramname, optionalParams->Params[j].num);
-
-      continue;
-    }
-
-    j++;
-  }
-
-  for (i = 0; i <= totalParCnt; i++) {
-    if (localParams[i].paramtype == 0) {
-      continue;
-    }
-
-    if (localParams[i].paramtype == 1) {
-      continue;
-    }
-  }
-
-  sock = psync_api_connect(binapi, psync_setting_get_bool(0));
+  psync_socket* sock = psync_api_connect(binapi, psync_setting_get_bool(0));
 
   if (unlikely_log(!sock)) {
-    if (err) {
+    if (err)
       *err = psync_strdup("Could not connect to the server.");
-    }
-
+    psync_free(localParams);
     return -1;
   }
 
-  res = do_send_command(sock, wsPath, strlen(wsPath), localParams, totalParCnt, -1, 1);
-
-  free(localParams);
+  binresult* res = do_send_command(sock, wsPath, strlen(wsPath),
+                                   localParams, totalParCnt, -1, 1);
+  psync_free(localParams);
+  psync_socket_close(sock);
 
   if (unlikely_log(!res)) {
-    psync_socket_close(sock);
-
-    if (err) {
+    if (err)
       *err = psync_strdup("Could not connect to the server.");
-    }
-
     return -1;
   }
 
-  result = psync_find_result(res, "result", PARAM_NUM)->num;
-
-  psync_socket_close(sock);
+  const uint64_t result = psync_find_result(res, "result", PARAM_NUM)->num;
 
   if (result) {
     if (err) {
       *err = psync_strdup(psync_find_result(res, "error", PARAM_STR)->str);
+      debug(D_CRITICAL, "Backend command failed. Error Code: [%"P_PRI_U64"], Error:[%s]",
+            result, *err);
     }
-
-    debug(D_CRITICAL, "Backend command failed. Error Code: [%"P_PRI_U64"], Error:[%s]", result, *err);
-  }
-  else {
-    if(strlen(payloadName) > 0) {
-      payload = psync_find_result(res, payloadName, PARAM_HASH);
-
-      *resData = (binresult*)malloc(payload->length * sizeof(binresult));
-      memcpy(*resData, payload, (payload->length * sizeof(binresult)));
+  } else {
+    if (strlen(payloadName) > 0) {
+      const binresult* payload = psync_find_result(res, payloadName, PARAM_HASH);
+      *resData = (binresult*)psync_malloc(payload->length * sizeof(binresult));
+      if (*resData) {
+        memcpy(*resData, payload, payload->length * sizeof(binresult));
+      } else {
+        if (err)
+          *err = psync_strdup("Failed to allocate memory.");
+        psync_free(res);
+        return -1;
+      }
     }
   }
 
-  return result;
+  psync_free(res);
+  return (int)result;
 }
 /*************************************************************/
 char* get_machine_name() {
@@ -696,7 +578,7 @@ void send_psyncs_event(const char* binapi,
 /*************************************************************/
 int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
   int callRes;
-  char msgErr[1024];
+  char* msgErr = NULL;
   binresult* retData;
 
   debug(D_NOTICE, "Update file date in the backend. FileId: [%"P_PRI_U64"], ctime: [%ld], mtime: [%ld]", fileid, ctime, mtime);
@@ -722,8 +604,12 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
     &requiredParams1,
     &optionalParams,
     &retData,
-    msgErr
+    &msgErr
   );
+
+  if (msgErr)
+    psync_free(msgErr);
+  msgErr = NULL;
 
   debug(D_NOTICE, "cTime res: [%d]", callRes);
 
@@ -744,8 +630,11 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
     &requiredParams,
     &optionalParams,
     &retData,
-    msgErr
+    &msgErr
   );
+
+  if (msgErr)
+    psync_free(msgErr);
 
   debug(D_NOTICE, "mTime res: [%d]", callRes);
 
@@ -1188,7 +1077,7 @@ char* nvl_str(char* str, const char* def) {
 }
 /***********************************************************************/
 char* dns_lookup(const char* addr_host, int port) {
-  char* ip[65];
+  char ip[65];
 
   memset(ip, 0, sizeof(ip));
 

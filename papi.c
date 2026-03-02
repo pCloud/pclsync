@@ -637,11 +637,10 @@ binresult* do_send_command_v2(psync_socket* sock, const char* command, size_t cm
 }
 
 void psync_do_dump_binresult(const binresult *res, const char *file, const char *function, int unsigned line){
-  uint32_t i;
-  
-  debug(file, function, line, D_NOTICE, "dumping existing fields of the hash");
-  
-  for (i=0; i<res->length; i++)
+  if (D_NOTICE<=DEBUG_LEVEL) {
+    psync_debug(file, function, line, D_NOTICE, "dumping existing fields of the hash");
+  }
+  for (uint32_t i = 0; i<res->length; i++)
     switch (res->hash[i].value->type){
       case PARAM_HASH:
         debug(D_NOTICE, "  %s=[hash]", res->hash[i].key);

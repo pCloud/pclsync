@@ -450,38 +450,35 @@ void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata){
 //Data event methods.
 /**********************************************************************************************/
 data_event_callback data_event_fptr = NULL;
-de_elem_list data_event_elem_list = {0,0};
+de_elem_list data_event_elem_list = {NULL, NULL};
 
 static pthread_mutex_t data_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 /**********************************************************************************************/
-void* free_data_event(event_data_struct* elem) {
+void free_data_event(event_data_struct* elem) {
   if (elem->str1) {
-    psync_free(elem->str1);
+    psync_free((void*)elem->str1);
   }
 
   if (elem->str2) {
-    psync_free(elem->str2);
+    psync_free((void*)elem->str2);
   }
 
   psync_free(elem);
 }
 
 /**********************************************************************************************/
-void* add_elem(event_data_struct* elem, de_elem_list* list) {
-  event_data_struct* tmp_elem;
-
+void add_elem(event_data_struct* elem, de_elem_list* list) {
   pthread_mutex_lock(&data_event_mutex);
 
-  if (list->first == 0) {
+  if (list->first == NULL) {
     list->first = elem;
   }
 
-  if (list->last == 0) {
+  if (list->last == NULL) {
     list->last = elem;
   }
   else {
-    tmp_elem = (event_data_struct*)list->last;
-    tmp_elem->elem_next = elem;
+    list->last->elem_next = elem;
   }
 
   list->last = elem;
@@ -492,8 +489,8 @@ void* add_elem(event_data_struct* elem, de_elem_list* list) {
 event_data_struct* pop_elem(de_elem_list* list) {
   event_data_struct* curr_elem;
 
-  if (list->first == 0) {
-    return 0;
+  if (list->first == NULL) {
+    return NULL;
   }
 
   pthread_mutex_lock(&data_event_mutex);
@@ -501,8 +498,8 @@ event_data_struct* pop_elem(de_elem_list* list) {
   curr_elem = list->first;
 
   if (list->first == list->last) {
-    list->first = 0;
-    list->last = 0;
+    list->first = NULL;
+    list->last = NULL;
   }
   else {
     list->first = curr_elem->elem_next;
@@ -550,15 +547,13 @@ void data_event_thread(void* ptr) {
 }
 /**********************************************************************************************/
 void psync_init_data_event(void* ptr) {
-  data_event_fptr = (data_event_callback*)ptr;
+  data_event_fptr = (data_event_callback)ptr;
 
   psync_run_thread1("Data Event", data_event_thread, &data_event_elem_list);
 }
 /**********************************************************************************************/
-void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
-  event_data_struct* data;
-
-  data = psync_new(event_data_struct);
+void psync_send_data_event(int event_id, const char* str1, const char* str2, uint64_t uint1, uint64_t uint2) {
+  event_data_struct* data = psync_new(event_data_struct);
 
   data->eventid = event_id;
   if(str1)data->str1 = strdup(str1);
@@ -584,19 +579,13 @@ void psync_timed_data_event() {
 /**********************************************************************************************/
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
   debug(D_NOTICE, "Test Data event callback. eventid [%d]. String1: [%s], String2: [%s], uInt1: [%"P_PRI_U64"] uInt2: [%"P_PRI_U64"]", eventid, str1, str2, uint1, uint2);
-
-  return;
 }
 /**********************************************************************************************/
 void wait_auth_token_async(void* data) {
-  int res;
-  char* req_token;
-  wait_login_async_cb callback;
+  wait_token_cb_struct* local_data = data;
+  const wait_login_async_cb callback = (wait_login_async_cb)local_data->calb_ptr;
 
-  wait_token_cb_struct* local_data = (wait_token_cb_struct*)(data);
-  callback = (wait_login_async_cb*)local_data->calb_ptr;
-
-  res = wait_auth_token(local_data->req_id);
+  const int res = wait_auth_token(local_data->req_id);
 
   debug(D_NOTICE, "wait_auth_token_async. Result:[%d]", res);
   psync_free(local_data);

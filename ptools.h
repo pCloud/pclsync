@@ -109,7 +109,7 @@ int backend_call(const char* binapi,
   eventParams* requiredParams,
   eventParams* optionalParams,
   binresult**  resData,
-  char** err);
+   /* OUT */ char** err);
 /**********************************************************************************************************/
 char* getMACaddr(void);
 /**********************************************************************************************************/

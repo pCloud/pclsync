@@ -28,15 +28,13 @@ else
     ARCH ?= $(UNAME_P)
 
     ifeq ($(UNAME_S),Linux)
-		CFLAGS=-DP_OS_LINUX -D_FILE_OFFSET_BITS=64 -Wall -Wpointer-arith -O2 -g -fno-stack-protector -fPIC
+		CFLAGS=-DP_OS_LINUX -D_FILE_OFFSET_BITS=64 -Wall -Wpointer-arith -O2 -g -fno-stack-protector -fPIC -std=gnu99
         ifneq ($(filter x86_64 i686 i386,$(ARCH)),)
         	CFLAGS += -fomit-frame-pointer -mtune=core2
         endif
         ifneq (,$(findstring Debian,$(UNAME_V)))
         	CFLAGS += -DP_OS_DEBIAN
         endif
-        # Compiler flags to appease newer version of gcc with stricter checks
-        CFLAGS+=-std=gnu99 -Wno-error=int-conversion -Wno-error=incompatible-pointer-types
         LDFLAGS += -lfuse -lpthread -lsqlite3 -lzlib
     endif
 

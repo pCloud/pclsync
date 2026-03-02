@@ -71,5 +71,5 @@ bookmarks_list_t *do_cache_bookmarks(char** err);
 int do_remove_bookmark(const char* code, int locationid, char** err);
 int do_change_bookmark(const char* code, int locationid, const char* name, const char* description, char** err);
 
-int64_t do_psync_tree_public_link_by_ids(const char* linkname, const char* root, uint64_t* folders, int numfolders, uint64_t* files, int numfiles, char** link /*OUT*/, char** err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic);
+int64_t do_psync_tree_public_link_by_ids(const char* linkname, const char* root, const uint64_t* folders, int numfolders, const uint64_t* files, int numfiles, char** link /*OUT*/, char** err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic);
 #endif //_PUBLIC_LINKS_H
