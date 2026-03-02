@@ -1434,13 +1434,13 @@ external_status psync_status_folder(const char *path);
  *   Same structure used for listing public and upload links only comment and maxspace are set to 0 in public links list. Space parameter is filled in traffic and
  *   files in downloads.
  *
- * psync_sow_link() Lists link contents. Returns list of contents for folders and virtial folders or empty pointer and err is filled with string representation of the error.
+ * psync_sow_link() Lists link contents. Returns list of contents for folders and virtual folders or empty pointer and err is filled with string representation of the error.
  *
  * psync_delete_all_links_folder() Deletes all link for given folderid. Stops on first error and returns error msg.
  * psync_delete_all_links_file() Deletes all link for given fileid.  Stops on first error and returns error msg.
  *
- * REMINDER. You have to free the out parameters passed as pointers to the library as it reserves memory for them but does not cleans it. You will have to iterate
- * though entire entires[] array and free all codes and names and comments if not empty before feeing entire info with separate call.
+ * REMINDER. You have to free the out parameters passed as pointers to the library as it reserves memory for them but does not free it. You will have to iterate
+ * though the entire entries[] array and free all codes and names and comments if not empty before freeing entire info with separate call.
  *
  */
 
@@ -1457,7 +1457,7 @@ int psync_change_link(unsigned long long linkid, unsigned long long expire, int 
   int enableuploadforeveryone, int enableuploadforchosenusers, int disableupload, char** err);
 int64_t psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/);
 int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/);
-int psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, uint64_t maxspace, char** err /*OUT*/);
+int psync_change_upload_link(int64_t uploadlinkid, const char* comment, uint64_t expire, uint64_t maxspace, char** err /*OUT*/);
 int psync_upload_link_deleteexpire(int64_t uploadlinkid, char** err /*OUT*/);
 int psync_delete_all_links_folder(psync_folderid_t folderid, char**err);
 int psync_delete_all_links_file(psync_fileid_t fileid, char**err);

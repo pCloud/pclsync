@@ -2549,8 +2549,8 @@ static int psync_fs_unlink(const char *path){
 
   if ((fpath->flags & PSYNC_FOLDER_FLAG_BACKUP) && ret == 0) {
     //Send async event to UI to notify the user that he is deleting a backedup file.
-    debug(D_NOTICE, "Backedup file deleted in P drive. Send event. Flags: [%d], fname: [%s]", fpath->flags, fpath->name);
-    psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", NULL, NULL, NULL);
+    debug(D_NOTICE, "Backed-up file deleted in P drive. Send event. Flags: [%d], fname: [%s]", fpath->flags, fpath->name);
+    psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", 0, 0, 0);
   }
 
   if (fpath) {
@@ -2883,7 +2883,7 @@ finish:
   if ((ret == 0) && (fold_path->flags & PSYNC_FOLDER_FLAG_BACKUP) && !(fnew_path->flags & PSYNC_FOLDER_FLAG_BACKUP)) {
     debug(D_NOTICE, "Parent is Backup. Target is not. Send Event.");
 
-    psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", NULL, NULL, NULL);
+    psync_send_backup_del_event(PEVENT_BKUP_F_DEL_DRIVE, "", "", 0, 0, 0);
   }
 
   if (folder)

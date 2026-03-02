@@ -1057,7 +1057,7 @@ int do_psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
   return result;
 }
 
-int do_psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, uint64_t maxspace, char** err /*OUT*/) {
+int do_psync_change_upload_link(int64_t uploadlinkid, const char* comment, uint64_t expire, uint64_t maxspace, char** err /*OUT*/) {
   psync_socket* api;
   binresult* bres;
   uint64_t result;
