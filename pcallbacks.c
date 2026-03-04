@@ -429,7 +429,7 @@ void psync_send_eventid(psync_eventtype_t eventid){
 
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata){
 
-  debug(D_ERROR, "Send event data: eventid: [%lu, eventthreadrunning: [%d]", eventid, eventthreadrunning);
+  debug(D_ERROR, "Send event data: eventid: [%u], eventthreadrunning: [%d]", eventid, eventthreadrunning);
 
   if (eventthreadrunning){
     event_list_t *event;
@@ -535,7 +535,7 @@ void data_event_thread(void* ptr) {
       data = pop_elem(event_list);
 
       if (data) {
-        debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%llu] Uint2:[%llu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
+        debug(D_NOTICE, "Sending data event Event id: [%d] Str1: [%s], Str1: [%s], Uint1:[%"P_PRI_U64"] Uint2:[%"P_PRI_U64"]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
         data_event_fptr(data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
         free_data_event(data);
@@ -568,7 +568,7 @@ void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1,
   data->uint1 = uint1;
   data->uint2 = uint2;
 
-  debug(D_NOTICE, "Send data event: Event Id: [%d] Str1: [%s] Str2: [%s] Uint1: [%llu] Uint2: [%llu]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
+  debug(D_NOTICE, "Send data event: Event Id: [%d] Str1: [%s] Str2: [%s] Uint1: [%"P_PRI_U64"] Uint2: [%"P_PRI_U64"]", data->eventid, data->str1, data->str2, data->uint1, data->uint2);
 
   if (data_event_fptr) {
     add_elem(data, &data_event_elem_list);
@@ -583,7 +583,7 @@ void psync_timed_data_event() {
 }
 /**********************************************************************************************/
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2) {
-  debug(D_NOTICE, "Test Data event callback. eventid [%d]. String1: [%s], String2: [%s], uInt1: [%ul] uInt2: [%ul]", eventid, str1, str2, uint1, uint2);
+  debug(D_NOTICE, "Test Data event callback. eventid [%d]. String1: [%s], String2: [%s], uInt1: [%"P_PRI_U64"] uInt2: [%"P_PRI_U64"]", eventid, str1, str2, uint1, uint2);
 
   return;
 }

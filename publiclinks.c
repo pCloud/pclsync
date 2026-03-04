@@ -547,7 +547,7 @@ int64_t do_psync_tree_public_link_by_ids(const char *linkname, const char *root,
 	if (root) {
 		ids = (char *)psync_malloc(FOLDERID_ENTRY_SIZE);
 		id = psync_fsfolderid_by_path(root, 0);
-		k = sprintf(ids, "%llu",id);
+		k = sprintf(ids, "%"P_PRI_D64, id);
 		init_param_str(t + pind++, "folderid", ids);
 	}
 
@@ -556,7 +556,7 @@ int64_t do_psync_tree_public_link_by_ids(const char *linkname, const char *root,
 		idsp = ids1;
 		for (i = 0; i < numfolders; ++i) {
 			//id = psync_fsfolderid_by_path(folders[i], 0);
-			k = sprintf(idsp, "%llu", folders[i]);
+			k = sprintf(idsp, "%"P_PRI_U64, folders[i]);
 			if (unlikely(k <= 0)) break;
 			idsp[k] = ',';
 			idsp = idsp + k + 1;

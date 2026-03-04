@@ -542,11 +542,11 @@ static psync_socket *get_connected_socket(){
     current_quota=psync_find_result(res, "quota", PARAM_NUM)->num;
 	  cres = psync_check_result(res, "freequota", PARAM_NUM);
 
-    debug(D_NOTICE, "Get Connected Socket. Change current quota to: [%llu]", current_quota);
+    debug(D_NOTICE, "Get Connected Socket. Change current quota to: [%"P_PRI_U64"]", current_quota);
 
     if (cres){
 	    free_quota=cres->num;
-      debug(D_NOTICE, "Got Free Quota: [%llu]", free_quota);
+      debug(D_NOTICE, "Got Free Quota: [%"P_PRI_U64"]", free_quota);
 	  }
 
     //luserid=psync_sql_cellint("SELECT value FROM setting WHERE id='userid'", 0);
@@ -1972,7 +1972,7 @@ static void process_modifyuserinfo(const binresult *entry){
   psync_sql_bind_uint(q, 2, current_quota);
   psync_sql_run(q);
 
-  debug(D_NOTICE, "Modify User Info. Change current quota to: [%llu]", current_quota);
+  debug(D_NOTICE, "Modify User Info. Change current quota to: [%"P_PRI_U64"]", current_quota);
 
   cres = psync_check_result(res, "freequota", PARAM_NUM);
 
@@ -2853,7 +2853,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
 static void check_overquota(){
   int isover=(used_quota>=current_quota);
 
-  debug(D_NOTICE, "Check Quota: [%llu] =< Used Quota:[%llu]", current_quota, used_quota);
+  debug(D_NOTICE, "Check Quota: [%"P_PRI_U64"] =< Used Quota:[%"P_PRI_U64"]", current_quota, used_quota);
 
   if (isover!= g_is_over_quota){
     g_is_over_quota = isover;
@@ -3168,7 +3168,7 @@ static int psync_diff_check_quota(psync_socket *sock){
     }
     else {
       uq = psync_check_result(res, "usedquota", PARAM_NUM);
-      debug(D_NOTICE, "Got Used Quota: [%llu]", uq);
+      debug(D_NOTICE, "Got Used Quota: [%"P_PRI_U64"]", uq->num);
 
       if (likely_log(uq)) {
         used_quota = uq->num;
@@ -3279,7 +3279,7 @@ int initial_diff(psync_socket* sock, subscribed_ids *ids) {
     if (!psync_do_run)
       break;
 
-    debug(D_NOTICE, "Send initial diff command. DiffId: [%llu]", ids->diffid);
+    debug(D_NOTICE, "Send initial diff command. DiffId: [%"P_PRI_U64"]", ids->diffid);
     res = send_command(sock, "diff", diffparams);
 
     if (!res) {
@@ -3304,14 +3304,14 @@ int initial_diff(psync_socket* sock, subscribed_ids *ids) {
 
     if (entries->length) {
       newdiffid = psync_find_result(res, "diffid", PARAM_NUM)->num;
-      debug(D_NOTICE, "Processing diff with [%u] entries. Diff Id: [%llu] New Diff Id: [%llu]", (unsigned)entries->length, ids->diffid, newdiffid);
+      debug(D_NOTICE, "Processing diff with [%u] entries. Diff Id: [%"P_PRI_U64"] New Diff Id: [%"P_PRI_U64"]", (unsigned)entries->length, ids->diffid, newdiffid);
       ids->diffid = process_entries(entries, newdiffid);
 
       if (!psync_diff_run) {
         return 1;
       }
 
-      debug(D_NOTICE, "got diff with [%u] entries, new diffid [%lu] [%llu]", (unsigned)entries->length, (unsigned long)ids->diffid, ids->diffid);
+      debug(D_NOTICE, "got diff with [%u] entries, new diffid [%"P_PRI_U64"]", (unsigned)entries->length, ids->diffid);
     }
 
     result = entries->length;
@@ -3372,11 +3372,11 @@ static void psync_diff_thread(){
       initialdownload = 1;
       psync_recache_contacts = 1;
 
-      debug(D_NOTICE, "Unlinked DB detected. Run initial Diff. DiffId: [%llu]", ids.diffid);
+      debug(D_NOTICE, "Unlinked DB detected. Run initial Diff. DiffId: [%"P_PRI_U64"]", ids.diffid);
     }
     else {
       ids.diffid = psync_get_uint_value("diffid");
-      debug(D_NOTICE, "No unlink diff. Got Diff Id from DB: [%llu]", ids.diffid);
+      debug(D_NOTICE, "No unlink diff. Got Diff Id from DB: [%"P_PRI_U64"]", ids.diffid);
     }
 
 

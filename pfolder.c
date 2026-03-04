@@ -730,7 +730,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
       parentencrypted=(psync_get_number(row[0])&PSYNC_FOLDER_FLAG_ENCRYPTED)?1:0;
     }
     else{
-      debug(D_ERROR, "Can't find folder with id %I64u", folderid);
+      debug(D_ERROR, "Can't find folder with id %"P_PRI_U64, folderid);
       psync_sql_free_result(res);
       return NULL;
     }
@@ -751,7 +751,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
         tmp=psync_get_lstring(row[2], &namelen);
         entry.name=get_decname_for_folder(folderid, tmp, namelen);
         if (!entry.name){
-          debug(D_BUG, "Can't decrypt folder name for folderid: %I64u, parent folfderid: %I64u, cryptoerr: %d, encrypted name: %s. Skippping ...", entry.folder.folderid, folderid, psync_fsfolder_crypto_error(), tmp);
+          debug(D_BUG, "Can't decrypt folder name for folderid: %"P_PRI_U64", parent folfderid: %"P_PRI_U64", cryptoerr: %d, encrypted name: %s. Skippping ...", entry.folder.folderid, folderid, psync_fsfolder_crypto_error(), tmp);
           continue;
         }
         entry.namelen=strlen(entry.name);

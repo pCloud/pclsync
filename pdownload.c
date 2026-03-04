@@ -562,7 +562,7 @@ static int task_download_file(download_task_t *dt){
   psync_list_init(&ranges);
   tmpold=NULL;
 
-  debug(D_NOTICE, "Download file. Name: [%s],  Local folder id: [%llu]", dt->filename, dt->localfolderid);
+  debug(D_NOTICE, "Download file. Name: [%s],  Local folder id: [%"P_PRI_U64"]", dt->filename, dt->localfolderid);
 
   rt=psync_get_remote_file_checksum(dt->dwllist.fileid, serverhashhex, &serversize, &hash);
   if (unlikely_log(rt!=PSYNC_NET_OK)){
@@ -968,7 +968,7 @@ static int task_rename_file(psync_syncid_t oldsyncid, psync_syncid_t newsyncid, 
       psync_sql_bind_uint(res, 2, fsize2);
 
       if ((res) && (fsize2 == 0)) { //Fixing the case when an empty file with size 0 is renamed to an actual one with some data in it. Happens when Open Office is edited. This fix needs to be considered again.
-        debug(D_NOTICE, "Create task to download just renamed file. Old size: [%llu] New Size: [%llu]", fsize1, fsize2);
+        debug(D_NOTICE, "Create task to download just renamed file. Old size: [%"P_PRI_U64"] New Size: [%"P_PRI_U64"]", fsize1, fsize2);
         psync_sql_free_result(res);
 
         psync_task_download_file(newsyncid, fileid, newlocalfolderid, newname);
@@ -1107,7 +1107,7 @@ static void finish_async_download(void *ptr, psync_async_result_t *res){
   download_task_t *dt=(download_task_t *)ptr;
 
   if (res->error){
-    debug(D_NOTICE, "Async download error: [%lu]", res->error);
+    debug(D_NOTICE, "Async download error: [%u]", res->error);
     handle_async_error(dt, res);
   }
   else{
@@ -1178,7 +1178,7 @@ static void task_run_download_file_thread(void *ptr){
     psync_wake_download();
   }
   else{
-    debug(D_NOTICE, "File download finished. Delete list elemnt: [%lld].", dt->localfolderid);
+    debug(D_NOTICE, "File download finished. Delete list elemnt: [%"P_PRI_U64"].", dt->localfolderid);
     delete_element(dt->hash);
     delete_element(dt->localfolderid); //Try again with the file/folder id. Since the element may be in the list with both id's.
 
@@ -1526,7 +1526,7 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
 
     local_name = name;
 
-    debug(D_WARNING, "Create stuck element Folder. Local item id: [%lld], Name: [%s]", localitemid, name);
+    debug(D_WARNING, "Create stuck element Folder. Local item id: [%"P_PRI_U64"], Name: [%s]", localitemid, name);
 
     if ((type == PSYNC_DELETE_LOCAL_FILE) || (type == PSYNC_RENAME_LOCAL_FILE)) {
       item_type = STUCK_ITEM_TYPE_FILE;
@@ -1570,7 +1570,7 @@ static void download_thread(){
       taskid=psync_get_number(row[0]);
       type=psync_get_number(row[1]);
 
-      debug(D_NOTICE, "Process download task. Name: [%s]. Type: [%lu], TaskId: [%lld]  Item Id: [%llu]", psync_get_string_or_null(row[6]), type, taskid, psync_get_number(row[3]));
+      debug(D_NOTICE, "Process download task. Name: [%s]. Type: [%u], TaskId: [%"P_PRI_U64"]  Item Id: [%"P_PRI_U64"]", psync_get_string_or_null(row[6]), type, taskid, psync_get_number(row[3]));
 
       if (!download_task(taskid, type,
                          psync_get_number_or_null(row[2]),
