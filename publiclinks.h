@@ -40,7 +40,7 @@ plink_info_list_t *do_psync_list_links(char **err /*OUT*/);
 int do_psync_delete_link(int64_t linkid, char **err /*OUT*/);
 int64_t do_psync_upload_link(const char *path, const char *comment, char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxspace, int maxfiles);
 int do_psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/);
-int do_psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, uint64_t maxspace, char** err /*OUT*/);
+int do_psync_change_upload_link(int64_t uploadlinkid, const char* comment, uint64_t expire, uint64_t maxspace, char** err /*OUT*/);
 int do_psync_upload_link_deleteexpire(int64_t uploadlinkid, char** err /*OUT*/);
 int do_psync_change_link(unsigned long long linkid, unsigned long long expire, int delete_expire,
   const char* linkpassword, int delete_password, unsigned long long maxtraffic, unsigned long long maxdownloads,

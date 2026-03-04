@@ -2546,7 +2546,7 @@ int psync_delete_upload_link(int64_t uploadlinkid, char **err /*OUT*/) {
   return do_psync_delete_upload_link(uploadlinkid, err);
 }
 
-int psync_change_upload_link(int64_t uploadlinkid, const char* comment, const char* expire, uint64_t maxspace, char** err /*OUT*/) {
+int psync_change_upload_link(int64_t uploadlinkid, const char* comment, uint64_t expire, uint64_t maxspace, char** err /*OUT*/) {
   return do_psync_change_upload_link(uploadlinkid, comment, expire, maxspace, err);
 }
 
