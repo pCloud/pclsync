@@ -1269,7 +1269,6 @@ int do_get_crypto_price(char** currency) {
 int call_ebackend(const char* method, binparam* paramas, int param_cnt, binresult** resData) {
   binresult*    res;
   psync_socket* sock;
-  size_t resLen;
 
   sock = psync_api_connect(PSYNC_API_HOST, psync_setting_get_bool(0));
 
@@ -1289,8 +1288,7 @@ int call_ebackend(const char* method, binparam* paramas, int param_cnt, binresul
     return 6002;//Backend code for timeout
   }
 
-  *resData = (binresult*)malloc(res->length * sizeof(binresult));
-  memcpy(*resData, res, (res->length * sizeof(binresult)));
+  *resData = res;
 
   return 0;
 }
@@ -1298,7 +1296,6 @@ int call_ebackend(const char* method, binparam* paramas, int param_cnt, binresul
 int call_ebackend_v2(const char* method, binparam* paramas, int param_cnt, binresult** resData, int timeout) {
   binresult* res;
   psync_socket* sock;
-  size_t resLen;
 
   sock = psync_api_connect(PSYNC_API_HOST, psync_setting_get_bool(0));
 
@@ -1318,8 +1315,7 @@ int call_ebackend_v2(const char* method, binparam* paramas, int param_cnt, binre
     return 6002;//Backend code for timeout
   }
 
-  *resData = (binresult*)malloc(res->length * sizeof(binresult));
-  memcpy(*resData, res, (res->length * sizeof(binresult)));
+  *resData = res;
 
   return 0;
 }
@@ -1327,7 +1323,6 @@ int call_ebackend_v2(const char* method, binparam* paramas, int param_cnt, binre
 int get_login_req_id(char** reqId) {
   int res = -1;
   uint64_t result;
-  char* expireTime;
   binresult* resData = NULL;
 
   res = call_ebackend(WEB_LOGIN_GET_REQ_ID, NULL, 0, &resData);
@@ -1340,14 +1335,12 @@ int get_login_req_id(char** reqId) {
 
   if (result != 0) {
     debug(D_ERROR, "get_login_req_id. Backend returned error: [%"P_PRI_U64"]", result);
-
-    return result;
+    psync_free(resData);
+    return (int)result;
   }
 
   *reqId = psync_strdup(psync_find_result(resData, "request_id", PARAM_STR)->str);
   debug(D_NOTICE, "get_login_req_id. Request Id: [%s]", *reqId);
-
-  expireTime = psync_strdup(psync_find_result(resData, "expires", PARAM_STR)->str);
 
   if (resData) {
     psync_free(resData);
@@ -1357,7 +1350,7 @@ int get_login_req_id(char** reqId) {
 }
 /***********************************************************************/
 int wait_auth_token(char* request_id) {
-  int res, loc_id, last_loc_id = 0;
+  int res, loc_id;
   uint64_t result, currentuserid, newuserid = 666, rememberme = 0;
   char* token;
   binresult* resData = NULL;
@@ -1380,8 +1373,8 @@ int wait_auth_token(char* request_id) {
 
   if (result != 0) {
     debug(D_NOTICE, "Backend returned error: [%"P_PRI_U64"]", result);
-
-    return result;
+    psync_free(resData);
+    return (int)result;
   }
 
   token = psync_strdup(psync_find_result(resData, EPARAM_TOKEN, PARAM_STR)->str);
@@ -1413,8 +1406,6 @@ int wait_auth_token(char* request_id) {
     }
   }
 
-  last_loc_id = psync_get_uint_value("location_id");
-
   psync_set_int_value("last_logged_location_id", loc_id);
   psync_set_int_value("location_id", loc_id);
 
@@ -1435,6 +1426,7 @@ int wait_auth_token(char* request_id) {
   }
 
   psync_set_auth(token, rememberme);
+  psync_free(token);
 
   debug(D_CRITICAL, "Auth Token Set To: [%s] Current UserId: [%"P_PRI_U64"] New UserId: [%"P_PRI_U64"]", psync_my_auth, currentuserid, newuserid);
 
