@@ -125,6 +125,13 @@ install: $(BUILD_DIR)/$(LIB_A) install-headers | $(BUILD_DIR)/lib
 install-fs: fs install-headers | $(BUILD_DIR)/lib
 	cp $(BUILD_DIR)/$(LIB_A) $(BUILD_DIR)/lib/
 
+check:
+	$(MAKE) -C tests check
+
+test: check
+
 clean:
 	rm -rf $(BUILD_DIR) ./lib/poverlay_linux/*.o ./lib/poverlay_linux/overlay_client
+
+.PHONY: check test
 
