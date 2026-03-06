@@ -31,7 +31,7 @@
 #define PSYNC_RW_OPT_PREFER_READ 1U
 #define PSYNC_RW_OPT_RESERVED    2U
 
-#if defined(_WIN64) || defined(__x86_64__)
+#if defined(_WIN64) || defined(__x86_64__) || defined(__aarch64__) || defined(__LP64__)
 typedef uint32_t uint_halfptr_t;
 #else
 typedef uint16_t uint_halfptr_t;
