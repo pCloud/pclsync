@@ -516,7 +516,7 @@ int64_t do_psync_tree_public_link(const char *linkname, const char *root, char *
   return result;
 }
 
-int64_t do_psync_tree_public_link_by_ids(const char *linkname, const char *root, uint64_t *folders, int numfolders, uint64_t *files, int numfiles,
+int64_t do_psync_tree_public_link_by_ids(const char *linkname, const char *root, const uint64_t *folders, int numfolders, const uint64_t *files, int numfiles,
 	char **link /*OUT*/, char **err /*OUT*/, uint64_t expire, int maxdownloads, int maxtraffic) {
 	psync_socket *api;
 	binresult *bres;

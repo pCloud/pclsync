@@ -122,4 +122,5 @@ const binresult *psync_do_find_result(const binresult *res, const char *name, ui
 const binresult *psync_do_check_result(const binresult *res, const char *name, uint32_t type, const char *file, const char *function, int unsigned line)  PSYNC_NONNULL(2) PSYNC_PURE;
 const binresult *psync_do_get_result(const binresult *res, const char *name, const char *file, const char *function, int unsigned line) PSYNC_NONNULL(2) PSYNC_PURE;
 void psync_do_dump_binresult(const binresult *res, const char *file, const char *function, int unsigned line);
+binresult *binresult_deep_copy(const binresult *src);
 #endif

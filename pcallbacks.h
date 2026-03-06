@@ -31,7 +31,7 @@
 #include "psynclib.h"
 
 #if defined(P_OS_LINUX)
-typedef void(/*_cdecl*/ *data_event_callback)(int eventId, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
+typedef void(/*_cdecl*/ *data_event_callback)(int eventId, const char* str1, const char* str2, uint64_t uint1, uint64_t uint2);
 
 typedef void(/*_cdecl*/ *wait_login_async_cb)(int result);
 #else
@@ -49,19 +49,21 @@ void psync_send_event_by_path(psync_eventtype_t eventid, psync_syncid_t syncid, 
 void psync_send_eventid(psync_eventtype_t eventid);
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata);
 
-typedef struct {
+// Forward delcaration to enable self-referencing below.
+typedef struct event_data_struct event_data_struct;
+struct event_data_struct {
   int eventid;
   const char* str1;
   const char* str2;
   uint64_t   uint1;
   uint64_t   uint2;
 
-  uint64_t elem_next;
-} event_data_struct;
+  event_data_struct* elem_next;
+};
 
 typedef struct _de_elem_list {
-  uint64_t first;
-  uint64_t last;
+  event_data_struct* first;
+  event_data_struct* last;
 } de_elem_list;
 
 //Used for asynchronous web login call
@@ -72,9 +74,9 @@ typedef struct {
 
 void psync_init_data_event(void* ptr);
 
-void* free_data_event(event_data_struct* elem);
+void free_data_event(event_data_struct* elem);
 
-void psync_send_data_event(int event_id, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
+void psync_send_data_event(int event_id, const char* str1, const char* str2, uint64_t uint1, uint64_t uint2);
 
 void psync_data_event_test(int eventid, char* str1, char* str2, uint64_t uint1, uint64_t uint2);
 

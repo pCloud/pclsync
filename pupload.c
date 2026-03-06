@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2013 Anton Titov.
+/* Copyright (c) 2013 Anton Titov.
  * Copyright (c) 2013 pCloud Ltd.
  * All rights reserved.
  *
@@ -1831,16 +1831,6 @@ static int task_run_uploadfile(uint64_t taskid, psync_syncid_t syncid, psync_fol
   }
   psync_sql_run_free(res);
 
-  res = psync_sql_query("SELECT fname, fpath"
-                        "  FROM upload_tasks"
-                        " WHERE id = ?");
-
-  psync_sql_bind_uint(res, 1, taskid);
-  
-  row = psync_sql_fetch_row(res);
-
-  psync_sql_free_result(res);
-
   len=strlen(filename);
   ut=(upload_task_t *)psync_malloc(offsetof(upload_task_t, filename)+len+1);
   ut->upllist.taskid=taskid;
@@ -2132,7 +2122,7 @@ int upload_logs(char* filename, char* fPath) {
   uint64_t bw, result, fsize;
   size_t rd;
   ssize_t rrd;
-  FILE* fd;
+  psync_file_t fd;
   psync_stat_t st;
   int ret = 0;
 

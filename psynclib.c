@@ -2522,7 +2522,7 @@ int64_t psync_tree_public_link(const char *linkname, const char *root, char **fo
   return do_psync_tree_public_link(linkname, root, folders, numfolders, files, numfiles, link, err,  0, 0, 0);
 }
 
-int64_t psync_tree_public_link_by_ids(const char *linkname, const char *root, unsigned long long *folders, int numfolders, unsigned long long *files, int numfiles, char **link /*OUT*/, char **err /*OUT*/) {
+int64_t psync_tree_public_link_by_ids(const char *linkname, const char *root, const uint64_t *folders, int numfolders, const uint64_t *files, int numfiles, char **link /*OUT*/, char **err /*OUT*/) {
   return do_psync_tree_public_link_by_ids(linkname, root, folders, numfolders, files, numfiles, link, err, 0, 0, 0);
 }
 
@@ -3127,40 +3127,30 @@ char* get_pc_name() {
 }
 /***********************************************************************************************************************************************/
 void psync_async_delete_sync(void* ptr) {
-  psync_syncid_t syncId = (psync_syncid_t*)ptr;
-  int res;
-
-  res = psync_delete_sync(syncId);
+  const psync_syncid_t syncId = *(psync_syncid_t*)ptr;
+  const int res = psync_delete_sync(syncId);
 
   debug(D_NOTICE, "Backup stopped on the Web.");
-
   if (res == 0) {
-    psync_send_data_event(PEVENT_BACKUP_STOP, "", "", NULL, NULL);
+    psync_send_data_event(PEVENT_BACKUP_STOP, "", "", 0, 0);
   }
+  psync_free(ptr);
 }
 /***********************************************************************************************************************************************/
 void psync_async_ui_callback(void* ptr) {
-  int eventId = (int*)ptr;
-  time_t currTime = psync_time();
+  const int eventId = *(int*)ptr;
+  const time_t currTime = psync_time();
 
-  if (((currTime - lastBupDelEventTime) > bupNotifDelay) || (lastBupDelEventTime == 0)) {
-
+  if (currTime - lastBupDelEventTime > bupNotifDelay || lastBupDelEventTime == 0) {
     psync_send_eventid(eventId);
-
     lastBupDelEventTime = currTime;
   }
 }
 /***********************************************************************************************************************************************/
-int psync_delete_sync_by_folderid(psync_folderid_t fId) {
-  psync_sql_res* sqlRes;
-  psync_uint_row row;
-
-  psync_syncid_t* syncId;
-  psync_syncid_t* syncIdT;
-
-  sqlRes = psync_sql_query_nolock("SELECT id FROM syncfolder WHERE folderid = ?");
+int psync_delete_sync_by_folderid(const psync_folderid_t fId) {
+  psync_sql_res* sqlRes = psync_sql_query_nolock("SELECT id FROM syncfolder WHERE folderid = ?");
   psync_sql_bind_uint(sqlRes, 1, fId);
-  row = psync_sql_fetch_rowint(sqlRes);
+  const psync_uint_row row = psync_sql_fetch_rowint(sqlRes);
 
   if (unlikely(!row)) {
     debug(D_ERROR, "Sync to delete not found!");
@@ -3169,12 +3159,11 @@ int psync_delete_sync_by_folderid(psync_folderid_t fId) {
     return -1;
   }
 
-  syncId = row[0];
-
+  const psync_syncid_t syncId = row[0];
   psync_sql_free_result(sqlRes);
 
-  syncIdT = psync_new(psync_syncid_t);
-  syncIdT = syncId;
+  psync_syncid_t* syncIdT = psync_new(psync_syncid_t);
+  *syncIdT = syncId;
 
   psync_run_thread1("psync_async_sync_delete", psync_async_delete_sync, syncIdT);
 
@@ -3221,7 +3210,7 @@ void psync_send_backup_del_event(int event_id, char* path, char* name, uint8_t i
       path = strdup(STUCK_ITEM_UNKNOWN_PATH);
     }
 
-    psync_send_data_event(event_id, path, name, is_folder, NULL);
+    psync_send_data_event(event_id, path, name, is_folder, 0);
 
     lastBupDelEventTime = currTime;
   }
@@ -3455,15 +3444,22 @@ int psync_wait_auth_token_async(char* request_id, void* callb_ptr) {
   debug(D_NOTICE, "Async call done.");
 }
 /******************************************************************************************************************/
+
+
+static void uploadLogsToDriveThread() {
+  uploadLogsToDrive();
+}
+
 int psync_uploadLogsAsync() {
   debug(D_NOTICE, "Upload logs. Start.");
 
-  psync_run_thread1("Upload Logs", uploadLogsToDrive, NULL);
+  psync_run_thread("Upload Logs", uploadLogsToDriveThread);
 
   debug(D_NOTICE, "Upload logs. done.");
 
   return 0;
 }
+
 /******************************************************************************************************************/
 int deleteLogFiles() {
   return deleteLogs();
@@ -3545,21 +3541,17 @@ void psync_cancel_uptasks() {
 /******************************************************************************************************************/
 int psync_get_filename_by_id(psync_fileid_t fileId, char** filename) {
   psync_sql_res* res = NULL;
-  psync_uint_row row;
-  uint64_t result;
 
   if (fileId <= 0) {
-    debug(D_NOTICE, "Invalid FileId Prvided: [%"P_PRI_U64"]", fileId);
-
+    debug(D_NOTICE, "Invalid FileId Provided: [%"P_PRI_U64"]", fileId);
     return 1;
   }
 
   res = psync_sql_query_rdlock("SELECT name FROM file WHERE id = ?;");
   psync_sql_bind_uint(res, 1, fileId);
-
-  if ((row = psync_sql_fetch_rowstr(res))) {
+  const psync_str_row row = psync_sql_fetch_rowstr(res);
+  if (row != NULL) {
     *filename = psync_strdup(row[0]);
-
     debug(D_NOTICE, "Got filename: [%s]", *filename);
   }
   else {
