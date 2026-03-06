@@ -1395,7 +1395,7 @@ int wait_auth_token(char* request_id) {
 
   currentuserid = psync_get_uint_value("userid");
 
-  debug(D_CRITICAL, "Check Current and New User Id Current UserId: [%"P_PRI_U64"] New UserId: [%"P_PRI_U64"]", currentuserid, newuserid);
+  debug(D_NOTICE, "Check Current and New User Id Current UserId: [%"P_PRI_U64"] New UserId: [%"P_PRI_U64"]", currentuserid, newuserid);
 
   if (currentuserid) {
     if (currentuserid != newuserid) {
@@ -1427,12 +1427,16 @@ int wait_auth_token(char* request_id) {
     psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));
   }
 
-  psync_set_auth(token, rememberme);
+  psync_set_auth(token, (int)rememberme);
   psync_free(token);
 
-  debug(D_CRITICAL, "Auth Token Set To: [%s] Current UserId: [%"P_PRI_U64"] New UserId: [%"P_PRI_U64"]", psync_my_auth, currentuserid, newuserid);
+  if (IS_DEBUG){
+    debug(D_NOTICE, "Auth Token Set To: [%s] Current UserId: [%"P_PRI_U64"] New UserId: [%"P_PRI_U64"]", psync_my_auth, currentuserid, newuserid);
+  } else {
+    debug(D_NOTICE, "Auth Token Set. Current UserId: [%"P_PRI_U64"] New UserId: [%"P_PRI_U64"]", currentuserid, newuserid);
+  }
 
-  return result;
+  return (int)result;
 }
 /**********************************************************************/
 int deleteLogs() {
