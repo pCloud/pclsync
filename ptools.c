@@ -7,6 +7,7 @@
 #include "ptools.h"
 #include "psettings.h"
 #include "plibs.h"
+#include "papi.h"
 #include "string.h"
 #include "stdlib.h"
 #include "pnetlibs.h"
@@ -390,14 +391,15 @@ int backend_call(const char*  binapi,
             result, *err);
     }
   } else {
-    if (strlen(payloadName) > 0) {
+    if (resData && strlen(payloadName) > 0) {
       const binresult* payload = psync_find_result(res, payloadName, PARAM_HASH);
-      *resData = (binresult*)psync_malloc(payload->length * sizeof(binresult));
-      if (*resData) {
-        memcpy(*resData, payload, payload->length * sizeof(binresult));
+      binresult* payloadCopy = binresult_deep_copy(payload);
+      if (payloadCopy) {
+        *resData = payloadCopy;
       } else {
-        if (err)
+        if (err) {
           *err = psync_strdup("Failed to allocate memory.");
+        }
         psync_free(res);
         return -1;
       }

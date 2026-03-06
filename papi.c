@@ -366,6 +366,90 @@ static binresult *do_parse_result(unsigned char **restrict indata, unsigned char
   return NULL;
 }
 
+#define ALIGN_UP(len) ((((len) + ALIGN_BYTES) / ALIGN_BYTES) * ALIGN_BYTES)
+
+static size_t binresult_calc_size(const binresult *src) {
+  uint32_t i;
+  size_t size;
+  switch (src->type) {
+  case PARAM_STR:
+    return offsetof(binresult, str) + ALIGN_UP(src->length + 1);
+  case PARAM_NUM:
+  case PARAM_BOOL:
+  case PARAM_DATA:
+    return sizeof(binresult);
+  case PARAM_ARRAY:
+    size = sizeof(binresult) + src->length * sizeof(binresult *);
+    for (i = 0; i < src->length; i++)
+      size += binresult_calc_size(src->array[i]);
+    return size;
+  case PARAM_HASH:
+    size = sizeof(binresult) + src->length * sizeof(hashpair);
+    for (i = 0; i < src->length; i++) {
+      size += strlen(src->hash[i].key) + 1;
+      size += binresult_calc_size(src->hash[i].value);
+    }
+    return size;
+  default:
+    return 0;
+  }
+}
+
+static binresult *binresult_do_copy(const binresult *src, unsigned char **out) {
+  binresult *dst = (binresult *)(*out);
+  uint32_t i;
+  switch (src->type) {
+  case PARAM_STR:
+    *out += offsetof(binresult, str) + ALIGN_UP(src->length + 1);
+    dst->type = PARAM_STR;
+    dst->length = src->length;
+    memcpy((char *)dst->str, src->str, src->length + 1);
+    return dst;
+  case PARAM_NUM:
+  case PARAM_BOOL:
+  case PARAM_DATA:
+    *out += sizeof(binresult);
+    dst->type = src->type;
+    dst->length = src->length;
+    dst->num = src->num;
+    return dst;
+  case PARAM_ARRAY:
+    *out += sizeof(binresult);
+    dst->type = PARAM_ARRAY;
+    dst->length = src->length;
+    dst->array = (struct _binresult **)(*out);
+    *out += src->length * sizeof(binresult *);
+    for (i = 0; i < src->length; i++)
+      dst->array[i] = binresult_do_copy(src->array[i], out);
+    return dst;
+  case PARAM_HASH:
+    *out += sizeof(binresult);
+    dst->type = PARAM_HASH;
+    dst->length = src->length;
+    dst->hash = (struct _hashpair *)(*out);
+    *out += src->length * sizeof(hashpair);
+    for (i = 0; i < src->length; i++) {
+      size_t keylen = strlen(src->hash[i].key) + 1;
+      dst->hash[i].key = (const char *)(*out);
+      memcpy(*out, src->hash[i].key, keylen);
+      *out += keylen;
+      dst->hash[i].value = binresult_do_copy(src->hash[i].value, out);
+    }
+    return dst;
+  default:
+    return NULL;
+  }
+}
+
+binresult *binresult_deep_copy(const binresult *src) {
+  if (!src)
+    return NULL;
+  size_t size = binresult_calc_size(src);
+  unsigned char *buf = psync_new_cnt(unsigned char, size);
+  unsigned char *out = buf;
+  return binresult_do_copy(src, &out);
+}
+
 static binresult *parse_result(unsigned char *data, size_t datalen){
   unsigned char *datac;
   binresult **strings;
