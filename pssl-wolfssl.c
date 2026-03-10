@@ -777,7 +777,7 @@ psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa,
 SSE2FUNC void psync_aes256_encode_block_hw(psync_aes256_encoder enc, const unsigned char *src, unsigned char *dst) {
   asm("movdqu (%0), %%xmm0\n"
       "lea 16(%0), %0\n"
-      "movdqa (%1), %%xmm1\n"
+      "movdqu (%1), %%xmm1\n"
       "dec %3\n"
       "pxor %%xmm0, %%xmm1\n"
       "movdqu (%0), %%xmm0\n"
@@ -788,7 +788,7 @@ SSE2FUNC void psync_aes256_encode_block_hw(psync_aes256_encoder enc, const unsig
       "movdqu (%0), %%xmm0\n"
       "jnz 1b\n"
       AESENCLAST xmm0_xmm1 "\n"
-      "movdqa %%xmm1, (%2)\n"
+      "movdqu %%xmm1, (%2)\n"
       :
       : "r" (enc->key), "r" (src), "r" (dst), "r" (enc->rounds)
       : "memory", "cc", "xmm0", "xmm1"
@@ -798,7 +798,7 @@ SSE2FUNC void psync_aes256_encode_block_hw(psync_aes256_encoder enc, const unsig
 SSE2FUNC void psync_aes256_decode_block_hw(psync_aes256_decoder enc, const unsigned char *src, unsigned char *dst) {
   asm("movdqu (%0), %%xmm0\n"
       "lea 16(%0), %0\n"
-      "movdqa (%1), %%xmm1\n"
+      "movdqu (%1), %%xmm1\n"
       "dec %3\n"
       "pxor %%xmm0, %%xmm1\n"
       "movdqu (%0), %%xmm0\n"
@@ -809,7 +809,7 @@ SSE2FUNC void psync_aes256_decode_block_hw(psync_aes256_decoder enc, const unsig
       "movdqu (%0), %%xmm0\n"
       "jnz 1b\n"
       AESDECLAST xmm0_xmm1 "\n"
-      "movdqa %%xmm1, (%2)\n"
+      "movdqu %%xmm1, (%2)\n"
       :
       : "r" (enc->key), "r" (src), "r" (dst), "r" (enc->rounds)
       : "memory", "cc", "xmm0", "xmm1"
@@ -819,8 +819,8 @@ SSE2FUNC void psync_aes256_decode_block_hw(psync_aes256_decoder enc, const unsig
 SSE2FUNC void psync_aes256_encode_2blocks_consec_hw(psync_aes256_encoder enc, const unsigned char *src, unsigned char *dst) {
   asm("movdqu (%0), %%xmm0\n"
       "lea 16(%0), %0\n"
-      "movdqa (%1), %%xmm1\n"
-      "movdqa 16(%1), %%xmm2\n"
+      "movdqu (%1), %%xmm1\n"
+      "movdqu 16(%1), %%xmm2\n"
       "dec %3\n"
       "pxor %%xmm0, %%xmm1\n"
       "pxor %%xmm0, %%xmm2\n"
@@ -834,8 +834,8 @@ SSE2FUNC void psync_aes256_encode_2blocks_consec_hw(psync_aes256_encoder enc, co
       "jnz 1b\n"
       AESENCLAST xmm0_xmm1 "\n"
       AESENCLAST xmm0_xmm2 "\n"
-      "movdqa %%xmm1, (%2)\n"
-      "movdqa %%xmm2, 16(%2)\n"
+      "movdqu %%xmm1, (%2)\n"
+      "movdqu %%xmm2, 16(%2)\n"
       :
       : "r" (enc->key), "r" (src), "r" (dst), "r" (enc->rounds)
       : "memory", "cc", "xmm0", "xmm1", "xmm2"
@@ -845,8 +845,8 @@ SSE2FUNC void psync_aes256_encode_2blocks_consec_hw(psync_aes256_encoder enc, co
 SSE2FUNC void psync_aes256_decode_2blocks_consec_hw(psync_aes256_decoder enc, const unsigned char *src, unsigned char *dst) {
   asm("movdqu (%0), %%xmm0\n"
       "lea 16(%0), %0\n"
-      "movdqa (%1), %%xmm1\n"
-      "movdqa 16(%1), %%xmm2\n"
+      "movdqu (%1), %%xmm1\n"
+      "movdqu 16(%1), %%xmm2\n"
       "dec %3\n"
       "pxor %%xmm0, %%xmm1\n"
       "pxor %%xmm0, %%xmm2\n"
@@ -860,8 +860,8 @@ SSE2FUNC void psync_aes256_decode_2blocks_consec_hw(psync_aes256_decoder enc, co
       "jnz 1b\n"
       AESDECLAST xmm0_xmm1 "\n"
       AESDECLAST xmm0_xmm2 "\n"
-      "movdqa %%xmm1, (%2)\n"
-      "movdqa %%xmm2, 16(%2)\n"
+      "movdqu %%xmm1, (%2)\n"
+      "movdqu %%xmm2, 16(%2)\n"
       :
       : "r" (enc->key), "r" (src), "r" (dst), "r" (enc->rounds)
       : "memory", "cc", "xmm0", "xmm1", "xmm2"
@@ -872,10 +872,10 @@ SSE2FUNC void psync_aes256_decode_4blocks_consec_xor_hw(psync_aes256_decoder enc
                                                         unsigned char *dst, unsigned char *bxor) {
   asm("movdqu (%0), %%xmm0\n"
       "lea 16(%0), %0\n"
-      "movdqa (%1), %%xmm1\n"
-      "movdqa 16(%1), %%xmm2\n"
-      "movdqa 32(%1), %%xmm3\n"
-      "movdqa 48(%1), %%xmm4\n"
+      "movdqu (%1), %%xmm1\n"
+      "movdqu 16(%1), %%xmm2\n"
+      "movdqu 32(%1), %%xmm3\n"
+      "movdqu 48(%1), %%xmm4\n"
       "dec %4\n"
       "pxor %%xmm0, %%xmm1\n"
       "pxor %%xmm0, %%xmm2\n"
@@ -895,18 +895,18 @@ SSE2FUNC void psync_aes256_decode_4blocks_consec_xor_hw(psync_aes256_decoder enc
       AESDECLAST xmm0_xmm2 "\n"
       AESDECLAST xmm0_xmm3 "\n"
       AESDECLAST xmm0_xmm4 "\n"
-      "movdqa (%3), %%xmm0\n"
+      "movdqu (%3), %%xmm0\n"
       "pxor %%xmm0, %%xmm1\n"
-      "movdqa 16(%3), %%xmm0\n"
+      "movdqu 16(%3), %%xmm0\n"
       "pxor %%xmm0, %%xmm2\n"
-      "movdqa 32(%3), %%xmm0\n"
+      "movdqu 32(%3), %%xmm0\n"
       "pxor %%xmm0, %%xmm3\n"
-      "movdqa 48(%3), %%xmm0\n"
+      "movdqu 48(%3), %%xmm0\n"
       "pxor %%xmm0, %%xmm4\n"
-      "movdqa %%xmm1, (%2)\n"
-      "movdqa %%xmm2, 16(%2)\n"
-      "movdqa %%xmm3, 32(%2)\n"
-      "movdqa %%xmm4, 48(%2)\n"
+      "movdqu %%xmm1, (%2)\n"
+      "movdqu %%xmm2, 16(%2)\n"
+      "movdqu %%xmm3, 32(%2)\n"
+      "movdqu %%xmm4, 48(%2)\n"
       :
       : "r" (enc->key), "r" (src), "r" (dst), "r" (bxor), "r" (enc->rounds)
       : "memory", "cc", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4"
@@ -920,10 +920,10 @@ void psync_aes256_encode_block_hw(psync_aes256_encoder enc, const unsigned char 
   __m128i *key_schedule = (__m128i *)enc->key;
   int i;
 
-  block = _mm_xor_si128(block, key_schedule[0]);
+  block = _mm_xor_si128(block, _mm_loadu_si128(key_schedule[0]));
   for (i = 1; i < enc->rounds; i++)
-    block = _mm_aesenc_si128(block, key_schedule[i]);
-  block = _mm_aesenclast_si128(block, key_schedule[enc->rounds]);
+    block = _mm_aesenc_si128(block, _mm_loadu_si128(key_schedule[i]));
+  block = _mm_aesenclast_si128(block, _mm_loadu_si128(key_schedule[enc->rounds]));
 
   _mm_storeu_si128((__m128i *)dst, block);
 }
@@ -933,10 +933,10 @@ void psync_aes256_decode_block_hw(psync_aes256_decoder enc, const unsigned char 
   __m128i *key_schedule = (__m128i *)enc->key;
   int i;
 
-  block = _mm_xor_si128(block, key_schedule[0]);
+  block = _mm_xor_si128(block, _mm_loadu_si128(key_schedule[0]));
   for (i = 1; i < enc->rounds; i++)
-    block = _mm_aesdec_si128(block, key_schedule[i]);
-  block = _mm_aesdeclast_si128(block, key_schedule[enc->rounds]);
+    block = _mm_aesdec_si128(block, _mm_loadu_si128(key_schedule[i]));
+  block = _mm_aesdeclast_si128(block, _mm_loadu_si128(key_schedule[enc->rounds]));
 
   _mm_storeu_si128((__m128i *)dst, block);
 }
@@ -944,19 +944,23 @@ void psync_aes256_decode_block_hw(psync_aes256_decoder enc, const unsigned char 
 void psync_aes256_encode_2blocks_consec_hw(psync_aes256_encoder enc, const unsigned char *src, unsigned char *dst) {
   __m128i block1 = _mm_loadu_si128((const __m128i *)src);
   __m128i block2 = _mm_loadu_si128((const __m128i *)(src + 16));
+  __m128i ks;
   __m128i *key_schedule = (__m128i *)enc->key;
   int i;
 
-  block1 = _mm_xor_si128(block1, key_schedule[0]);
-  block2 = _mm_xor_si128(block2, key_schedule[0]);
+  __m128i ks=_mm_loadu_si128(key_schedule[0]);
+  block1 = _mm_xor_si128(block1, ks);
+  block2 = _mm_xor_si128(block2, ks);
 
   for (i = 1; i < enc->rounds; i++) {
-    block1 = _mm_aesenc_si128(block1, key_schedule[i]);
-    block2 = _mm_aesenc_si128(block2, key_schedule[i]);
+    ks=_mm_loadu_si128(key_schedule[i]);
+    block1 = _mm_aesenc_si128(block1, ks);
+    block2 = _mm_aesenc_si128(block2, ks);
   }
 
-  block1 = _mm_aesenclast_si128(block1, key_schedule[enc->rounds]);
-  block2 = _mm_aesenclast_si128(block2, key_schedule[enc->rounds]);
+  ks=_mm_loadu_si128(key_schedule[enc->rounds]);
+  block1 = _mm_aesenclast_si128(block1, ks);
+  block2 = _mm_aesenclast_si128(block2, ks);
 
   _mm_storeu_si128((__m128i *)dst, block1);
   _mm_storeu_si128((__m128i *)(dst + 16), block2);
@@ -968,16 +972,19 @@ void psync_aes256_decode_2blocks_consec_hw(psync_aes256_decoder enc, const unsig
   __m128i *key_schedule = (__m128i *)enc->key;
   int i;
 
-  block1 = _mm_xor_si128(block1, key_schedule[0]);
-  block2 = _mm_xor_si128(block2, key_schedule[0]);
+  __m128i ks=_mm_loadu_si128(key_schedule[0]);
+  block1 = _mm_xor_si128(block1, ks);
+  block2 = _mm_xor_si128(block2, ks);
 
   for (i = 1; i < enc->rounds; i++) {
-    block1 = _mm_aesdec_si128(block1, key_schedule[i]);
-    block2 = _mm_aesdec_si128(block2, key_schedule[i]);
+    ks=_mm_loadu_si128(key_schedule[i]);
+    block1 = _mm_aesdec_si128(block1, ks);
+    block2 = _mm_aesdec_si128(block2, ks);
   }
 
-  block1 = _mm_aesdeclast_si128(block1, key_schedule[enc->rounds]);
-  block2 = _mm_aesdeclast_si128(block2, key_schedule[enc->rounds]);
+  ks=_mm_loadu_si128(key_schedule[enc->rounds]);
+  block1 = _mm_aesdeclast_si128(block1, ks);
+  block2 = _mm_aesdeclast_si128(block2, ks);
 
   _mm_storeu_si128((__m128i *)dst, block1);
   _mm_storeu_si128((__m128i *)(dst + 16), block2);
@@ -992,22 +999,25 @@ void psync_aes256_decode_4blocks_consec_xor_hw(psync_aes256_decoder enc, const u
   __m128i *key_schedule = (__m128i *)enc->key;
   int i;
 
-  block1 = _mm_xor_si128(block1, key_schedule[0]);
-  block2 = _mm_xor_si128(block2, key_schedule[0]);
-  block3 = _mm_xor_si128(block3, key_schedule[0]);
-  block4 = _mm_xor_si128(block4, key_schedule[0]);
+  __m128i ks=_mm_loadu_si128(key_schedule[0]);
+  block1 = _mm_xor_si128(block1, ks);
+  block2 = _mm_xor_si128(block2, ks);
+  block3 = _mm_xor_si128(block3, ks);
+  block4 = _mm_xor_si128(block4, ks);
 
   for (i = 1; i < enc->rounds; i++) {
-    block1 = _mm_aesdec_si128(block1, key_schedule[i]);
-    block2 = _mm_aesdec_si128(block2, key_schedule[i]);
-    block3 = _mm_aesdec_si128(block3, key_schedule[i]);
-    block4 = _mm_aesdec_si128(block4, key_schedule[i]);
+    ks=_mm_loadu_si128(key_schedule[i]);
+    block1 = _mm_aesdec_si128(block1, ks);
+    block2 = _mm_aesdec_si128(block2, ks);
+    block3 = _mm_aesdec_si128(block3, ks);
+    block4 = _mm_aesdec_si128(block4, ks);
   }
 
-  block1 = _mm_aesdeclast_si128(block1, key_schedule[enc->rounds]);
-  block2 = _mm_aesdeclast_si128(block2, key_schedule[enc->rounds]);
-  block3 = _mm_aesdeclast_si128(block3, key_schedule[enc->rounds]);
-  block4 = _mm_aesdeclast_si128(block4, key_schedule[enc->rounds]);
+  ks=_mm_loadu_si128(key_schedule[enc->rounds]);
+  block1 = _mm_aesdeclast_si128(block1, ks);
+  block2 = _mm_aesdeclast_si128(block2, ks);
+  block3 = _mm_aesdeclast_si128(block3, ks);
+  block4 = _mm_aesdeclast_si128(block4, ks);
 
   block1 = _mm_xor_si128(block1, _mm_loadu_si128((const __m128i *)bxor));
   block2 = _mm_xor_si128(block2, _mm_loadu_si128((const __m128i *)(bxor + 16)));
