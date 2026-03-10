@@ -314,6 +314,7 @@ COMMIT;",//DB Version 23 End
 "BEGIN; \
 CREATE INDEX IF NOT EXISTS kfoldername ON folder(parentfolderid, name);\
 CREATE INDEX IF NOT EXISTS kfilename ON file(parentfolderid, name);\
+UPDATE setting SET value=24 WHERE id='dbversion'; \
 COMMIT;"//DB Version 24 End
 };
 #endif

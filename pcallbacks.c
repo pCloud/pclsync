@@ -429,7 +429,7 @@ void psync_send_eventid(psync_eventtype_t eventid){
 
 void psync_send_eventdata(psync_eventtype_t eventid, void *eventdata){
 
-  debug(D_ERROR, "Send event data: eventid: [%u], eventthreadrunning: [%d]", eventid, eventthreadrunning);
+  debug(D_NOTICE, "Send event data: eventid: [%u], eventthreadrunning: [%d]", eventid, eventthreadrunning);
 
   if (eventthreadrunning){
     event_list_t *event;

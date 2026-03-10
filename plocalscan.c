@@ -704,11 +704,13 @@ static void scan_upload_modified_file(sync_folderlist *fl){
 
   psync_stat(localpath, &st);
   if (!psync_stat(localpath, &st) && psync_stat_mtime(&st) >= psync_timer_time() - PSYNC_UPLOAD_OLDER_THAN_PARAM_SEC) {
+    debug(D_NOTICE, "Create Paused Task.");
     psync_run_thread("Scanner reminder", p_create_scanner_reminder);
 
     psync_create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_PAUSED);
   }
   else {
+    debug(D_NOTICE, "Create Waiting Task.");
     res = psync_sql_prep_statement("UPDATE localfile SET size=?, inode=?, mtime=?, mtimenative=? WHERE id=?");
 
     psync_sql_bind_uint(res, 1, fl->size);
@@ -1286,8 +1288,10 @@ static void scanner_thread(){
 static void psync_do_wake_localscan(){
   localsleepperfolder=0;
   pthread_mutex_lock(&scan_mutex);
-  if (!scan_wakes++)
+
+  if (!scan_wakes++){
     pthread_cond_signal(&scan_cond);
+  }
   pthread_mutex_unlock(&scan_mutex);
   localsleepperfolder=0;
 }
