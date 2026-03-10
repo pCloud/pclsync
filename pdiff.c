@@ -77,7 +77,7 @@ static time_t last_event=0;
 static psync_uint_t needdownload=0;
 static psync_socket_t exceptionsockwrite=INVALID_SOCKET;
 static pthread_mutex_t diff_mutex=PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t diff_pause_mutex = PTHREAD_MUTEX_INITIALIZER;//Bobo
+static pthread_mutex_t diff_pause_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int initialdownload=0;
 static paccount_cache_callback_t psync_cache_callback=NULL;
 static uint32_t psync_is_business=0;
@@ -561,119 +561,7 @@ static psync_socket *get_connected_socket(){
       debug(D_NOTICE, "Auth token is populated!");
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
     }
-/*
-    if (luserid){
-      if (unlikely_log(luserid!=userid)){
-        if(check_user_relocated(luserid, sock)){
-          debug(D_NOTICE, "setting PSTATUS_AUTH_RELOCATED");
-          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_RELOCATED);
-        }
-        else {
-          debug(D_NOTICE, "user mistmatch, db userid=%lu, connected userid=%lu", (unsigned long)luserid, (unsigned long)userid);
-          psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_MISMATCH);
-        }
 
-        psync_sql_rollback_transaction();
-        psync_socket_close(sock);
-        psync_free(res);
-        psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-
-        continue;
-      }
-      
-      if (saveauth){
-        q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES ('auth', ?)");
-        psync_sql_bind_string(q, 1, psync_my_auth);
-        psync_sql_run_free(q);
-      }
-    }
-    else {
-      debug(D_NOTICE, "Save user data in DB.");
-
-      used_quota=0;
-      q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
-      psync_sql_bind_string(q, 1, "userid");
-      psync_sql_bind_uint(q, 2, userid);
-      psync_sql_run(q);
-      
-      psync_sql_bind_string(q, 1, "quota");
-      psync_sql_bind_uint(q, 2, current_quota);
-      psync_sql_run(q);
-      psync_sql_bind_string(q, 1, "freequota");
-      psync_sql_bind_uint(q, 2, free_quota);
-      psync_sql_run(q);
-      
-      psync_sql_bind_string(q, 1, "last_logged_location_id");
-      psync_sql_bind_uint(q, 2, lid);
-      psync_sql_run(q);
-
-      psync_sql_bind_string(q, 1, "usedquota");
-      psync_sql_bind_uint(q, 2, 0);
-      psync_sql_run(q);
-
-      result=psync_find_result(res, "premium", PARAM_BOOL)->num;
-      psync_sql_bind_string(q, 1, "premium");
-      psync_sql_bind_uint(q, 2, result);
-      psync_sql_run(q);
-
-      if (result) {
-        result = psync_find_result(res, "premiumexpires", PARAM_NUM)->num;
-      }        
-      else {
-        result = 0;
-      }
-
-      psync_sql_bind_string(q, 1, "premiumexpires");
-      psync_sql_bind_uint(q, 2, result);
-      psync_sql_run(q);
-      psync_sql_bind_string(q, 1, "emailverified");
-      psync_sql_bind_uint(q, 2, psync_find_result(res, "emailverified", PARAM_BOOL)->num);
-      psync_sql_run(q);
-      psync_sql_bind_string(q, 1, "registered");
-      psync_sql_bind_uint(q, 2, psync_find_result(res, "registered", PARAM_NUM)->num);
-      psync_sql_run(q);
-      psync_sql_bind_string(q, 1, "username");
-      psync_sql_bind_string(q, 2, psync_find_result(res, "email", PARAM_STR)->str);
-      psync_sql_run(q);
-      //psync_sql_bind_string(q, 1, "language");
-      //psync_sql_bind_string(q, 2, psync_find_result(res, "language", PARAM_STR)->str);
-      //psync_sql_run(q);
-			psync_sql_bind_string(q, 1, "plan");
-			psync_sql_bind_uint(q, 2, psync_find_result(res, "plan", PARAM_NUM)->num);
-			psync_sql_run(q);
-			psync_sql_bind_string(q, 1, "business");
-			psync_sql_bind_uint(q, 2, psync_find_result(res, "business", PARAM_BOOL)->num);
-			psync_sql_run(q);
-			psync_sql_bind_string(q, 1, "premiumlifetime");
-			psync_sql_bind_uint(q, 2, psync_find_result(res, "premiumlifetime", PARAM_BOOL)->num);
-			psync_sql_run(q);
-
-      cres = psync_check_result(res, "vivapcloud", PARAM_BOOL);
-			if (cres){
-				psync_sql_bind_string(q, 1, "vivapcloud");
-				psync_sql_bind_uint(q, 2, cres->num);
-				psync_sql_run(q);
-			}
-
-      cres = psync_check_result(res, "family", PARAM_HASH);
-
-      if (cres){
-				psync_sql_bind_string(q, 1, "owner");
-				psync_sql_bind_uint(q, 2, psync_find_result(cres, "owner", PARAM_BOOL)->num);
-				psync_sql_run(q);
-			}
-
-      if (saveauth){
-				psync_sql_bind_string(q, 1, "auth");
-				psync_sql_bind_string(q, 2, psync_my_auth);
-				psync_sql_run(q);
-			}
-			psync_sql_free_result(q);
-
-      debug(D_NOTICE, "Save user data in DB. Done.");
-    }
-    */
-    //Bobo
     debug(D_NOTICE, "Save user data in DB.");
 
     used_quota = 0;
@@ -757,7 +645,6 @@ static psync_socket *get_connected_socket(){
     psync_sql_free_result(q);
 
     debug(D_NOTICE, "Save user data in DB. Done.");
-    //Bobo
 
     if (psync_status_get(PSTATUS_TYPE_AUTH)!=PSTATUS_AUTH_PROVIDED){
       psync_sql_rollback_transaction();
@@ -2896,13 +2783,13 @@ static int send_diff_command(psync_socket *sock, subscribed_ids ids){
         binparam diffparams[]={P_STR("subscribefor", "diff,notifications,publinks,uploadlinks,teams,users,contacts"), P_STR("timeformat", "timestamp"),
                               P_NUM("difflimit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids.diffid),
                               P_NUM("notificationid", ids.notificationid), P_STR("notificationthumbsize", ts), P_NUM("publinkid", ids.publinkid),
-                              P_NUM("uploadlinkid", ids.uploadlinkid)};
+                              P_NUM("uploadlinkid", ids.uploadlinkid), P_STR("auth", psync_my_auth)};
         return send_command_no_res(sock, "subscribe", diffparams)?0:-1;
       } else {
          binparam diffparams[]={P_STR("subscribefor", "diff,notifications,publinks,uploadlinks,contacts"), P_STR("timeformat", "timestamp"),
                               P_NUM("difflimit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids.diffid),
                               P_NUM("notificationid", ids.notificationid), P_STR("notificationthumbsize", ts), P_NUM("publinkid", ids.publinkid),
-                              P_NUM("uploadlinkid", ids.uploadlinkid)};
+                              P_NUM("uploadlinkid", ids.uploadlinkid), P_STR("auth", psync_my_auth) };
         return send_command_no_res(sock, "subscribe", diffparams)?0:-1;
       }
     }
@@ -2910,12 +2797,12 @@ static int send_diff_command(psync_socket *sock, subscribed_ids ids){
       if (psync_is_business) {
         binparam diffparams[]={P_STR("subscribefor", "diff,notifications,publinks,uploadlinks,teams,users,contacts"), P_STR("timeformat", "timestamp"),
                               P_NUM("difflimit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids.diffid), P_NUM("notificationid", ids.notificationid), P_NUM("publinkid", ids.publinkid),
-                              P_NUM("uploadlinkid", ids.uploadlinkid)};
+                              P_NUM("uploadlinkid", ids.uploadlinkid), P_STR("auth", psync_my_auth)};
         return send_command_no_res(sock, "subscribe", diffparams)?0:-1;
       } else {
         binparam diffparams[]={P_STR("subscribefor", "diff,notifications,publinks,uploadlinks,contacts"), P_STR("timeformat", "timestamp"),
                               P_NUM("difflimit", PSYNC_DIFF_LIMIT), P_NUM("diffid", ids.diffid), P_NUM("notificationid", ids.notificationid), P_NUM("publinkid", ids.publinkid),
-                              P_NUM("uploadlinkid", ids.uploadlinkid)};
+                              P_NUM("uploadlinkid", ids.uploadlinkid), P_STR("auth", psync_my_auth)};
         return send_command_no_res(sock, "subscribe", diffparams)?0:-1;
       }
     }
@@ -2923,11 +2810,11 @@ static int send_diff_command(psync_socket *sock, subscribed_ids ids){
   else{
     if (psync_is_business) {
       binparam diffparams[]={P_STR("subscribefor", "diff,publinks,uploadlinks,teams,users,contacts"), P_STR("timeformat", "timestamp"), P_NUM("difflimit", PSYNC_DIFF_LIMIT),
-                            P_NUM("diffid", ids.diffid), P_NUM("publinkid", ids.publinkid), P_NUM("uploadlinkid", ids.uploadlinkid)};
+                            P_NUM("diffid", ids.diffid), P_NUM("publinkid", ids.publinkid), P_NUM("uploadlinkid", ids.uploadlinkid), P_STR("auth", psync_my_auth)};
       return send_command_no_res(sock, "subscribe", diffparams)?0:-1;
     } else {
       binparam diffparams[]={P_STR("subscribefor", "diff,publinks,uploadlinks,contacts"), P_STR("timeformat", "timestamp"), P_NUM("difflimit", PSYNC_DIFF_LIMIT),
-                            P_NUM("diffid", ids.diffid), P_NUM("publinkid", ids.publinkid), P_NUM("uploadlinkid", ids.uploadlinkid)};
+                            P_NUM("diffid", ids.diffid), P_NUM("publinkid", ids.publinkid), P_NUM("uploadlinkid", ids.uploadlinkid), P_STR("auth", psync_my_auth)};
       return send_command_no_res(sock, "subscribe", diffparams)?0:-1;
     }
   }
@@ -3354,7 +3241,7 @@ static void psync_diff_thread(){
 
   initialdownload = 1;
 
-  debug(D_ERROR, "Start Main Diff Loop. Unlinked: [%d]", unlinked);
+  debug(D_NOTICE, "Start Main Diff Loop. Unlinked: [%d]", unlinked);
 
   //Main diff loop start
   while (psync_do_run){
@@ -3387,7 +3274,7 @@ static void psync_diff_thread(){
       psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_SCANNING);
 
       diff_res = initial_diff(sock, &ids);
-      debug(D_CRITICAL, "Initial Diff in main loop End.");
+      debug(D_NOTICE, "Initial Diff in main loop End.");
 
       if (!psync_diff_run) {
         debug(D_NOTICE, "Diff Stopped Break!");
@@ -3421,8 +3308,8 @@ static void psync_diff_thread(){
       initialdownload = 0;
     }
 
-    // After initial diff. Main diff loop.
-    psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);//Bobo
+    // After initial diff. Main diff loop. This status indicates that the initial diff is finished.
+    psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
 
     if(psync_recache_contacts){
       psync_cache_contacts();
@@ -3448,12 +3335,13 @@ static void psync_diff_thread(){
       if (!psync_do_run)
         break;
 
-      if (psync_pipe_read(exceptionsock, &ex, 1)!=1)
+      if (psync_pipe_read(exceptionsock, &ex, 1) != 1) {
         continue;
+      }
 
       handle_exception(&sock, &ids, ex);
 
-      while (psync_select_in(socks, 1, 0)==0 && psync_pipe_read(exceptionsock, &ex, 1)==1);
+      while (psync_select_in(socks, 1, 0) == 0 && psync_pipe_read(exceptionsock, &ex, 1) == 1)
 
       socks[1]=sock->sock;
     }

@@ -2756,8 +2756,9 @@ int psync_select_in(psync_socket_t *sockets, int cnt, int64_t timeoutmillisec){
   psync_socket_t max;
   int i;
 
-  if (timeoutmillisec<0)
+  if (timeoutmillisec<0){
     ptv=NULL;
+  }
   else{
     tv.tv_sec=timeoutmillisec/1000;
     tv.tv_usec=(timeoutmillisec%1000)*1000;

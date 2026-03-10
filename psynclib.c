@@ -646,11 +646,11 @@ void psync_unlink(){
   for (i = 0; i < 5; i++) {
     ret = psync_file_delete(psync_database);
     if (ret == 0) {
-      debug(D_ERROR, "Failed to delete DB file.");
+      debug(D_WARNING, "Failed to delete DB file.");
       psync_milisleep_nosqlcheck(1000);
     }
     else {
-      debug(D_ERROR, "DB file deleted.");
+      debug(D_NOTICE, "DB file deleted.");
       break;
     }
   }
@@ -3114,7 +3114,7 @@ void psync_stop_device(psync_folderid_t folderId,
     }
   }
   else {
-    debug(D_ERROR, "Can't find device id in local DB.");
+    debug(D_WARNING, "Can't find device id in local DB.");
   }
 }
 /***********************************************************************************************************************************************/

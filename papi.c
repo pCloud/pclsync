@@ -773,7 +773,7 @@ const binresult *psync_do_find_result(const binresult *res, const char *name, ui
       }
     }
   if (D_CRITICAL<=DEBUG_LEVEL)
-    psync_debug(file, function, line, D_CRITICAL, "could not find key %s", name);
+    psync_debug(file, function, line, D_WARNING, "could not find key %s", name);
 #if IS_DEBUG
   psync_do_dump_binresult(res, file, function, line);
 #endif
