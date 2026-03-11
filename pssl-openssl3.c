@@ -100,48 +100,46 @@ PSYNC_THREAD int psync_ssl_errno;
  * ------------------------------------------------------------------------- */
 
 int psync_ssl_init(){
-  BIO *bio;
-  X509 *cert;
-  psync_uint_t i;
-  unsigned char seed[PSYNC_LHASH_DIGEST_LEN];
-
   globalctx = SSL_CTX_new(TLS_client_method());
-  if (likely_log(globalctx)){
-    /* Enforce TLS 1.2 as the minimum protocol version */
-    SSL_CTX_set_min_proto_version(globalctx, TLS1_2_VERSION);
-
-    if (unlikely_log(SSL_CTX_set_cipher_list(globalctx, SSL_CIPHERS) != 1)){
-      SSL_CTX_free(globalctx);
-      globalctx = NULL;
-      return -1;
-    }
-    /* Add TLS 1.3 cipher suites */
-    SSL_CTX_set_ciphersuites(globalctx, SSL_CIPHERS_TLS13);
-
-    SSL_CTX_set_verify(globalctx, SSL_VERIFY_NONE, NULL);
-    SSL_CTX_set_read_ahead(globalctx, 0);  /* readahead breaks SSL_pending */
-    SSL_CTX_set_session_cache_mode(globalctx, SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL);
-    SSL_CTX_set_options(globalctx, SSL_OP_NO_COMPRESSION);
-    SSL_CTX_set_mode(globalctx, SSL_MODE_RELEASE_BUFFERS);
-    SSL_CTX_set_mode(globalctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
-
-    for (i = 0; i < ARRAY_SIZE(psync_ssl_trusted_certs); i++){
-      bio = BIO_new(BIO_s_mem());
-      BIO_puts(bio, psync_ssl_trusted_certs[i]);
-      cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-      BIO_free(bio);
-      if (likely_log(cert != NULL)){
-        X509_STORE_add_cert(SSL_CTX_get_cert_store(globalctx), cert);
-        X509_free(cert);
-      }
-    }
-    do {
-      psync_get_random_seed(seed, NULL, 0, 0);
-      RAND_seed(seed, PSYNC_LHASH_DIGEST_LEN);
-    } while (!RAND_status());
-    return 0;
+  if (unlikely_log(!globalctx)){
+    return -1;
   }
-  return -1;
+
+  /* Enforce TLS 1.2 as the minimum protocol version */
+  SSL_CTX_set_min_proto_version(globalctx, TLS1_2_VERSION);
+
+  if (unlikely_log(SSL_CTX_set_cipher_list(globalctx, SSL_CIPHERS) != 1)){
+    SSL_CTX_free(globalctx);
+    globalctx = NULL;
+    return -1;
+  }
+  /* Add TLS 1.3 cipher suites */
+  SSL_CTX_set_ciphersuites(globalctx, SSL_CIPHERS_TLS13);
+
+  SSL_CTX_set_verify(globalctx, SSL_VERIFY_NONE, NULL);
+  SSL_CTX_set_read_ahead(globalctx, 0);  /* readahead breaks SSL_pending */
+  SSL_CTX_set_session_cache_mode(globalctx, SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL);
+  SSL_CTX_set_options(globalctx, SSL_OP_NO_COMPRESSION);
+  SSL_CTX_set_mode(globalctx, SSL_MODE_RELEASE_BUFFERS);
+  SSL_CTX_set_mode(globalctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+  for (psync_uint_t i = 0; i < ARRAY_SIZE(psync_ssl_trusted_certs); i++){
+    BIO* bio = BIO_new(BIO_s_mem());
+    BIO_puts(bio, psync_ssl_trusted_certs[i]);
+    X509* cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    BIO_free(bio);
+    if (likely_log(cert != NULL)){
+      X509_STORE_add_cert(SSL_CTX_get_cert_store(globalctx), cert);
+      X509_free(cert);
+    }
+  }
+
+  unsigned char seed[PSYNC_LHASH_DIGEST_LEN];
+  do {
+    psync_get_random_seed(seed, NULL, 0, 0);
+    RAND_seed(seed, PSYNC_LHASH_DIGEST_LEN);
+  } while (!RAND_status());
+  return 0;
 }
 
 /* -------------------------------------------------------------------------
@@ -170,12 +168,12 @@ static void psync_set_ssl_error(ssl_connection_t *conn, int err){
 
 static int psync_ssl_compare_cn_hostname(const char *cn, size_t cnlen,
                                           const char *hostname, size_t hostnamelen){
-  if (cn[0] == '*' && cn[1] == '.')
+  if (cnlen >= 2 && cn[0] == '*' && cn[1] == '.'){
     return cnlen <= hostnamelen &&
-           !memcmp(cn + 1, hostname + hostnamelen - cnlen + 1, cnlen) &&
-           !memchr(hostname, '.', hostnamelen - cnlen + 1);
-  else
-    return cnlen == hostnamelen && !memcmp(cn, hostname, cnlen);
+          !memcmp(cn + 1, hostname + hostnamelen - cnlen + 1, cnlen) &&
+          !memchr(hostname, '.', hostnamelen - cnlen + 1);
+  }
+  return cnlen == hostnamelen && !memcmp(cn, hostname, cnlen);
 }
 
 static int psync_ssl_cn_match_hostname(X509 *cert, const char *hostname){
@@ -314,12 +312,12 @@ int psync_ssl_shutdown(void *sslconn){
   int res, err;
 
   conn = (ssl_connection_t *)sslconn;
+  if (conn->isbroken)
+    goto noshutdown;
   sess = SSL_get1_session(conn->ssl);
   if (sess)
     psync_cache_add(conn->cachekey, sess, PSYNC_SSL_SESSION_CACHE_TIMEOUT,
                     psync_ssl_free_session, PSYNC_MAX_SSL_SESSIONS_PER_DOMAIN);
-  if (conn->isbroken)
-    goto noshutdown;
   res = SSL_shutdown(conn->ssl);
   if (res != -1)
     goto noshutdown;
