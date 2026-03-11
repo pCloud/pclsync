@@ -660,7 +660,7 @@ void psync_path_status_sync_folder_task_completed(psync_syncid_t syncid, psync_f
 
     ft=get_sync_folder_tasks(sd, localfolderid, 0);
 
-    if ((ft == NULL) || (ft->child_task_cnt == NULL)) {
+    if (ft == NULL || (ft->child_task_cnt == 0)) {
       debug(D_NOTICE, "ft is NULL. Return!");
       return;
     }

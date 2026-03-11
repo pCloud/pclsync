@@ -236,12 +236,14 @@ ex:;
 }
 
 static uint64_t uint_sqrt(uint64_t n){
+  if (n<=1){
+    return n;
+  }
   uint64_t h, l, m, m2;
   h=n/2;
   l=1;
   m=1;
-  if (n<=1)
-    return n;
+
   while (h>l+1){
     m=(h+l)/2;
     m2=m*m;
