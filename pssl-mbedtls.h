@@ -28,6 +28,18 @@
 #ifndef _PSYNC_MBEDTLS_H
 #define _PSYNC_MBEDTLS_H
 
+/*
+ * This backend targets PolarSSL / mbedTLS 1.3.x — the last release using
+ * the polarssl/ header path and PolarSSL symbol names.  mbedTLS 2.x+
+ * renamed every header and symbol to mbedtls_*, making this file
+ * incompatible.  Detect the newer library and fail with a clear message.
+ */
+#ifdef __has_include
+#if __has_include(<mbedtls/build_info.h>) || __has_include(<mbedtls/version.h>)
+#error "pssl-mbedtls requires PolarSSL / mbedTLS 1.3.x. The installed mbedTLS appears to be 2.x or later, which uses an incompatible API. See README.md for details."
+#endif
+#endif
+
 #include "plibs.h"
 #include <polarssl/sha1.h>
 #include <polarssl/sha256.h>
