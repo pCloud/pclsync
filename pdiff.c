@@ -3280,6 +3280,12 @@ static void psync_diff_thread(){
         debug(D_NOTICE, "Diff Stopped Break!");
         continue;
       }
+
+      if (diff_res) {
+        debug(D_NOTICE, "Initial diff failed, reconnecting.");
+        sock = get_connected_socket();
+        continue;
+      }
       
       g_is_over_quota = 0; //Reset account full constant.
 
