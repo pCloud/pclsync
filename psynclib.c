@@ -1820,8 +1820,8 @@ psync_new_version_t *psync_check_new_version_str(const char *os, const char *cur
 
 static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpath){
   psync_new_version_t *ver;
-  const char *notes, *versionstr, *bver;
-  size_t lurl, lnotes, lversion, llpath, llocalpath, lver;
+  const char *notes, *versionstr, *bver, *minosver = NULL;
+  size_t lurl, lnotes, lversion, llpath, llocalpath, lver, lminosver = 0;
   const binresult *cres, *pres, *hres, *mres, *bres, *vres;
   char *ptr;
   unsigned long usize;
@@ -1852,6 +1852,18 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
       lver = (vres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
     }    
   }
+  cres = psync_find_result(res, "minosversion", PARAM_HASH);
+  if (cres->length) {
+    cres = psync_find_result(cres, "macos", PARAM_HASH);
+    if (cres->length) {
+      cres = psync_find_result(cres, "version", PARAM_STR);
+    }
+    if (cres->length) {
+      debug(D_NOTICE, "Min OS version detected: %s", cres->str);
+      minosver = cres->str;
+      lminosver = (cres->length + sizeof(void*)) / sizeof(void*) * sizeof(void*);
+    }
+  }
 
   if (localpath){
     llpath=strlen(localpath);
@@ -1859,7 +1871,7 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
   }
   else
     llpath=llocalpath=0;
-  ver=(psync_new_version_t *)psync_malloc(sizeof(psync_new_version_t)+lurl+lnotes+lversion+llocalpath+lver);
+  ver=(psync_new_version_t *)psync_malloc(sizeof(psync_new_version_t)+lurl+lnotes+lversion+llocalpath+lver+lminosver);
   ptr=(char *)(ver+1);
   if (bver) {
     memcpy(ptr, bver, lver);
@@ -1868,6 +1880,13 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
   }
   else
     ver->brwzr = NULL;
+  if (minosver) {
+    memcpy(ptr, minosver, lminosver);
+    ver->minosver = ptr;
+    ptr += lminosver;
+  }
+  else
+    ver->minosver = NULL;
   ver->url=ptr;
   memcpy(ptr, "https://", sizeof("https://")-1);
   ptr+=sizeof("https://")-1;
