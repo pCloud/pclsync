@@ -459,6 +459,7 @@ typedef struct {
 
 typedef struct {
   const char *brwzr;
+  const char *minosver;
   const char *url;
   const char *notes;
   const char *versionstr;
