@@ -619,7 +619,12 @@ void psync_unlink(){
 
   psync_status_recalc_to_download();
   psync_status_recalc_to_upload();
-  psync_invalidate_auth(psync_my_auth);
+
+  const char *current_auth_token = psync_get_auth_string();
+  if (current_auth_token && strlen(current_auth_token) > 0) {
+    psync_invalidate_auth(psync_my_auth);
+  }
+
   psync_cloud_crypto_stop();
   psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   psync_milisleep(20);
