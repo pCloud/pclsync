@@ -1906,7 +1906,7 @@ static void psync_init_task_modify(psync_variant_row row){
   memcpy(un->name, name, len);
   psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_unlink_t, name), &un->tree);
   cr=(psync_fstask_creat_t *)psync_malloc(offsetof(psync_fstask_creat_t, name)+len);
-  cr->fileid=-(psync_fsfileid_t)cr->taskid;
+  cr->fileid=-(psync_fsfileid_t)taskid;
   cr->rfileid=psync_get_number(row[3]);
   cr->taskid=taskid;
   memcpy(cr->name, name, len);

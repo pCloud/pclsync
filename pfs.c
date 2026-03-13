@@ -1961,6 +1961,11 @@ static int psync_read_newfile(psync_openfile_t *of, char *buf, uint64_t size, ui
 static int psync_read_staticfile(psync_openfile_t *of, char *buf, uint64_t size, uint64_t offset){
   int ret;
 
+  if (unlikely(!of->staticdata)){
+    debug(D_ERROR, "staticdata is NULL for file %s", of->currentname);
+    pthread_mutex_unlock(&of->mutex);
+    return -EIO;
+  }
   if (of->currentsize<offset)
     ret=0;
   else{
@@ -2214,18 +2219,21 @@ PSYNC_NOINLINE static int psync_fs_reopen_static_file_for_writing(psync_openfile
     psync_free(un);
   }
   psync_sql_unlock();
-  of->writeid=0;
-  of->newfile=1;
-  of->modified=1;
-  of->staticfile=0;
-  ret=open_write_files(of, 1);
-  if (unlikely_log(ret))
+  {
+    uint64_t savedsize=of->currentsize;
+    of->writeid=0;
+    of->newfile=1;
+    of->modified=1;
+    of->staticfile=0;
+    ret=open_write_files(of, 1);
+    if (unlikely_log(ret))
+      return ret;
+    if (psync_file_pwrite(of->datafile, of->staticdata, savedsize, 0)!=savedsize)
+      ret=-PRINT_RETURN_CONST(EIO);
+    else
+      ret=1;
     return ret;
-  if (psync_file_pwrite(of->datafile, of->staticdata, of->currentsize, 0)!=of->currentsize)
-    ret=-PRINT_RETURN_CONST(EIO);
-  else
-    ret=1;
-  return ret;
+  }
 }
 
 PSYNC_NOINLINE static int psync_fs_check_modified_file_write_space(psync_openfile_t *of, size_t size, fuse_off_t offset){
