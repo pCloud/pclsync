@@ -47,7 +47,7 @@
 #define PTIMER_IS_RUNNING     1
 #define PTIMER_STOP_AFTER_RUN 2
 
-time_t psync_current_time;
+volatile time_t psync_current_time;
 
 struct exception_list {
   struct exception_list *next;
@@ -62,7 +62,7 @@ static pthread_mutex_t timer_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t timer_ex_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t timer_cond=PTHREAD_COND_INITIALIZER;
 static uint32_t nextsecwaiters=0;
-static int timer_running=0;
+static volatile int timer_running=0;
 
 PSYNC_NOINLINE static void timer_sleep_detected(time_t lt){
   struct exception_list *e;
@@ -184,7 +184,7 @@ time_t psync_timer_time(){
   if (timer_running)
     return psync_current_time;
   else
-    return psync_time(NULL);
+    return psync_time();
 }
 
 void psync_timer_wake(){
@@ -272,9 +272,9 @@ void psync_timer_sleep_handler(psync_exception_callback func){
 void psync_timer_do_notify_exception(){
   struct exception_list *e;
   pthread_t threadid;
-  e=excepions;
   threadid=pthread_self();
   pthread_mutex_lock(&timer_ex_mutex);
+  e=excepions;
   while (e){
     if (!pthread_equal(threadid, e->threadid))
       e->func();
