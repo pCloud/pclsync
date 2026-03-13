@@ -228,6 +228,8 @@ void *psync_locked_malloc(size_t size){
   size_t origsize=size;
 #endif
   int page_size;
+  if (size > SIZE_MAX - LM_OVERHEAD - LM_ALIGN_TO)
+    return NULL;
   size=((size+LM_ALIGN_TO-1))/LM_ALIGN_TO*LM_ALIGN_TO+LM_OVERHEAD;
 #if IS_DEBUG
   debug(D_NOTICE, "size=%lu, size with overhead=%lu", (unsigned long)origsize, (unsigned long)size);
@@ -377,6 +379,7 @@ found:
     if (range->locked)
       psync_mem_unlock(range->mem, range->size);
     psync_munmap_anon(range->mem, range->size);
+    psync_interval_tree_free(range->freeintervals);
     psync_free(range);
   }
 }

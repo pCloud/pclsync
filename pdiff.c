@@ -124,7 +124,7 @@ static void delete_cached_crypto_keys(){
 }
 
 void psync_delete_cached_crypto_keys(){
-	void delete_cached_crypto_keys();
+	delete_cached_crypto_keys();
 }
 
 static binresult *get_userinfo_user_digest(psync_socket *sock, const char *username, size_t userlen, const char *pwddig, const char *digest, uint32_t diglen,
@@ -3024,11 +3024,8 @@ static void psync_run_analyze_if_needed(){
 }
 
 static int psync_diff_check_quota(psync_socket *sock){
-  binresult *res;
-  const binresult *uq;
-  uint64_t oused_quota, result;
-  oused_quota=used_quota;
-  int i;
+  binresult *res = NULL;
+  uint64_t oused_quota = used_quota;
 
   binparam diffparams[] = {
     P_STR("timeformat", "timestamp"), 
@@ -3044,50 +3041,51 @@ static int psync_diff_check_quota(psync_socket *sock){
     P_NUM("os", P_OS_ID)
   };
 
-  for (i=0; i < 4; i++) {
+  for (int i = 1; i <= 5; i++) {
+
     res = send_command(sock, "userinfo", diffparams);
 
-    if (!res || i > 2){
-      return -1;
+    if (!res){
+      break;
     }
 
-    result = psync_find_result(res, "result", PARAM_NUM)->num;
+    const uint64_t result = psync_find_result(res, "result", PARAM_NUM)->num;
 
     if (unlikely(result)) {
-      debug(D_WARNING, "userinfo returned error %u: %s", (unsigned)result, psync_find_result(res, "error", PARAM_STR)->str);
+      const char *error = psync_find_result(res, "error", PARAM_STR)->str;
+      psync_free(res);
+      debug(D_WARNING, "userinfo returned error %u: %s", (unsigned)result, error);
+      psync_milisleep(i*500);
+      continue;
     }
-    else {
-      uq = psync_check_result(res, "usedquota", PARAM_NUM);
-      debug(D_NOTICE, "Got Used Quota: [%"P_PRI_U64"]", uq->num);
-
-      if (likely_log(uq)) {
-        used_quota = uq->num;
-        break;
-      }
-      else {
-        debug(D_WARNING, "Failed to get quota. Retry: [%d].", i);
-        psync_milisleep(2000);
-
-        psync_free(res);
-      }
+    const binresult *uq = psync_check_result(res, "usedquota", PARAM_NUM);
+    if (unlikely_log(!uq)) {
+      psync_free(res);
+      debug(D_WARNING, "Failed to get quota. Retries: [%d].", i);
+      psync_milisleep(i*500);
+      continue;
     }
+
+    debug(D_NOTICE, "Got Used Quota: [%"P_PRI_U64"]", uq->num);
+    used_quota = uq->num;
+
+    if (used_quota != oused_quota){
+      debug(D_WARNING, "corrected locally calculated quota from [%"P_PRI_U64"] to [%"P_PRI_U64"]", oused_quota, used_quota);
+      psync_set_uint_value("usedquota", used_quota);
+      psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
+    }
+
+    uq=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
+
+    if (uq->length){
+      psync_apipool_set_server(uq->array[0]->str);
+    }
+
+    psync_free(res);
+    return 0;
   }
 
-  if (used_quota != oused_quota){
-    debug(D_WARNING, "corrected locally calculated quota from [%lu] to [%lu]", (unsigned long)oused_quota, (unsigned long)used_quota);
-    psync_set_uint_value("usedquota", used_quota);
-    psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
-  }
-
-  uq=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
-
-  if (uq->length){
-    psync_apipool_set_server(uq->array[0]->str);
-  }
-
-  psync_free(res);
-
-  return 0;
+  return -1;
 }
 
 static void psync_cache_contacts(){
