@@ -1325,6 +1325,11 @@ static psync_crypto_aes256_sector_encoder_decoder_t psync_crypto_get_temp_file_e
   }
   switch (psync_get_number(row[0])){
     case PSYNC_FS_TASK_CREAT:
+      if (psync_is_null(row[2])){
+        psync_sql_free_result(res);
+        debug(D_WARNING, "missing encrypted key for temporary file %lu", (unsigned long)fileid);
+        return (psync_crypto_aes256_sector_encoder_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_INVALID_KEY));
+      }
       b64enckey=(const unsigned char *)psync_get_lstring(row[2], &b64enckeylen);
       enckey=psync_base64_decode(b64enckey, b64enckeylen, &enckeylen);
       psync_sql_free_result(res);
@@ -1415,9 +1420,12 @@ psync_crypto_aes256_sector_encoder_decoder_t psync_cloud_crypto_get_file_encoder
   else{
     // save_file_key_to_db runs thread to save to db, that's why we insert decrypted key to cache, so psync_crypto_get_file_encoder_locked finds it
     symkey = psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, esym);
-
-    psync_crypto_release_file_symkey_locked(fileid, hash, symkey);
-    enc=psync_crypto_get_file_encoder_locked(fileid, hash, 0);
+    if (unlikely_log(symkey==PSYNC_INVALID_SYM_KEY))
+      enc=(psync_crypto_aes256_sector_encoder_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_INVALID_KEY));
+    else{
+      psync_crypto_release_file_symkey_locked(fileid, hash, symkey);
+      enc=psync_crypto_get_file_encoder_locked(fileid, hash, 0);
+    }
   }
   pthread_rwlock_unlock(&crypto_lock);
   psync_free(esym);
