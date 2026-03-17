@@ -33,7 +33,7 @@
 #include "pcompat.h"
 
 //Library version x.yy.mm.z Where x is major version number, yy is year, mm is month, z is minor version number (if we need more than one release in a month)
-#define PSYNC_LIB_VERSION "2.26.03.2"
+#define PSYNC_LIB_VERSION "2.26.03.3"
 
 #define PSYNC_API_HOST     "bineapi.pcloud.com"
 #define PSYNC_API_PORT     80
