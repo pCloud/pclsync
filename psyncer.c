@@ -144,7 +144,7 @@ void psync_increase_local_folder_taskcnt(psync_folderid_t lfolderid){
 
 void psync_decrease_local_folder_taskcnt(psync_folderid_t lfolderid){
   psync_sql_res *res;
-  res=psync_sql_prep_statement("UPDATE localfolder SET taskcnt=taskcnt+1 WHERE id=?");
+  res=psync_sql_prep_statement("UPDATE localfolder SET taskcnt=taskcnt-1 WHERE id=?");
   psync_sql_bind_uint(res, 1, lfolderid);
   psync_sql_run_free(res);
   assertw(psync_sql_affected_rows()==1);
@@ -208,11 +208,13 @@ psync_folderid_t psync_create_local_folder_in_db(psync_syncid_t syncid, psync_fo
   if (lfolderid && dbfolderid!=folderid){
     debug(D_NOTICE, "local folder %lu does not have folderid associated, setting to %lu", (unsigned long)lfolderid, (unsigned long)folderid);
     res=psync_sql_prep_statement("UPDATE localfolder SET folderid=? WHERE id=?");
-    psync_sql_bind_uint(res, 1, lfolderid);
-    psync_sql_bind_uint(res, 2, folderid);
+    psync_sql_bind_uint(res, 1, folderid);
+    psync_sql_bind_uint(res, 2, lfolderid);
     psync_sql_run_free(res);
   }
-  psync_increase_local_folder_taskcnt(lfolderid);
+  if (lfolderid){
+    psync_increase_local_folder_taskcnt(lfolderid);
+  }
   psync_free(vname);
   return lfolderid;
 }
@@ -271,7 +273,7 @@ static void psync_sync_newsyncedfolder(psync_syncid_t syncid){
   }
   folderid=psync_get_number(row[0]);
   synctype=psync_get_number(row[1]);
-  localpath=psync_strndup(psync_get_string(row[2]), strlen(psync_get_string(row[2])));
+  localpath=psync_strdup(psync_get_string(row[2]));
   psync_sql_free_result(res);
   if (synctype&PSYNC_DOWNLOAD_ONLY){
     psync_add_folder_for_downloadsync(syncid, synctype, folderid, 0);
@@ -343,6 +345,9 @@ int psync_str_is_prefix(const char *str1, const char *str2){
   while (len1 > 1 && (str1[len1 - 1] == '/' || str1[len1 - 1] == PSYNC_DIRECTORY_SEPARATORC))
     len1--;
 
+  while (len2 > 1 && (str2[len2 - 1] == '/' || str2[len2 - 1] == PSYNC_DIRECTORY_SEPARATORC))
+    len2--;
+
   if (len2<len1){
     if (str1[len2]!='/' && str1[len2]!=PSYNC_DIRECTORY_SEPARATORC)
       return 0;
@@ -370,6 +375,9 @@ int psync_left_str_is_prefix(const char* str1, const char* str2) {
      return 0;
   }
 
+  if (len2 > len1 && str2[len1] != '/' && str2[len1] != PSYNC_DIRECTORY_SEPARATORC)
+    return 0;
+
   return !psync_filename_cmpn(str1, str2, len1);
 }
 /*********************************************************************************************/
@@ -389,8 +397,8 @@ re:
 
   while ((row=psync_sql_fetch_row(res))){
     id=psync_get_number(row[0]);
-    localpath=(char *)psync_get_string(row[1]);
-    remotepath=(char *)psync_get_string(row[2]);
+    localpath=psync_strdup(psync_get_string(row[1]));
+    remotepath=psync_strdup(psync_get_string(row[2]));
     synctype=psync_get_number(row[3]);
 
     if (synctype&PSYNC_DOWNLOAD_ONLY)
@@ -401,6 +409,8 @@ re:
     if (unlikely_log(psync_stat(localpath, &st)) || unlikely_log(!psync_stat_isfolder(&st)) || unlikely_log(!psync_stat_mode_ok(&st, md))){
       debug(D_WARNING, "Ignoring delayed sync id [%"P_PRI_U64"] for local path [%s]", id, localpath);
       delete_delayed_sync(id);
+      psync_free(localpath);
+      psync_free(remotepath);
       continue;
     }
 
@@ -421,11 +431,11 @@ re:
 
     if (md){
       delete_delayed_sync(id);
+      psync_free(localpath);
+      psync_free(remotepath);
       continue;
     }
 
-    localpath=psync_strdup(localpath);
-    remotepath=psync_strdup(remotepath);
     psync_sql_free_result(res);
 
     folderid=psync_get_folderid_by_path_or_create(remotepath);
