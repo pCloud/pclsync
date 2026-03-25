@@ -51,6 +51,23 @@ typedef uint32_t psync_eventtype_t;
 typedef uint32_t psync_synctype_t;
 typedef uint32_t psync_listtype_t;
 
+#define PSYNC_DOC_MODE_EDIT 1
+#define PSYNC_DOC_MODE_VIEW 2
+
+typedef struct {
+  const char *lang;
+  const char *theme;
+  const char *gobackurl;
+  const char *forcedisplay;
+} psync_document_url_opts_t;
+
+extern const psync_document_url_opts_t psync_document_url_default_opts;
+
+typedef struct psync_document_extensions_t {
+  size_t count;
+  const char *extensions[];
+} psync_document_extensions_t;
+
 typedef struct {
   psync_fileid_t fileid;
   uint64_t size;
@@ -174,7 +191,7 @@ typedef struct pstatus_struct_ {
 } pstatus_t;
 
 /* PEVENT_LOCAL_FOLDER_CREATED means that a folder was created in remotely and this action was replicated
- * locally, not the other way around. Accordingly PEVENT_REMOTE_FOLDER_CREATED is fired when locally created
+ * locally, not the other way around. Accordingly, PEVENT_REMOTE_FOLDER_CREATED is fired when locally created
  * folder is replicated to the server.
  */
 
@@ -227,6 +244,8 @@ typedef struct pstatus_struct_ {
 #define PEVENT_SHARE_RENAME_F    (PEVENT_FIRST_SHARE_EVENT+12)
 #define PEVENT_SHARE_RELOAD_ALL  (PEVENT_FIRST_SHARE_EVENT+13)
 
+#define PEVENT_DOCUMENT_TYPES_CHANGED (PEVENT_FIRST_BACKUP_EVENT+200)
+
 #define PNOTIFICATION_ACTION_NONE          0
 #define PNOTIFICATION_ACTION_GO_TO_FOLDER  1
 #define PNOTIFICATION_ACTION_GO_TO_URL     2
@@ -265,7 +284,13 @@ typedef struct pstatus_struct_ {
 #define PERROR_NO_MEMORY               15
 #define PERROR_NET_ERROR               16
 #define PERROR_PARENT_IS_IGNORED       17
-#define PERROR_INVALID_LIB_STATE      18
+#define PERROR_INVALID_LIB_STATE       18
+#define PERROR_FILE_NOT_FOUND          19
+#define PERROR_ACCESS_DENIED           20
+#define PERROR_NOT_BUSINESS_ACCOUNT    21
+#define PERROR_FEATURE_DISABLED        22
+#define PERROR_INTERNAL_SERVER_ERROR   23
+#define PERROR_INVALID_PARAMETER       24
 
 #define PERROR_CACHE_MOVE_NOT_EMPTY       1
 #define PERROR_CACHE_MOVE_NO_WRITE_ACCESS 2
@@ -411,6 +436,7 @@ typedef union {
   psync_file_event_t *file;
   psync_folder_event_t *folder;
   psync_share_event_t *share;
+  psync_document_extensions_t *doc_extensions;
   void *ptr;
 } psync_eventdata_t;
 
@@ -1743,6 +1769,29 @@ void psync_cancel_uptasks();
 /*******************************************************************************/
 int psync_get_filename_by_id(psync_fileid_t fileId, char** filename);
 /*******************************************************************************/
+
+/* Returns 1 if `ext` (lowercase, no leading dot) is a supported document type.
+ * Available after psync_init(). */
+int psync_document_editing_is_supported_ext(const char *ext);
+
+/* Returns a snapshot of supported extensions. Caller owns the returned
+ * block and must release it with psync_free(). Always returns a valid
+ * pointer (never NULL); count == 0 when list is empty or not yet loaded.
+ * Available after psync_init(). */
+psync_document_extensions_t *psync_document_editing_get_supported_extensions(void);
+
+/* Build an editor URL for the given file. Returns psync_malloc()-allocated
+ * string on success, NULL on failure (psync_error set).
+ * SECURITY: URL contains the auth token — treat as credential.
+ * Available after psync_start_sync(). */
+char *psync_document_editing_get_url(psync_fileid_t fileid, int mode,
+                                     const psync_document_url_opts_t *opts);
+
+/* Force a server refresh of the extensions list.
+ * Returns 0 on success, -1 on error (psync_error set).
+ * Available after psync_start_sync(). */
+int psync_document_editing_refresh(void);
+
 #ifdef __cplusplus
 }
 #endif

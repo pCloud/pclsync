@@ -43,7 +43,7 @@
 #define PSYNC_TEXT_COL "COLLATE NOCASE"
 #endif
 
-#define PSYNC_DATABASE_VERSION 25
+#define PSYNC_DATABASE_VERSION 26
 
 #define PSYNC_DATABASE_CONFIG \
 "\
@@ -147,6 +147,8 @@ CREATE TABLE IF NOT EXISTS uptask_fileupload (localfileid INTEGER REFERENCES upl
 CREATE INDEX IF NOT EXISTS UploadTasksTypeIdx ON upload_tasks(type);\
 CREATE INDEX IF NOT EXISTS UploadTasksStatusIdx ON upload_tasks(status);\
 CREATE INDEX IF NOT EXISTS UploadTasksLevelIdx ON upload_tasks(level);\
+CREATE TABLE IF NOT EXISTS document_filetype (\
+  extension TEXT PRIMARY KEY) " P_SQL_WOWROWID ";\
 INSERT OR IGNORE INTO setting (id, value) VALUES ('dbversion', " NTO_STR(PSYNC_DATABASE_VERSION) ");\
 COMMIT;\
 "
@@ -320,5 +322,10 @@ COMMIT;",//DB Version 24 End
 DELETE FROM setting WHERE id='pass'; \
 UPDATE setting SET value=25 WHERE id='dbversion'; \
 COMMIT;"//DB Version 25 End
+"BEGIN;\
+CREATE TABLE IF NOT EXISTS document_filetype (\
+  extension TEXT PRIMARY KEY) " P_SQL_WOWROWID ";\
+UPDATE setting SET value=26 WHERE id='dbversion';\
+COMMIT;"//DB Version 26 End
 };
 #endif

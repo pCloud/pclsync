@@ -146,7 +146,7 @@ SRCS := pcompat.c psynclib.c plocks.c plibs.c pcallbacks.c pdiff.c pstatus.c pap
             psyncer.c ptasks.c psettings.c pnetlibs.c pcache.c pscanner.c plist.c plocalscan.c plocalnotify.c pp2p.c\
             pcrypto.c pssl.c pfileops.c ptree.c ppassword.c prunratelimit.c pmemlock.c pnotifications.c pexternalstatus.c publiclinks.c\
             pbusinessaccount.c pcontacts.c poverlay.c pcompression.c pasyncnet.c ppathstatus.c\
-            pdevice_monitor.c ptools.c pstrings.c pencoding.c pqsort.c miniz.c
+            pdevice_monitor.c ptools.c pstrings.c pencoding.c pqsort.c miniz.c pdocument_editing.c
 SRCSFS := pfs.c ppagecache.c pfsfolder.c pfstasks.c pfsupload.c pintervaltree.c pfsxattr.c pcloudcrypto.c pfscrypto.c pcrc32c.c pfsstatic.c
 
 ifeq ($(OS),Windows_NT)
