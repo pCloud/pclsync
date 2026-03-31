@@ -54,6 +54,13 @@ typedef uint32_t psync_listtype_t;
 #define PSYNC_DOC_MODE_EDIT 1
 #define PSYNC_DOC_MODE_VIEW 2
 
+/* Options for psync_document_editing_get_url().
+ * All fields are optional — set to NULL to omit the corresponding query param.
+ * lang:         BCP-47 language tag (e.g. "en", "de")
+ * theme:        UI theme hint (e.g. "light", "dark")
+ * gobackurl:    URL to return to when the user closes the editor; base64-encoded
+ *               internally before appending to the URL
+ * forcedisplay: Override the display mode passed to the editor */
 typedef struct {
   const char *lang;
   const char *theme;
@@ -61,8 +68,14 @@ typedef struct {
   const char *forcedisplay;
 } psync_document_url_opts_t;
 
+/* Default options — all fields NULL. Pass this (or NULL) to
+ * psync_document_editing_get_url() when no customisation is needed. */
 extern const psync_document_url_opts_t psync_document_url_default_opts;
 
+/* Snapshot of server-supported document extensions.
+ * Allocated as a single contiguous block; release with psync_free().
+ * extensions[] holds `count` NUL-terminated strings (lowercase, no dot),
+ * sorted lexicographically for binary search. */
 typedef struct psync_document_extensions_t {
   size_t count;
   const char *extensions[];
@@ -1770,26 +1783,30 @@ void psync_cancel_uptasks();
 int psync_get_filename_by_id(psync_fileid_t fileId, char** filename);
 /*******************************************************************************/
 
-/* Returns 1 if `ext` (lowercase, no leading dot) is a supported document type.
- * Available after psync_init(). */
+/* Returns 1 if `ext` (lowercase, no leading dot) is a supported document type,
+ * 0 otherwise. Reads from the in-memory cache; thread-safe.
+ * The cache is populated after the first successful psync_document_editing_refresh()
+ * following psync_start_sync(), or restored from the local DB on psync_init(). */
 int psync_document_editing_is_supported_ext(const char *ext);
 
-/* Returns a snapshot of supported extensions. Caller owns the returned
- * block and must release it with psync_free(). Always returns a valid
- * pointer (never NULL); count == 0 when list is empty or not yet loaded.
- * Available after psync_init(). */
+/* Returns a caller-owned snapshot of supported extensions.
+ * Release with psync_free(). Always returns a valid pointer (never NULL);
+ * count == 0 when the list is empty or not yet fetched from the server. */
 psync_document_extensions_t *psync_document_editing_get_supported_extensions(void);
 
-/* Build an editor URL for the given file. Returns psync_malloc()-allocated
- * string on success, NULL on failure (psync_error set).
- * SECURITY: URL contains the auth token — treat as credential.
- * Available after psync_start_sync(). */
+/* Build an editor URL for `fileid`. `mode` is PSYNC_DOC_MODE_EDIT or
+ * PSYNC_DOC_MODE_VIEW. `opts` may be NULL (equivalent to default opts).
+ * Returns a psync_malloc()-allocated string on success, NULL on failure
+ * with psync_error set (PERROR_ACCESS_DENIED, PERROR_FILE_NOT_FOUND, etc.).
+ * SECURITY: the returned URL embeds the auth token — treat as a credential.
+ * Requires psync_start_sync() to have been called and auth to be present. */
 char *psync_document_editing_get_url(psync_fileid_t fileid, int mode,
                                      const psync_document_url_opts_t *opts);
 
-/* Force a server refresh of the extensions list.
- * Returns 0 on success, -1 on error (psync_error set).
- * Available after psync_start_sync(). */
+/* Synchronously fetch the supported extensions list from the server and
+ * update the in-memory cache and local DB. Fires PEVENT_DOCUMENT_TYPES_CHANGED
+ * if the set changed. Returns 0 on success, -1 on network or API error
+ * (psync_error set). Requires auth to be present. */
 int psync_document_editing_refresh(void);
 
 #ifdef __cplusplus

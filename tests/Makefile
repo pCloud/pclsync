@@ -28,7 +28,7 @@ LDFLAGS = $(CHECK_LIBS) $(EXTRA_LDFLAGS)
 NET_CFLAGS = -I.. -I. -std=gnu99 -g -O0 -Wall -fPIC \
              -DDEBUG_LEVEL=0 -DP_OS_LINUX -D_FILE_OFFSET_BITS=64 \
              -Wno-error=int-conversion -Wno-error=incompatible-pointer-types \
-             $(CHECK_CFLAGS)
+             $(CHECK_CFLAGS) $(EXTRA_CFLAGS)
 
 # --- SSL library detection (mirrors top-level Makefile) ---
 HAS_PKG_CONFIG := $(shell command -v $(PKG_CONFIG) >/dev/null 2>&1 && echo yes)

@@ -106,23 +106,6 @@ static binresult *make_supportedfiletypes_response(uint64_t code,
   return make_hash_result(top_pairs, top_count);
 }
 
-/* Recursive free for binresult trees NOT consumed by the module */
-static void free_binresult(binresult *r) {
-  uint32_t i;
-  if (!r) return;
-  if (r->type == PARAM_HASH && r->hash) {
-    for (i = 0; i < r->length; i++)
-      free_binresult(r->hash[i].value);
-    free(r->hash);
-  }
-  if (r->type == PARAM_ARRAY && r->array) {
-    for (i = 0; i < r->length; i++)
-      free_binresult(r->array[i]);
-    free(r->array);
-  }
-  free(r);
-}
-
 /* =========================================================================
  *  Fixture
  * ========================================================================= */
@@ -138,6 +121,7 @@ static void setup(void) {
 START_TEST(get_extensions_empty_cache_returns_nonnull) {
   psync_document_extensions_t *exts;
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
 
   exts = psync_do_document_editing_get_supported_extensions();
   ck_assert_ptr_nonnull(exts);
@@ -148,6 +132,7 @@ START_TEST(get_extensions_empty_cache_returns_nonnull) {
 START_TEST(get_extensions_empty_cache_twice_returns_independent_blocks) {
   psync_document_extensions_t *a, *b;
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
 
   a = psync_do_document_editing_get_supported_extensions();
   b = psync_do_document_editing_get_supported_extensions();
@@ -162,6 +147,7 @@ START_TEST(get_extensions_empty_cache_twice_returns_independent_blocks) {
 
 START_TEST(is_supported_ext_empty_cache_returns_zero) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("docx"), 0);
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext(""), 0);
 } END_TEST
@@ -174,6 +160,7 @@ START_TEST(init_loads_single_ext_from_db) {
   const char *rows[] = {"docx"};
   stub_set_sql_rows(rows, 1);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("docx"), 1);
 } END_TEST
 
@@ -181,6 +168,7 @@ START_TEST(init_loads_multiple_exts_from_db) {
   const char *rows[] = {"docx", "xlsx", "pptx"};
   stub_set_sql_rows(rows, 3);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("docx"), 1);
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("xlsx"), 1);
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("pptx"), 1);
@@ -191,6 +179,7 @@ START_TEST(init_sorts_extensions) {
   psync_document_extensions_t *exts;
   stub_set_sql_rows(rows, 3);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   exts = psync_do_document_editing_get_supported_extensions();
   ck_assert_uint_eq(exts->count, 3);
   ck_assert_str_eq(exts->extensions[0], "docx");
@@ -203,6 +192,7 @@ START_TEST(is_supported_ext_unknown_returns_zero) {
   const char *rows[] = {"docx", "xlsx"};
   stub_set_sql_rows(rows, 2);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("pdf"), 0);
 } END_TEST
 
@@ -211,6 +201,7 @@ START_TEST(get_extensions_returns_correct_count) {
   psync_document_extensions_t *exts;
   stub_set_sql_rows(rows, 3);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   exts = psync_do_document_editing_get_supported_extensions();
   ck_assert_uint_eq(exts->count, 3);
   free(exts);
@@ -221,6 +212,7 @@ START_TEST(get_extensions_strings_match) {
   psync_document_extensions_t *exts;
   stub_set_sql_rows(rows, 3);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   exts = psync_do_document_editing_get_supported_extensions();
   ck_assert_uint_eq(exts->count, 3);
   /* sorted order */
@@ -236,6 +228,7 @@ START_TEST(get_extensions_strings_match) {
 
 START_TEST(get_url_no_auth_returns_null) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   char *url = psync_do_document_editing_get_url(100, 0, NULL);
   ck_assert_ptr_null(url);
   ck_assert_uint_eq(psync_error, PERROR_NET_ERROR);
@@ -243,6 +236,7 @@ START_TEST(get_url_no_auth_returns_null) {
 
 START_TEST(get_url_api_null_returns_null) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = NULL; /* API returns NULL */
   char *url = psync_do_document_editing_get_url(100, 0, NULL);
@@ -252,6 +246,7 @@ START_TEST(get_url_api_null_returns_null) {
 
 START_TEST(get_url_api_error_2003) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(2003, NULL);
   char *url = psync_do_document_editing_get_url(100, 0, NULL);
@@ -261,6 +256,7 @@ START_TEST(get_url_api_error_2003) {
 
 START_TEST(get_url_api_error_2009) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(2009, NULL);
   char *url = psync_do_document_editing_get_url(100, 0, NULL);
@@ -270,6 +266,7 @@ START_TEST(get_url_api_error_2009) {
 
 START_TEST(get_url_api_error_2266) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(2266, NULL);
   char *url = psync_do_document_editing_get_url(100, 0, NULL);
@@ -279,6 +276,7 @@ START_TEST(get_url_api_error_2266) {
 
 START_TEST(get_url_success_contains_link) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
   char *url = psync_do_document_editing_get_url(100, 0, NULL);
@@ -289,17 +287,19 @@ START_TEST(get_url_success_contains_link) {
 
 START_TEST(get_url_null_opts_works) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
   char *url = psync_do_document_editing_get_url(100, 0, NULL);
   ck_assert_ptr_nonnull(url);
-  ck_assert_ptr_nonnull(strstr(url, "pcauth="));
+  ck_assert_ptr_nonnull(strstr(url, "auth="));
   free(url);
 } END_TEST
 
 START_TEST(get_url_with_lang) {
   psync_document_url_opts_t opts = {.lang = "en", .theme = NULL, .gobackurl = NULL, .forcedisplay = NULL};
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
   char *url = psync_do_document_editing_get_url(100, 0, &opts);
@@ -311,6 +311,7 @@ START_TEST(get_url_with_lang) {
 START_TEST(get_url_with_theme) {
   psync_document_url_opts_t opts = {.lang = NULL, .theme = "dark", .gobackurl = NULL, .forcedisplay = NULL};
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
   char *url = psync_do_document_editing_get_url(100, 0, &opts);
@@ -322,6 +323,7 @@ START_TEST(get_url_with_theme) {
 START_TEST(get_url_with_gobackurl) {
   psync_document_url_opts_t opts = {.lang = NULL, .theme = NULL, .gobackurl = "https://back.com", .forcedisplay = NULL};
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
   char *url = psync_do_document_editing_get_url(100, 0, &opts);
@@ -333,6 +335,7 @@ START_TEST(get_url_with_gobackurl) {
 START_TEST(get_url_with_forcedisplay) {
   psync_document_url_opts_t opts = {.lang = NULL, .theme = NULL, .gobackurl = NULL, .forcedisplay = "mobile"};
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
   char *url = psync_do_document_editing_get_url(100, 0, &opts);
@@ -344,6 +347,7 @@ START_TEST(get_url_with_forcedisplay) {
 START_TEST(get_url_all_opts) {
   psync_document_url_opts_t opts = {.lang = "en", .theme = "dark", .gobackurl = "https://back.com", .forcedisplay = "mobile"};
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
   char *url = psync_do_document_editing_get_url(100, 0, &opts);
@@ -352,7 +356,7 @@ START_TEST(get_url_all_opts) {
   ck_assert_ptr_nonnull(strstr(url, "theme=dark"));
   ck_assert_ptr_nonnull(strstr(url, "gobackurl="));
   ck_assert_ptr_nonnull(strstr(url, "forcedisplay=mobile"));
-  ck_assert_ptr_nonnull(strstr(url, "pcauth=TESTAUTH"));
+  ck_assert_ptr_nonnull(strstr(url, "auth=TESTAUTH"));
   /* Verify ? appears before first param, & separates others */
   ck_assert_ptr_nonnull(strstr(url, "?lang=en"));
   ck_assert_ptr_nonnull(strstr(url, "&theme=dark"));
@@ -361,16 +365,18 @@ START_TEST(get_url_all_opts) {
 
 START_TEST(get_url_contains_pcauth) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
   char *url = psync_do_document_editing_get_url(100, 0, NULL);
   ck_assert_ptr_nonnull(url);
-  ck_assert_ptr_nonnull(strstr(url, "pcauth=TESTAUTH"));
+  ck_assert_ptr_nonnull(strstr(url, "auth=TESTAUTH"));
   free(url);
 } END_TEST
 
 START_TEST(get_url_with_location_id) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_setting_location_id = 42;
   stub_api_result = make_getdocumentcode_response(0, "https://doc.example.com/x");
@@ -386,12 +392,14 @@ START_TEST(get_url_with_location_id) {
 
 START_TEST(refresh_no_auth_returns_error) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   int rc = psync_do_document_editing_refresh();
   ck_assert_int_eq(rc, -1);
 } END_TEST
 
 START_TEST(refresh_api_null_returns_error) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = NULL;
   int rc = psync_do_document_editing_refresh();
@@ -400,6 +408,7 @@ START_TEST(refresh_api_null_returns_error) {
 
 START_TEST(refresh_unknown_error_returns_error) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_supportedfiletypes_response(9999, NULL, 0);
   int rc = psync_do_document_editing_refresh();
@@ -411,6 +420,7 @@ START_TEST(refresh_2266_clears_cache) {
   const char *rows[] = {"docx", "xlsx"};
   stub_set_sql_rows(rows, 2);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("docx"), 1);
 
   /* Refresh returns 2266 (feature disabled) */
@@ -430,6 +440,7 @@ START_TEST(refresh_2266_sends_empty_event) {
   const char *rows[] = {"docx"};
   stub_set_sql_rows(rows, 1);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
 
   strcpy(psync_my_auth, "TESTAUTH");
   stub_api_result = make_supportedfiletypes_response(2266, NULL, 0);
@@ -440,11 +451,12 @@ START_TEST(refresh_2266_sends_empty_event) {
   psync_document_extensions_t *evt = (psync_document_extensions_t *)stub_last_event_data;
   ck_assert_ptr_nonnull(evt);
   ck_assert_uint_eq(evt->count, 0);
-  free(evt);
+  /* stub owns evt — released by stub_reset_all on next setup */
 } END_TEST
 
 START_TEST(refresh_success_populates_cache) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("docx"), 0);
 
   strcpy(psync_my_auth, "TESTAUTH");
@@ -460,6 +472,7 @@ START_TEST(refresh_success_populates_cache) {
 
 START_TEST(refresh_success_sends_event) {
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
 
   strcpy(psync_my_auth, "TESTAUTH");
   const char *exts[] = {"docx", "xlsx"};
@@ -474,7 +487,7 @@ START_TEST(refresh_success_sends_event) {
   /* sorted */
   ck_assert_str_eq(evt->extensions[0], "docx");
   ck_assert_str_eq(evt->extensions[1], "xlsx");
-  free(evt);
+  /* stub owns evt — released by stub_reset_all on next setup */
 } END_TEST
 
 START_TEST(refresh_no_change_skips_event) {
@@ -482,6 +495,7 @@ START_TEST(refresh_no_change_skips_event) {
   const char *rows[] = {"docx"};
   stub_set_sql_rows(rows, 1);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
 
   /* Refresh returns same extension */
   strcpy(psync_my_auth, "TESTAUTH");
@@ -497,6 +511,7 @@ START_TEST(refresh_replaces_old_cache) {
   const char *rows[] = {"docx"};
   stub_set_sql_rows(rows, 1);
   psync_do_document_editing_init();
+  psync_do_document_editing_start();
   ck_assert_int_eq(psync_do_document_editing_is_supported_ext("docx"), 1);
 
   /* Refresh with new extensions */

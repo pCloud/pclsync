@@ -377,6 +377,7 @@ int psync_destroy(){
   debug(D_NOTICE, "Running psync_destroy. Stop all syncs.");
 
   psync_do_run=0;
+  psync_do_document_editing_destroy();
   psync_fs_stop();
   psync_terminate_status_waiters();
   psync_send_status_update();
@@ -452,6 +453,7 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
   memset(psync_my_auth, 0, sizeof(psync_my_auth));
   pthread_mutex_unlock(&psync_my_auth_mutex);
   psync_cloud_crypto_stop();
+  psync_do_document_editing_stop();
 
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_set_status(PSTATUS_TYPE_AUTH, auth_status);
@@ -577,6 +579,7 @@ void psync_unlink(){
   }
 
   psync_cloud_crypto_stop();
+  psync_do_document_editing_stop();
   psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   psync_milisleep(20);
   psync_stop_localscan();

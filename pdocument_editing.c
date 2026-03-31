@@ -33,12 +33,18 @@
 #include "plocks.h"
 #include "pcallbacks.h"
 #include "psettings.h"
+#include "pstatus.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#define DOCEDIT_STOPPED   0
+#define DOCEDIT_RUNNING   1
+#define DOCEDIT_DESTROYED 2
+
 const psync_document_url_opts_t psync_document_url_default_opts = {NULL, NULL, NULL, NULL};
 
+static uint32_t docedit_state = DOCEDIT_STOPPED;
 static psync_rwlock_t doctype_cache_rwlock;
 static psync_document_extensions_t *doctype_cache = NULL;
 
@@ -272,7 +278,9 @@ static int do_refresh(void) {
 }
 
 static void refresh_thread(void) {
-  do_refresh();
+  psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
+  if (psync_atomic_read_uint32(&docedit_state) == DOCEDIT_RUNNING)
+    do_refresh();
 }
 
 void psync_do_document_editing_init(void) {
@@ -281,7 +289,37 @@ void psync_do_document_editing_init(void) {
 }
 
 void psync_do_document_editing_start(void) {
-  psync_run_thread("document editing types refresh", refresh_thread);
+  if (psync_atomic_compare_and_set_uint32(&docedit_state, DOCEDIT_STOPPED, DOCEDIT_RUNNING)) {
+    psync_run_thread("document editing types refresh", refresh_thread);
+  }
+}
+
+int psync_do_document_editing_stop(void) {
+  psync_document_extensions_t *old;
+  if (!psync_atomic_compare_and_set_uint32(&docedit_state, DOCEDIT_RUNNING, DOCEDIT_STOPPED))
+    return -1;
+  psync_rwlock_wrlock(&doctype_cache_rwlock);
+  old = doctype_cache;
+  doctype_cache = NULL;
+  psync_rwlock_unlock(&doctype_cache_rwlock);
+  if (old)
+    psync_free(old);
+  return 0;
+}
+
+int psync_do_document_editing_destroy(void) {
+  uint32_t prev = psync_atomic_read_uint32(&docedit_state);
+  if (prev == DOCEDIT_DESTROYED)
+    return -1;
+  if (!psync_atomic_compare_and_set_uint32(&docedit_state, prev, DOCEDIT_DESTROYED))
+    return -1;
+  psync_rwlock_wrlock(&doctype_cache_rwlock);
+  psync_document_extensions_t* old = doctype_cache;
+  doctype_cache = NULL;
+  psync_rwlock_unlock(&doctype_cache_rwlock);
+  if (old)
+    psync_free(old);
+  return 0;
 }
 
 int psync_do_document_editing_is_supported_ext(const char *ext) {
@@ -326,6 +364,11 @@ char *psync_do_document_editing_get_url(psync_fileid_t fileid, int mode,
   char *url;
   char auth[64];
   char locid_str[32];
+
+  if (psync_atomic_read_uint32(&docedit_state) != DOCEDIT_RUNNING) {
+    psync_error = PERROR_FEATURE_DISABLED;
+    return NULL;
+  }
 
   if (!opts)
     opts = &psync_document_url_default_opts;
@@ -404,7 +447,7 @@ char *psync_do_document_editing_get_url(psync_fileid_t fileid, int mode,
       sep = "&";
     }
     {
-      char *tmp = psync_strcat(url, sep, "pcauth=", auth, NULL);
+      char *tmp = psync_strcat(url, sep, "auth=", auth, NULL);
       psync_free(url);
       url = tmp;
     }
