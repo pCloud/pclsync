@@ -2839,9 +2839,9 @@ int psync_list_dir(const char *path, psync_list_dir_callback callback, void *ptr
   psync_pstat pst;
   DIR *dh;
   char *cpath;
-  size_t pl, entrylen;
+  size_t pl;
   long namelen;
-  struct dirent *entry, *de;
+  struct dirent *de;
   dh=opendir(path);
   if (unlikely(!dh)){
     debug(D_WARNING, "could not open directory %s", path);
@@ -2853,14 +2853,12 @@ int psync_list_dir(const char *path, psync_list_dir_callback callback, void *ptr
     namelen=255;
   if (namelen<sizeof(de->d_name)-1)
     namelen=sizeof(de->d_name)-1;
-  entrylen=offsetof(struct dirent, d_name)+namelen+1;
   cpath=(char *)psync_malloc(pl+namelen+2);
-  entry=(struct dirent *)psync_malloc(entrylen);
   memcpy(cpath, path, pl);
   if (!pl || cpath[pl-1]!=PSYNC_DIRECTORY_SEPARATORC)
     cpath[pl++]=PSYNC_DIRECTORY_SEPARATORC;
   pst.path=cpath;
-  while (!readdir_r(dh, entry, &de) && de)
+  while ((de=readdir(dh))!=NULL)
     if (de->d_name[0]!='.' || (de->d_name[1]!=0 && (de->d_name[1]!='.' || de->d_name[2]!=0))){
       psync_strlcpy(cpath+pl, de->d_name, namelen+1);
       if (likely_log(!lstat(cpath, &pst.stat)) && (S_ISREG(pst.stat.st_mode) || S_ISDIR(pst.stat.st_mode))){
@@ -2872,7 +2870,6 @@ int psync_list_dir(const char *path, psync_list_dir_callback callback, void *ptr
         callback(ptr, &pst);
       }
     }
-  psync_free(entry);
   psync_free(cpath);
   closedir(dh);
   return 0;
@@ -2960,9 +2957,9 @@ int psync_list_dir_fast(const char *path, psync_list_dir_callback_fast callback,
   struct stat st;
   DIR *dh;
   char *cpath;
-  size_t pl, entrylen;
+  size_t pl;
   long namelen;
-  struct dirent *entry, *de;
+  struct dirent *de;
   dh=opendir(path);
   if (unlikely_log(!dh))
     goto err1;
@@ -2972,13 +2969,11 @@ int psync_list_dir_fast(const char *path, psync_list_dir_callback_fast callback,
     namelen=255;
   if (namelen<sizeof(de->d_name)-1)
     namelen=sizeof(de->d_name)-1;
-  entrylen=offsetof(struct dirent, d_name)+namelen+1;
   cpath=(char *)psync_malloc(pl+namelen+2);
-  entry=(struct dirent *)psync_malloc(entrylen);
   memcpy(cpath, path, pl);
   if (!pl || cpath[pl-1]!=PSYNC_DIRECTORY_SEPARATORC)
     cpath[pl++]=PSYNC_DIRECTORY_SEPARATORC;
-  while (!readdir_r(dh, entry, &de) && de)
+  while ((de=readdir(dh))!=NULL)
     if (de->d_name[0]!='.' || (de->d_name[1]!=0 && (de->d_name[1]!='.' || de->d_name[2]!=0))){
 #if defined(DT_UNKNOWN) && defined(DT_DIR) && defined(DT_REG)
       pst.name=de->d_name;
@@ -3004,7 +2999,6 @@ int psync_list_dir_fast(const char *path, psync_list_dir_callback_fast callback,
       }
 #endif
     }
-  psync_free(entry);
   psync_free(cpath);
   closedir(dh);
   return 0;
@@ -3926,14 +3920,14 @@ char *psync_deviceid(){
   device=psync_strcat(modelname, ", ", ver, NULL);
 #elif defined(P_OS_LINUX)
   DIR *dh;
-  struct dirent entry, *de;
+  struct dirent *de;
   const char *hardware;
   char *path, buf[8];
   int fd;
   hardware="Desktop";
   dh=opendir("/sys/class/power_supply");
   if (dh){
-    while (!readdir_r(dh, &entry, &de) && de)
+    while ((de=readdir(dh))!=NULL)
       if (de->d_name[0]!='.' || (de->d_name[1]!=0 && (de->d_name[1]!='.' || de->d_name[2]!=0))){
         path=psync_strcat("/sys/class/power_supply/", de->d_name, "/type", NULL);
         fd=open(path, O_RDONLY);

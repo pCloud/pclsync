@@ -592,7 +592,7 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
   pentry_t entry;
   uint64_t perms, flags;
   list=folder_list_init();
-  char *tmp;
+  const char *tmp;
   int parentencrypted=0;
   if (listtype&PLIST_FOLDERS){
     res=psync_sql_query_rdlock("SELECT flags FROM folder WHERE id=?");
@@ -919,7 +919,7 @@ void psync_refresh_explorer_crypto_folder(){
 }
 #endif
 /**************************************************************************/
-char* psync_get_path_from_str(char* fullPath) {
+char* psync_get_path_from_str(const char* fullPath) {
   char* path=NULL;
   int i = strlen(fullPath);
 
@@ -944,7 +944,7 @@ char* psync_get_path_from_str(char* fullPath) {
   return path;
 }
 
-char* psync_get_path_from_str_noslash(char* fullPath) {
+char* psync_get_path_from_str_noslash(const char* fullPath) {
   char* path=NULL;
   int i = strlen(fullPath);
 

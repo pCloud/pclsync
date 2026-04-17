@@ -3541,7 +3541,7 @@ static void psync_fuse_thread(){
   strncpy(logsDrive, appDriveLetter, strlen(appDriveLetter)+1);
 
   debug(D_NOTICE, "App Drive Letter: [%s]", logsDrive);
-#endif;
+#endif
 
   fr=fuse_loop_mt(psync_fuse);
   debug(D_NOTICE, "fuse_loop_mt exited with code %d, running fuse_destroy", fr);
@@ -3573,7 +3573,7 @@ static char is_fuse3_installed_on_system()
   char output[1024];
   memset(output, 0, sizeof(output));
 
-  char* o = fgets(output, sizeof(output), pipe);
+  fgets(output, sizeof(output), pipe);
 
   pclose(pipe);
   size_t outlen = strlen(output);

@@ -154,7 +154,7 @@ else
     endif
 
     ifeq ($(UNAME_S),Linux)
-		CFLAGS=-DP_OS_LINUX -D_FILE_OFFSET_BITS=64 -Wall -Wpointer-arith -O2 -g -fno-stack-protector -fPIC -std=gnu99
+		CFLAGS=-DP_OS_LINUX -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Wall -Wpointer-arith -O2 -g -fno-stack-protector -fPIC -std=gnu99
         ifneq ($(filter x86_64 i686 i386,$(ARCH)),)
         	CFLAGS += -fomit-frame-pointer -mtune=core2
         endif
@@ -174,7 +174,6 @@ else
 			CFLAGS += -mtune=core2
 		endif
 
-        CFLAGS+=-Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types
         CFLAGS += $(SQLITE_CFLAGS) $(FUSE_CFLAGS)
         ifeq ($(FUSE_LIBS),)
           FUSE_LIBS = -lfuse

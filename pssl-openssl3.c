@@ -418,7 +418,7 @@ void psync_ssl_rand_weak(unsigned char *buf, int num){
 psync_rsa_t psync_ssl_gen_rsa(int bits){
   EVP_PKEY_CTX *ctx;
   EVP_PKEY *pkey = NULL;
-  unsigned char seed[PSYNC_LHASH_DIGEST_LEN];
+  unsigned char seed[PSYNC_LHASH_DIGEST_LEN] = {0};
 
   psync_get_random_seed(seed, seed, sizeof(seed), 0);
   RAND_seed(seed, PSYNC_LHASH_DIGEST_LEN);

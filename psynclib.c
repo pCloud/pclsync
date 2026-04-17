@@ -1909,8 +1909,8 @@ static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpa
 
 static psync_new_version_t* psync_res_to_bver(const binresult* res){
   psync_new_version_t* ver;
-  const char* bver;
-  size_t lver;
+  const char* bver = NULL;
+  size_t lver = 0;
   const binresult *mres, *bres, *vres;
   char* ptr;
   mres = psync_find_result(res, "minwebviewbrowserver", PARAM_HASH);
@@ -1977,7 +1977,6 @@ int check_new_version_on_us_socket(binresult **pres, const char *os, unsigned lo
 }
 
 psync_new_version_t *psync_check_new_version(const char *os, unsigned long currentversion){
-  binparam params[]={P_STR("os", os), P_NUM("version", currentversion)};
   psync_new_version_t *ver;
   binresult *res;
   int ret;
@@ -2874,7 +2873,7 @@ psync_folder_list_t* psync_get_syncs_bytype(const char* syncType) {
 }
 /***********************************************************************************************************************************************/
 psync_folderid_t create_bup_mach_folder(char** msgErr) {
-  binresult* rootFolIdObj;
+  const binresult* rootFolIdObj;
   binresult* retData;
 
   psync_sql_res* sql;
@@ -2930,7 +2929,7 @@ int psync_create_backup(char*  path,
                         char** err) {
   psync_folderid_t bFId;
   psync_syncid_t   syncFId;
-  binresult*       folId;
+  const binresult* folId;
   binresult*       retData;
   folderPath       folders;
 
@@ -3391,7 +3390,6 @@ void psync_init_data_event_handler(void* ptr) {
 }
 /******************************************************************************************************************/
 stuck_return_list* psync_get_stuck_list() {
-  int i = 0;
   stuck_return_list* list;
 
   list = get_stuck_list();
@@ -3462,6 +3460,8 @@ int psync_wait_auth_token_async(char* request_id, void* callb_ptr) {
   psync_run_thread1("Data Event", wait_auth_token_async, data);
 
   debug(D_NOTICE, "Async call done.");
+
+  return 0;
 }
 /******************************************************************************************************************/
 
@@ -3496,8 +3496,7 @@ int psync_get_isdebug()
 int psync_uptask_scan(char** paths, int path_cnt, char* dest_path) {
   type_upload_task_t* upl_data;
   psync_folderid_t dest_folder_id;
-  uint64_t arr_size = 0;
-  int i, ret;
+  int i;
 
   debug(D_NOTICE, "Paths Count: [%d], Dest Path: [%s]", path_cnt, dest_path);
 

@@ -74,9 +74,9 @@ typedef struct{
 static void add_dir_scan(localnotify_dir *dir, const char *path){
   DIR *dh;
   char *cpath;
-  size_t pl, entrylen;
+  size_t pl;
   long namelen;
-  struct dirent *entry, *de;
+  struct dirent *de;
   localnotify_watch *wch;
   struct stat st;
   int wid;
@@ -98,19 +98,16 @@ static void add_dir_scan(localnotify_dir *dir, const char *path){
   wch->namelen=namelen;
   memcpy(wch->path, path, pl+1);
   if (likely_log(dh=opendir(path))){
-    entrylen=offsetof(struct dirent, d_name)+namelen+1;
     cpath=(char *)psync_malloc(pl+namelen+2);
-    entry=(struct dirent *)psync_malloc(entrylen);
     memcpy(cpath, path, pl);
     if (!pl || cpath[pl-1]!=PSYNC_DIRECTORY_SEPARATORC)
       cpath[pl++]=PSYNC_DIRECTORY_SEPARATORC;
-    while (!readdir_r(dh, entry, &de) && de)
+    while ((de=readdir(dh))!=NULL)
       if (de->d_name[0]!='.' || (de->d_name[1]!=0 && (de->d_name[1]!='.' || de->d_name[2]!=0))){
         psync_strlcpy(cpath+pl, de->d_name, namelen+1);
         if (!lstat(cpath, &st) && S_ISDIR(st.st_mode))
           add_dir_scan(dir, cpath);
       }
-    psync_free(entry);
     psync_free(cpath);
     closedir(dh);
   }
@@ -599,8 +596,8 @@ static localnotify_dir *get_dir_scan(const char *path, psync_syncid_t syncid){
   localnotify_dir *dir, *child;
   char *str, *cpath;
   DIR *dh;
-  struct dirent *de, *entry;
-  size_t len, entrylen;
+  struct dirent *de;
+  size_t len;
   long namelen;
   struct stat st;
   len=strlen(path)+1;
@@ -632,14 +629,12 @@ static localnotify_dir *get_dir_scan(const char *path, psync_syncid_t syncid){
   if (namelen<sizeof(de->d_name)-1)
     namelen=sizeof(de->d_name)-1;
   if (likely_log(dh=opendir(path))){
-    entrylen=offsetof(struct dirent, d_name)+namelen+1;
     cpath=(char *)psync_malloc(len+namelen+1);
-    entry=(struct dirent *)psync_malloc(entrylen);
     len--;
     memcpy(cpath, path, len);
     if (!len || cpath[len-1]!=PSYNC_DIRECTORY_SEPARATORC)
       cpath[len++]=PSYNC_DIRECTORY_SEPARATORC;
-    while (!readdir_r(dh, entry, &de) && de)
+    while ((de=readdir(dh))!=NULL)
       if (de->d_name[0]!='.' || (de->d_name[1]!=0 && (de->d_name[1]!='.' || de->d_name[2]!=0))){
         psync_strlcpy(cpath+len, de->d_name, namelen+1);
         if (!lstat(cpath, &st) && S_ISDIR(st.st_mode)){
@@ -648,7 +643,6 @@ static localnotify_dir *get_dir_scan(const char *path, psync_syncid_t syncid){
             psync_list_add_tail(&dir->subfolders, &child->nextfolder);
         }
       }
-    psync_free(entry);
     psync_free(cpath);
     closedir(dh);
   }
@@ -723,12 +717,12 @@ static void process_pipe(){
 static void process_notification(localnotify_dir *dir){
   DIR *dh;
   char *cpath;
-  struct dirent *de, *entry;
+  struct dirent *de;
   localnotify_tmpdir *tdir;
   localnotify_dir *cdir;
   psync_list tlist;
   psync_list *l1, *l2;
-  size_t len, len2, entrylen;
+  size_t len, len2;
   long namelen;
   struct stat st;
   int cmp;
@@ -743,14 +737,12 @@ static void process_notification(localnotify_dir *dir){
   namelen=pathconf(dir->path, _PC_NAME_MAX);
   if (namelen==-1)
     namelen=255;
-  entrylen=offsetof(struct dirent, d_name)+namelen+1;
   cpath=(char *)psync_malloc(len+namelen+2);
-  entry=(struct dirent *)psync_malloc(entrylen);
   memcpy(cpath, dir->path, len);
   if (!len || cpath[len-1]!=PSYNC_DIRECTORY_SEPARATORC)
     cpath[len++]=PSYNC_DIRECTORY_SEPARATORC;
   psync_list_init(&tlist);
-  while (!readdir_r(dh, entry, &de) && de)
+  while ((de=readdir(dh))!=NULL)
     if (de->d_name[0]!='.' || (de->d_name[1]!=0 && (de->d_name[1]!='.' || de->d_name[2]!=0))){
       len2=strlen(de->d_name);
       memcpy(cpath+len, de->d_name, len2+1);
@@ -761,7 +753,6 @@ static void process_notification(localnotify_dir *dir){
         psync_list_add_tail(&tlist, &tdir->list);
       }
     }
-  psync_free(entry);
   psync_free(cpath);
   closedir(dh);
   psync_list_sort(&tlist, sort_tdir_by_name);

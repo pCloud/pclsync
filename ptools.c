@@ -753,7 +753,7 @@ char* get_folder_name_from_path(const char* path) {
   }
 }
 /*************************************************************/
-stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, char* path, char* name) {
+stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, const char* path, const char* name) {
   stuck_item* stuck_elem;
 
   pthread_mutex_lock(&stuck_elem_list_mutex);
@@ -791,8 +791,8 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
 }
 /***********************************************************************/
 void free_stuck_elem(stuck_item* elem) {
-  psync_free(elem->name);
-  psync_free(elem->path);
+  psync_free((void *)elem->name);
+  psync_free((void *)elem->path);
 
   psync_free(elem);
 }
@@ -1107,7 +1107,7 @@ stuck_return_list* get_stuck_list() {
   return list;
 }
 /*************************************************************/
-char* nvl_str(char* str, const char* def) {
+const char* nvl_str(const char* str, const char* def) {
   if (str == NULL) {
     return def;
   }
@@ -1169,13 +1169,12 @@ char* dns_lookup(const char* addr_host, int port) {
 void psync_log_tasks() {
   psync_sql_res* res;
   psync_variant_row row;
-  uint64_t taskid;
 
   debug(D_NOTICE, "************Log tasks!**************");
 
   res = psync_sql_query("SELECT id, type, itemid, name, inprogress FROM task");
 
-  while (row = psync_sql_fetch_row(res)) {
+  while ((row = psync_sql_fetch_row(res))) {
     debug(D_NOTICE, "Task: [%"P_PRI_U64"], Type: [%"P_PRI_U64"], ItemId: [%"P_PRI_U64"], Name: [%s], Inprogress: [%"P_PRI_U64"]", psync_get_number(row[0]), psync_get_number(row[1]), psync_get_number(row[2]), psync_get_string_or_null(row[3]), psync_get_number(row[4]));
   }
 
@@ -1609,7 +1608,7 @@ uptask_item_list* get_uptask_item_list(int status) {
 
   psync_sql_bind_uint(res, 1, status);
 
-  while (row = psync_sql_fetch_row(res)) {
+  while ((row = psync_sql_fetch_row(res))) {
     uptask_list->list[i].item_type = psync_get_number(row[0]);
     uptask_list->list[i].item_status = psync_get_number(row[1]);
     uptask_list->list[i].path = psync_strdup(psync_get_string(row[2]));
@@ -1641,8 +1640,8 @@ void log_uptasks() {
     debug(D_NOTICE, "***********************************************************");
     for (i = 0; i < uptask_list->item_cnt; i++) {
       debug(D_NOTICE, "Task: Status: [%d] Type: [%d] Name: [%s] Path: [%s]", uptask_list->list[i].item_status, uptask_list->list[i].item_type, uptask_list->list[i].name, uptask_list->list[i].path);
-      psync_free(uptask_list->list[i].name);
-      psync_free(uptask_list->list[i].path);
+      psync_free((void *)uptask_list->list[i].name);
+      psync_free((void *)uptask_list->list[i].path);
 
       if (i > 15) {
         break;

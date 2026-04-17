@@ -64,7 +64,6 @@ static inline char *psync_strndup(const char *s, size_t n) { return strndup(s, n
 #define PSYNC_THREAD __thread
 
 /* Platform */
-#define P_OS_LINUX
 #define P_OS_POSIX
 
 /* --- SSL types --- */
@@ -471,8 +470,12 @@ psync_sql_res *psync_sql_query(const char *sql) { (void)sql; return NULL; }
 #define _PSYNC_PATHSTATUS_H
 #define _PSYNC_STRINGS_H
 
-/* Include pcloudcrypto.c directly */
+/* Include pcloudcrypto.c directly — suppress warnings for unused static
+ * functions that are only exercised in the full library build. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include "../pcloudcrypto.c"
+#pragma GCC diagnostic pop
 
 /* ══════════════════════════════════════════════════════════════════════════
  *  Helpers
@@ -535,7 +538,9 @@ START_TEST(test_is_error_small_ptr) {
 
 START_TEST(test_is_error_real_ptr) {
   /* Real heap pointers should not be detected as errors */
-  void *p = malloc(64);
+  void *p = NULL;
+  p = malloc(64);
+  ck_assert_ptr_nonnull(p);
   ck_assert(!psync_crypto_is_error(p));
   free(p);
 } END_TEST

@@ -477,7 +477,6 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
     stuck_item* elem;
     int item_type;
     char* local_name;
-    uint64_t itemid;
 
     item_type = STUCK_ITEM_TYPE_FOLDER;
 
@@ -1557,8 +1556,8 @@ void do_create_upload_from_list(void* ptr) {
         ret = is_file_to_ignore(&st);
 
         if (ret == -1) {
-          psync_free(st.name);
-          psync_free(st.path);
+          psync_free((void *)st.name);
+          psync_free((void *)st.path);
 
           continue;
         }
@@ -1567,8 +1566,8 @@ void do_create_upload_from_list(void* ptr) {
         taskcnt++;
      }
 
-      psync_free(st.name);
-      psync_free(st.path);
+      psync_free((void *)st.name);
+      psync_free((void *)st.path);
     }
     else {
       debug(D_NOTICE, "Failed to stat path. Skipping it.");

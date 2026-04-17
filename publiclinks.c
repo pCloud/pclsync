@@ -1157,6 +1157,7 @@ int do_psync_upload_link_deleteexpire(int64_t uploadlinkid, char** err /*OUT*/)
       return -1;
     }
   }
+  return 0;
 }
 
 static int create_link(psync_list_builder_t *builder, void *element, psync_variant_row row){

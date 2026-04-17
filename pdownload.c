@@ -1524,7 +1524,8 @@ static int download_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, 
   if (res && (type != PSYNC_DOWNLOAD_FILE)) {
     stuck_item *elem;
     int item_type;
-    char *path, *local_name;
+    char *path;
+    const char *local_name;
 
     local_name = name;
 

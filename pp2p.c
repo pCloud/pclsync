@@ -529,7 +529,6 @@ void psync_p2p_change(){
 static int psync_p2p_check_rsa(){
   static pthread_mutex_t rsa_lock=PTHREAD_MUTEX_INITIALIZER;
 
-  int ret;
 
   pthread_mutex_lock(&rsa_lock);
 

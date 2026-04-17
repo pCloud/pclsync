@@ -68,7 +68,6 @@ static inline char *psync_strdup(const char *s) { return strdup(s); }
 #define PSYNC_THREAD __thread
 
 /* Platform */
-#define P_OS_LINUX
 #define P_OS_POSIX
 
 /* Socket types and macros */
@@ -339,8 +338,14 @@ FAKE_VALUE_FUNC(int, psync_file_close, psync_file_t);
 #define _PSYNC_FOLDER_H
 #define _PSYNC_CALLBACKS_H
 
-/* Include pp2p.c directly */
+/* Include pp2p.c directly — suppress warnings for unused static functions
+ * and variables that are only exercised in the full library build. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #include "../pp2p.c"
+#pragma GCC diagnostic pop
 
 /* ══════════════════════════════════════════════════════════════════════════
  *  Helpers

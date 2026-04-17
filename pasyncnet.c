@@ -268,7 +268,7 @@ static int file_download_send_error(stream_t *s, async_thread_params_t *prms, fi
   if (error){
     stuck_item* elem;
     int item_type;
-    char* path, * local_name;
+    char* local_name;
 
     debug(D_NOTICE, "got error %u(%u) for file %s", (unsigned)error, (unsigned)errorflags, fda->localpath);
 

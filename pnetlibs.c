@@ -2440,7 +2440,7 @@ int psync_is_revision_of_file(const unsigned char *localhashhex, uint64_t filesi
 /******************************************************************************/
 void psync_unlock_file_by_path(const char* path) {
   psync_file_lock_t* lock;
-  psync_tree* tr, ** at;
+  psync_tree* tr;
   size_t len;
   int cmp;
 
@@ -2451,7 +2451,6 @@ void psync_unlock_file_by_path(const char* path) {
   pthread_mutex_lock(&file_lock_mutex);
 
   tr = file_lock_tree;
-  at = &file_lock_tree;
 
   while (tr) {
     cmp = psync_filename_cmp(path, psync_tree_element(tr, psync_file_lock_t, tree)->filename);
@@ -2460,7 +2459,6 @@ void psync_unlock_file_by_path(const char* path) {
       if (tr->left)
         tr = tr->left;
       else {
-        at = &tr->left;
         break;
       }
     }
@@ -2468,7 +2466,6 @@ void psync_unlock_file_by_path(const char* path) {
       if (tr->right)
         tr = tr->right;
       else {
-        at = &tr->right;
         break;
       }
     }
@@ -2543,10 +2540,9 @@ void psync_unlock_file(psync_file_lock_t *lock){
 }
 /**************************************************/
 void log_file_lock_tree() {
-  psync_tree* tr, ** at;
+  psync_tree* tr;
 
   tr = file_lock_tree;
-  at = &file_lock_tree;
 
   pthread_mutex_lock(&file_lock_mutex);
 
@@ -2556,7 +2552,6 @@ void log_file_lock_tree() {
     if (tr->left)
       tr = tr->left;
     else {
-      at = &tr->left;
       break;
     }
   }
@@ -2568,7 +2563,6 @@ void log_file_lock_tree() {
     if (tr->right)
       tr = tr->right;
     else {
-      at = &tr->right;
       break;
     }
   }

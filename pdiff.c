@@ -217,7 +217,6 @@ char *generate_device_id(){
 int check_active_subscribtion(const binresult *res){
   const binresult *sub;
   char *status;
-  int subscnt,i;
   sub = psync_check_result(res, "lastsubscription", PARAM_HASH);
   if (sub)
   {
@@ -278,8 +277,8 @@ static psync_socket *get_connected_socket(){
   binresult *res;
   const binresult *cres;
   psync_sql_res *q;
-  uint64_t result, userid, luserid, locationid;
-  int saveauth, isbusiness, cryptosetup, digest, lid, isFirstLogin, intRes;
+  uint64_t result, userid, locationid;
+  int saveauth, isbusiness, cryptosetup, digest, lid, isFirstLogin;
 
   digest=1;
   psync_free(psync_my_2fa_token);
@@ -1031,7 +1030,7 @@ static void del_synced_folder_rec(psync_folderid_t folderid, psync_syncid_t sync
 
 static void process_modifyfolder(const binresult *entry){
   static psync_sql_res *st=NULL;
-  psync_sql_res *res, *res2;
+  psync_sql_res *res;
   psync_full_result_int *fres1, *fres2;
   const binresult *meta, *name;
   uint64_t userid, perms, mtime, flags, oldflags;
@@ -1841,16 +1840,13 @@ static void stop_crypto_thread(){
 }
 
 static void process_modifyuserinfo(const binresult *entry){
-  const binresult *res, *diffId, *cres;
+  const binresult *res, *cres;
   psync_sql_res *q;
   uint64_t u, crexp, crsub = 0;
   int crst = 0,crstat;
-  int sub;
 
   if (!entry)
     return;
-
-  diffId = psync_find_result(entry, "diffid", PARAM_NUM);
 
   res=psync_find_result(entry, "userinfo", PARAM_HASH);
 
@@ -3020,53 +3016,6 @@ static void psync_diff_refresh_fs(const binresult *entries){
   }
 }
 
-static void psync_run_analyze_if_needed(){
-  if (psync_timer_time()>psync_sql_cellint("SELECT value FROM setting WHERE id='lastanalyze'", 0)+24*3600){
-    static const char *skiptables[]={"pagecache", "sqlite_stat1"};
-    psync_sql_res *res;
-    psync_uint_row row;
-    psync_str_row srow;
-    char **tablenames;
-    char *sql;
-    size_t tablecnt, i;
-    debug(D_NOTICE, "running ANALYZE on tables");
-    res=psync_sql_query_rdlock("SELECT COUNT(*) FROM sqlite_master WHERE type='table'");
-    if ((row=psync_sql_fetch_rowint(res)))
-      tablecnt=row[0];
-    else
-      tablecnt=0;
-    psync_sql_free_result(res);
-    tablenames=psync_new_cnt(char *, tablecnt);
-    res=psync_sql_query_rdlock("SELECT name FROM sqlite_master WHERE type='table' LIMIT ?");
-    psync_sql_bind_uint(res, 1, tablecnt);
-    tablecnt=0;
-    while ((srow=psync_sql_fetch_rowstr(res))){
-      for (i=0; i<ARRAY_SIZE(skiptables); i++)
-        if (!strcmp(srow[0], skiptables[i]))
-          goto skip;
-      tablenames[tablecnt++]=psync_strdup(srow[0]);
-      skip:;
-    }
-    psync_sql_free_result(res);
-
-    while (tablecnt){
-      --tablecnt;
-      debug(D_NOTICE, "running ANALYZE on %s", tablenames[tablecnt]);
-      sql=psync_strcat("ANALYZE ", tablenames[tablecnt], ";", NULL);
-      psync_free(tablenames[tablecnt]);
-      psync_sql_statement(sql);
-      psync_free(sql);
-      debug(D_NOTICE, "table done");
-      psync_milisleep(5);
-    }
-    psync_free(tablenames);
-    res=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
-    psync_sql_bind_string(res, 1, "lastanalyze");
-    psync_sql_bind_uint(res, 2, psync_timer_time());
-    psync_sql_run_free(res);
-    debug(D_NOTICE, "done running ANALYZE on tables");
-  }
-}
 
 static int psync_diff_check_quota(psync_socket *sock){
   binresult *res = NULL;
@@ -3283,7 +3232,7 @@ static void psync_diff_thread(){
   binresult *res;
   const binresult *entries;
   uint64_t newdiffid, result;
-  psync_socket_t exceptionsock, socks[2];
+  psync_socket_t exceptionsock = INVALID_SOCKET, socks[2];
   subscribed_ids ids = {0, 0, 0, 0};
   int sel, ret=0, diff_res = 1;
   char ex;
