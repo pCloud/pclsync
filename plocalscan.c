@@ -1311,7 +1311,9 @@ static void psync_do_wake_localscan(){
 }
 
 void psync_wake_localscan(){
-  psync_run_ratelimited("wake localscan", psync_do_wake_localscan, PSYNC_LOCALSCAN_MIN_INTERVAL, 0);
+  psync_run_debounced("wake localscan", psync_do_wake_localscan,
+                      PSYNC_LOCALSCAN_DEBOUNCE_GRACE,
+                      PSYNC_LOCALSCAN_DEBOUNCE_CEILING, 0);
 }
 
 void psync_restart_localscan(){
@@ -1321,6 +1323,9 @@ void psync_restart_localscan(){
 }
 
 void psync_stop_localscan(){
+  /* Cancel any pending debounced wake — the trailing fire would race the
+   * stop. psync_run_debounce_cancel returns 0 if nothing is registered. */
+  psync_run_debounce_cancel(psync_do_wake_localscan);
   pthread_mutex_lock(&scan_mutex);
   restart_scan=1;
   scan_stoppers++;

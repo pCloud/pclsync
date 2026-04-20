@@ -40,6 +40,12 @@ These documents explain *how the library works internally* -- not how to use the
 | 9  | [FUSE Filesystem](09-fuse-filesystem.md) | Virtual filesystem mount, all FUSE operations, path resolution, open file tracking, fstask system, fsupload |
 | 10 | [Crypto Folder](10-crypto-folder.md)     | Key hierarchy (password → AES → RSA → per-folder/file keys), setup/start/stop flows, sector encryption      |
 
+### Infrastructure
+
+| #  | Document                                                     | Summary                                                                                                              |
+|----|--------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| 11 | [Debounce Rate Limiter](11-debounce-rate-limiter.md)         | Leading-edge + trailing/ceiling debounce for `prunratelimit.c`, timer state machine, anti-starvation ceiling mechanism |
+
 ## Architecture at a Glance
 
 ```mermaid
