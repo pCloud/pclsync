@@ -59,6 +59,15 @@ typedef AES_KEY *psync_aes256_decoder;
 #define psync_sha1_update(pctx, data, datalen) SHA1_Update(pctx, data, datalen)
 #define psync_sha1_final(checksum, pctx) SHA1_Final(checksum, pctx)
 
+#define PSYNC_SHA256_BLOCK_LEN 64
+#define PSYNC_SHA256_DIGEST_LEN 32
+#define PSYNC_SHA256_DIGEST_HEXLEN 64
+#define psync_sha256_ctx SHA256_CTX
+#define psync_sha256(data, datalen, checksum) SHA256(data, datalen, checksum)
+#define psync_sha256_init(pctx) SHA256_Init(pctx)
+#define psync_sha256_update(pctx, data, datalen) SHA256_Update(pctx, data, datalen)
+#define psync_sha256_final(checksum, pctx) SHA256_Final(checksum, pctx)
+
 #define PSYNC_SHA512_BLOCK_LEN 128
 #define PSYNC_SHA512_DIGEST_LEN 64
 #define PSYNC_SHA512_DIGEST_HEXLEN 128
@@ -153,5 +162,9 @@ static inline void void psync_aes256_decode_4blocks_consec_xor(psync_aes256_deco
 }
 
 #endif
+
+typedef void (*psync_ssl_debug_callback_t)(void *ctx, int level, const char *message);
+void psync_ssl_set_log_threshold(int threshold);
+void psync_ssl_set_debug_callback(psync_ssl_debug_callback_t cb, void *ctx);
 
 #endif

@@ -27,7 +27,7 @@
 #ifndef _PSYNC_WOLFSSL_H
 #define _PSYNC_WOLFSSL_H
 
-#include "plibs.h"
+#include "pcore.h"
 
 #include <wolfssl/options.h>
 

@@ -40,7 +40,7 @@
 #endif
 #endif
 
-#include "plibs.h"
+#include "pcore.h"
 #include <polarssl/sha1.h>
 #include <polarssl/sha256.h>
 #include <polarssl/sha512.h>

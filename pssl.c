@@ -31,9 +31,6 @@
 #include <string.h>
 #include <stddef.h>
 
-//Lock used to serialize access to RSA decrypt key function
-static pthread_mutex_t rsa_decr_mutex=PTHREAD_MUTEX_INITIALIZER;
-
 static void psync_ssl_free_psync_encrypted_data_t(psync_encrypted_data_t e){
   psync_ssl_memclean(e->data, e->datalen);
   psync_locked_free(e);
@@ -62,16 +59,3 @@ psync_encrypted_symmetric_key_t psync_ssl_copy_encrypted_symmetric_key(psync_enc
   memcpy(ret->data, src->data, src->datalen);
   return ret;
 }
-/**************************************************************************************************************************************************************************************/
-psync_symmetric_key_t psync_ssl_rsa_decrypt_symm_key_lock(psync_rsa_privatekey_t rsa, const psync_encrypted_symmetric_key_t enckey) {
-  psync_symmetric_key_t sym_key;
-
-  pthread_mutex_lock(&rsa_decr_mutex);
-
-  sym_key = psync_ssl_rsa_decrypt_symmetric_key(rsa, enckey);
-
-  pthread_mutex_unlock(&rsa_decr_mutex);
-
-  return sym_key;
-}
-/**************************************************************************************************************************************************************************************/

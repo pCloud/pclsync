@@ -25,7 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "plibs.h"
+#include "pcore.h"
 #include "pssl.h"
 #include "psynclib.h"
 #include "psslcerts.h"
@@ -41,7 +41,10 @@
   "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:"\
   "DHE-RSA-AES256-GCM-SHA384:ECDH-RSA-AES256-GCM-SHA384:"\
   "ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA256:"\
-  "AES256-GCM-SHA384:AES256-SHA256;"
+  "AES256-GCM-SHA384:AES256-SHA256"
+
+#define SSL_CIPHERS_TLS13 \
+  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"
 
 
 #if defined(PSYNC_AES_HW_MSC)
@@ -102,22 +105,19 @@ int psync_ssl_init(){
 #else
   debug(D_NOTICE, "hardware AES is not supported for this compiler");
 #endif
-  SSL_library_init();
-  OpenSSL_add_all_algorithms();
-  OpenSSL_add_all_ciphers();
-  SSL_load_error_strings();
-  globalctx=SSL_CTX_new(TLSv1_2_client_method());
+  globalctx=SSL_CTX_new(TLS_client_method());
   if (likely_log(globalctx)){
+    SSL_CTX_set_min_proto_version(globalctx, TLS1_2_VERSION);
     if (unlikely_log(SSL_CTX_set_cipher_list(globalctx, SSL_CIPHERS)!=1)){
       SSL_CTX_free(globalctx);
       globalctx=NULL;
       return -1;
     }
+    SSL_CTX_set_ciphersuites(globalctx, SSL_CIPHERS_TLS13);
     SSL_CTX_set_verify(globalctx, SSL_VERIFY_NONE, NULL);
-    SSL_CTX_set_read_ahead(globalctx, 0); // readahed breaks SSL_Pending 
+    SSL_CTX_set_read_ahead(globalctx, 0); // readahed breaks SSL_Pending
     SSL_CTX_set_session_cache_mode(globalctx, SSL_SESS_CACHE_CLIENT|SSL_SESS_CACHE_NO_INTERNAL);
     SSL_CTX_set_options(globalctx, SSL_OP_NO_COMPRESSION);
-    SSL_CTX_set_mode(globalctx, SSL_MODE_RELEASE_BUFFERS);
     SSL_CTX_set_mode(globalctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
     for (i=0; i<ARRAY_SIZE(psync_ssl_trusted_certs); i++){
       bio=BIO_new(BIO_s_mem());
@@ -525,6 +525,55 @@ psync_symmetric_key_t psync_ssl_rsa_decrypt_symmetric_key(psync_rsa_privatekey_t
   return psync_ssl_rsa_decrypt_data(rsa, enckey->data, enckey->datalen);
 }
 
+psync_rsa_signature_t psync_ssl_rsa_sign_sha256_hash(psync_rsa_privatekey_t rsa,
+                                                      const unsigned char *data){
+  psync_rsa_signature_t ret;
+  int rsasize, siglen;
+  unsigned char *padded;
+  rsasize=RSA_size(rsa);
+  padded=(unsigned char *)psync_malloc(rsasize);
+  if (unlikely_log(!RSA_padding_add_PKCS1_PSS(rsa, padded, data, EVP_sha256(), -1))){
+    psync_free(padded);
+    return PSYNC_INVALID_BIN_RSA;
+  }
+  ret=psync_malloc(offsetof(psync_encrypted_data_struct_t, data)+rsasize);
+  siglen=RSA_private_encrypt(rsasize, padded, ret->data, rsa, RSA_NO_PADDING);
+  psync_free(padded);
+  if (unlikely_log(siglen<=0)){
+    psync_free(ret);
+    return PSYNC_INVALID_BIN_RSA;
+  }
+  ret->datalen=siglen;
+  return ret;
+}
+
+char *psync_ssl_derive_password_from_passphrase(const char *username, const char *passphrase){
+  unsigned char *usercopy;
+  unsigned char usersha512[PSYNC_SHA512_DIGEST_LEN], passwordbin[32];
+  size_t userlen, i, outlen;
+  unsigned int hashlen;
+
+  userlen=strlen(username);
+  usercopy=psync_new_cnt(unsigned char, userlen);
+  for (i=0; i<userlen; i++){
+    if ((unsigned char)username[i]<=127)
+      usercopy[i]=tolower((unsigned char)username[i]);
+    else
+      usercopy[i]='*';
+  }
+
+  EVP_Digest(usercopy, userlen, usersha512, &hashlen, EVP_sha512(), NULL);
+  psync_free(usercopy);
+
+  PKCS5_PBKDF2_HMAC(passphrase, strlen(passphrase),
+                    usersha512, PSYNC_SHA512_DIGEST_LEN,
+                    5000, EVP_sha512(),
+                    sizeof(passwordbin), passwordbin);
+
+  usercopy=psync_base64_encode(passwordbin, sizeof(passwordbin), &outlen);
+  return (char *)usercopy;
+}
+
 static AES_KEY *psync_ssl_get_aligned_aes_key(){
   unsigned char *m, *a;
   m=(unsigned char *)psync_locked_malloc(PSYNC_AES256_BLOCK_SIZE+sizeof(AES_KEY));
@@ -876,6 +925,18 @@ void psync_aes256_decode_4blocks_consec_xor_sw(psync_aes256_decoder enc, const u
   AES_decrypt(src+PSYNC_AES256_BLOCK_SIZE*3, dst+PSYNC_AES256_BLOCK_SIZE*3, enc);
   for (i=0; i<PSYNC_AES256_BLOCK_SIZE*4/sizeof(unsigned long); i++)
     ((unsigned long *)dst)[i]^=((unsigned long *)bxor)[i];
+}
+
+static psync_ssl_debug_callback_t debug_cb = NULL;
+static void *debug_ctx = NULL;
+
+void psync_ssl_set_log_threshold(int threshold){
+  (void)threshold;
+}
+
+void psync_ssl_set_debug_callback(psync_ssl_debug_callback_t cb, void *ctx){
+  debug_cb = cb;
+  debug_ctx = ctx;
 }
 
 #endif

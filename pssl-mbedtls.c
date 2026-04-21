@@ -26,8 +26,9 @@
  */
 
 
-#include "plibs.h"
+#include "pcore.h"
 #include "pssl.h"
+#include "pmem.h"
 #include "psynclib.h"
 #include "psslcerts.h"
 #include "psettings.h"
@@ -160,9 +161,7 @@ int psync_ssl_init(){
 }
 
 void psync_ssl_memclean(void *ptr, size_t len){
-  volatile unsigned char *p=ptr;
-  while (len--)
-    *p++=0;
+  psync_memclean(ptr, len);
 }
 
 static ssl_connection_t *psync_ssl_alloc_conn(const char *hostname){
@@ -590,11 +589,17 @@ psync_encrypted_symmetric_key_t psync_ssl_rsa_encrypt_data(psync_rsa_publickey_t
   return ret;
 }
 
+static pthread_mutex_t rsa_decr_mutex=PTHREAD_MUTEX_INITIALIZER;
+
 psync_symmetric_key_t psync_ssl_rsa_decrypt_data(psync_rsa_privatekey_t rsa, const unsigned char *data, size_t datalen){
   unsigned char buff[2048];
   psync_symmetric_key_t ret;
   size_t len;
-  if (rsa_rsaes_oaep_decrypt(rsa, ctr_drbg_random_locked, &psync_mbed_rng, RSA_PRIVATE, NULL, 0, &len, data, buff, sizeof(buff)))
+  int err;
+  pthread_mutex_lock(&rsa_decr_mutex);
+  err=rsa_rsaes_oaep_decrypt(rsa, ctr_drbg_random_locked, &psync_mbed_rng, RSA_PRIVATE, NULL, 0, &len, data, buff, sizeof(buff));
+  pthread_mutex_unlock(&rsa_decr_mutex);
+  if (err)
     return PSYNC_INVALID_SYM_KEY;
   ret=(psync_symmetric_key_t)psync_locked_malloc(offsetof(psync_symmetric_key_struct_t, key)+len);
   ret->keylen=len;
