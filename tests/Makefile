@@ -1,3 +1,4 @@
+
 CC = gcc
 BUILD_DIR = build
 PKG_CONFIG ?= pkg-config
@@ -19,8 +20,8 @@ CHECK_LIBS   = $(shell $(PKG_CONFIG) --libs check)
 CFLAGS = -I. -I.. -std=gnu99 -g -O0 -Wall -fPIC \
          -DDEBUG_LEVEL=0 -DP_OS_LINUX -D_FILE_OFFSET_BITS=64 \
          -Wno-error=int-conversion -Wno-error=incompatible-pointer-types \
-         $(CHECK_CFLAGS)
-LDFLAGS = $(CHECK_LIBS)
+         $(CHECK_CFLAGS) $(EXTRA_CFLAGS)
+LDFLAGS = $(CHECK_LIBS) $(EXTRA_LDFLAGS)
 
 # Network tests need the real pcompat.h (with psync_socket etc.),
 # so -I.. must come before -I. to avoid the test shim.
@@ -85,13 +86,45 @@ $(BUILD_DIR):
 $(BUILD_DIR)/check_plist: check_plist.c ../plist.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(BUILD_DIR)/check_ptree: check_ptree.c ../ptree.c | $(BUILD_DIR)
+$(BUILD_DIR)/check_ptree: check_ptree.c ../ptree.c stubs.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(BUILD_DIR)/check_papi: check_papi.c ../papi.c papi_test_stubs.c pssl_test_stubs.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(SQLITE_CFLAGS) $^ -o $@ $(LDFLAGS)
+$(BUILD_DIR)/check_pintervaltree: check_pintervaltree.c ../pintervaltree.c ../ptree.c stubs.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-CORE_BINS = $(BUILD_DIR)/check_plist $(BUILD_DIR)/check_ptree $(BUILD_DIR)/check_papi
+$(BUILD_DIR)/check_pcrc32c: check_pcrc32c.c ../pcrc32c.c stubs.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/check_pmemlock: check_pmemlock.c ../pmemlock.c ../ptree.c ../pintervaltree.c stubs.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
+
+$(BUILD_DIR)/check_ppassword: check_ppassword.c ../ppassword.c stubs.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/check_plocks: check_plocks.c ../plocks.c stubs.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
+
+$(BUILD_DIR)/check_pcompression: check_pcompression.c ../pcompression.c stubs.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lz
+
+$(BUILD_DIR)/check_papi: check_papi.c papi_stubs.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/check_psyncer: check_psyncer.c ../ptree.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
+
+$(BUILD_DIR)/check_pp2p: check_pp2p.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
+
+$(BUILD_DIR)/check_pcloudcrypto: check_pcloudcrypto.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
+
+CORE_BINS = $(BUILD_DIR)/check_plist $(BUILD_DIR)/check_ptree \
+            $(BUILD_DIR)/check_pintervaltree $(BUILD_DIR)/check_pcrc32c \
+            $(BUILD_DIR)/check_pmemlock $(BUILD_DIR)/check_ppassword \
+            $(BUILD_DIR)/check_plocks $(BUILD_DIR)/check_pcompression \
+            $(BUILD_DIR)/check_papi $(BUILD_DIR)/check_psyncer \
+            $(BUILD_DIR)/check_pp2p $(BUILD_DIR)/check_pcloudcrypto
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Per-provider SSL unit tests
@@ -146,7 +179,6 @@ check: $(CORE_BINS)
 
 # --- Per-provider SSL convenience targets ---
 .PHONY: check-pssl-openssl check-pssl-openssl3 check-pssl-wolfssl check-pssl-mbedtls check-pssl
-all: $(TEST_BINS)
 
 check-pssl-openssl: $(BUILD_DIR)/check_pssl_openssl
 	$(BUILD_DIR)/check_pssl_openssl
