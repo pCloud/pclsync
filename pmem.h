@@ -25,10 +25,25 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PSYNC_LIBS_H
-#define _PSYNC_LIBS_H
+#ifndef _PSYNC_MEM_H
+#define _PSYNC_MEM_H
 
-#include "pcore.h"
-#include "psql.h"
+#include <stddef.h>
+
+/* Forward-declare psync_malloc (defined in psynclib.h / pcompat.c) */
+void *psync_malloc(size_t size);
+
+/* Convenience allocation macros */
+#define psync_new(type) (type *)psync_malloc(sizeof(type))
+#define psync_new_cnt(type, cnt) (type *)psync_malloc(sizeof(type)*(cnt))
+
+/* Secure memory wipe — volatile stores prevent compiler elision.
+   Equivalent to the implementation used by pssl-mbedtls.c,
+   pssl-securetransport.c, and pssl-wolfssl.c. */
+static inline void psync_memclean(void *ptr, size_t len){
+  volatile unsigned char *p=(volatile unsigned char *)ptr;
+  while (len--)
+    *p++=0;
+}
 
 #endif

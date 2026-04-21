@@ -25,10 +25,25 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PSYNC_LIBS_H
-#define _PSYNC_LIBS_H
+#ifndef _PSYNC_STRINGS_H
+#define _PSYNC_STRINGS_H
 
-#include "pcore.h"
-#include "psql.h"
+#include "pcompiler.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+char *psync_strdup(const char *str) PSYNC_MALLOC PSYNC_NONNULL(1);
+char *psync_strnormalize_filename(const char *str) PSYNC_MALLOC PSYNC_NONNULL(1);
+char *psync_strndup(const char *str, size_t len) PSYNC_MALLOC PSYNC_NONNULL(1);
+char *psync_strcat(const char *str, ...) PSYNC_MALLOC PSYNC_SENTINEL;
+int psync_slprintf(char *str, size_t size, const char *format, ...) PSYNC_NONNULL(1, 3);
+
+int psync_is_valid_utf8(const char *str);
+
+int psync_match_pattern(const char *name, const char *pattern, size_t plen);
+
+uint64_t psync_ato64(const char *str);
+uint32_t psync_ato32(const char *str);
 
 #endif
