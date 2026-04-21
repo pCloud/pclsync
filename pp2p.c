@@ -109,7 +109,7 @@ static psync_rsa_publickey_t psync_rsa_public=PSYNC_INVALID_RSA;
 static psync_rsa_privatekey_t psync_rsa_private=PSYNC_INVALID_RSA;
 static psync_binary_rsa_key_t psync_rsa_public_bin=PSYNC_INVALID_BIN_RSA;
 
-PSYNC_PURE static const char *p2p_get_address(void *addr){
+static const char *p2p_get_address(void *addr){
   if (((struct sockaddr_in *)addr)->sin_family==AF_INET)
     return inet_ntoa(((struct sockaddr_in *)addr)->sin_addr);
   else{
@@ -122,7 +122,7 @@ PSYNC_PURE static const char *p2p_get_address(void *addr){
   }
 }
 
-PSYNC_PURE static const char *p2p_get_peer_address(){
+static const char *p2p_get_peer_address(){
   if (paddr.ss_family==AF_INET)
     return inet_ntoa(((struct sockaddr_in *)&paddr)->sin_addr);
   else{
@@ -211,7 +211,7 @@ static void psync_p2p_check(const packet_check *packet){
     psync_milisleep(files_serving*10);
   if (resp.type==P2P_RESP_WAIT)
     psync_milisleep(PSYNC_P2P_INITIAL_TIMEOUT/4);
-  if (!sendto(udpsock, (const char *)&resp, sizeof(resp), 0, (const struct sockaddr *)&paddr, paddrlen))
+  if (sendto(udpsock, (const char *)&resp, sizeof(resp), 0, (const struct sockaddr *)&paddr, paddrlen)==SOCKET_ERROR)
     debug(D_WARNING, "sendto to %s failed", p2p_get_peer_address());
 }
 
@@ -344,6 +344,7 @@ static void psync_p2p_tcphandler(void *ptr){
   }
   aeskey=psync_crypto_aes256_ctr_gen_key();
   encaeskey=psync_ssl_rsa_encrypt_symmetric_key(pubrsa, aeskey);
+  psync_ssl_rsa_free_public(pubrsa);
   encoder=psync_crypto_aes256_ctr_encoder_decoder_create(aeskey);
   psync_ssl_free_symmetric_key(aeskey);
   keylen=encaeskey->datalen;
@@ -477,8 +478,10 @@ static void psync_p2p_thread(){
 ex:
   pthread_mutex_lock(&p2pmutex);
   running=0;
-  psync_close_socket(tcpsock);
-  psync_close_socket(udpsock);
+  if (tcpsock!=INVALID_SOCKET)
+    psync_close_socket(tcpsock);
+  if (udpsock!=INVALID_SOCKET)
+    psync_close_socket(udpsock);
   pthread_mutex_unlock(&p2pmutex);
 }
 
@@ -544,6 +547,7 @@ static int psync_p2p_check_rsa(){
       goto rete;
 
     rsapriv=psync_ssl_rsa_get_private(rsa);
+    rsapub=psync_ssl_rsa_get_public(rsa);
     if (likely_log(rsapub!=PSYNC_INVALID_RSA))
       rsapubbin=psync_ssl_rsa_public_to_binary(rsapub);
     else
@@ -629,7 +633,7 @@ static int psync_p2p_download(psync_socket_t sock, psync_fileid_t fileid, const 
   }
   ekey=psync_ssl_alloc_encrypted_symmetric_key(keylen);
   if (unlikely_log(socket_read_all(sock, ekey->data, keylen)) ||
-    unlikely_log((key = psync_ssl_rsa_decrypt_symm_key_lock(psync_rsa_private, ekey)) == PSYNC_INVALID_SYM_KEY)) {
+    unlikely_log((key = psync_ssl_rsa_decrypt_symmetric_key(psync_rsa_private, ekey)) == PSYNC_INVALID_SYM_KEY)) {
       //unlikely_log((key=psync_ssl_rsa_decrypt_symmetric_key(psync_rsa_private, ekey))==PSYNC_INVALID_SYM_KEY)){
     psync_free(ekey);
     return PSYNC_NET_TEMPFAIL;
