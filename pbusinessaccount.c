@@ -240,7 +240,7 @@ int do_psync_account_modifyshare(psync_shareid_t usrshrids[], uint32_t uperms[],
       idsp[k] = ',';
       idsp = idsp + k + 1;
 
-      k = sprintf(permsp, "%lld",(long long) uperms[i]);
+      k = sprintf(permsp, "%lld",(long long) tperms[i]);
       if (unlikely(k <= 0 )) break;
       permsp[k] = ',';
       permsp = permsp + k + 1;
@@ -349,7 +349,6 @@ void get_ba_member_email(uint64_t userid, char** email /*OUT*/, size_t *length /
 	  fname = psync_find_result(users->array[0], "firstname", PARAM_STR)->str;
 	  lname = psync_find_result(users->array[0], "lastname", PARAM_STR)->str;
     }
-    psync_free(bres);
 
     if (*length) {
       psync_sql_res *q;
@@ -360,7 +359,8 @@ void get_ba_member_email(uint64_t userid, char** email /*OUT*/, size_t *length /
 	  psync_sql_bind_lstring(q, 4, lname, strlen(lname));
       psync_sql_run_free(q);
     }
-  
+    psync_free(bres);
+
   }
 }
 

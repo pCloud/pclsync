@@ -591,7 +591,7 @@ err3:
 err2:
   mark_shared_api_bad(api);
   psync_apipool_release_bad(api);
-  return 0;
+  return -1;
 }
 
 static psync_urls_t *get_urls_for_request(psync_request_t *req){
@@ -992,8 +992,8 @@ static void clean_cache(){
           entries[i].usecnt=UINT16_MAX;
         else
           entries[i].usecnt=row[3];
-        entries[i].isfirst=row[2]<PSYNC_FS_FIRST_PAGES_UNDER_ID;
-        entries[i].isxfirst=row[2]<PSYNC_FS_XFIRST_PAGES_UNDER_ID;
+        entries[i].isfirst=row[1]<PSYNC_FS_FIRST_PAGES_UNDER_ID;
+        entries[i].isxfirst=row[1]<PSYNC_FS_XFIRST_PAGES_UNDER_ID;
         i++;
         if ((i&0x3ff)==0x3ff && psync_sql_has_waiters())
           break;
@@ -1273,6 +1273,12 @@ static int flush_pages(int nosleep){
       psync_list_for_each_element(page, &pages_to_flush, psync_cache_page_t, flushlist){
         if (psync_file_pwrite(readcache, page->page, PSYNC_FS_PAGE_SIZE, (uint64_t)page->flushpageid*PSYNC_FS_PAGE_SIZE)!=PSYNC_FS_PAGE_SIZE){
           debug(D_ERROR, "write to cache file failed");
+          pthread_mutex_lock(&cache_mutex);
+          flushcacherun=0;
+          flush_page_running--;
+          if (free_page_waiters)
+            pthread_cond_broadcast(&free_page_cond);
+          pthread_mutex_unlock(&cache_mutex);
           pthread_mutex_unlock(&flush_cache_mutex);
           return -1;
         }

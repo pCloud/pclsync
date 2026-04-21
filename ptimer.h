@@ -35,7 +35,7 @@
 
 #define PSYNC_INVALID_TIMER NULL
 
-extern time_t psync_current_time;
+extern volatile time_t psync_current_time;
 
 struct _psync_timer_t;
 

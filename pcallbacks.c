@@ -28,7 +28,7 @@
 #include <string.h>
 #include "pcallbacks.h"
 #include "pcompat.h"
-#include "plibs.h"
+#include "pcore.h"
 #include "plist.h"
 #include "pfolder.h"
 #include "prunratelimit.h"
@@ -469,6 +469,7 @@ void free_data_event(event_data_struct* elem) {
 /**********************************************************************************************/
 void add_elem(event_data_struct* elem, de_elem_list* list) {
   pthread_mutex_lock(&data_event_mutex);
+  elem->elem_next = NULL;
 
   if (list->first == NULL) {
     list->first = elem;
@@ -516,7 +517,7 @@ void data_event_thread(void* ptr) {
   char* path;
   int i;
 
-  while (1) {
+  while (psync_do_run) {
     if ((plasr_diff_devent_t != -1) && ((psync_time() - plasr_diff_devent_t) >= PDIFF_DATA_EVENT_DELAY)) {
       data_event_fptr(PEVENT_FS_ADD_OBJ, NULL, NULL, 0, 0);
 
@@ -556,10 +557,8 @@ void psync_send_data_event(int event_id, const char* str1, const char* str2, uin
   event_data_struct* data = psync_new(event_data_struct);
 
   data->eventid = event_id;
-  if(str1)data->str1 = strdup(str1);
-  else data->str1 = strdup("null");
-  if (str1)data->str2 = strdup(str2);
-  else data->str2 = strdup("null");
+  data->str1 = str1 ? psync_strdup(str1) : psync_strdup("null");
+  data->str2 = str2 ? psync_strdup(str2) : psync_strdup("null");
   data->uint1 = uint1;
   data->uint2 = uint2;
 

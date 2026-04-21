@@ -172,7 +172,10 @@ static void process_shares_out(const binresult *shares_out, int shcnt) {
     psync_sql_bind_lstring(q, 6, br->str, br->length);
     if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
       br=psync_check_result(share, "sharename", PARAM_STR);
-    psync_sql_bind_lstring(q, 7, br->str, br->length);
+    if (likely(br))
+      psync_sql_bind_lstring(q, 7, br->str, br->length);
+    else
+      psync_sql_bind_string(q, 7, "");
     psync_sql_bind_uint(q, 8, isincomming);
     psync_sql_run_free(q);
   }
@@ -199,7 +202,10 @@ static void process_shares_in(const binresult *shares_in, int shcnt) {
     psync_sql_bind_lstring(q, 6, br->str, br->length);
     if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
       br=psync_check_result(share, "sharename", PARAM_STR);
-    psync_sql_bind_lstring(q, 7, br->str, br->length);
+    if (likely(br))
+      psync_sql_bind_lstring(q, 7, br->str, br->length);
+    else
+      psync_sql_bind_string(q, 7, "");
     psync_sql_run_free(q);
   }
 }

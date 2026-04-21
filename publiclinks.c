@@ -832,7 +832,7 @@ int do_psync_change_link(unsigned long long linkid, unsigned long long expire, i
   uint64_t result;
   *err = 0;
   binparam* t;
-  int numparam = 5;// +!!expire + !!maxdownloads + !!maxtraffic + !!password;
+  int numparam = 7;
   int pind = 1;
 
   t = (binparam *)psync_malloc(numparam*sizeof(binparam));

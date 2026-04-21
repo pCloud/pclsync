@@ -28,7 +28,7 @@
 #include "pnotifications.h"
 #include "psettings.h"
 #include "ptimer.h"
-#include "plibs.h"
+#include "pcore.h"
 #include "pnetlibs.h"
 #include "ptree.h"
 
@@ -185,8 +185,13 @@ static void psync_notifications_thread(){
       break;
     }
 
-    while (!ntf_result)
+    while (!ntf_result && psync_do_run)
       pthread_cond_wait(&ntf_cond, &ntf_mutex);
+
+    if (unlikely(!psync_do_run)){
+      pthread_mutex_unlock(&ntf_mutex);
+      break;
+    }
 
     res=ntf_result;
     ntf_result=NULL;

@@ -87,12 +87,11 @@ static psync_free_t psync_real_free=free;
 
 const char *psync_database=NULL;
 
-static int psync_libstate=0;
-static pthread_mutex_t psync_libstate_mutex=PTHREAD_MUTEX_INITIALIZER;
+static uint32_t psync_libstate=PSYNC_LIB_STATE_UNINITIALIZED;
 static time_t links_last_refresh_time;
 
-extern int unlinked;
-extern int tfa;
+extern volatile int unlinked;
+extern volatile int tfa;
 
 #define return_error(err) do {psync_error=err; return -1;} while (0)
 #define return_isyncid(err) do {psync_error=err; return PSYNC_INVALID_SYNCID;} while (0)
@@ -161,6 +160,10 @@ uint32_t psync_get_last_error(){
 
 void psync_set_database_path(const char *databasepath){
   psync_database=psync_strdup(databasepath);
+}
+
+void psync_set_data_directory(const char *path){
+  psync_set_pcloud_path(path);
 }
 
 void psync_set_alloc(psync_malloc_t malloc_call, psync_realloc_t realloc_call, psync_free_t free_call){
@@ -234,13 +237,9 @@ int psync_init() {
   debug(D_NOTICE, "previous commit time "GIT_PREV_COMMIT_DATE);
   debug(D_NOTICE, "previous commit id "GIT_PREV_COMMIT_ID);
 
-  if (IS_DEBUG){
-    pthread_mutex_lock(&psync_libstate_mutex);
-    if (psync_libstate!=0){
-      pthread_mutex_unlock(&psync_libstate_mutex);
-      debug(D_BUG, "you are not supposed to call psync_init for a second time");
-      return 0;
-    }
+  if (!psync_atomic_compare_and_set_uint32(&psync_libstate, PSYNC_LIB_STATE_UNINITIALIZED, PSYNC_LIB_STATE_INITIALIZED)){
+    debug(D_BUG, "you are not supposed to call psync_init for a second time");
+    return_error(PERROR_INVALID_LIB_STATE);
   }
   psync_locked_init();
   psync_cache_init();
@@ -248,14 +247,12 @@ int psync_init() {
   if (!psync_database){
     psync_database=psync_get_default_database_path();
     if (unlikely_log(!psync_database)){
-      if (IS_DEBUG)
-        pthread_mutex_unlock(&psync_libstate_mutex);
+      psync_atomic_set_uint32(&psync_libstate, PSYNC_LIB_STATE_UNINITIALIZED);
       return_error(PERROR_NO_HOMEDIR);
     }
   }
   if (psync_sql_connect(psync_database)){
-    if (IS_DEBUG)
-      pthread_mutex_unlock(&psync_libstate_mutex);
+    psync_atomic_set_uint32(&psync_libstate, PSYNC_LIB_STATE_UNINITIALIZED);
     return_error(PERROR_DATABASE_OPEN);
   }
 
@@ -268,8 +265,7 @@ int psync_init() {
   psync_timer_init();
 
   if (unlikely_log(psync_ssl_init())){
-    if (IS_DEBUG)
-      pthread_mutex_unlock(&psync_libstate_mutex);
+    psync_atomic_set_uint32(&psync_libstate, PSYNC_LIB_STATE_UNINITIALIZED);
     return_error(PERROR_SSL_INIT_FAILED);
   }
 
@@ -278,11 +274,6 @@ int psync_init() {
   psync_status_init();
   psync_timer_sleep_handler(psync_stop_crypto_on_sleep);
   psync_path_status_init();
-
-  if (IS_DEBUG){
-    psync_libstate=1;
-    pthread_mutex_unlock(&psync_libstate_mutex);
-  }
 
   psync_run_thread("Overlay main thread", overlay_main_loop);
   init_overlay_callbacks();
@@ -315,23 +306,13 @@ int psync_init() {
   return 0;
 }
 
-void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback_t event_callback){
+int psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback_t event_callback){
   debug(D_NOTICE, "starting sync");
-  if (IS_DEBUG){
-    pthread_mutex_lock(&psync_libstate_mutex);
-    if (psync_libstate==0){
-      pthread_mutex_unlock(&psync_libstate_mutex);
+  if (!psync_atomic_compare_and_set_uint32(&psync_libstate, PSYNC_LIB_STATE_INITIALIZED, PSYNC_LIB_STATE_RUNNING)){
+    uint32_t state=psync_atomic_read_uint32(&psync_libstate);
+    if (state==PSYNC_LIB_STATE_UNINITIALIZED)
       debug(D_BUG, "you are calling psync_start_sync before psync_init");
-      return;
-    }
-    else if (psync_libstate==2){
-      pthread_mutex_unlock(&psync_libstate_mutex);
-      debug(D_BUG, "you are calling psync_start_sync for a second time");
-      return;
-    }
-    else
-      psync_libstate=2;
-    pthread_mutex_unlock(&psync_libstate_mutex);
+    return_error(PERROR_INVALID_LIB_STATE);
   }
   psync_apiserver_init();
   debug(D_NOTICE, "API server init done.");
@@ -369,6 +350,7 @@ void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback
   psync_devmon_init();
 
   debug(D_NOTICE, "Devmon init done.");
+  return 0;
 }
 
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize){
@@ -385,8 +367,11 @@ uint32_t psync_download_state(){
   return 0;
 }
 
-void psync_destroy(){
-  debug(D_NOTICE, "Runing psync_destroy. Stop all syncs.");
+int psync_destroy(){
+  if (!psync_atomic_compare_and_set_uint32(&psync_libstate, PSYNC_LIB_STATE_RUNNING, PSYNC_LIB_STATE_DESTROYING) &&
+      !psync_atomic_compare_and_set_uint32(&psync_libstate, PSYNC_LIB_STATE_INITIALIZED, PSYNC_LIB_STATE_DESTROYING))
+    return_error(PERROR_INVALID_LIB_STATE);
+  debug(D_NOTICE, "Running psync_destroy. Stop all syncs.");
 
   psync_do_run=0;
   psync_fs_stop();
@@ -400,6 +385,12 @@ void psync_destroy(){
   psync_sql_lock();
   psync_cache_clean_all();
   psync_sql_close();
+  psync_atomic_set_uint32(&psync_libstate, PSYNC_LIB_STATE_DESTROYED);
+  return 0;
+}
+
+uint32_t psync_get_lib_state(){
+  return psync_atomic_read_uint32(&psync_libstate);
 }
 
 void psync_get_status(pstatus_t *status){
@@ -619,7 +610,12 @@ void psync_unlink(){
 
   psync_status_recalc_to_download();
   psync_status_recalc_to_upload();
-  psync_invalidate_auth(psync_my_auth);
+
+  const char *current_auth_token = psync_get_auth_string();
+  if (current_auth_token && strlen(current_auth_token) > 0) {
+    psync_invalidate_auth(psync_my_auth);
+  }
+
   psync_cloud_crypto_stop();
   psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   psync_milisleep(20);
@@ -645,7 +641,7 @@ void psync_unlink(){
 
   for (i = 0; i < 5; i++) {
     ret = psync_file_delete(psync_database);
-    if (ret == 0) {
+    if (ret != 0) {
       debug(D_WARNING, "Failed to delete DB file.");
       psync_milisleep_nosqlcheck(1000);
     }
@@ -1170,8 +1166,8 @@ psync_fileid_t psync_get_fileid_by_path(const char *remotepath){
 		psync_sql_bind_uint(res, 1, filep->folderid);
 		psync_sql_bind_string(res, 2, filep->name);
 		row = psync_sql_fetch_rowint(res);
-		id = row[0];
-		if (res)
+		if (row)
+			id = row[0];
 		psync_sql_free_result(res);
 	}
 
@@ -1820,8 +1816,8 @@ psync_new_version_t *psync_check_new_version_str(const char *os, const char *cur
 
 static psync_new_version_t *psync_res_to_ver(const binresult *res, char *localpath){
   psync_new_version_t *ver;
-  const char *notes, *versionstr, *bver, *minosver = NULL;
-  size_t lurl, lnotes, lversion, llpath, llocalpath, lver, lminosver = 0;
+  const char *notes, *versionstr, *bver=NULL, *minosver=NULL;
+  size_t lurl, lnotes, lversion, llpath, llocalpath, lver=0, lminosver=0;
   const binresult *cres, *pres, *hres, *mres, *bres, *vres;
   char *ptr;
   unsigned long usize;
@@ -2811,8 +2807,6 @@ int psync_is_folder_syncable(char*  localPath,
   char* syncmp;
   const char* ignorePaths;
 
-  int i;
-
   debug(D_NOTICE, "Check if folder is already synced. LocalPath [%s]", localPath);
 
   sql = psync_sql_query("SELECT localpath FROM syncfolder WHERE folderid IS NOT NULL");
@@ -2855,17 +2849,19 @@ int psync_is_folder_syncable(char*  localPath,
     psync_free(syncmp);
   }
 
-  //Check if folder is not a child of an igrnored folder
+  // Check if folder is not a child of an ignored folder
   ignorePaths = psync_setting_get_string(_PS(ignorepaths));
   parse_os_path(ignorePaths, &folders, DELIM_SEMICOLON, 0);
 
-  for (i = 0; i < folders.cnt; i++) {
+  for (int i = 0; i < folders.cnt; i++) {
     debug(D_NOTICE, "Check ignored folder: [%s]=[%s]", folders.folders[i], localPath);
 
     if (psync_left_str_is_prefix(folders.folders[i], localPath)) {
-      *errMsg = psync_strdup("This folder is a child  of a folder in your ignore folders list.");
+      *errMsg = psync_strdup("This folder is a child of a folder in your ignore folders list.");
+      psync_free(folders.folders[i]);
       return PERROR_PARENT_IS_IGNORED;
     }
+    psync_free(folders.folders[i]);
   }
 
   return 0;
@@ -2931,7 +2927,7 @@ psync_folderid_t create_bup_mach_folder(char** msgErr) {
 }
 /***********************************************************************************************************************************************/
 int psync_create_backup(char*  path,
-                        char** errMsg) {
+                        char** err) {
   psync_folderid_t bFId;
   psync_syncid_t   syncFId;
   binresult*       folId;
@@ -2942,12 +2938,12 @@ int psync_create_backup(char*  path,
   int   res = 0, oParCnt = 0;
 
   if (path[0] == 0) {
-    *errMsg = strdup(PSYNC_BACKUP_PATH_EMPTY_MSG);
+    *err = strdup(PSYNC_BACKUP_PATH_EMPTY_MSG);
 
     return PSYNC_BACKUP_PATH_EMPTY_ERR;
   }
 
-  res = psync_is_folder_syncable(path, errMsg);
+  res = psync_is_folder_syncable(path, err);
 
   if (res != 0) {
     return res;
@@ -2957,7 +2953,7 @@ int psync_create_backup(char*  path,
 
   if (bFId == 0) {
     retryRootCrt:
-    bFId = create_bup_mach_folder(errMsg);
+    bFId = create_bup_mach_folder(err);
 
     if (bFId == 0) {
       debug(D_ERROR, "Failed to create Backup folder in the backend!");
@@ -3001,7 +2997,12 @@ int psync_create_backup(char*  path,
                      &reqPar,
                      &optPar,
                      &retData,
-                     errMsg);
+                     err);
+
+  for (int i = 0; i < folders.cnt; i++)
+  {
+    free(folders.folders[i]);
+  }
 
   if (res == 0) {
     psync_diff_update_folder(retData);
@@ -3013,7 +3014,7 @@ int psync_create_backup(char*  path,
     free(retData);
 
     if (syncFId < 0) {
-      *errMsg = psync_strdup("Error creating Backup.");
+      *err = psync_strdup("Error creating Backup.");
       return -1;
     }
 

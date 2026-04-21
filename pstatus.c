@@ -332,15 +332,16 @@ void psync_set_status(uint32_t statusid, uint32_t status){
 
   psync_status.remoteisfull=(statuses[PSTATUS_TYPE_ACCFULL]==PSTATUS_ACCFULL_OVERQUOTA);
   psync_status.localisfull=(statuses[PSTATUS_TYPE_DISKFULL]==PSTATUS_DISKFULL_FULL);
-  
-  pthread_mutex_unlock(&statusmutex);
-  
+
   status=psync_calc_status();
 
   if (psync_status.status!=status){
     psync_status.status=status;
+    pthread_mutex_unlock(&statusmutex);
     psync_send_status_update();
   }
+  else
+    pthread_mutex_unlock(&statusmutex);
 }
 
 void psync_wait_status(uint32_t statusid, uint32_t status){

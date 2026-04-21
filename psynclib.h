@@ -265,6 +265,7 @@ typedef struct pstatus_struct_ {
 #define PERROR_NO_MEMORY               15
 #define PERROR_NET_ERROR               16
 #define PERROR_PARENT_IS_IGNORED       17
+#define PERROR_INVALID_LIB_STATE      18
 
 #define PERROR_CACHE_MOVE_NOT_EMPTY       1
 #define PERROR_CACHE_MOVE_NO_WRITE_ACCESS 2
@@ -722,8 +723,10 @@ typedef void (*pnotification_callback_t)(uint32_t notificationcnt, uint32_t newn
  * Returns 0 on success and -1 otherwise.
  *
  * psync_start_sync starts remote sync, both callbacks can be NULL, but most of the time setting
- * at least status_callback will make sense. Applications should expect immediate
- * status_callback with status of PSTATUS_LOGIN_REQUIRED after first run of psync_start_sync().
+ * at least status_callback will make sense. Returns 0 on success, -1 if the library is not in
+ * PSYNC_LIB_STATE_INITIALIZED state (sets PERROR_INVALID_LIB_STATE). Applications should expect
+ * immediate status_callback with status of PSTATUS_LOGIN_REQUIRED after first run of
+ * psync_start_sync().
  *
  * psync_set_notification_callback - sets callback for new notifications. Should be called before
  * psync_start_sync if at all. thumbsize should be string in "WxH" format (e.g. "64x64"). If NULL
@@ -736,6 +739,9 @@ typedef void (*pnotification_callback_t)(uint32_t notificationcnt, uint32_t newn
  * be preformed.
  *
  * psync_destroy is to be called before application exit. This is not neccessary.
+ * Returns 0 if teardown was performed, -1 if the library was not initialized or
+ * is already being destroyed (sets PERROR_INVALID_LIB_STATE). Safe to call without
+ * a prior psync_init() or multiple times.
  * In any case psync_destroy will return relatively fast, regardless of blocked
  * network calls and other potentially slow to finish tasks.
  *
@@ -768,6 +774,14 @@ typedef void (*pnotification_callback_t)(uint32_t notificationcnt, uint32_t newn
  */
 
 void psync_set_database_path(const char *databasepath);
+
+/* psync_set_data_directory sets the data directory used by the library for its
+ * configuration, cache and temporary files. Should be called before psync_init().
+ * The library will make its own copy of the path, so the memory can be free()d/reused
+ * after the function returns.
+ */
+void psync_set_data_directory(const char *path);
+
 void psync_set_alloc(psync_malloc_t malloc_call, psync_realloc_t realloc_call, psync_free_t free_call);
 void psync_set_software_string(const char *str);
 void psync_set_os_string(const char *str);
@@ -777,12 +791,22 @@ int psync_init(const char* appDrive);
 #else
 int psync_init();
 #endif
-void psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback_t event_callback);
+int psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback_t event_callback);
 void psync_set_notification_callback(pnotification_callback_t notification_callback, const char *thumbsize);
 psync_notification_list_t *psync_get_notifications();
 int psync_mark_notificaitons_read(uint32_t notificationid);
 uint32_t psync_download_state();
-void psync_destroy();
+int psync_destroy();
+
+#define PSYNC_LIB_STATE_UNINITIALIZED  0
+#define PSYNC_LIB_STATE_INITIALIZED    1
+#define PSYNC_LIB_STATE_RUNNING        2
+#define PSYNC_LIB_STATE_DESTROYING     3
+#define PSYNC_LIB_STATE_DESTROYED      4
+
+/* returns the current library lifecycle state as one of the PSYNC_LIB_STATE_* constants.
+ */
+uint32_t psync_get_lib_state();
 
 /* returns current status.
  */

@@ -201,7 +201,11 @@ static uint32_t process_notification(localnotify_dir *dir){
   rd=read(dir->inotifyfd, buff, sizeof(buff));
   off=0;
   while (off<rd){
+    if (off+(ssize_t)offsetof(struct inotify_event, name)>rd)
+      break;
     memcpy(&ev, buff+off, offsetof(struct inotify_event, name));
+    if (off+(ssize_t)offsetof(struct inotify_event, name)+ev.len>rd)
+      break;
     if (ev.mask&(IN_CREATE|IN_MOVED_TO)){
       wch=dir->watches[ev.wd%WATCH_HASH];
       while (wch){

@@ -29,7 +29,7 @@
 #include "pscanner.h"
 #include "pscanexts.h"
 #include "plist.h"
-#include "plibs.h"
+#include "pcore.h"
 #include "psettings.h"
 #include <string.h>
 #include <stdio.h>

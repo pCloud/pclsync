@@ -30,7 +30,7 @@
 #include "pcache.h"
 #include "ptimer.h"
 #include "plist.h"
-#include "plibs.h"
+#include "pcore.h"
 #include "pssl.h"
 #include <string.h>
 
@@ -145,9 +145,9 @@ static void cache_timer(psync_timer_t timer, void *ptr){
   pthread_mutex_lock(&cache_mutexes[hash_to_lock(he->hash)]);
   psync_list_del(&he->list);
   pthread_mutex_unlock(&cache_mutexes[hash_to_lock(he->hash)]);
+  psync_timer_stop(timer);
   he->free(he->value);
   psync_free(he);
-  psync_timer_stop(timer);
 }
 
 void psync_cache_add(const char *key, void *ptr, time_t freeafter, psync_cache_free_callback freefunc, uint32_t maxkeys){

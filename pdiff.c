@@ -84,11 +84,11 @@ static uint32_t psync_is_business=0;
 static unsigned char adapter_hash[PSYNC_FAST_HASH256_LEN];
 
 
-int unlinked=0;
-int tfa = 0;
+volatile int unlinked=0;
+volatile int tfa = 0;
 
-//Is account already overquota, to avoid spamming overquota message. 
-int g_is_over_quota = 0;
+//Is account already overquota, to avoid spamming overquota message.
+volatile int g_is_over_quota = 0;
 
 void do_register_account_events_callback(paccount_cache_callback_t callback){
   psync_cache_callback=callback;
@@ -124,7 +124,7 @@ static void delete_cached_crypto_keys(){
 }
 
 void psync_delete_cached_crypto_keys(){
-	void delete_cached_crypto_keys();
+	delete_cached_crypto_keys();
 }
 
 static binresult *get_userinfo_user_digest(psync_socket *sock, const char *username, size_t userlen, const char *pwddig, const char *digest, uint32_t diglen,
@@ -262,8 +262,12 @@ int check_user_relocated(uint64_t luserid, psync_socket* sock){
     id = userids->array[i];
     userid = psync_find_result(id, "userid", PARAM_NUM)->num;
     lid = psync_find_result(id, "locationid", PARAM_NUM)->num;
-    if (luserid == userid && lid == clid) return 1;
+    if (luserid == userid && lid == clid){
+      psync_free(res);
+      return 1;
+    }
   }
+  psync_free(res);
   return 0;
 }
 
@@ -305,9 +309,9 @@ static psync_socket *get_connected_socket(){
     user=psync_sql_cellstr("SELECT value FROM setting WHERE id='user'");
     pass=psync_sql_cellstr("SELECT value FROM setting WHERE id='pass'");
 
-    if (user && !user[0]) user = NULL;
-    if (pass && !pass[0]) pass = NULL;
-    if (auth && !auth[0]) auth = NULL;
+    if (user && !user[0]) { psync_free(user); user = NULL; }
+    if (pass && !pass[0]) { psync_free(pass); pass = NULL; }
+    if (auth && !auth[0]) { psync_free(auth); auth = NULL; }
 
     chrUserid = psync_sql_cellstr("SELECT value FROM setting WHERE id='userid'");
 
@@ -318,6 +322,7 @@ static psync_socket *get_connected_socket(){
     }
     else {
       isFirstLogin = 0;
+      psync_free(chrUserid);
     }
 
     if (!auth && psync_my_auth[0])
@@ -356,6 +361,7 @@ static psync_socket *get_connected_socket(){
       continue;
     }
 
+    psync_free(osversion);
     osversion=psync_deviceos();
 
     debug(D_NOTICE, "OS parameters:");
@@ -423,6 +429,7 @@ static psync_socket *get_connected_socket(){
     }
 
     psync_free(osversion);
+    osversion=NULL;
 
     if (unlikely_log(!res)){
       psync_socket_close(sock);
@@ -472,6 +479,7 @@ static psync_socket *get_connected_socket(){
           binapi=psync_strdup(psync_find_result(cres, "binapi", PARAM_STR)->str);
           locationid=psync_find_result(cres, "id", PARAM_NUM)->num;
           psync_set_apiserver(binapi,locationid);
+          psync_free(binapi);
         }
         
         psync_socket_close(sock);
@@ -793,6 +801,7 @@ static psync_socket *get_connected_socket(){
         &errMsg);
       if (errMsg)
         psync_free(errMsg);
+      psync_free(macAddr);
     }
     else {
       debug(D_NOTICE, "Not a first login. Run sync event.");
@@ -814,12 +823,15 @@ static psync_socket *get_connected_socket(){
 
       if (likely(result==0)){
         cres=psync_check_result(res, "account", PARAM_HASH);
-        q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
-        psync_sql_bind_string(q, 1, "company");
-        psync_sql_bind_string(q, 2, psync_find_result(cres, "company", PARAM_STR)->str);
-				psync_sql_run_free(q);
-				cres=psync_check_result(cres, "owner", PARAM_HASH);
-        psync_set_bool_setting("owner_cryptosetup", psync_find_result(cres, "cryptosetup", PARAM_BOOL)->num);
+        if (cres){
+          q=psync_sql_prep_statement("REPLACE INTO setting (id, value) VALUES (?, ?)");
+          psync_sql_bind_string(q, 1, "company");
+          psync_sql_bind_string(q, 2, psync_find_result(cres, "company", PARAM_STR)->str);
+          psync_sql_run_free(q);
+          cres=psync_check_result(cres, "owner", PARAM_HASH);
+          if (cres)
+            psync_set_bool_setting("owner_cryptosetup", psync_find_result(cres, "cryptosetup", PARAM_BOOL)->num);
+        }
       }
       else {
         debug(D_WARNING, "account_info returned %lu, continuing without business info", (unsigned long)result);
@@ -839,6 +851,9 @@ static psync_socket *get_connected_socket(){
     psync_my_2fa_code[0]=0;
 
     psync_sql_sync();
+
+    psync_free(deviceid);
+    psync_free(devicestring);
 
     return sock;
   }
@@ -889,8 +904,11 @@ static void process_createfolder(const binresult *entry){
     if (!st)
       return;
     st2=psync_sql_prep_statement("UPDATE folder SET subdircnt=subdircnt+1, mtime=? WHERE id=?");
-    if (!st2)
+    if (!st2){
+      psync_sql_free_result(st);
+      st=NULL;
       return;
+    }
   }
 
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
@@ -1242,8 +1260,11 @@ static void process_deletefolder(const binresult *entry){
 
     st2=psync_sql_prep_statement("UPDATE folder SET subdircnt=subdircnt-1, mtime=? WHERE id=?");
 
-    if (!st2)
+    if (!st2){
+      psync_sql_free_result(st);
+      st=NULL;
       return;
+    }
   }
 
   meta=psync_find_result(entry, "metadata", PARAM_HASH);
@@ -1987,7 +2008,7 @@ static void send_share_notify(psync_eventtype_t eventid, const binresult *share,
   const binresult *br;
   uint64_t ctime;
   size_t stringslen, sharenamelen, messagelen;
-  size_t emaillen = 254;
+  size_t emaillen = 512;
   int freesharename;
   const binresult *permissions;
   uint64_t teamid = 0;
@@ -2137,12 +2158,14 @@ static void do_send_eventdata(void * param) {
   notify_paramst * data = (notify_paramst *)param;
   char *email;
   size_t emaillen;
-  char *str =  data->str;
+  char *str = data->str;
+  int has_data = 0;
 
   get_ba_member_email(data->fromuserid, &email, &emaillen);
   if (emaillen > 0) {
     fill_str(data->event_data->fromemail, email, emaillen);
     psync_free(email);
+    has_data = 1;
   }
 
   if(data->touserid)
@@ -2152,12 +2175,15 @@ static void do_send_eventdata(void * param) {
   if (emaillen > 0) {
     fill_str(data->event_data->toemail, email, emaillen);
     psync_free(email);
+    has_data = 1;
   }
 
-  if (email) {
+  if (has_data) {
     psync_diff_lock();
     psync_send_eventdata(data->eventid, data->event_data);
     psync_diff_unlock();
+  } else {
+    psync_free(data->event_data);
   }
 
   psync_free(param);
@@ -2191,7 +2217,10 @@ static void process_requestsharein(const binresult *entry){
   psync_sql_bind_lstring(q, 7, br->str, br->length);
   if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
       br=psync_check_result(share, "sharename", PARAM_STR);
-  psync_sql_bind_lstring(q, 8, br->str, br->length);
+  if (br)
+    psync_sql_bind_lstring(q, 8, br->str, br->length);
+  else
+    psync_sql_bind_null(q, 8);
   br=psync_check_result(share, "message", PARAM_STR);
   if (br)
     psync_sql_bind_lstring(q, 9, br->str, br->length);
@@ -2230,7 +2259,10 @@ static void process_requestshareout(const binresult *entry){
   psync_sql_bind_lstring(q, 7, br->str, br->length);
   if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
       br=psync_check_result(share, "sharename", PARAM_STR);
-  psync_sql_bind_lstring(q, 8, br->str, br->length);
+  if (br)
+    psync_sql_bind_lstring(q, 8, br->str, br->length);
+  else
+    psync_sql_bind_null(q, 8);
   br=psync_check_result(share, "message", PARAM_STR);
   if (br)
     psync_sql_bind_lstring(q, 9, br->str, br->length);
@@ -2263,7 +2295,10 @@ static void process_acceptedsharein(const binresult *entry){
   psync_sql_bind_lstring(q, 6, br->str, br->length);
   if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
       br=psync_check_result(share, "sharename", PARAM_STR);
-  psync_sql_bind_lstring(q, 7, br->str, br->length);
+  if (br)
+    psync_sql_bind_lstring(q, 7, br->str, br->length);
+  else
+    psync_sql_bind_null(q, 7);
   psync_sql_run_free(q);
 }
 
@@ -2293,7 +2328,10 @@ static void process_establishbsharein(const binresult *entry){
     psync_sql_bind_null(q, 5);
   if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
       br=psync_check_result(share, "sharename", PARAM_STR);
-  psync_sql_bind_lstring(q, 6, br->str, br->length);
+  if (br)
+    psync_sql_bind_lstring(q, 6, br->str, br->length);
+  else
+    psync_sql_bind_null(q, 6);
   br = psync_check_result(share, "user", PARAM_BOOL);
   if(br)
     psync_sql_bind_int(q, 7, br->num);
@@ -2356,7 +2394,10 @@ static void process_acceptedshareout(const binresult *entry){
     psync_sql_bind_lstring(q, 6, br->str, br->length);
     if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
       br=psync_check_result(share, "sharename", PARAM_STR);
-    psync_sql_bind_lstring(q, 7, br->str, br->length);
+    if (br)
+      psync_sql_bind_lstring(q, 7, br->str, br->length);
+    else
+      psync_sql_bind_null(q, 7);
     psync_sql_bind_uint(q, 8, isincomming);
     psync_sql_run_free(q);
   }
@@ -2402,7 +2443,10 @@ static void process_establishbshareout(const binresult *entry) {
   psync_sql_bind_lstring(q, 5, br->str, br->length);
   if(!(br=psync_check_result(share, "foldername", PARAM_STR)))
       br=psync_check_result(share, "sharename", PARAM_STR);
-  psync_sql_bind_lstring(q, 6, br->str, br->length);
+  if (br)
+    psync_sql_bind_lstring(q, 6, br->str, br->length);
+  else
+    psync_sql_bind_null(q, 6);
   br = psync_check_result(share, "user", PARAM_BOOL);
   if(br)
     psync_sql_bind_int(q, 7, br->num);
@@ -2688,24 +2732,24 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
     entry=entries->array[i];
     etype=psync_find_result(entry, "event", PARAM_STR);
 
-    for (j = 0; j < event_list_size; j++) { /*Process createfile, modifyfile*/
+    if (!psync_diff_run) {
+      debug(D_CRITICAL, "Ongoing diff. Stop Signal Detected!");
+      for (j=0; j<event_list_size; j++){
+        if (event_list[j].used){
+          event_list[j].process(NULL);
+          event_list[j].used=0;
+        }
+      }
+      psync_sql_rollback_transaction();
+      psync_diff_unlock();
+      return 0;
+    }
+
+    for (j = 0; j < event_list_size; j++) {
       if (etype->length == event_list[j].len && !memcmp(etype->str, event_list[j].name, etype->length)) {
-        const binresult* meta, * name;
-
-        meta = psync_find_result(entry, "metadata", PARAM_HASH);
-        name = psync_find_result(meta, "name", PARAM_STR);
-
         event_list[j].process(entry);
         event_list[j].used = 1;
-      }
-
-      if (!psync_diff_run) {
-        debug(D_CRITICAL, "Ongoing diff. Stop Signal Detected!");
-
-        psync_sql_rollback_transaction();
-        psync_diff_unlock();
-
-        return 0;
+        break;
       }
     }
   }
@@ -2713,6 +2757,7 @@ static uint64_t process_entries(const binresult *entries, uint64_t newdiffid){
   for (j = 0; j < event_list_size; j++) {
     if (event_list[j].used) {
       event_list[j].process(NULL);
+      event_list[j].used = 0;
     }
   }
 
@@ -2889,8 +2934,8 @@ static void handle_exception(psync_socket **sock, subscribed_ids *ids, char ex){
 }
 
 static int cmp_folderid(const void *ptr1, const void *ptr2){
-  psync_folderid_t *folderid1=(psync_folderid_t *)ptr1;
-  psync_folderid_t *folderid2=(psync_folderid_t *)ptr2;
+  psync_folderid_t folderid1=*(const psync_folderid_t *)ptr1;
+  psync_folderid_t folderid2=*(const psync_folderid_t *)ptr2;
   if (folderid1<folderid2)
     return -1;
   else if (folderid1>folderid2)
@@ -3024,19 +3069,21 @@ static void psync_run_analyze_if_needed(){
 }
 
 static int psync_diff_check_quota(psync_socket *sock){
-  binresult *res;
-  const binresult *uq;
-  uint64_t oused_quota, result;
-  oused_quota=used_quota;
-  int i;
+  binresult *res = NULL;
+  uint64_t oused_quota = used_quota;
+  char *osv, *devid, *devstr;
+
+  osv = psync_deviceos();
+  devid = psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
+  devstr = psync_device_string();
 
   binparam diffparams[] = {
-    P_STR("timeformat", "timestamp"), 
+    P_STR("timeformat", "timestamp"),
     P_STR("auth", psync_my_auth),
-    P_STR("osversion", psync_deviceos()),
+    P_STR("osversion", osv),
     P_STR("appversion", psync_appname()),
-    P_STR("deviceid", psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'")),
-    P_STR("device", psync_device_string()),
+    P_STR("deviceid", devid),
+    P_STR("device", devstr),
     P_BOOL("getauth", 1),
     P_BOOL("cryptokeyssign", 1),
     P_BOOL("getapiserver", 1),
@@ -3044,50 +3091,58 @@ static int psync_diff_check_quota(psync_socket *sock){
     P_NUM("os", P_OS_ID)
   };
 
-  for (i=0; i < 4; i++) {
+  for (int i = 1; i <= 5; i++) {
+
     res = send_command(sock, "userinfo", diffparams);
 
-    if (!res || i > 2){
-      return -1;
+    if (!res){
+      break;
     }
 
-    result = psync_find_result(res, "result", PARAM_NUM)->num;
+    const uint64_t result = psync_find_result(res, "result", PARAM_NUM)->num;
 
     if (unlikely(result)) {
-      debug(D_WARNING, "userinfo returned error %u: %s", (unsigned)result, psync_find_result(res, "error", PARAM_STR)->str);
+      const binresult *errstr=psync_check_result(res, "error", PARAM_STR);
+      debug(D_WARNING, "userinfo returned error %u: %s", (unsigned)result,
+            errstr ? errstr->str : "unknown");
+      psync_free(res);
+      psync_milisleep(i*500);
+      continue;
     }
-    else {
-      uq = psync_check_result(res, "usedquota", PARAM_NUM);
-      debug(D_NOTICE, "Got Used Quota: [%"P_PRI_U64"]", uq->num);
-
-      if (likely_log(uq)) {
-        used_quota = uq->num;
-        break;
-      }
-      else {
-        debug(D_WARNING, "Failed to get quota. Retry: [%d].", i);
-        psync_milisleep(2000);
-
-        psync_free(res);
-      }
+    const binresult *uq = psync_check_result(res, "usedquota", PARAM_NUM);
+    if (unlikely_log(!uq)) {
+      psync_free(res);
+      debug(D_WARNING, "Failed to get quota. Retries: [%d].", i);
+      psync_milisleep(i*500);
+      continue;
     }
+
+    debug(D_NOTICE, "Got Used Quota: [%"P_PRI_U64"]", uq->num);
+    used_quota = uq->num;
+
+    if (used_quota != oused_quota){
+      debug(D_WARNING, "corrected locally calculated quota from [%"P_PRI_U64"] to [%"P_PRI_U64"]", oused_quota, used_quota);
+      psync_set_uint_value("usedquota", used_quota);
+      psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
+    }
+
+    uq=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
+
+    if (uq->length){
+      psync_apipool_set_server(uq->array[0]->str);
+    }
+
+    psync_free(res);
+    psync_free(osv);
+    psync_free(devid);
+    psync_free(devstr);
+    return 0;
   }
 
-  if (used_quota != oused_quota){
-    debug(D_WARNING, "corrected locally calculated quota from [%lu] to [%lu]", (unsigned long)oused_quota, (unsigned long)used_quota);
-    psync_set_uint_value("usedquota", used_quota);
-    psync_send_eventid(PEVENT_USEDQUOTA_CHANGED);
-  }
-
-  uq=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
-
-  if (uq->length){
-    psync_apipool_set_server(uq->array[0]->str);
-  }
-
-  psync_free(res);
-
-  return 0;
+  psync_free(osv);
+  psync_free(devid);
+  psync_free(devstr);
+  return -1;
 }
 
 static void psync_cache_contacts(){
@@ -3280,6 +3335,12 @@ static void psync_diff_thread(){
         debug(D_NOTICE, "Diff Stopped Break!");
         continue;
       }
+
+      if (diff_res) {
+        debug(D_NOTICE, "Initial diff failed, reconnecting.");
+        sock = get_connected_socket();
+        continue;
+      }
       
       g_is_over_quota = 0; //Reset account full constant.
 
@@ -3310,6 +3371,7 @@ static void psync_diff_thread(){
 
     // After initial diff. Main diff loop. This status indicates that the initial diff is finished.
     psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_ONLINE);
+    psync_syncer_check_delayed_syncs();
 
     if(psync_recache_contacts){
       psync_cache_contacts();
@@ -3342,6 +3404,7 @@ static void psync_diff_thread(){
       handle_exception(&sock, &ids, ex);
 
       while (psync_select_in(socks, 1, 0) == 0 && psync_pipe_read(exceptionsock, &ex, 1) == 1)
+        handle_exception(&sock, &ids, ex);
 
       socks[1]=sock->sock;
     }
@@ -3419,10 +3482,11 @@ static void psync_diff_thread(){
 
           if (ret < 0) {
             debug(D_ERROR, "Cacheing links faild with err %s", err);
-          }            
+          }
           else {
             psync_notify_cache_change(PACCOUNT_CHANGE_LINKS);
           }
+          psync_free(res);
         }
         else if (entries->length==11 && !strcmp(entries->str, "uploadlinks")){
           ids.uploadlinkid=psync_find_result(res, "uploadlinkid", PARAM_NUM)->num;
@@ -3430,23 +3494,27 @@ static void psync_diff_thread(){
 
           if (ret < 0) {
             debug(D_ERROR, "Cacheing upload links failed with err %s", err);
-          }            
+          }
           else {
             psync_notify_cache_change(PACCOUNT_CHANGE_LINKS);
           }
+          psync_free(res);
         }
         else if (entries->length==5 && !strcmp(entries->str, "teams")){
           cache_account_teams();
           cache_ba_my_teams();
           psync_notify_cache_change(PACCOUNT_CHANGE_TEAMS);
+          psync_free(res);
         }
         else if (entries->length==5 && !strcmp(entries->str, "users")){
           cache_account_emails();
           psync_notify_cache_change(PACCOUNT_CHANGE_EMAILS);
+          psync_free(res);
         }
         else if (entries->length==8 && !strcmp(entries->str, "contacts")){
           cache_contacts();
           psync_notify_cache_change(PACCOUNT_CHANGE_CONTACTS);
+          psync_free(res);
         }
         else{
           debug(D_NOTICE, "got no from, did we send a nop recently?");

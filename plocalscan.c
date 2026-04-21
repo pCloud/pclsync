@@ -116,7 +116,20 @@ static const uint32_t requiredstatuses[]={
 #define SCAN_LIST_RENFOLDERSTO  8
 
 static psync_list scan_lists[SCAN_LIST_CNT];
-static uint64_t localsleepperfolder;
+static volatile uint32_t localsleepperfolder;
+
+static uint32_t get_localsleepperfolder(void){
+  return psync_atomic_read_uint32(&localsleepperfolder);
+}
+
+static void set_localsleepperfolder(uint32_t val){
+  psync_atomic_set_uint32(&localsleepperfolder, val);
+}
+
+static void cancel_localsleep(void){
+  psync_atomic_set_uint32(&localsleepperfolder, 0);
+}
+
 static time_t starttime;
 static psync_uint_t changes;
 static int localnotify;
@@ -399,7 +412,7 @@ static sync_folderlist *copy_folderlist_element(const sync_folderlist *e, psync_
 
 static void add_element_to_scan_list(psync_uint_t id, sync_folderlist *e){
   psync_list_add_tail(&scan_lists[id], &e->list);
-  localsleepperfolder=0;
+  cancel_localsleep();
   changes++;
 }
 
@@ -541,11 +554,11 @@ static void scanner_scan_folder(const char *localpath, psync_folderid_t folderid
 
   psync_list_for_each_element_call(&dblist, sync_folderlist, list, psync_free);
 
-  if (localsleepperfolder){
-    psync_milisleep(localsleepperfolder);
+  if (get_localsleepperfolder()){
+    psync_milisleep(get_localsleepperfolder());
 
     if (psync_current_time-starttime>=PSYNC_LOCALSCAN_SLEEPSEC_PER_SCAN*3/2)
-      localsleepperfolder=0;
+      cancel_localsleep();
   }
 
   psync_list_for_each_element(l, &disklist, sync_folderlist, list){
@@ -701,8 +714,9 @@ static void scan_upload_modified_file(sync_folderlist *fl){
   psync_delete_upload_tasks_for_file(fl->localid);
   
   localpath = psync_local_path_for_local_file(fl->localid, NULL);
+  if (!localpath)
+    return;
 
-  psync_stat(localpath, &st);
   if (!psync_stat(localpath, &st) && psync_stat_mtime(&st) >= psync_timer_time() - PSYNC_UPLOAD_OLDER_THAN_PARAM_SEC) {
     debug(D_NOTICE, "Create Paused Task.");
     psync_run_thread("Scanner reminder", p_create_scanner_reminder);
@@ -722,6 +736,7 @@ static void scan_upload_modified_file(sync_folderlist *fl){
 
     psync_create_task_full(PSYNC_UPLOAD_FILE, fl->syncid, 0, fl->localid, 0, fl->name, PSYNC_TASK_WAITING);
   }
+  psync_free(localpath);
   psync_path_status_sync_folder_task_added(fl->syncid, fl->localparentfolderid);
 }
 
@@ -927,7 +942,7 @@ static void delete_local_folder_rec(psync_folderid_t localfolderid){
   psync_sql_run_free(res);
   res=psync_sql_query("SELECT syncid FROM localfolder WHERE id=?");
   psync_sql_bind_uint(res, 1, localfolderid);
-  if (row)
+  if ((row=psync_sql_fetch_rowint(res)))
     psync_path_status_sync_folder_deleted(row[0], localfolderid);
   psync_sql_free_result(res);
   res=psync_sql_prep_statement("DELETE FROM localfolder WHERE id=?");
@@ -976,7 +991,7 @@ retry:
   if (unlikely_log(!folderid)){
     /* folder is not yet created, folderid is not 0 but NULL actually */
     if (tries>=50){
-      res = psync_sql_query("DELETE FROM task WHERE type="NTO_STR(PSYNC_CREATE_REMOTE_FOLDER)" AND syncid=? AND localitemid=?");
+      res = psync_sql_prep_statement("DELETE FROM task WHERE type="NTO_STR(PSYNC_CREATE_REMOTE_FOLDER)" AND syncid=? AND localitemid=?");
       psync_sql_bind_uint(res, 1, fl->syncid);
       psync_sql_bind_uint(res, 2, fl->localid);
       psync_sql_run_free(res);
@@ -1015,16 +1030,17 @@ static void scanner_scan(int first){
   int movedfolders;
 
   if (first)
-    localsleepperfolder=0;
+    cancel_localsleep();
   else{
     i=psync_sql_cellint("SELECT COUNT(*) FROM localfolder", 100);
     if (!i)
       i=1;
-    localsleepperfolder=PSYNC_LOCALSCAN_SLEEPSEC_PER_SCAN*1000/i;
-    if (localsleepperfolder>250)
-      localsleepperfolder=250;
-    if (localsleepperfolder<1)
-      localsleepperfolder=1;
+    w=PSYNC_LOCALSCAN_SLEEPSEC_PER_SCAN*1000/i;
+    if (w>250)
+      w=250;
+    if (w<1)
+      w=1;
+    set_localsleepperfolder(w);
   }
 
   starttime=psync_current_time;
@@ -1286,14 +1302,13 @@ static void scanner_thread(){
 }
 
 static void psync_do_wake_localscan(){
-  localsleepperfolder=0;
+  cancel_localsleep();
   pthread_mutex_lock(&scan_mutex);
-
   if (!scan_wakes++){
     pthread_cond_signal(&scan_cond);
   }
   pthread_mutex_unlock(&scan_mutex);
-  localsleepperfolder=0;
+  cancel_localsleep();
 }
 
 void psync_wake_localscan(){
@@ -1421,7 +1436,6 @@ void psync_localscan_init(){
 }
 /**********************************************************************/
 void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync_folderid_t local_folder_id, uint64_t* taskcnt) {
-  int ret;
   psync_list disklist, * list_elem, * list_next;
   sync_folderlist* elem;
   char* nextpath;
@@ -1431,7 +1445,7 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 
   debug(D_NOTICE, "Scan Start! Path: [%s], Level: [%d], Remote folder Id: [%"P_PRI_U64"]", path, level, parent_folder_id);
 
-  ret = psync_list_dir(path, scanner_local_entry_to_list, &disklist);
+  psync_list_dir(path, scanner_local_entry_to_list, &disklist);
 
   list_elem = disklist.next;
   list_next = list_elem->next;
@@ -1444,9 +1458,7 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 
     elem = psync_list_element(list_elem, sync_folderlist, list);
 
-    ret = psync_is_name_to_ignore(elem->name);
-
-    if (ret == 1) {
+    if (psync_is_name_to_ignore(elem->name) == 1) {
       list_elem = list_next;
       list_next = list_elem->next;
       continue;
@@ -1457,18 +1469,19 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
     nextpath = psync_strcat(path, PSYNC_DIRECTORY_SEPARATOR, elem->name, NULL);
 
     if (elem->isfolder == 1) {
-      ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, level, parent_folder_id, elem->name, path);
+      // TODO: Add error handling and cleanup
+      const uint64_t task_id = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, level, parent_folder_id, elem->name, path);
       *taskcnt = *taskcnt + 1;
 
       //debug(D_NOTICE, "Folder detected [%s]. Scan it.", nextpath);
-      uptask_scan(level + 1, nextpath, ret, local_folder_id, taskcnt);
+      uptask_scan(level + 1, nextpath, task_id, local_folder_id, taskcnt);
     }
     else {
       //debug(D_NOTICE, "File detected [%s]. ", nextpath);
 
-      ret = psync_stat(nextpath, &stat_struct);
+      psync_stat(nextpath, &stat_struct);
 
-      ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), level, parent_folder_id, elem->name, path);
+      create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), level, parent_folder_id, elem->name, path);
       *taskcnt = *taskcnt + 1;
     }
 

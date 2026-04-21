@@ -1113,6 +1113,8 @@ static void finish_async_download(void *ptr, psync_async_result_t *res){
   else{
     if (dt->dwllist.stop==2){
       psync_file_delete(dt->tmpname);
+      free_download_task(dt);
+      psync_status_recalc_to_download_async();
       return;
     }
 #if defined(P_OS_WINDOWS)

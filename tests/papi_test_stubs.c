@@ -90,5 +90,5 @@ const char *psync_setting_get_string(int settingid) {
 int psync_debug(const char *file, const char *function, unsigned int line,
                 unsigned int level, const char *fmt, ...) {
   (void)file; (void)function; (void)line; (void)level; (void)fmt;
-  return 0;
+  return 1;
 }

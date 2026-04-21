@@ -378,8 +378,8 @@ char *psync_get_default_database_path_old(){
     struct passwd pwd;
     struct passwd *result;
     char buff[4096];
-    if (unlikely_log(getpwuid_r(getuid(), &pwd, buff, sizeof(buff), &result)) || unlikely_log(stat(result->pw_dir, &st)) ||
-        unlikely_log(!psync_stat_mode_ok(&st, 7)))
+    if (unlikely_log(getpwuid_r(getuid(), &pwd, buff, sizeof(buff), &result)) || unlikely_log(!result) ||
+        unlikely_log(stat(result->pw_dir, &st)) || unlikely_log(!psync_stat_mode_ok(&st, 7)))
       return NULL;
     dir=result->pw_dir;
   }
@@ -395,6 +395,15 @@ char *psync_get_default_database_path_old(){
 #endif
 }
 
+static char *custom_pcloud_path=NULL;
+
+void psync_set_pcloud_path(const char *path){
+  if (custom_pcloud_path) {
+    psync_free(custom_pcloud_path);
+  }
+  custom_pcloud_path=psync_strdup(path);
+}
+
 static char *psync_get_pcloud_path_nc(){
 #if defined(P_OS_POSIX)
   struct stat st;
@@ -404,8 +413,8 @@ static char *psync_get_pcloud_path_nc(){
     struct passwd pwd;
     struct passwd *result;
     char buff[4096];
-    if (unlikely_log(getpwuid_r(getuid(), &pwd, buff, sizeof(buff), &result)) || unlikely_log(stat(result->pw_dir, &st)) ||
-        unlikely_log(!psync_stat_mode_ok(&st, 7)))
+    if (unlikely_log(getpwuid_r(getuid(), &pwd, buff, sizeof(buff), &result)) || unlikely_log(!result) ||
+        unlikely_log(stat(result->pw_dir, &st)) || unlikely_log(!psync_stat_mode_ok(&st, 7)))
       return NULL;
     dir=result->pw_dir;
   }
@@ -435,6 +444,14 @@ static char *psync_get_pcloud_path_nc(){
 char *psync_get_pcloud_path(){
   char *path;
   psync_stat_t st;
+  if (custom_pcloud_path){
+    path=psync_strdup(custom_pcloud_path);
+    if (psync_stat(path, &st) && psync_mkdir(path)){
+      psync_free(path);
+      return NULL;
+    }
+    return path;
+  }
   path=psync_get_pcloud_path_nc();
   if (unlikely_log(!path))
     return NULL;
@@ -495,8 +512,8 @@ char *psync_get_home_dir(){
     struct passwd pwd;
     struct passwd *result;
     char buff[4096];
-    if (unlikely_log(getpwuid_r(getuid(), &pwd, buff, sizeof(buff), &result)) || unlikely_log(stat(result->pw_dir, &st)) ||
-        unlikely_log(!psync_stat_mode_ok(&st, 7)))
+    if (unlikely_log(getpwuid_r(getuid(), &pwd, buff, sizeof(buff), &result)) || unlikely_log(!result) ||
+        unlikely_log(stat(result->pw_dir, &st)) || unlikely_log(!psync_stat_mode_ok(&st, 7)))
       return NULL;
     dir=result->pw_dir;
   }
@@ -705,7 +722,7 @@ static void psync_get_random_seed_from_query(psync_lhash_ctx *hctx, psync_sql_re
   }
   psync_sql_free_result(res);
   psync_nanotime(&tm);
-  psync_lhash_update(hctx, &tm, sizeof(&tm));
+  psync_lhash_update(hctx, &tm, sizeof(tm));
 }
 
 static void psync_get_random_seed_from_db(psync_lhash_ctx *hctx){
@@ -713,7 +730,7 @@ static void psync_get_random_seed_from_db(psync_lhash_ctx *hctx){
   struct timespec tm;
   unsigned char rnd[PSYNC_LHASH_DIGEST_LEN];
   psync_nanotime(&tm);
-  psync_lhash_update(hctx, &tm, sizeof(&tm));
+  psync_lhash_update(hctx, &tm, sizeof(tm));
   res=psync_sql_query_rdlock("SELECT * FROM setting ORDER BY RANDOM()");
   psync_get_random_seed_from_query(hctx, res);
   res=psync_sql_query_rdlock("SELECT * FROM resolver ORDER BY RANDOM() LIMIT 50");
@@ -734,10 +751,10 @@ static void psync_get_random_seed_from_db(psync_lhash_ctx *hctx){
   psync_get_random_seed_from_query(hctx, res); */
   psync_sql_statement("REPLACE INTO setting (id, value) VALUES ('random', RANDOM())");
   psync_nanotime(&tm);
-  psync_lhash_update(hctx, &tm, sizeof(&tm));
+  psync_lhash_update(hctx, &tm, sizeof(tm));
   psync_sql_sync();
   psync_nanotime(&tm);
-  psync_lhash_update(hctx, &tm, sizeof(&tm));
+  psync_lhash_update(hctx, &tm, sizeof(tm));
   sqlite3_randomness(sizeof(rnd), rnd);
   psync_lhash_update(hctx, rnd, sizeof(rnd));
 }
@@ -750,7 +767,7 @@ static void psync_rehash_cnt(unsigned char *hashbin, psync_uint_t cnt){
     psync_lhash_init(&hctx);
     if ((i&511)==0){
       psync_nanotime(&tm);
-      psync_lhash_update(&hctx, &tm, sizeof(&tm));
+      psync_lhash_update(&hctx, &tm, sizeof(tm));
     }
     else
       psync_lhash_update(&hctx, &i, sizeof(i));
@@ -926,7 +943,7 @@ void psync_get_random_seed(unsigned char *seed, const void *addent, size_t aelen
       psync_lhash_update(&hctx, lsc, sizeof(lsc));
     }
     psync_nanotime(&tm);
-    psync_lhash_update(&hctx, &tm, sizeof(&tm));
+    psync_lhash_update(&hctx, &tm, sizeof(tm));
   }
   psync_lhash_final(seed, &hctx);
   memcpy(lastseed, seed, PSYNC_LHASH_DIGEST_LEN);
@@ -939,6 +956,11 @@ static int psync_wait_socket_writable_microsec(psync_socket_t sock, long sec, lo
   fd_set wfds;
   struct timeval tv;
   int res;
+  if (unlikely(sock>=FD_SETSIZE)){
+    debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
+    psync_sock_set_err(P_INVAL);
+    return SOCKET_ERROR;
+  }
   tv.tv_sec=sec;
   tv.tv_usec=usec;
   FD_ZERO(&wfds);
@@ -965,6 +987,11 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
   unsigned long msec;
 #endif
   int res;
+  if (unlikely(sock>=FD_SETSIZE)){
+    debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
+    psync_sock_set_err(P_INVAL);
+    return SOCKET_ERROR;
+  }
   tv.tv_sec=sec;
   tv.tv_usec=usec;
   FD_ZERO(&rfds);
@@ -1554,6 +1581,10 @@ static int wait_sock_ready_for_ssl(psync_socket_t sock){
   fd_set fds, *rfds, *wfds;
   struct timeval tv;
   int res;
+  if (unlikely(sock>=FD_SETSIZE)){
+    debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
+    return SOCKET_ERROR;
+  }
   FD_ZERO(&fds);
   FD_SET(sock, &fds);
 
@@ -1591,6 +1622,10 @@ static int wait_sock_ready_for_ssl_v2(psync_socket_t sock, int timeout) {
   fd_set fds, * rfds, * wfds;
   struct timeval tv;
   int res;
+  if (unlikely(sock>=FD_SETSIZE)){
+    debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
+    return SOCKET_ERROR;
+  }
   FD_ZERO(&fds);
   FD_SET(sock, &fds);
 
@@ -2490,7 +2525,7 @@ static int psync_socket_writeall_ssl_thread(psync_socket *sock, const void *buff
   while (br<num){
     pthread_mutex_lock(&socket_mutex);
     if (sock->buffer)
-      r=psync_socket_write_to_buf(sock, buff, num);
+      r=psync_socket_write_to_buf(sock, (const char *)buff+br, num-br);
     else
       r=psync_ssl_write(sock->ssl, (char *)buff+br, num-br);
     pthread_mutex_unlock(&socket_mutex);
@@ -2519,7 +2554,7 @@ static int psync_socket_writeall_plain_thread(psync_socket *sock, const void *bu
   while (br<num){
     pthread_mutex_lock(&socket_mutex);
     if (sock->buffer)
-      r=psync_socket_write_to_buf(sock, buff, num);
+      r=psync_socket_write_to_buf(sock, (const char *)buff+br, num-br);
     else
       r=psync_write_socket(sock->sock, (const char *)buff+br, num-br);
     pthread_mutex_unlock(&socket_mutex);
@@ -2744,6 +2779,10 @@ int psync_socket_pair(psync_socket_t sfd[2]){
 int psync_socket_is_broken(psync_socket_t sock){
   fd_set rfds;
   struct timeval tv;
+  if (unlikely(sock>=FD_SETSIZE)){
+    debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
+    return 1;
+  }
   memset(&tv, 0, sizeof(tv));
   FD_ZERO(&rfds);
   FD_SET(sock, &rfds);
@@ -2769,6 +2808,10 @@ int psync_select_in(psync_socket_t *sockets, int cnt, int64_t timeoutmillisec){
   max=0;
 
   for (i=0; i<cnt; i++){
+    if (unlikely(sockets[i]>=FD_SETSIZE)){
+      debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sockets[i], FD_SETSIZE);
+      return SOCKET_ERROR;
+    }
     FD_SET(sockets[i], &rfds);
     if (sockets[i]>=max)
       max=sockets[i]+1;
@@ -2981,18 +3024,19 @@ err1:
 
   dh=FindFirstFileW(wpath, &st);
 
-  psync_free(wpath);
-
   if (dh==INVALID_HANDLE_VALUE){
     if (GetLastError() == ERROR_FILE_NOT_FOUND) {
+      psync_free(wpath);
       return 0;
     }
     else{
       debug(D_NOTICE, "Error reading folder [%ls] : [%d]", wpath, (int)GetLastError());
+      psync_free(wpath);
       psync_error=PERROR_LOCAL_FOLDER_NOT_FOUND;
       return -1;
     }
   }
+  psync_free(wpath);
   do {
     name=wchar_to_utf8(st.cFileName);
     pst.name=name;
@@ -3808,7 +3852,7 @@ char *psync_deviceid(){
 
   if (GetSystemMetrics(SM_TABLETPC))
     hardware="Tablet";
-  else if (GetSystemPowerStatus(&bat) || (bat.BatteryFlag&128))
+  else if (!GetSystemPowerStatus(&bat) || (bat.BatteryFlag&128))
     hardware="Desktop";
   else
     hardware="Laptop";

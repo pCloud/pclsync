@@ -375,13 +375,19 @@ int handle_api_errors(sync_err_struct *err_struct) {
 
       syncId = get_sync_id_from_fid(err_struct->folderid);
       syncFolder = get_sync_folder_by_syncid(syncId);
+      if (unlikely(!syncFolder)){
+        debug(D_WARNING, "could not find sync folder for syncid %u", (unsigned)syncId);
+        break;
+      }
       folder = get_folder_name_from_path(syncFolder);
 
       debug(D_NOTICE, "Got sync path: [%s] Sync folder: [%s]", syncFolder, folder);
 
       psync_delete_sync(syncId);
-      
+
       psync_send_data_event(PEVENT_SYNC_RENAME_F, err_struct->newName, folder, err_struct->folderid, err_struct->newparentfolderid);
+      psync_free(folder);
+      psync_free(syncFolder);
       break;
 
     default: ret = -1;
@@ -695,6 +701,7 @@ static int upload_file(const char *localpath, const unsigned char *hashhex, uint
 
   if (fd==INVALID_HANDLE_VALUE){
     debug(D_WARNING, "could not open local file %s", localpath);
+    free(params);
     return -1;
   }
 
@@ -2138,10 +2145,16 @@ int upload_logs(char* filename, char* fPath) {
   api = psync_apipool_get();
 
   if (unlikely(!api)) {
+    psync_file_close(fd);
     return FAIL_TO_ZIP_LOGS;
   }
 
-  ret = psync_stat(fPath, &st);
+  if (unlikely(psync_stat(fPath, &st))){
+    debug(D_WARNING, "could not stat file %s", fPath);
+    psync_file_close(fd);
+    psync_apipool_release(api);
+    return FAIL_TO_ZIP_LOGS;
+  }
   fsize = psync_stat_size(&st);
 
   binparam params[] = {
@@ -2157,6 +2170,13 @@ int upload_logs(char* filename, char* fPath) {
 
   res = do_send_command(api, "uploadclientdiagnostic", strlen("uploadclientdiagnostic"), params, ARRAY_SIZE(params), fsize, 0);
 
+  if (unlikely(!res)){
+    debug(D_WARNING, "do_send_command failed for uploadclientdiagnostic");
+    psync_file_close(fd);
+    psync_apipool_release_bad(api);
+    return -1;
+  }
+
   bw = 0;
   buff = psync_malloc(PSYNC_COPY_BUFFER_SIZE);
 
@@ -2168,13 +2188,11 @@ int upload_logs(char* filename, char* fPath) {
 
     rrd = psync_file_read(fd, buff, rd);
 
-    if (unlikely_log(rrd <= 0)){
-      return -1;
-    }
+    if (unlikely_log(rrd <= 0))
+      goto err_upload;
 
-    if (unlikely_log(psync_socket_writeall_upload(api, buff, rrd) != rrd)){
-      return -1;
-    }
+    if (unlikely_log(psync_socket_writeall_upload(api, buff, rrd) != rrd))
+      goto err_upload;
 
     bw += rrd;
 
@@ -2209,6 +2227,11 @@ int upload_logs(char* filename, char* fPath) {
   }
 
   return 0;
+err_upload:
+  psync_free(buff);
+  psync_file_close(fd);
+  psync_apipool_release_bad(api);
+  return -1;
 }
 /*************************************************************/
 int cancel_uptasks() {

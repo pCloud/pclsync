@@ -1,7 +1,6 @@
-#include "plibs.h"
+#include "pcore.h"
 #include "psynclib.h"
 #include "pdevice_monitor.h"
-// #include "pdevicemap.h"
 #include "plocalscan.h"
 #include "ptimer.h"
 
@@ -13,8 +12,8 @@
 static pthread_mutex_t devmon_mutex=PTHREAD_MUTEX_INITIALIZER;
 static psync_timer_t devmon_activity_timer=NULL;
 
-void devmon_activity_timer_action(){
-  psync_timer_stop(devmon_activity_timer);
+static void devmon_activity_timer_action(psync_timer_t timer, void *ptr){
+  psync_timer_stop(timer);
   pthread_mutex_lock(&devmon_mutex);
   devmon_activity_timer=NULL;
   pthread_mutex_unlock(&devmon_mutex);

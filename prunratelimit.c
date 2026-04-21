@@ -25,7 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "plibs.h"
+#include "pcore.h"
 #include "prunratelimit.h"
 #include "ptimer.h"
 #include "ptree.h"

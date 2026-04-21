@@ -109,7 +109,7 @@ err:
   return PSYNC_INVALID_FOLDERID;
 }
 
-static psync_folderid_t wait_folder_id_in_db(psync_folderid_t folderid){
+psync_folderid_t psync_wait_folder_in_local_db(psync_folderid_t folderid) {
   psync_sql_res *res;
   psync_uint_row row;
   int tries;
@@ -124,10 +124,6 @@ static psync_folderid_t wait_folder_id_in_db(psync_folderid_t folderid){
     psync_milisleep(50);
   }
   return PSYNC_INVALID_FOLDERID;
-}
-/**********************************************************************************************************/
-psync_folderid_t psync_wait_folder_in_local_db(psync_folderid_t folderid) {
-  return wait_folder_id_in_db(folderid);
 }
 /**********************************************************************************************************/
 psync_folderid_t psync_get_folderid_by_path_or_create(const char *path){
@@ -146,7 +142,7 @@ psync_folderid_t psync_get_folderid_by_path_or_create(const char *path){
     if (*path==0){
       if (res)
         psync_sql_free_result(res);
-      return wait_folder_id_in_db(cfolderid);
+      return cfolderid;
     }
     sl=strchr(path, '/');
     if (sl)
@@ -630,13 +626,16 @@ pfolder_list_t *psync_list_remote_folder(psync_folderid_t folderid, psync_listty
           continue;
         }
         entry.namelen=strlen(entry.name);
+        entry.isfolder=1;
+        folder_list_add(list, &entry);
+        psync_free((char *)entry.name);
       }
       else{
         entry.name=psync_get_lstring(row[2], &namelen);
         entry.namelen=namelen;
+        entry.isfolder=1;
+        folder_list_add(list, &entry);
       }
-      entry.isfolder=1;
-      folder_list_add(list, &entry);
     }
     psync_sql_free_result(res);
   }
@@ -921,7 +920,7 @@ void psync_refresh_explorer_crypto_folder(){
 #endif
 /**************************************************************************/
 char* psync_get_path_from_str(char* fullPath) {
-  char* path;
+  char* path=NULL;
   int i = strlen(fullPath);
 
   if (i < 2) {
@@ -946,7 +945,7 @@ char* psync_get_path_from_str(char* fullPath) {
 }
 
 char* psync_get_path_from_str_noslash(char* fullPath) {
-  char* path;
+  char* path=NULL;
   int i = strlen(fullPath);
 
   if (i < 2) {

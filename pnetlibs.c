@@ -99,8 +99,32 @@ static struct time_bytes download_bytes_sec[PSYNC_SPEED_CALC_AVERAGE_SEC], uploa
 
 static sem_t api_pool_sem;
 
+static pthread_rwlock_t api_server_lock=PTHREAD_RWLOCK_INITIALIZER;
 char apiserver[64]=PSYNC_API_HOST;
 static char apikey[68]="API:"PSYNC_API_HOST;
+
+static void snapshot_apiserver(char *out, size_t outsz){
+  pthread_rwlock_rdlock(&api_server_lock);
+  memcpy(out, apiserver, outsz);
+  pthread_rwlock_unlock(&api_server_lock);
+}
+
+static void snapshot_apikey(char *out, size_t outsz){
+  pthread_rwlock_rdlock(&api_server_lock);
+  memcpy(out, apikey, outsz);
+  pthread_rwlock_unlock(&api_server_lock);
+}
+
+#define SNAPSHOT_APISERVER(var) char var[sizeof(apiserver)]; snapshot_apiserver(var, sizeof(var))
+#define SNAPSHOT_APIKEY(var)    char var[sizeof(apikey)];    snapshot_apikey(var, sizeof(var))
+#define SNAPSHOT_API(svar, kvar) \
+  char svar[sizeof(apiserver)]; char kvar[sizeof(apikey)]; \
+  do { \
+    pthread_rwlock_rdlock(&api_server_lock); \
+    memcpy(svar, apiserver, sizeof(apiserver)); \
+    memcpy(kvar, apikey, sizeof(apikey)); \
+    pthread_rwlock_unlock(&api_server_lock); \
+  } while(0)
 
 static uint32_t hash_func(const char *key){
   uint32_t c, hash;
@@ -112,11 +136,12 @@ static uint32_t hash_func(const char *key){
 
 static psync_socket *psync_get_api(){
   psync_socket *sock;
+  SNAPSHOT_APISERVER(server);
   sem_wait(&api_pool_sem);
-  debug(D_NOTICE, "connecting to %s", apiserver);
-  sock=psync_api_connect(apiserver, psync_setting_get_bool(_PS(usessl)));
+  debug(D_NOTICE, "connecting to %s", server);
+  sock=psync_api_connect(server, psync_setting_get_bool(_PS(usessl)));
   if (sock)
-    sock->misc=hash_func(apiserver);
+    sock->misc=hash_func(server);
   return sock;
 }
 
@@ -162,16 +187,19 @@ void psync_apipool_set_server(const char *binapi) {
   size_t len;
   len=strlen(binapi)+1;
   if (len<=sizeof(apiserver)) {
+    pthread_rwlock_wrlock(&api_server_lock);
     memcpy(apiserver, binapi, len);
     memcpy(apikey+4, binapi, len);
+    pthread_rwlock_unlock(&api_server_lock);
     debug(D_NOTICE, "set %s as best api server", apiserver);
   }
 }
 
 psync_socket *psync_apipool_get(){
   psync_socket *ret;
+  SNAPSHOT_APIKEY(key);
   while (1){
-    ret=(psync_socket *)psync_cache_get(apikey);
+    ret=(psync_socket *)psync_cache_get(key);
 
     if (!ret)
       break;
@@ -190,8 +218,9 @@ psync_socket *psync_apipool_get(){
 
 psync_socket *psync_apipool_get_from_cache(){
   psync_socket *ret;
+  SNAPSHOT_APIKEY(key);
   while (1){
-    ret=(psync_socket *)psync_cache_get(apikey);
+    ret=(psync_socket *)psync_cache_get(key);
 
     if (!ret)
       break;
@@ -202,7 +231,8 @@ psync_socket *psync_apipool_get_from_cache(){
 }
 
 void psync_apipool_prepare(){
-  if (psync_cache_has(apikey))
+  SNAPSHOT_APIKEY(key);
+  if (psync_cache_has(key))
     return;
   else{
     psync_socket *ret;
@@ -313,6 +343,7 @@ PSYNC_NOINLINE static void psync_apipool_dump_socket(psync_socket *api){
 #endif
 
 void psync_apipool_release(psync_socket *api){
+  SNAPSHOT_API(server, key);
 #if IS_DEBUG
   if (unlikely(psync_socket_readable(api))){
     debug(D_WARNING, "released socket with pending data to read");
@@ -320,8 +351,8 @@ void psync_apipool_release(psync_socket *api){
     return;
   }
 #endif
-  if (hash_func(apiserver)==api->misc)
-    psync_cache_add(apikey, api, PSYNC_APIPOOL_MAXIDLESEC, psync_ret_api, PSYNC_APIPOOL_MAXIDLE);
+  if (hash_func(server)==api->misc)
+    psync_cache_add(key, api, PSYNC_APIPOOL_MAXIDLESEC, psync_ret_api, PSYNC_APIPOOL_MAXIDLE);
   else
     psync_ret_api(api);
 }
@@ -979,6 +1010,8 @@ psync_http_socket *psync_http_connect(const char *host, const char *path, uint64
   }
   else
     rl=snprintf(readbuff, PSYNC_HTTP_RESP_BUFFER, "GET %s HTTP/1.1\015\012Host: %s\015\012Connection: Keep-Alive\015\012%s\015\012", path, host, addhdr);
+  if (unlikely(rl>=PSYNC_HTTP_RESP_BUFFER))
+    goto err1;
   if (psync_socket_writeall(sock, readbuff, rl)!=rl || (rb= psync_socket_read_v2(sock, readbuff, PSYNC_HTTP_RESP_BUFFER-1, PSYNC_SOCK_READ_TIMEOUT_30))<=0)
     goto err1;
   readbuff[rb]=0;
@@ -1426,6 +1459,8 @@ int psync_http_request(psync_http_socket *sock, const char *host, const char *pa
   }
   else
     rl=snprintf(sock->readbuff, PSYNC_HTTP_RESP_BUFFER, "GET %s HTTP/1.1\015\012Host: %s\015\012Connection: Keep-Alive\015\012%s\015\012", path, host, addhdr);
+  if (unlikely(rl>=PSYNC_HTTP_RESP_BUFFER))
+    return -1;
   return psync_socket_writeall(sock->sock, sock->readbuff, rl)==rl?0:-1;
 }
 
@@ -1555,7 +1590,7 @@ int psync_http_request_readall(psync_http_socket *http, void *buff, int num){
   else{
     rb=psync_socket_readall(http->sock, buff, num);
     if (rb>0)
-      http->readbytes+=num;
+      http->readbytes+=rb;
     if (rb!=num && http->contentlength!=-1)
       return -1;
     else
@@ -1632,11 +1667,15 @@ static int psync_net_get_checksums(psync_socket *api, psync_fileid_t fileid, uin
     return PSYNC_NET_TEMPFAIL;
   if (unlikely_log(psync_http_readall(http, &hdr, sizeof(hdr))!=sizeof(hdr)))
     goto err0;
+  if (unlikely(!hdr.blocksize)){
+    psync_http_close(http);
+    return PSYNC_NET_TEMPFAIL;
+  }
   i=(hdr.filesize+hdr.blocksize-1)/hdr.blocksize;
   if ((sizeof(psync_block_checksum)+sizeof(uint32_t))*i>=PSYNC_MAX_CHECKSUMS_SIZE){
     debug(D_WARNING, "checksums too large %lu", (unsigned long)((sizeof(psync_block_checksum)+sizeof(uint32_t))*i));
     psync_http_close(http);
-    return PSYNC_NET_OK;
+    return PSYNC_NET_PERMFAIL;
   }
   cs=(psync_file_checksums *)psync_malloc(offsetof(psync_file_checksums, blocks)+(sizeof(psync_block_checksum)+sizeof(uint32_t))*i);
   cs->filesize=hdr.filesize;
@@ -1679,6 +1718,8 @@ static int psync_net_get_upload_checksums(psync_socket *api, psync_uploadid_t up
   psync_free(res);
   if (unlikely_log(psync_socket_readall_download(api, &hdr, sizeof(hdr))!=sizeof(hdr)))
     goto err0;
+  if (unlikely(!hdr.blocksize))
+    return PSYNC_NET_TEMPFAIL;
   i=(hdr.filesize+hdr.blocksize-1)/hdr.blocksize;
   if ((sizeof(psync_block_checksum)+sizeof(uint32_t))*i>=PSYNC_MAX_CHECKSUMS_SIZE){
     debug(D_WARNING, "checksums too large %lu", (unsigned long)((sizeof(psync_block_checksum)+sizeof(uint32_t))*i));
@@ -2432,11 +2473,14 @@ void psync_unlock_file_by_path(const char* path) {
       }
     }
     else {
-      psync_tree_del(&file_lock_tree, &lock->tree);
-      psync_free(lock);
+      psync_file_lock_t *found = psync_tree_element(tr, psync_file_lock_t, tree);
+      psync_tree_del(&file_lock_tree, tr);
+      psync_free(found);
+      break;
     }
   }
 
+  psync_free(lock);
   pthread_mutex_unlock(&file_lock_mutex);
 }
 /******************************************************************************/

@@ -115,7 +115,7 @@ typedef struct {
   uint64_t fileid;
   uint64_t size;
   uint64_t hash;
-  unsigned char osize;
+  uint64_t osize;
   unsigned char sha1hex[PSYNC_SHA1_DIGEST_HEXLEN];
   unsigned char osha1hex[PSYNC_SHA1_DIGEST_HEXLEN];
   psync_sha1_ctx sha1ctx;
