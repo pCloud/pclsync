@@ -27,7 +27,7 @@
 
 #include "pcompat.h"
 #include "pfsstatic.h"
-#include "plibs.h"
+#include "pcore.h"
 #include "pfstasks.h"
 #include <string.h>
 

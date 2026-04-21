@@ -136,6 +136,7 @@ void instance_thread(LPVOID lpvParam)
   if (lpvParam == NULL)
   {
     debug(D_ERROR, "InstanceThread got an unexpected NULL value in lpvParam.\n");
+    psync_free(reply);
     return;
   }
 
@@ -168,7 +169,7 @@ void instance_thread(LPVOID lpvParam)
       }
       break;
     }
-    message *request = (message *)chBuf;
+    request = (message *)chBuf;
 
     //debug(D_NOTICE, "bytes received  %d buffer[%s]\n", cbBytesRead, chBuf);
     get_answer_to_request(request, reply);
@@ -188,7 +189,6 @@ void instance_thread(LPVOID lpvParam)
   FlushFileBuffers(hPipe);
   DisconnectNamedPipe(hPipe);
   CloseHandle(hPipe);
-  psync_free(request);
   psync_free(reply);
   //debug(D_NOTICE, "InstanceThread exitting.\n");
   return;

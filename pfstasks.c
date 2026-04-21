@@ -38,7 +38,6 @@
 #include "ppathstatus.h"
 #include <string.h>
 #include <stddef.h>
-#include <stdio.h>
 
 typedef struct {
   psync_folderid_t folderid;
@@ -420,7 +419,8 @@ int psync_fstask_can_rmdir(psync_fsfolderid_t folderid, uint32_t parentflags, co
     row=psync_sql_fetch_rowint(res);
     if (!row || (folder && psync_fstask_find_rmdir(folder, name, 0))){
       psync_sql_free_result(res);
-      psync_fstask_release_folder_tasks_locked(folder);
+      if (folder)
+        psync_fstask_release_folder_tasks_locked(folder);
       return -ENOENT;
     }
     cfolderid=row[0];
@@ -513,7 +513,6 @@ int psync_fstask_rmdir(psync_fsfolderid_t folderid, uint32_t parentflags, const 
   else{
     depend=mk->taskid;
     cfolderid=mk->folderid;
-    folder->taskscnt--;
   }
   cfolder=psync_fstask_get_folder_tasks_locked(cfolderid);
   if (cfolder && (cfolder->creats || cfolder->mkdirs)){
@@ -551,6 +550,7 @@ int psync_fstask_rmdir(psync_fsfolderid_t folderid, uint32_t parentflags, const 
   if (mk) {
     psync_tree_del(&folder->mkdirs, &mk->tree);
     psync_free(mk);
+    folder->taskscnt--;
   }
   if (cfolder)
     psync_fstask_release_folder_tasks_locked(cfolder);
@@ -648,7 +648,7 @@ void psync_fstask_inject_creat(psync_fstask_folder_t *folder, psync_fstask_creat
 }
 
 void psync_fstask_inject_unlink(psync_fstask_folder_t *folder, psync_fstask_unlink_t *un){
-  psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_creat_t, name), &un->tree);
+  psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_unlink_t, name), &un->tree);
   folder->taskscnt++;
 }
 
@@ -679,14 +679,15 @@ psync_fstask_creat_t *psync_fstask_add_modified_file(psync_fstask_folder_t *fold
     psync_fstask_depend(taskid, -folder->folderid);
   psync_fstask_depend_on_name(taskid, folder->folderid, name, len);
   task=psync_fstask_find_creat(folder, name, 0);
-  if (task){
+  if (task)
     psync_fstask_depend(taskid, task->taskid);
+  if (unlikely_log(psync_sql_commit_transaction()))
+    return NULL;
+  if (task){
     psync_tree_del(&folder->creats, &task->tree);
     psync_free(task);
     folder->taskscnt--;
   }
-  if (unlikely_log(psync_sql_commit_transaction()))
-    return NULL;
   len++;
   un=(psync_fstask_unlink_t *)psync_malloc(offsetof(psync_fstask_unlink_t, name)+len);
   un->fileid=fileid;
@@ -1297,7 +1298,7 @@ int psync_fstask_rename_folder(psync_fsfolderid_t folderid, psync_fsfolderid_t p
     psync_fstask_depend(ttaskid, -to_folderid);
 
   psync_fstask_depend_on_name2(ttaskid, ftaskid, parentfolderid, name, nlen);
-  psync_fstask_depend_on_name(ttaskid, folderid, new_name, nnlen);
+  psync_fstask_depend_on_name(ttaskid, to_folderid, new_name, nnlen);
   folder=psync_fstask_get_or_create_folder_tasks_locked(parentfolderid);
   mk=psync_fstask_find_mkdir(folder, name, 0);
 
@@ -1326,10 +1327,10 @@ int psync_fstask_rename_folder(psync_fsfolderid_t folderid, psync_fsfolderid_t p
 
   psync_fstask_release_folder_tasks_locked(folder);
   folder=psync_fstask_get_or_create_folder_tasks_locked(to_folderid);
-  mk=psync_fstask_find_mkdir(folder, name, 0);
+  mk=psync_fstask_find_mkdir(folder, new_name, 0);
 
   if (mk){
-    debug(D_NOTICE, "renaming over mkdir %s", name);
+    debug(D_NOTICE, "renaming over mkdir %s", new_name);
     psync_tree_del(&folder->mkdirs, &mk->tree);
     psync_free(mk);
     folder->taskscnt--;
@@ -1815,7 +1816,7 @@ static void psync_init_task_renfile_to(psync_variant_row row){
   un->fileid=fileid;
   un->taskid=taskid;
   memcpy(un->name, name, len);
-  psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_creat_t, name), &un->tree);
+  psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_unlink_t, name), &un->tree);
   cr=(psync_fstask_creat_t *)psync_malloc(offsetof(psync_fstask_creat_t, name)+len);
   cr->fileid=fileid;
   cr->rfileid=psync_get_number(row[7]);
@@ -1906,7 +1907,7 @@ static void psync_init_task_modify(psync_variant_row row){
   memcpy(un->name, name, len);
   psync_fstask_insert_into_tree(&folder->unlinks, offsetof(psync_fstask_unlink_t, name), &un->tree);
   cr=(psync_fstask_creat_t *)psync_malloc(offsetof(psync_fstask_creat_t, name)+len);
-  cr->fileid=-(psync_fsfileid_t)cr->taskid;
+  cr->fileid=-(psync_fsfileid_t)taskid;
   cr->rfileid=psync_get_number(row[3]);
   cr->taskid=taskid;
   memcpy(cr->name, name, len);
@@ -2040,7 +2041,7 @@ void psync_fstask_dump_state(){
       cnt++;
     }
     psync_tree_for_each_element(rm, folder->rmdirs, psync_fstask_rmdir_t, tree){
-      debug(D_NOTICE, "  mkdir %s folderid %ld taskid %lu", rm->name, (long)rm->folderid, (unsigned long)rm->taskid);
+      debug(D_NOTICE, "  rmdir %s folderid %ld taskid %lu", rm->name, (long)rm->folderid, (unsigned long)rm->taskid);
       cnt++;
     }
     psync_tree_for_each_element(cr, folder->creats, psync_fstask_creat_t, tree){

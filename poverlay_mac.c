@@ -24,7 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "pcompat.h"
-#include "plibs.h"
+#include "pcore.h"
 
 #if defined(P_OS_LINUX) || defined(P_OS_MACOSX) || defined(P_OS_BSD)
 
@@ -77,9 +77,11 @@ void overlay_main_loop()
             debug(D_ERROR,"TCP/IP socket accept error");
             continue;
         }
+        int *clp=psync_malloc(sizeof(int));
+        *clp=cl;
         psync_run_thread1("Pipe request handle routine",
                           instance_thread,    // thread proc
-                          (LPVOID)&cl     // thread parameter
+                          (LPVOID)clp     // thread parameter
                           );
     }
     
@@ -101,7 +103,7 @@ void instance_thread(void* lpvParam)
     memset(chbuf, 0, POVERLAY_BUFSIZE);
     
     cl = (int *)lpvParam;
-    
+
     while ( (rc=read(*cl,curbuf,(bufSz - bytes_read))) > 0) {
         bytes_read += rc;
         //debug(D_NOTICE, "Read %u bytes: %u %s", bytes_read, rc, curbuf );
@@ -115,12 +117,11 @@ void instance_thread(void* lpvParam)
             else {
                 // realloc chbuf to real size
                 bufSz = request->length;
-                chbuf = realloc(chbuf, /*request->length*/ bufSz);
-
-                if(chbuf == NULL)
                 {
-                    debug(D_ERROR, "Realloc retun NULL!");
-                    return;
+                  char *tmp=psync_malloc(bufSz);
+                  memcpy(tmp, chbuf, bytes_read);
+                  psync_free(chbuf);
+                  chbuf=tmp;
                 }
 
                 curbuf = &chbuf[rc];  //Move the pointer to rc position of the reallocated buffer
@@ -128,30 +129,29 @@ void instance_thread(void* lpvParam)
         }
     }
 
-    if (rc == -1) {
-        debug(D_ERROR,"TCP/IP socket read error.");
+    if (rc <= 0) {
+        if (rc == -1)
+            debug(D_ERROR,"TCP/IP socket read error.");
         close(*cl);
+        psync_free(cl);
+        psync_free(chbuf);
+        psync_free(reply);
         return;
-    }
-    else if (rc == 0) {
-        //debug(D_NOTICE,"Message received");
-        close(*cl);
     }
     request = (message *)chbuf;
 
     if (request) {
         get_answer_to_request(request, reply);
-        if (reply ) {
-            rc = write(*cl,reply,reply->length);
-            if (rc != reply->length)
+        if (reply) {
+            rc = write(*cl, reply, reply->length);
+            if (rc != (int)reply->length)
                 debug(D_ERROR,"TCP/IP socket reply not sent.");
-            
         }
     }
-    if (cl) {
-        close(*cl);
-    }
-
+    close(*cl);
+    psync_free(cl);
+    psync_free(chbuf);
+    psync_free(reply);
     return;
 };
 

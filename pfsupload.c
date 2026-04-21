@@ -68,8 +68,38 @@ static pthread_mutex_t upload_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t upload_cond=PTHREAD_COND_INITIALIZER;
 static uint64_t current_upload_taskid=0;
 static uint32_t upload_wakes=0;
-static int large_upload_running=0;
-static int stop_current_upload=0;
+static uint32_t large_upload_running=0;
+static uint32_t stop_current_upload=0;
+
+static int large_upload_try_start(void){
+  return psync_atomic_compare_and_set_uint32(&large_upload_running, 0, 1);
+}
+
+static void large_upload_mark_stopped(void){
+  psync_atomic_set_uint32(&large_upload_running, 0);
+}
+
+static void set_current_upload(uint64_t taskid){
+  psync_atomic_set_uint64(&current_upload_taskid, taskid);
+  psync_atomic_set_uint32(&stop_current_upload, 0);
+}
+
+static uint64_t get_current_upload(void){
+  return psync_atomic_read_uint64(&current_upload_taskid);
+}
+
+static void clear_current_upload(void){
+  psync_atomic_set_uint64(&current_upload_taskid, 0);
+}
+
+static int is_upload_stopped(void){
+  return psync_atomic_read_uint32(&stop_current_upload);
+}
+
+static void request_upload_stop(uint64_t taskid){
+  if (get_current_upload()==taskid)
+    psync_atomic_set_uint32(&stop_current_upload, 1);
+}
 static psync_list *current_upload_batch=NULL;
 
 static const uint32_t requiredstatuses[]={
@@ -795,7 +825,7 @@ static int large_upload_creat(uint64_t taskid, psync_folderid_t folderid, const 
   }
 
   while (usize<fsize){
-    if (unlikely(stop_current_upload)){
+    if (unlikely(is_upload_stopped())){
       debug(D_NOTICE, "got stop for file %s", name);
       goto err2;
     }
@@ -842,7 +872,7 @@ static int large_upload_creat(uint64_t taskid, psync_folderid_t folderid, const 
     goto errs;
   }
 
-  if (unlikely(stop_current_upload)){
+  if (unlikely(is_upload_stopped())){
     debug(D_NOTICE, "got stop for file %s", name);
     psync_apipool_release(api);
     goto errs;
@@ -851,7 +881,7 @@ static int large_upload_creat(uint64_t taskid, psync_folderid_t folderid, const 
   if (large_upload_check_checksum(api, uploadid, filehash))
     goto errs;
 
-  if (unlikely(stop_current_upload)){
+  if (unlikely(is_upload_stopped())){
     debug(D_NOTICE, "got stop for file %s", name);
     psync_apipool_release(api);
     goto errs;
@@ -921,7 +951,7 @@ static int upload_modify_send_local(psync_socket *api, psync_uploadid_t uploadid
 
   buff=psync_malloc(PSYNC_COPY_BUFFER_SIZE);
   while (bw<length){
-    if (unlikely(stop_current_upload)){
+    if (unlikely(is_upload_stopped())){
       debug(D_NOTICE, "got stop");
       goto err0;
     }
@@ -1090,7 +1120,7 @@ int upload_modify(uint64_t taskid, psync_folderid_t folderid, const char *name, 
         perm_fail_upload_task(taskid);
       goto err3;
     }
-    if (unlikely(stop_current_upload)){
+    if (unlikely(is_upload_stopped())){
       debug(D_NOTICE, "got stop for file %s", name);
       goto err3;
     }
@@ -1146,8 +1176,8 @@ static void large_upload(){
     row=psync_sql_fetch_row(res);
 
     if (!row){
-      large_upload_running=0;
-      current_upload_taskid=0;
+      large_upload_mark_stopped();
+      clear_current_upload();
       psync_sql_free_result(res);
       break;
     }
@@ -1173,8 +1203,7 @@ static void large_upload(){
     name=psync_new_cnt(char, len);
     memcpy(name, cname, len);
 
-    current_upload_taskid=taskid;
-    stop_current_upload=0;
+    set_current_upload(taskid);
 
     psync_sql_free_result(res);
 
@@ -1223,7 +1252,7 @@ static void large_upload(){
       else
         uploadid=2;
       if (uploadid!=2)
-        current_upload_taskid=0;
+        clear_current_upload();
       psync_sql_free_result(res);
       if (uploadid!=2)
         psync_fsupload_wake();
@@ -1243,20 +1272,16 @@ static int psync_sent_task_creat_upload_large(fsupload_task_t *task){
   psync_sql_res *res;
   res=psync_sql_prep_statement("UPDATE fstask SET status=2 WHERE id=? AND status=0");
   psync_sql_bind_uint(res, 1, task->id);
-  //psync_fs_uploading_openfile(task->id);
-  if (!large_upload_running){
-    large_upload_running=1;
-    psync_run_thread("large file fs upload", large_upload);
-  }
   psync_sql_run_free(res);
+  if (large_upload_try_start())
+    psync_run_thread("large file fs upload", large_upload);
   return 0;
 }
 
 void psync_fsupload_stop_upload_locked(uint64_t taskid){
   psync_sql_res *res;
 
-  if (current_upload_taskid==taskid)
-    stop_current_upload=1;
+  request_upload_stop(taskid);
 
   res=psync_sql_prep_statement("UPDATE fstask SET status=1 WHERE id=?");
 
@@ -2052,7 +2077,7 @@ static void psync_fsupload_check_tasks(){
 
   while ((row=psync_sql_fetch_row(res))){
     cnt++;
-    if (psync_get_number(row[0])==current_upload_taskid)
+    if (psync_get_number(row[0])==get_current_upload())
       continue;
     size=sizeof(fsupload_task_t);
     if (row[4].type==PSYNC_TSTRING)

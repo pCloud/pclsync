@@ -24,7 +24,7 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "pcompat.h"
-#include "plibs.h"
+#include "pcore.h"
 
 #if defined(P_OS_LINUX) || defined(P_OS_MACOSX) || defined(P_OS_BSD)
 
@@ -70,11 +70,13 @@ void overlay_main_loop()
       debug(D_ERROR,"Unix socket accept error");
       continue;
     }
+    int *clp=psync_malloc(sizeof(int));
+    *clp=cl;
     psync_run_thread1(
       "Pipe request handle routine",
       instance_thread,    // thread proc
-      (LPVOID)&cl     // thread parameter
-      ); 
+      (LPVOID)clp     // thread parameter
+      );
   }
 
   return;
@@ -93,7 +95,7 @@ void instance_thread(void* lpvParam)
   memset(chbuf, 0, POVERLAY_BUFSIZE);
   
   cl = (int *)lpvParam;
-  
+
   while ( (rc=read(*cl,curbuf,(POVERLAY_BUFSIZE - bytes_read))) > 0) {
     bytes_read += rc;
     //debug(D_ERROR, "Read %u bytes: %u %s", bytes_read, rc, curbuf );
@@ -104,28 +106,26 @@ void instance_thread(void* lpvParam)
         break;
     }
   }
-  if (rc == -1) {
-    //debug(D_ERROR,"Unix socket read");
+  if (rc <= 0) {
+    if (rc == -1)
+      debug(D_ERROR,"Unix socket read error");
     close(*cl);
+    psync_free(cl);
+    psync_free(reply);
     return;
-  }
-  else if (rc == 0) {
-    //debug(D_NOTICE,"Message received");
-    close(*cl);
   }
   request = (message *)chbuf;
   if (request) {
-  get_answer_to_request(request, reply);
-    if (reply ) {
-      rc = write(*cl,reply,reply->length);
-      if (rc != reply->length)
+    get_answer_to_request(request, reply);
+    if (reply) {
+      rc = write(*cl, reply, reply->length);
+      if (rc != (int)reply->length)
         debug(D_ERROR,"Unix socket reply not sent.");
-    
     }
   }
-  if (cl) {
-    close(*cl);
-  }
+  close(*cl);
+  psync_free(cl);
+  psync_free(reply);
   //debug(D_NOTICE, "InstanceThread exitting.\n");
   return;
 };

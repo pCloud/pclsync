@@ -31,7 +31,7 @@
 #include "pfsfolder.h"
 #include "ptree.h"
 #include "psynclib.h"
-#include "plibs.h"
+#include "pcore.h"
 #include <time.h>
 #include <stddef.h>
 #include <string.h>

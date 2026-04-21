@@ -24,7 +24,7 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "pcompat.h"
-#include "plibs.h"
+#include "pcore.h"
 #include "poverlay.h"
 #include "ppathstatus.h"
 #include "pcache.h"
@@ -61,7 +61,7 @@ int psync_add_overlay_callback(int id, poverlay_callback callback)
   int callbacks_size_old = callbacks_size;
   if (id < calbacks_lower_band)
     return -1;
-  if (id > (calbacks_lower_band + callbacks_size)) {
+  if (id >= (calbacks_lower_band + callbacks_size)) {
      callbacks_size = id - calbacks_lower_band + 1;
      init_overlay_callbacks();
      memcpy(callbacks,callbacks_old, callbacks_size_old*sizeof(poverlay_callback));
@@ -115,19 +115,24 @@ void get_answer_to_request(message *request, message *replay)
         replay->type=13;
         memcpy(replay->value, "No.", 4);
     }
-  } else if ((callbacks_running)&&(request->type < (calbacks_lower_band + callbacks_size))) {
-    int ind = request->type - 20;
-    int ret = 0;
+  } else if (
+      callbacks_running &&
+      request->type >= calbacks_lower_band &&
+      request->type < (calbacks_lower_band + callbacks_size)) {
+
     message *rep = NULL;
-    
-    if (callbacks[ind]) {
-      if ((ret = callbacks[ind](request->value, rep)) == 0) {
+    const uint32_t index = request->type - calbacks_lower_band;
+
+    if (callbacks[index]) {
+      const int ret = callbacks[index](request->value, &rep);
+      if (ret == 0) {
         if (rep) {
           psync_free(replay);
           replay = rep;
         }
-        else 
-        replay->type = 0;
+        else {
+          replay->type = 0;
+        }
       } else {
         replay->type = ret;
         memcpy(replay->value, "No.", 4);
@@ -142,9 +147,7 @@ void get_answer_to_request(message *request, message *replay)
       memcpy(replay->value, "Invalid type.", 14);
       replay->length = sizeof(message)+14;
     }
-
 }
-
 
 int psync_overlays_running(){return overlays_running;}
 int psync_ovr_callbacks_running(){return callbacks_running;}

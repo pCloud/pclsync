@@ -39,7 +39,7 @@
 #include "pcrypto.h"
 #include "pcrc32c.h"
 #include "ptimer.h"
-#include "plibs.h"
+#include "pcore.h"
 #include <pthread.h>
 
 #ifndef P_OS_MACOSX
