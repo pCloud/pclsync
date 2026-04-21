@@ -29,7 +29,7 @@
 #define ZLIB_WINAPI
 #endif
 #include "zlib.h"
-#include "plibs.h"
+#include "pcore.h"
 #include "pcompression.h"
 
 #define BUFFER_SIZE (4*1024)
@@ -54,10 +54,7 @@ psync_deflate_t *psync_deflate_init(int level){
   psync_deflate_t *def;
   int ret;
   def=psync_new(psync_deflate_t);
-  memset(&def->stream, 0, sizeof(def->stream));
-  def->flushbuff=NULL;
-  def->bufferstartoff=0;
-  def->bufferendoff=0;
+  memset(def, 0, sizeof(*def));
   if (level==PSYNC_DEFLATE_DECOMPRESS){
     def->flags=0;
     ret=inflateInit2(&def->stream, 15);
@@ -143,8 +140,19 @@ static int psync_deflate_finish_flush_add_buffer(psync_deflate_t *def, int flush
     def->stream.avail_out=current;
     ret=deflate(&def->stream, psync_translate_flush(flush));
     if (ret!=Z_OK){
-      if (ret!=Z_BUF_ERROR)
+      if (ret==Z_STREAM_END){
+        uint32_t produced=current-def->stream.avail_out;
+        if (used+produced>0){
+          def->flushbuff=buff;
+          def->flushbufflen=used+produced;
+        } else
+          psync_free(buff);
+        return Z_STREAM_END;
+      }
+      if (ret!=Z_BUF_ERROR){
+        psync_free(buff);
         return ret;
+      }
       if (used==0){
         psync_free(buff);
         return Z_OK;
@@ -161,6 +169,10 @@ static int psync_deflate_finish_flush_add_buffer(psync_deflate_t *def, int flush
       return Z_OK;
     }
     used+=current;
+    if (alloced>UINT32_MAX/2){
+      psync_free(buff);
+      return Z_MEM_ERROR;
+    }
     alloced*=2;
     buff=(unsigned char *)psync_realloc(buff, alloced);
     current=alloced-used;
@@ -256,5 +268,5 @@ int psync_deflate_read(psync_deflate_t *def, void *data, int len){
 }
 
 int psync_deflate_pending(psync_deflate_t *def){
-  return def->bufferendoff-def->bufferstartoff+(def->flushbuff?def->flushbufflen:0);
+  return def->bufferendoff-def->bufferstartoff+(def->flushbuff?def->flushbufflen-def->flushbuffoff:0);
 }

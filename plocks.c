@@ -26,7 +26,7 @@
  */
 
 #include "plocks.h"
-#include "plibs.h"
+#include "pcore.h"
 
 #define PSYNC_RW_OPT_PREFER_READ 1U
 #define PSYNC_RW_OPT_RESERVED    2U
@@ -378,6 +378,6 @@ int psync_rwlock_holding_wrlock(psync_rwlock_t *rw){
 int psync_rwlock_holding_lock(psync_rwlock_t *rw){
   psync_rwlock_lockcnt_t cnt;
   cnt=psync_rwlock_get_count(rw);
-  return cnt.cnt[0]!=0 || cnt.cnt[1]!=0;
+  return cnt.cnt[0]!=0 || (cnt.cnt[1]!=0 && cnt.cnt[1]!=PSYNC_WR_RESERVED);
 }
 

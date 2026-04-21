@@ -38,11 +38,15 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #endif
 
 #if defined(P_OS_MACOSX)
 #include <unistd.h>
 #include <stdio.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #endif
 
 stuck_list_type* stuck_sync_tasks = NULL;
@@ -77,7 +81,7 @@ char* get_zipLogsFilePath(char* fName) {
 /*************************************************************/
 char* get_zipLogsFile() {
   char* zipFile;
-  char tmp[36];
+  char tmp[64];
 
   struct timespec ts;
   struct tm dt;
@@ -86,7 +90,7 @@ char* get_zipLogsFile() {
 
   gmtime_r(&ts.tv_sec, &dt);
 
-  sprintf(tmp, "%"P_PRI_U64"_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year + 1900, dt.tm_mon + 1, dt.tm_mday, dt.tm_hour, dt.tm_min);
+  snprintf(tmp, sizeof(tmp), "%"P_PRI_U64"_%d_%d_%d_%d_%d", psync_my_userid, dt.tm_year + 1900, dt.tm_mon + 1, dt.tm_mday, dt.tm_hour, dt.tm_min);
 
   zipFile = psync_strcat(tmp, ".zip", NULL);
 
@@ -97,6 +101,7 @@ int zipLogs(char* zipLogsFname) {
   int res = 0;
   mz_bool status;
   mz_zip_archive zip_archive;
+  int zip_inited = 0;
 
   uint64_t fsize = 0;
   psync_stat_t st;
@@ -114,13 +119,18 @@ int zipLogs(char* zipLogsFname) {
 
   debug(D_NOTICE, "Check log file size: [%s]", srcFname1);
   ret = psync_stat(srcFname1, &st);
+  if (ret){
+    debug(D_WARNING, "could not stat log file %s", srcFname1);
+    res = CANT_FIND_LOG_FILE;
+    goto cleanup;
+  }
 
   fsize = psync_stat_size(&st);
 
   if (fsize > MAX_LOG_SIZE) {
     debug(D_NOTICE, "Zipped logs too big.  File size: [%"P_PRI_U64"] > [%ld]", fsize, MAX_LOG_SIZE);
-
-    return LOGS_ZIP_TOO_BIG;
+    res = LOGS_ZIP_TOO_BIG;
+    goto cleanup;
   }
 
   debug(D_NOTICE, "Create Zip file");
@@ -130,8 +140,10 @@ int zipLogs(char* zipLogsFname) {
   status = mz_zip_writer_init_file(&zip_archive, zipLogsFname, 0);
 
   if (status == MZ_FALSE) {
-    return FAIL_TO_ZIP_LOGS;
+    res = FAIL_TO_ZIP_LOGS;
+    goto cleanup;
   }
+  zip_inited = 1;
 
   srcFile = fopen(srcFname1, "r");
 
@@ -142,8 +154,8 @@ int zipLogs(char* zipLogsFname) {
   }
   else {
     debug(D_NOTICE, "Failed to open: [%s]", srcFname1);
-
-    return FAIL_TO_ZIP_LOGS;
+    res = FAIL_TO_ZIP_LOGS;
+    goto cleanup;
   }
 
 #if defined(P_OS_WINDOWS)
@@ -176,7 +188,18 @@ int zipLogs(char* zipLogsFname) {
 
   debug(D_NOTICE, "Done. Res: [%d] Status: [%d]", res, status);
 
-  return status;
+  res = status;
+
+cleanup:
+  if (zip_inited && res != MZ_TRUE){
+    mz_zip_writer_end(&zip_archive);
+  }
+#if defined(P_OS_WINDOWS)
+  psync_free(srcFname1);
+  psync_free(srcFname2);
+  psync_free(srcFname3);
+#endif
+  return res;
 }
 /*************************************************************/
 int uploadLogsToDrive() {
@@ -256,8 +279,11 @@ char* getMACaddr() {
   int   byteRead = 0;
   FILE* stream = popen("ifconfig en0 | grep ether | cut -c 8-24", "r");
 
-  while (!feof(stream) && !ferror(stream)) {
-    byteRead = fread(buffer, 1, 128, stream);
+  if (stream) {
+    while (!feof(stream) && !ferror(stream)) {
+      byteRead = fread(buffer, 1, 128, stream);
+    }
+    pclose(stream);
   }
 
   buffer[byteRead] = 0;
@@ -447,11 +473,14 @@ char* get_machine_name() {
 #endif
 
 #if defined(P_OS_MACOSX)
-  int byteRead;
+  int byteRead = 0;
   FILE* stream = popen("system_profiler SPSoftwareDataType | grep \"Computer Name\" | cut -d: -f2 | tr -d ' '", "r");
 
-  while (!feof(stream) && !ferror(stream)) {
-    byteRead = fread(pcName, 1, 128, stream);
+  if (stream) {
+    while (!feof(stream) && !ferror(stream)) {
+      byteRead = fread(pcName, 1, 128, stream);
+    }
+    pclose(stream);
   }
   if(byteRead > 0) {
     pcName[byteRead-1] = 0;
@@ -477,7 +506,7 @@ char* get_machine_name() {
   return psync_strdup(pcName);
 }
 /*************************************************************/
-void parse_os_path(char* path, folderPath* folders, char delim, int mode) {
+void parse_os_path(const char* path, folderPath* folders, char delim, int mode) {
   char fName[255];
   char* buff;
   int i = 0, j = 0, k = 0;
@@ -493,20 +522,24 @@ void parse_os_path(char* path, folderPath* folders, char delim, int mode) {
         fName[k] = 0;
         buff = psync_strcat("Drive ", &fName, NULL);
         psync_strlcpy(fName, buff, strlen(buff)+1);
+        psync_free(buff);
 
         k = k + strlen("Drive ");
       }
       else {
-        fName[k] = path[i];
-        k++;
+        if (k<(int)sizeof(fName)-1){
+          fName[k] = path[i];
+          k++;
+        }
       }
     }
     else {
       fName[k] = 0;
-      folders->folders[j] = psync_strdup(fName);
-
+      if (j<50){
+        folders->folders[j] = psync_strdup(fName);
+        j++;
+      }
       k = 0;
-      j++;
     }
 
     i++;
@@ -514,7 +547,7 @@ void parse_os_path(char* path, folderPath* folders, char delim, int mode) {
     if (path[i] == 0) {
       fName[k] = 0;
 
-      if (strlen(fName) > 0) {
+      if (strlen(fName) > 0 && j<50) {
         folders->folders[j] = psync_strdup(fName);
         j++;
       }
@@ -547,7 +580,7 @@ void send_psyncs_event(const char* binapi,
 
     if (syncCnt < 1) {
       debug(D_NOTICE, "No syncs, skip the event.");
-
+      free(errMsg);
       return;
     }
 
@@ -581,7 +614,6 @@ void send_psyncs_event(const char* binapi,
 int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
   int callRes;
   char* msgErr = NULL;
-  binresult* retData;
 
   debug(D_NOTICE, "Update file date in the backend. FileId: [%"P_PRI_U64"], ctime: [%ld], mtime: [%ld]", fileid, ctime, mtime);
 
@@ -605,7 +637,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
     FOLDER_META,
     &requiredParams1,
     &optionalParams,
-    &retData,
+    NULL,
     &msgErr
   );
 
@@ -631,7 +663,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime) {
     FOLDER_META,
     &requiredParams,
     &optionalParams,
-    &retData,
+    NULL,
     &msgErr
   );
 
@@ -679,36 +711,34 @@ char *get_sync_folder_by_syncid(uint64_t syncId) {
     return NULL;
   }
 
-  retName = strdup(syncName);
+  retName = psync_strdup(syncName);
 
   psync_sql_free_result(res);
 
   return retName;
 }
 /*************************************************************/
-char* get_file_name_from_path(char* path){
-  char* name;
-
+char* get_file_name_from_path(const char* path){
   if(!path) {
     return NULL;
   }
 
-  name = path + strlen(path)-1;
+  const char *name = path + strlen(path) - 1;
 
   while (name>path && name[-1]!='\\' && name[-1]!='/') {
     name--;
   }
 
-  return strdup(name);
+  return psync_strdup(name);
 }
 /*************************************************************/
-char* get_folder_name_from_path(char* path) {
-  char* folder;
+char* get_folder_name_from_path(const char* path) {
+  const char* folderName = NULL;
   int sepFound = 0;
 
   while (*path != 0) {
     if ((*path == '\\') || (*path == '/')) {
-      folder = ++path;
+      folderName = path + 1;
       sepFound = 1;
     }
 
@@ -716,10 +746,10 @@ char* get_folder_name_from_path(char* path) {
   }
 
   if (sepFound) {
-    return strdup(folder);
+    return psync_strdup(folderName);
   }
   else {
-    return strdup(STUCK_ITEM_UNKNOWN_FOLDER);
+    return psync_strdup(STUCK_ITEM_UNKNOWN_FOLDER);
   }
 }
 /*************************************************************/
@@ -737,22 +767,22 @@ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t n
   stuck_elem->next_elem = NULL;
 
   if (name) {
-    stuck_elem->name = strdup(name);
+    stuck_elem->name = psync_strdup(name);
   }
   else {
     if (item_type == STUCK_ITEM_TYPE_FOLDER) {
-      stuck_elem->name = strdup(STUCK_ITEM_UNKNOWN_FOLDER);
+      stuck_elem->name = psync_strdup(STUCK_ITEM_UNKNOWN_FOLDER);
     }
     else {
-      stuck_elem->name = strdup(STUCK_ITEM_UNKNOWN_FILE);
+      stuck_elem->name = psync_strdup(STUCK_ITEM_UNKNOWN_FILE);
     }
   }
 
   if (path) {
-    stuck_elem->path = strdup(path);
+    stuck_elem->path = psync_strdup(path);
   }
   else {
-    stuck_elem->path = strdup(STUCK_ITEM_UNKNOWN_PATH);
+    stuck_elem->path = psync_strdup(STUCK_ITEM_UNKNOWN_PATH);
   }
 
   pthread_mutex_unlock(&stuck_elem_list_mutex);
@@ -781,7 +811,12 @@ void log_list_elem(stuck_item* elem) {
 /***********************************************************************/
 void log_list() {
   int i = 0;
-  stuck_item* list = stuck_sync_tasks->list;
+  stuck_item* list;
+
+  if (!stuck_sync_tasks || !stuck_sync_tasks->list)
+    return;
+
+  list = stuck_sync_tasks->list;
 
   while (1) {
     debug(D_NOTICE,"********************* Stuck List element [%d] *********************", i);
@@ -998,11 +1033,12 @@ void delete_element(uint64_t id) {
 void clean_stuck_list() {
   stuck_item *local_list, *next_elem;
 
+  pthread_mutex_lock(&stuck_elem_list_mutex);
+
   if (stuck_sync_tasks->list == NULL) {
+    pthread_mutex_unlock(&stuck_elem_list_mutex);
     return;
   }
-
-  pthread_mutex_lock(&stuck_elem_list_mutex);
 
   local_list = stuck_sync_tasks->list;
 
@@ -1031,11 +1067,12 @@ stuck_return_list* get_stuck_list() {
   stuck_item* local_list;
   stuck_return_list* list;
 
+  pthread_mutex_lock(&stuck_elem_list_mutex);
+
   if (!stuck_sync_tasks->list) {
+    pthread_mutex_unlock(&stuck_elem_list_mutex);
     return NULL;
   }
-
-  pthread_mutex_lock(&stuck_elem_list_mutex);
 
   list = (stuck_return_list*)psync_malloc(sizeof(stuck_return_list));
 
@@ -1080,88 +1117,51 @@ char* nvl_str(char* str, const char* def) {
 /***********************************************************************/
 char* dns_lookup(const char* addr_host, int port) {
   char ip[65];
+  int res;
+  struct addrinfo hints, *addr_list;
+  char port_str[6];
 
   memset(ip, 0, sizeof(ip));
 
 #if defined(P_OS_WINDOWS)
-  int res;
-  struct addrinfo hints, * addr_list;
-  char port_str[6];
   WSADATA wsaData;
-
   if ((res = WSAStartup(MAKEWORD(2, 0), &wsaData)) != 0) {
-    debug(D_WARNING, "Error initializing socket: [%s]", res);
+    debug(D_WARNING, "Error initializing socket: [%d]", res);
     return NULL;
   }
+#endif
 
-  /* getaddrinfo expects port as a string */
   memset(port_str, 0, sizeof(port_str));
   snprintf(port_str, sizeof(port_str), "%d", port);
 
-  /* Bind to IPv6 and/or IPv4, but only in TCP */
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
+#if defined(P_OS_WINDOWS)
   hints.ai_flags = AI_PASSIVE;
+#endif
 
   res = getaddrinfo(addr_host, port_str, &hints, &addr_list);
 
   if (res != 0) {
-    debug(D_WARNING, "Error resolving URL - getaddrinfo: [%d]", res);
-
+#if defined(P_OS_POSIX)
+    debug(D_WARNING, "Error resolving host - getaddrinfo: [%s]", gai_strerror(res));
+#else
+    debug(D_WARNING, "Error resolving host - getaddrinfo: [%d]", res);
+#endif
     return NULL;
   }
 
   switch (addr_list->ai_family) {
     case AF_INET:
-      inet_ntop(AF_INET, &((struct sockaddr_in*)addr_list->ai_addr)->sin_addr, ip, INET6_ADDRSTRLEN);
+      inet_ntop(AF_INET, &((struct sockaddr_in*)addr_list->ai_addr)->sin_addr, ip, sizeof(ip));
       break;
     case AF_INET6:
-      inet_ntop(AF_INET6, &((struct sockaddr_in6*)addr_list->ai_addr)->sin6_addr, ip, INET6_ADDRSTRLEN);
+      inet_ntop(AF_INET6, &((struct sockaddr_in6*)addr_list->ai_addr)->sin6_addr, ip, sizeof(ip));
       break;
   }
-#endif
-#if defined(P_OS_LINUX)
-  char* cmd_str;
-  char* output;
-
-  cmd_str = malloc(sizeof(char) * (strlen(addr_host) + 100));
-
-  sprintf(cmd_str, "ping -q -c1 -t1 %s | tr -d '()' | awk '/^PING/{print $3}'", addr_host);
-
-  FILE* pipe = popen(cmd_str, "r");
-
-  if (!pipe) {
-    psync_free(cmd_str);
-    return 0;
-  }
-
-  output = fgets(ip, sizeof(ip), pipe);
-
-  if (ip[0] != 0) {
-    ip[strlen(ip) - 1] = 0; //Overwrites the \n at the end.
-  }
-
-  psync_free(cmd_str);
-  pclose(pipe);
-#endif
-
-#if defined(P_OS_MACOSX)
-  char* cmd_str;
-  int   byteRead = 0;
-
-
-  cmd_str = malloc(sizeof(char) * (strlen(addr_host) + 100));
-
-  sprintf(cmd_str, "ping -q -c1 -t1 %s | tr -d '():' | awk '/^PING/{print $3}'", addr_host);
-
-  FILE* stream = popen(cmd_str, "r");
-
-  while (!feof(stream) && !ferror(stream)) {
-    byteRead = fread(ip, 1, sizeof(ip), stream);
-  }
-#endif
+  freeaddrinfo(addr_list);
 
   return psync_strdup(ip);
 }
@@ -1252,7 +1252,7 @@ int do_get_crypto_price(char** currency) {
       return 0;
     }
 
-    *currency=strdup(psync_find_result(res, "currency", PARAM_STR)->str);
+    *currency=psync_strdup(psync_find_result(res, "currency", PARAM_STR)->str);
     products = psync_check_result(res, "products", PARAM_HASH);
 
     if (products) {
@@ -1474,14 +1474,13 @@ int deleteLogs() {
   return res;
 }
 /**********************************************************************/
-//Upload tasks methods
-int create_upload_task(int type, int status, uint64_t size, int level, uint64_t parentfid, char* fname, char* path) {
-  psync_sql_res* res;
-  uint64_t upTaskId;
-
+// Upload tasks methods
+uint64_t create_upload_task(int type, const int status, uint64_t size, int level, uint64_t parentfid,
+                            const char* fname, const char* path) {
   psync_sql_start_transaction();
 
-  res = psync_sql_prep_statement("INSERT INTO upload_tasks(type, status, size, level, parentfid, fname, fpath) VALUES (? ,? ,? ,? ,? ,?, ?); ");
+  psync_sql_res* res = psync_sql_prep_statement(
+    "INSERT INTO upload_tasks(type, status, size, level, parentfid, fname, fpath) VALUES (? ,? ,? ,? ,? ,?, ?); ");
 
   psync_sql_bind_int(res,  1, type);
   psync_sql_bind_int(res,  2, status);
@@ -1500,8 +1499,14 @@ int create_upload_task(int type, int status, uint64_t size, int level, uint64_t 
     return -1;
   }
 
-  upTaskId = psync_sql_insertid();
+  uint64_t upTaskId = psync_sql_insertid();
 
+  if (unlikely(!psync_sql_commit_transaction())) {
+
+    debug(D_NOTICE, "Transaction failed.");
+
+    return -1;
+  }
   psync_sql_commit_transaction();
 
   return upTaskId;
@@ -1592,7 +1597,7 @@ void upload_tasks_status_thread() {
 }
 /**********************************************************************/
 uptask_item_list* get_uptask_item_list(int status) {
-  uptask_item_list uptask_list;
+  uptask_item_list *uptask_list=psync_new(uptask_item_list);
   psync_sql_res* res;
   psync_variant_row row;
   int i = 0;
@@ -1605,22 +1610,22 @@ uptask_item_list* get_uptask_item_list(int status) {
   psync_sql_bind_uint(res, 1, status);
 
   while (row = psync_sql_fetch_row(res)) {
-    uptask_list.list[i].item_type = psync_get_number(row[0]);
-    uptask_list.list[i].item_status = psync_get_number(row[1]);
-    uptask_list.list[i].path = psync_strdup(psync_get_string(row[2]));
-    uptask_list.list[i].name = psync_strdup(psync_get_string(row[3]));
-    uptask_list.list[i].size = psync_get_number(row[4]);
-    uptask_list.list[i].error_code = psync_get_number(row[5]);
+    uptask_list->list[i].item_type = psync_get_number(row[0]);
+    uptask_list->list[i].item_status = psync_get_number(row[1]);
+    uptask_list->list[i].path = psync_strdup(psync_get_string(row[2]));
+    uptask_list->list[i].name = psync_strdup(psync_get_string(row[3]));
+    uptask_list->list[i].size = psync_get_number(row[4]);
+    uptask_list->list[i].error_code = psync_get_number(row[5]);
 
     //psync_free(row);
 
     i++;
   }
 
-  uptask_list.item_cnt = i;
+  uptask_list->item_cnt = i;
   psync_sql_free_result(res);
 
-  return &uptask_list;
+  return uptask_list;
 }
 /**********************************************************************/
 void log_uptasks() {
@@ -1649,38 +1654,26 @@ void log_uptasks() {
     debug(D_NOTICE, "No tasks to log.");
   }
 
-  //psync_free(uptask_list);
+  psync_free(uptask_list);
 }
-/**********************************************************************/
-int64_t get_db_id() {
-  psync_sql_res* res;
 
-  psync_sql_start_transaction();
-
-  res = psync_sql_prep_statement("INSERT INTO pagecache (type) VALUES ("NTO_STR(PAGE_TYPE_FREE)")");
-
-  psync_sql_commit_transaction();
-
-  psync_sql_free_result(res);
-}
 /**********************************************************************/
 int check_ignored_paths(const char* path) {  //Check if folder is not a child of an igrnored folder
-  const char* ignorePaths;
   folderPath folders;
-  int i;
 
-  ignorePaths = psync_setting_get_string(_PS(ignorepaths));
+  const char* ignorePaths = psync_setting_get_string(_PS(ignorepaths));
   parse_os_path(ignorePaths, &folders, DELIM_SEMICOLON, 0);
 
-  for (i = 0; i < folders.cnt; i++) {
-    if (psync_left_str_is_prefix(folders.folders[i], path)) {
+  int ret = 0;
+  for (int i = 0; i < folders.cnt; i++) {
+    if (ret == 0 && psync_left_str_is_prefix(folders.folders[i], path)) {
       debug(D_NOTICE, "Ignored path found: [%s]=[%s]", folders.folders[i], path);
-
-      return PERROR_PARENT_IS_IGNORED;
+      ret = PERROR_PARENT_IS_IGNORED;
     }
+    psync_free(folders.folders[i]);
   }
 
-  return 0;
+  return ret;
 }
 /**********************************************************************/
 int check_dest_folder_syncable(char* path) {

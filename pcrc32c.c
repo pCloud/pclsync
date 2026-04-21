@@ -28,7 +28,7 @@
 
 #include "pcrc32c.h"
 #include "pcompiler.h"
-#include "plibs.h"
+#include "pcore.h"
 #include <string.h>
 
 #if defined(__GNUC__) && (defined(__amd64__) || defined(__x86_64__) || defined(__i386__))

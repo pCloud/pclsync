@@ -115,7 +115,7 @@ char* getMACaddr(void);
 /**********************************************************************************************************/
 char* get_machine_name(void);
 /**********************************************************************************************************/
-void parse_os_path(char* path, folderPath* folders, char delim, int mode);
+void parse_os_path(const char* path, folderPath* folders, char delim, int mode);
 /**********************************************************************************************************/
 void send_psyncs_event(const char* binapi,
                        const char* auth);
@@ -126,7 +126,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 /**********************************************************************************************************/
  char* get_sync_folder_by_syncid(uint64_t syncId);
 /**********************************************************************************************************/
- char* get_folder_name_from_path(char* path);
+ char* get_folder_name_from_path(const char* path);
 /**********************************************************************************************************/
 #define STUCK_ITEM_RETRY_COUNT 0
 #define STUCK_ITEM_TOTAL_COUNT 100
@@ -165,7 +165,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  char* nvl_str(char* str, const char* def);
 
- char* get_file_name_from_path(char* path);
+ char* get_file_name_from_path(const char* path);
 
  uint64_t get_hash_from_string(char* str);
 
@@ -204,7 +204,8 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
    uptask_item list[1000];
  } uptask_item_list;
 
- int create_upload_task(int type, int status, uint64_t size, int level, uint64_t parentfid, char* fname, char* path);
+ uint64_t create_upload_task(int type, int status, uint64_t size, int level, uint64_t parentfid,
+                             const char *fname, const char *path);
 
  void upload_tasks_status_thread(void);
 

@@ -26,7 +26,7 @@
  */
 
 #include "pintervaltree.h"
-#include "plibs.h"
+#include "pcore.h"
 
 static psync_interval_tree_t *psync_interval_tree_new(uint64_t from, uint64_t to){
   psync_interval_tree_t *tree=psync_new(psync_interval_tree_t);
@@ -116,8 +116,10 @@ void psync_interval_tree_remove(psync_interval_tree_t **tree, uint64_t from, uin
     ntr=psync_interval_tree_get_next(tr);
     if (from<=tr->from && tr->from<to){
       tr->from=to;
-      if (tr->from>=tr->to)
+      if (tr->from>=tr->to){
         psync_interval_tree_del(tree, tr);
+        psync_free(tr);
+      }
     }
     else if (tr->from<from)
       tr->to=from;

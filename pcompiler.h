@@ -150,4 +150,31 @@
 #define psync_alignof(t) offsetof(struct {char a; t b;}, b)
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#define psync_atomic_read_uint32(ptr)              __sync_fetch_and_add((ptr), 0)
+#define psync_atomic_set_uint32(ptr, val)          __sync_lock_test_and_set((ptr), (val))
+#define psync_atomic_add_uint32(ptr, val)          __sync_fetch_and_add((ptr), (val))
+#define psync_atomic_compare_and_set_uint32(ptr, expected, newval) \
+  __sync_bool_compare_and_swap((ptr), (expected), (newval))
+#define psync_atomic_read_uint64(ptr)              __sync_fetch_and_add((ptr), (uint64_t)0)
+#define psync_atomic_set_uint64(ptr, val)          __sync_lock_test_and_set((ptr), (val))
+#define psync_atomic_add_uint64(ptr, val)          __sync_fetch_and_add((ptr), (val))
+#define psync_atomic_compare_and_set_uint64(ptr, expected, newval) \
+  __sync_bool_compare_and_swap((ptr), (expected), (newval))
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#define psync_atomic_read_uint32(ptr)              ((uint32_t)InterlockedOr((volatile LONG *)(ptr), 0))
+#define psync_atomic_set_uint32(ptr, val)          ((uint32_t)InterlockedExchange((volatile LONG *)(ptr), (LONG)(val)))
+#define psync_atomic_add_uint32(ptr, val)          ((uint32_t)InterlockedExchangeAdd((volatile LONG *)(ptr), (LONG)(val)))
+#define psync_atomic_compare_and_set_uint32(ptr, expected, newval) \
+  (InterlockedCompareExchange((volatile LONG *)(ptr), (LONG)(newval), (LONG)(expected)) == (LONG)(expected))
+#define psync_atomic_read_uint64(ptr)              ((uint64_t)InterlockedOr64((volatile LONG64 *)(ptr), 0))
+#define psync_atomic_set_uint64(ptr, val)          ((uint64_t)InterlockedExchange64((volatile LONG64 *)(ptr), (LONG64)(val)))
+#define psync_atomic_add_uint64(ptr, val)          ((uint64_t)InterlockedExchangeAdd64((volatile LONG64 *)(ptr), (LONG64)(val)))
+#define psync_atomic_compare_and_set_uint64(ptr, expected, newval) \
+  (InterlockedCompareExchange64((volatile LONG64 *)(ptr), (LONG64)(newval), (LONG64)(expected)) == (LONG64)(expected))
+#else
+#error "Unsupported compiler: no atomic intrinsics available"
+#endif
+
 #endif

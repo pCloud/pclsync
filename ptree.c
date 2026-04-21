@@ -26,7 +26,7 @@
  */
 
 #include "ptree.h"
-#include "plibs.h"
+#include "pcore.h"
 #include <string.h>
 
 static inline long int psync_tree_max(long int a, long int b){

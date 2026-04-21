@@ -29,9 +29,12 @@
 #include "pcompat.h"
 #include "ptree.h"
 #include "pintervaltree.h"
-#include "plibs.h"
-#include "pcloudcrypto.h"
+#include "pcore.h"
 #include <stdint.h>
+
+/* Only psync_cloud_crypto_clean_cache() is needed from pcloudcrypto.h; avoid pulling in
+   pfs.h, pcrypto.h, papi.h through pcloudcrypto.h. */
+void psync_cloud_crypto_clean_cache(void);
 
 typedef uintptr_t pageid_t;
 typedef struct {
@@ -104,7 +107,7 @@ retry:
     debug(D_NOTICE, "page %lx is already locked, increasing refcnt to %u", (unsigned long)pageid*page_size, (unsigned)node->refcnt);
   }
   else{
-    // Well, we can move the locking out of mutex protected area, but to do properly, an status "in progress" should be introduced for new elements in the tree
+    // Well, we can move the locking out of mutex protected area, but to it do properly, a status "in progress" should be introduced for new elements in the tree
     // that mlock is yet not returned. This will complicate things a lot.
     if (unlikely(psync_mlock((void *)(pageid*page_size), page_size))){
       if (!tryn){
@@ -228,6 +231,8 @@ void *psync_locked_malloc(size_t size){
   size_t origsize=size;
 #endif
   int page_size;
+  if (size > SIZE_MAX - LM_OVERHEAD - LM_ALIGN_TO)
+    return NULL;
   size=((size+LM_ALIGN_TO-1))/LM_ALIGN_TO*LM_ALIGN_TO+LM_OVERHEAD;
 #if IS_DEBUG
   debug(D_NOTICE, "size=%lu, size with overhead=%lu", (unsigned long)origsize, (unsigned long)size);
@@ -377,6 +382,7 @@ found:
     if (range->locked)
       psync_mem_unlock(range->mem, range->size);
     psync_munmap_anon(range->mem, range->size);
+    psync_interval_tree_free(range->freeintervals);
     psync_free(range);
   }
 }
