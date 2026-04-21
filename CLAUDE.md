@@ -23,6 +23,26 @@ pclsync is a C library (~96K LOC) that implements the pCloud sync engine: cloud 
 | `make clean` | Remove build artifacts |
 | `make install` | Install library and headers |
 
+### CLI Application
+
+The `make cli` target builds a standalone executable with subcommands:
+
+| Command | Description |
+|---------|-------------|
+| `cli start [OPTIONS]` | Start sync engine, FUSE mount, and IPC listener |
+| `cli stop --datadir DIR` | Gracefully stop a running engine instance |
+| `cli status --datadir DIR` | Show engine status and statistics |
+| `cli sync add --datadir DIR --local PATH --remote PATH [--type TYPE]` | Add a sync folder pair |
+| `cli sync list --datadir DIR` | List all sync folder pairs |
+| `cli sync delete --datadir DIR --id ID` | Remove a sync folder pair |
+
+The `start` command accepts `--auth`, `--apiserver`, `--locationid`, `--mountpoint`, and `--datadir`.
+Other subcommands communicate with the running engine via a Unix domain socket at `<datadir>/cli.sock`.
+
+The `sync add` command uses `psync_add_sync_by_path_delayed()` internally, which creates the remote folder if it does not exist.
+
+Key source files: `cli.c` (subcommand routing), `cli_ipc.c/h` (IPC server/client).
+
 ### SSL Backend Selection
 
 Set `USESSL=<backend>` when invoking make:
@@ -44,7 +64,7 @@ Set `USESSL=<backend>` when invoking make:
 - **Framework:** [Check](https://libcheck.github.io/check/) (C unit testing)
 - **Mocking:** `fff.h` (Fake Function Framework)
 - **Location:** `tests/`
-- **Run:** `make check USESSL=openssl` from this directory (the `tests/Makefile` itself does not use `USESSL`; the flag is only needed at the root level to build the library first)
+- **Run:** `make check USESSL=openssl3` from this directory (the `tests/Makefile` itself does not use `USESSL`; the flag is only needed at the root level to build the library first)
 - **Test pattern:** Each test file compiles the module under test directly (e.g., `check_plist.c` compiles with `../plist.c`)
 - **Shims:** `tests/pcompat.h` provides minimal type stubs for isolated module testing
 

@@ -32,7 +32,7 @@ make all              # build psynclib.a (static library, requires USESSL=)
 make fs               # build with FUSE filesystem support
 make shared           # build shared library (libpsynclib.so / .dylib)
 make shared-fs        # build shared library with FUSE support
-make cli              # build the CLI test tool (includes FUSE)
+make cli              # build the CLI tool (includes FUSE, sync management)
 make overlay_client   # build overlay icons client (Linux)
 make clean            # remove build artifacts
 ```
@@ -52,7 +52,7 @@ When `USESSL` is omitted, the build system auto-detects the best available SSL p
 Example:
 
 ```sh
-make fs USESSL=openssl
+make fs USESSL=openssl3
 make all USESSL=mbed
 ```
 

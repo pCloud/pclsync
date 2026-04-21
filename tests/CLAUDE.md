@@ -12,11 +12,11 @@ Unit tests for the pclsync C library. Each test compiles the module under test d
 ## Running Tests
 
 ```sh
-make check USESSL=openssl    # from the project root
+make check USESSL=openssl3    # from the project root
 make check                   # from tests/
 ```
 
-`USESSL=openssl` is needed only when running from the project root because the root Makefile builds the full library first. The `tests/Makefile` does not use `USESSL` — it compiles modules directly.
+`USESSL=openssl3` is needed only when running from the project root because the root Makefile builds the full library first. The `tests/Makefile` does not use `USESSL` — it compiles modules directly.
 
 Most tests are SSL-backend-agnostic. Tests for a specific SSL backend (e.g., `pssl-openssl.c`, `pssl-mbedtls.c`) will compile against that backend's headers directly and may require the corresponding library to be installed. Do not assume `openssl` is always the right backend — match `USESSL=` to whatever the test under development actually needs.
 
