@@ -1,0 +1,575 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+stages:
+  - container
+  - build
+  - check
+  - integration
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  CCACHE_DIR: "${CI_PROJECT_DIR}/.ccache"
+  CI_IMAGE_BASE: "${CI_REGISTRY}/pcloud/desktop/pclsync-ci:1.0"
+  USESSL: "openssl3"
+  PCLOUD_API_SERVER: "bineapi.pcloud.com"
+  PCLOUD_LOCATION_ID: "2"
+
+# ---------- Container stage ----------
+
+build-ci-image:
+  stage: container
+  image: quay.io/podman/stable
+  tags:
+    - linux
+    - amd64
+  variables:
+    STORAGE_DRIVER: vfs
+  rules:
+    - if: '$CI_COMMIT_BEFORE_SHA == "0000000000000000000000000000000000000000"'
+      when: never
+    - changes:
+        - .containers/Containerfile.build
+      when: always
+  before_script:
+    - podman login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  parallel:
+    matrix:
+      - TARGET_STAGE: ["x64"]
+        IMAGE_SUFFIX: [""]
+      - TARGET_STAGE: ["arm-v7"]
+        IMAGE_SUFFIX: ["-arm-v7"]
+      - TARGET_STAGE: ["arm-v8"]
+        IMAGE_SUFFIX: ["-arm-v8"]
+  script:
+    - podman build --target "${TARGET_STAGE}" -t "${CI_IMAGE_BASE}${IMAGE_SUFFIX}" -f .containers/Containerfile.build .
+    - podman push "${CI_IMAGE_BASE}${IMAGE_SUFFIX}"
+
+build-integration-image:
+  stage: container
+  image: quay.io/podman/stable
+  tags:
+    - linux
+    - amd64
+  variables:
+    STORAGE_DRIVER: vfs
+  rules:
+    - if: '$CI_COMMIT_BEFORE_SHA == "0000000000000000000000000000000000000000"'
+      when: never
+    - changes:
+        - .containers/Containerfile.integration-tests
+        - integration-tests/requirements.txt
+      when: always
+  before_script:
+    - podman login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    - >-
+      podman build
+      --build-arg CI_IMAGE_BASE="${CI_IMAGE_BASE}"
+      -t "${CI_IMAGE_BASE}-integration-tests"
+      -f .containers/Containerfile.integration-tests
+      .
+    - podman push "${CI_IMAGE_BASE}-integration-tests"
+
+# ---------- Build stage ----------
+
+.build-common:
+  stage: build
+  script:
+    - make clean
+    - make fs CC="ccache gcc" USESSL=$USESSL
+    - make cli CC="ccache gcc" USESSL=$USESSL
+  artifacts:
+    paths:
+      - build/psynclib.a
+      - build/cli
+      - build/*.o
+    expire_in: 7 days
+
+linux-amd64:
+  extends: .build-common
+  image: $CI_IMAGE_BASE
+  tags:
+    - linux
+    - amd64
+  cache:
+    key: ccache-linux-amd64-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .ccache/
+
+linux-cross:
+  extends: .build-common
+  tags:
+    - linux
+    - amd64
+  parallel:
+    matrix:
+      - CROSS_COMPILE: ["arm-linux-gnueabihf-"]
+        CROSS_IMAGE: ["${CI_IMAGE_BASE}-arm-v7"]
+      - CROSS_COMPILE: ["aarch64-linux-gnu-"]
+        CROSS_IMAGE: ["${CI_IMAGE_BASE}-arm-v8"]
+  image: $CROSS_IMAGE
+  cache:
+    key: ccache-linux-cross-${CROSS_COMPILE}-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .ccache/
+  script:
+    - make clean
+    - make cli CC="ccache ${CROSS_COMPILE}gcc" CROSS_COMPILE=$CROSS_COMPILE USESSL=$USESSL
+
+.build-macos:
+  extends: .build-common
+  before_script:
+    - brew install ccache openssl pkg-config macfuse || true
+
+macos-x64:
+  extends: .build-macos
+  tags:
+    - macos
+    - x64
+  cache:
+    key: ccache-macos-x64-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .ccache/
+
+macos-arm64:
+  extends: .build-macos
+  tags:
+    - macos
+    - arm64
+  cache:
+    key: ccache-macos-arm64-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .ccache/
+
+# ---------- Check stage ----------
+
+lint:
+  stage: check
+  needs: []
+  image: $CI_IMAGE_BASE
+  tags:
+    - linux
+    - amd64
+  allow_failure: true
+  script:
+    - >-
+      cppcheck
+      --enable=warning,performance,portability
+      --error-exitcode=1
+      --suppress=missingIncludeSystem
+      --quiet
+      -I.
+      $(find . -maxdepth 1 -name '*.c' ! -name 'miniz.c' | sort)
+    - >-
+      clang-tidy
+      -checks='-*,bugprone-*,cert-*,clang-analyzer-*'
+      -warnings-as-errors=''
+      -p .
+      plocks.c pmemlock.c ppathstatus.c pstatus.c plist.c ptree.c pintervaltree.c pcrc32c.c ppassword.c
+      --
+      -std=gnu99 -I.
+
+# -- Unit test templates --
+
+.test-asan-common:
+  stage: check
+  needs: []
+  allow_failure: true
+  variables:
+    EXTRA_CFLAGS: "-fsanitize=address -fno-omit-frame-pointer"
+    EXTRA_LDFLAGS: "-fsanitize=address"
+    CK_FORK: "no"
+  script:
+    - make -C tests all EXTRA_CFLAGS="$EXTRA_CFLAGS" EXTRA_LDFLAGS="$EXTRA_LDFLAGS"
+    - mkdir -p tests/build/xml tests/build/junit tests/build/asan-log
+    - export ASAN_OPTIONS="${ASAN_OPTIONS}:log_path=tests/build/asan-log/asan"
+    - |
+      FAIL=0
+      for t in tests/build/check_*; do
+        [ -f "$t" ] && [ -x "$t" ] || continue
+        TNAME=$(basename "$t")
+        echo "=== Running: $TNAME ==="
+        CK_XML_LOG_FILE_NAME="tests/build/xml/${TNAME}.xml" "$t" || FAIL=1
+        if [ -f "tests/build/xml/${TNAME}.xml" ]; then
+          xsltproc -o "tests/build/junit/${TNAME}-junit.xml" \
+            tests/XML_for_JUnit.xsl "tests/build/xml/${TNAME}.xml"
+        fi
+      done
+      bash tests/asan_to_junit.sh tests/build/asan-log/asan.* \
+        > tests/build/junit/asan-junit.xml 2>/dev/null || true
+      exit $FAIL
+  artifacts:
+    when: always
+    reports:
+      junit: tests/build/junit/*-junit.xml
+    paths:
+      - tests/build/junit/
+    expire_in: 30 days
+
+test-asan:
+  extends: .test-asan-common
+  image: $CI_IMAGE_BASE
+  tags:
+    - linux
+    - amd64
+  variables:
+    ASAN_OPTIONS: "detect_leaks=1:abort_on_error=1"
+
+test-asan-macos:
+  extends: .test-asan-common
+  tags:
+    - macos
+    - arm64
+  variables:
+    ASAN_OPTIONS: "detect_leaks=0:abort_on_error=1"
+  before_script:
+    - brew install check pkg-config openssl || true
+
+test-valgrind:
+  stage: check
+  needs: []
+  image: $CI_IMAGE_BASE
+  tags:
+    - linux
+    - amd64
+  allow_failure: true
+  variables:
+    CK_FORK: "no"
+  script:
+    - make -C tests all
+    - mkdir -p tests/build/valgrind-xml tests/build/valgrind-junit
+    - |
+      FAIL=0
+      TOTAL=0
+      ISSUES=0
+      for t in tests/build/check_*; do
+        [ -f "$t" ] && [ -x "$t" ] || continue
+        TNAME=$(basename "$t")
+        TOTAL=$((TOTAL + 1))
+        echo "=== Valgrind: $TNAME ==="
+        valgrind \
+          --leak-check=full \
+          --show-leak-kinds=all \
+          --track-origins=yes \
+          --error-exitcode=42 \
+          --xml=yes \
+          --xml-file="tests/build/valgrind-xml/${TNAME}.xml" \
+          "$t" || FAIL=1
+        NERR=$(grep -c '<error>' "tests/build/valgrind-xml/${TNAME}.xml" 2>/dev/null || true)
+        if [ "$NERR" -gt 0 ] 2>/dev/null; then
+          xsltproc -o "tests/build/valgrind-junit/${TNAME}-junit.xml" \
+            tests/valgrind_to_junit.xsl "tests/build/valgrind-xml/${TNAME}.xml"
+          echo "  -> $TNAME: $NERR issue(s) found"
+          ISSUES=$((ISSUES + 1))
+        else
+          echo "  -> $TNAME: clean"
+        fi
+      done
+      echo ""
+      if [ "$ISSUES" -gt 0 ]; then
+        echo "Valgrind: $ISSUES of $TOTAL suite(s) reported issues"
+      else
+        echo "Valgrind: all suites clean"
+      fi
+      exit $FAIL
+  artifacts:
+    when: always
+    reports:
+      junit: tests/build/valgrind-junit/*-junit.xml
+    paths:
+      - tests/build/valgrind-xml/
+      - tests/build/valgrind-junit/
+    expire_in: 30 days
+
+# ---------- Integration stage ----------
+
+# -- Integration templates --
+
+.integration-common:
+  stage: integration
+  allow_failure: true
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+    TEST_ROOT: "/pclsync-integration-tests/${CI_PIPELINE_ID}"
+    TEST_FOLDER: "${CI_JOB_NAME_SLUG}"
+    SYNC_FOLDER_REMOTE_PATH: "${TEST_ROOT}"
+    SYNC_FOLDER_LOCAL_PATH: "/tmp/pclsync-integration-tests/${CI_PIPELINE_ID}/${CI_JOB_NAME_SLUG}/sync"
+    CLI_DATA_DIR: "/tmp/pclsync-integration-tests/${CI_PIPELINE_ID}/${CI_JOB_NAME_SLUG}/data"
+    DRIVE_PATH: "/tmp/pclsync-integration-tests/${CI_PIPELINE_ID}/${CI_JOB_NAME_SLUG}/mount"
+  tags:
+    - fuse
+  script:
+    - |
+      if [ "$TEST_MODE" = "drive" ]; then TARGET="integration-test-drive"; else TARGET="integration-test-sync"; fi
+      make $TARGET USESSL=$USESSL \
+        PYTEST_MARKER="${PYTEST_MARKER}" \
+        SKIP_VENV=1 \
+        CLEAN_TEST_FOLDER=true \
+        PCLOUD_AUTH_TOKEN=$PCLOUD_AUTH_TOKEN \
+        PCLOUD_API_SERVER=$PCLOUD_API_SERVER \
+        PCLOUD_LOCATION_ID=$PCLOUD_LOCATION_ID \
+        DRIVE_PATH=$DRIVE_PATH \
+        CLI_DATA_DIR=$CLI_DATA_DIR \
+        TEST_FOLDER=$TEST_FOLDER \
+        TEST_ROOT=$TEST_ROOT \
+        SYNC_FOLDER_LOCAL_PATH="${SYNC_FOLDER_LOCAL_PATH:-}" \
+        SYNC_FOLDER_REMOTE_PATH="${SYNC_FOLDER_REMOTE_PATH:-}"
+  after_script:
+    - build/cli stop --datadir "$CLI_DATA_DIR" 2>/dev/null || pkill -f "build/cli.*$CLI_DATA_DIR" || true
+    - sleep 2
+    - fusermount -u "$DRIVE_PATH" 2>/dev/null || umount "$DRIVE_PATH" 2>/dev/null || true
+  artifacts:
+    when: always
+    reports:
+      junit: test-results.xml
+    expire_in: 30 days
+
+.integration-linux:
+  extends: .integration-common
+  image: "${CI_IMAGE_BASE}-integration-tests"
+  tags:
+    - linux
+    - amd64
+    - podman
+  needs:
+    - job: linux-amd64
+      artifacts: true
+
+.integration-macos:
+  extends: .integration-common
+  tags:
+    - macos
+    - arm64
+  allow_failure: true
+  needs:
+    - job: macos-arm64
+      artifacts: true
+  variables:
+    SKIP_VENV: ""
+  before_script:
+    - brew install macfuse openssl pkg-config python3 || true
+
+# -- Linux integration jobs --
+
+integration-linux-essential:
+  extends: .integration-linux
+  variables:
+    PYTEST_MARKER: essential
+  parallel:
+    matrix:
+      - TEST_MODE: ["drive", "sync"]
+
+integration-linux-extended:
+  extends: .integration-linux
+  when: manual
+  variables:
+    PYTEST_MARKER: extended
+  parallel:
+    matrix:
+      - TEST_MODE: ["drive", "sync"]
+
+integration-asan-linux:
+  extends: .integration-linux
+  when: manual
+  needs: []
+  variables:
+    EXTRA_CFLAGS: "-fsanitize=address -fno-omit-frame-pointer"
+    EXTRA_LDFLAGS: "-fsanitize=address"
+    ASAN_OPTIONS: "detect_leaks=1:abort_on_error=0:log_path=/tmp/asan"
+  parallel:
+    matrix:
+      - TEST_MODE: ["drive", "sync"]
+        PYTEST_MARKER: ["essential"]
+  after_script:
+    - build/cli stop --datadir "$CLI_DATA_DIR" 2>/dev/null || pkill -f "build/cli.*$CLI_DATA_DIR" || true
+    - sleep 2
+    - fusermount -u "$DRIVE_PATH" 2>/dev/null || umount "$DRIVE_PATH" 2>/dev/null || true
+    - mkdir -p tests/build/asan-junit
+    - |
+      NFILES=$(ls /tmp/asan.* 2>/dev/null | wc -l || true)
+      NERR=$(grep -c 'ERROR: AddressSanitizer:' /tmp/asan.* 2>/dev/null || true)
+      bash tests/asan_to_junit.sh /tmp/asan.* > tests/build/asan-junit/asan-junit.xml 2>/dev/null || true
+      if [ "$NERR" -gt 0 ] 2>/dev/null; then
+        echo "ASan: $NERR issue(s) found across $NFILES log file(s)"
+      else
+        echo "ASan: clean"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - tests/build/asan-junit/
+    reports:
+      junit:
+        - test-results.xml
+        - tests/build/asan-junit/asan-junit.xml
+    expire_in: 30 days
+
+integration-valgrind-linux:
+  extends: .integration-linux
+  when: manual
+  needs: []
+  variables:
+    CLI_WRAPPER: "valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=42 --xml=yes --xml-file=/tmp/valgrind-%p.xml"
+  parallel:
+    matrix:
+      - TEST_MODE: ["drive", "sync"]
+        PYTEST_MARKER: ["essential"]
+  after_script:
+    - build/cli stop --datadir "$CLI_DATA_DIR" 2>/dev/null || pkill -f "build/cli.*$CLI_DATA_DIR" || true
+    - sleep 2
+    - fusermount -u "$DRIVE_PATH" 2>/dev/null || umount "$DRIVE_PATH" 2>/dev/null || true
+    - mkdir -p tests/build/valgrind-xml tests/build/valgrind-junit
+    - |
+      TOTAL=0
+      ISSUES=0
+      for f in /tmp/valgrind-*.xml; do
+        [ -f "$f" ] || continue
+        TNAME=$(basename "$f" .xml)
+        cp "$f" "tests/build/valgrind-xml/${TNAME}.xml"
+        TOTAL=$((TOTAL + 1))
+        NERR=$(grep -c '<error>' "$f" 2>/dev/null || true)
+        if [ "$NERR" -gt 0 ] 2>/dev/null; then
+          xsltproc -o "tests/build/valgrind-junit/${TNAME}-junit.xml" \
+            tests/valgrind_to_junit.xsl "$f"
+          echo "  -> $TNAME: $NERR issue(s) found"
+          ISSUES=$((ISSUES + 1))
+        else
+          echo "  -> $TNAME: clean"
+        fi
+      done
+      echo ""
+      if [ "$TOTAL" -eq 0 ]; then
+        echo "Valgrind: no XML output files found"
+      elif [ "$ISSUES" -gt 0 ]; then
+        echo "Valgrind: $ISSUES of $TOTAL process(es) reported issues"
+      else
+        echo "Valgrind: all processes clean"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - tests/build/valgrind-xml/
+      - tests/build/valgrind-junit/
+    reports:
+      junit:
+        - test-results.xml
+        - tests/build/valgrind-junit/*-junit.xml
+    expire_in: 30 days
+
+# -- macOS integration jobs --
+
+integration-macos-essential:
+  extends: .integration-macos
+  variables:
+    PYTEST_MARKER: essential
+  parallel:
+    matrix:
+      - TEST_MODE: ["drive", "sync"]
+
+integration-macos-extended:
+  extends: .integration-macos
+  when: manual
+  variables:
+    PYTEST_MARKER: extended
+  parallel:
+    matrix:
+      - TEST_MODE: ["drive", "sync"]
+
+integration-asan-macos:
+  extends: .integration-macos
+  when: manual
+  needs: []
+  variables:
+    EXTRA_CFLAGS: "-fsanitize=address -fno-omit-frame-pointer"
+    EXTRA_LDFLAGS: "-fsanitize=address"
+    ASAN_OPTIONS: "detect_leaks=0:abort_on_error=0:log_path=/tmp/asan"
+  parallel:
+    matrix:
+      - TEST_MODE: ["drive", "sync"]
+        PYTEST_MARKER: ["essential"]
+  after_script:
+    - build/cli stop --datadir "$CLI_DATA_DIR" 2>/dev/null || pkill -f "build/cli.*$CLI_DATA_DIR" || true
+    - sleep 2
+    - umount "$DRIVE_PATH" 2>/dev/null || true
+    - mkdir -p tests/build/asan-junit
+    - |
+      NFILES=$(ls /tmp/asan.* 2>/dev/null | wc -l || true)
+      NERR=$(grep -c 'ERROR: AddressSanitizer:' /tmp/asan.* 2>/dev/null || true)
+      bash tests/asan_to_junit.sh /tmp/asan.* > tests/build/asan-junit/asan-junit.xml 2>/dev/null || true
+      if [ "$NERR" -gt 0 ] 2>/dev/null; then
+        echo "ASan: $NERR issue(s) found across $NFILES log file(s)"
+      else
+        echo "ASan: clean"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - tests/build/asan-junit/
+    reports:
+      junit:
+        - test-results.xml
+        - tests/build/asan-junit/asan-junit.xml
+    expire_in: 30 days
+
+# -- Crypto integration template --
+
+.integration-crypto-common:
+  variables:
+    CRYPTO_TEST_ROOT: "/Crypto Folder/pclsync-integration-tests/${CI_PIPELINE_ID}"
+    SYNC_FOLDER_LOCAL_PATH: ""
+    SYNC_FOLDER_REMOTE_PATH: ""
+  script:
+    - >-
+      make integration-test-drive-crypto USESSL=$USESSL
+      PYTEST_MARKER="${PYTEST_MARKER}"
+      SKIP_VENV=1
+      CLEAN_TEST_FOLDER=true
+      PCLOUD_AUTH_TOKEN=$PCLOUD_AUTH_TOKEN
+      PCLOUD_API_SERVER=$PCLOUD_API_SERVER
+      PCLOUD_LOCATION_ID=$PCLOUD_LOCATION_ID
+      DRIVE_PATH=$DRIVE_PATH
+      CLI_DATA_DIR=$CLI_DATA_DIR
+      TEST_FOLDER=$TEST_FOLDER
+      TEST_ROOT=$TEST_ROOT
+      PCLOUD_CRYPTO_SECRET=$PCLOUD_CRYPTO_SECRET
+
+# -- Linux crypto jobs --
+
+integration-linux-crypto-essential:
+  extends:
+    - .integration-linux
+    - .integration-crypto-common
+  when: manual
+  variables:
+    PYTEST_MARKER: essential
+
+integration-linux-crypto-extended:
+  extends:
+    - .integration-linux
+    - .integration-crypto-common
+  when: manual
+  variables:
+    PYTEST_MARKER: extended
+
+# -- macOS crypto jobs --
+
+integration-macos-crypto-essential:
+  extends:
+    - .integration-macos
+    - .integration-crypto-common
+  when: manual
+  variables:
+    PYTEST_MARKER: essential
+
+integration-macos-crypto-extended:
+  extends:
+    - .integration-macos
+    - .integration-crypto-common
+  when: manual
+  variables:
+    PYTEST_MARKER: extended

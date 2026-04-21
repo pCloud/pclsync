@@ -1,0 +1,65 @@
+ARG CI_IMAGE_BASE=ubuntu:24.04
+FROM ${CI_IMAGE_BASE} as base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -qq && \
+    apt-get install -y -qq --no-install-recommends \
+      # Build toolchain
+      gcc make pkg-config ccache \
+      # Library dependencies
+      libfuse-dev libsqlite3-dev zlib1g-dev libssl-dev libudev-dev \
+      # Test framework
+      check \
+      # Static analysis
+      cppcheck clang-tidy \
+      # Memory analysis
+      valgrind \
+      # XML transform
+      xsltproc \
+      # Python
+      python3 python3-pip python3-venv \
+      # FUSE runtime
+      fuse3 \
+      # WolfSLL
+      libwolfssl-dev libwolfssl42t64 \
+      # OpenSSL \
+      libssl-dev \
+      # Utilities
+      git ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- Base stage (amd64 native build & test) ----
+FROM base AS x64
+
+# ---- ARM v7 (armhf) cross-compilation ----
+FROM base AS arm-v7
+
+RUN dpkg --add-architecture armhf && \
+    sed -i 's/^Types: deb/Types: deb\nArchitectures: amd64/' /etc/apt/sources.list.d/ubuntu.sources && \
+    printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble noble-updates noble-backports\nComponents: main universe multiverse restricted\nArchitectures: armhf\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n\nTypes: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble-security\nComponents: main universe multiverse restricted\nArchitectures: armhf\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' > /etc/apt/sources.list.d/ubuntu-ports.sources && \
+    apt-get update -qq && \
+    apt-get install -y -qq --no-install-recommends \
+      gcc-arm-linux-gnueabihf \
+      libfuse-dev:armhf \
+      libsqlite3-dev:armhf \
+      zlib1g-dev:armhf \
+      libssl-dev:armhf \
+      libudev-dev:armhf \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- ARM v8 (aarch64) cross-compilation ----
+FROM base AS arm-v8
+
+RUN dpkg --add-architecture arm64 && \
+    sed -i 's/^Types: deb/Types: deb\nArchitectures: amd64/' /etc/apt/sources.list.d/ubuntu.sources && \
+    printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble noble-updates noble-backports\nComponents: main universe multiverse restricted\nArchitectures: arm64\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n\nTypes: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble-security\nComponents: main universe multiverse restricted\nArchitectures: arm64\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' > /etc/apt/sources.list.d/ubuntu-ports.sources && \
+    apt-get update -qq && \
+    apt-get install -y -qq --no-install-recommends \
+      gcc-aarch64-linux-gnu \
+      libfuse-dev:arm64 \
+      libsqlite3-dev:arm64 \
+      zlib1g-dev:arm64 \
+      libssl-dev:arm64 \
+      libudev-dev:arm64 \
+    && rm -rf /var/lib/apt/lists/*

@@ -1,0 +1,9 @@
+ARG CI_IMAGE_BASE=ubuntu:24.04
+FROM ${CI_IMAGE_BASE}
+
+COPY integration-tests/requirements.txt /tmp/requirements.txt
+RUN python3 -m venv /opt/integration-venv && \
+    /opt/integration-venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
+
+ENV VIRTUAL_ENV=/opt/integration-venv
+ENV PATH="/opt/integration-venv/bin:$PATH"
