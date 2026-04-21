@@ -1,6 +1,8 @@
-CC=gcc
-AR=ar rcu
-RANLIB=ranlib
+CROSS_COMPILE ?=
+CC = $(CROSS_COMPILE)gcc
+AR = $(CROSS_COMPILE)ar
+ARFLAGS ?= rcu
+RANLIB = $(CROSS_COMPILE)ranlib
 BUILD_DIR ?= build
 USESSL?=
 
@@ -13,7 +15,12 @@ LIB_SO_BASE = libpsynclib
 LIB_SO_VERSION = 2.25.11
 
 # ── Dependency discovery (pkg-config with manual overrides) ────────────────
-PKG_CONFIG ?= pkg-config
+ifdef CROSS_COMPILE
+  _CROSS_TRIPLE := $(patsubst %-,%,$(CROSS_COMPILE))
+  PKG_CONFIG ?= $(_CROSS_TRIPLE)-pkg-config
+else
+  PKG_CONFIG ?= pkg-config
+endif
 HAS_PKG_CONFIG := $(shell command -v $(PKG_CONFIG) >/dev/null 2>&1 && echo yes)
 ifeq ($(HAS_PKG_CONFIG),yes)
   pkg_cflags = $(shell $(PKG_CONFIG) --cflags $(1) 2>/dev/null)
@@ -127,7 +134,7 @@ SRCS := pcompat.c psynclib.c plocks.c plibs.c pcallbacks.c pdiff.c pstatus.c pap
             psyncer.c ptasks.c psettings.c pnetlibs.c pcache.c pscanner.c plist.c plocalscan.c plocalnotify.c pp2p.c\
             pcrypto.c pssl.c pfileops.c ptree.c ppassword.c prunratelimit.c pmemlock.c pnotifications.c pexternalstatus.c publiclinks.c\
             pbusinessaccount.c pcontacts.c poverlay.c pcompression.c pasyncnet.c ppathstatus.c\
-            pdevice_monitor.c ptools.c miniz.c
+            pdevice_monitor.c ptools.c pstrings.c pencoding.c pqsort.c miniz.c
 SRCSFS := pfs.c ppagecache.c pfsfolder.c pfstasks.c pfsupload.c pintervaltree.c pfsxattr.c pcloudcrypto.c pfscrypto.c pcrc32c.c pfsstatic.c
 
 ifeq ($(OS),Windows_NT)
@@ -140,7 +147,11 @@ else
     UNAME_S	:= $(shell uname -s)
     UNAME_V	:= $(shell uname -v)
     UNAME_P	:= $(shell uname -p)
-    ARCH ?= $(UNAME_P)
+    ifdef CROSS_COMPILE
+      ARCH ?= $(firstword $(subst -, ,$(_CROSS_TRIPLE)))
+    else
+      ARCH ?= $(UNAME_P)
+    endif
 
     ifeq ($(UNAME_S),Linux)
 		CFLAGS=-DP_OS_LINUX -D_FILE_OFFSET_BITS=64 -Wall -Wpointer-arith -O2 -g -fno-stack-protector -fPIC -std=gnu99
@@ -154,7 +165,7 @@ else
         ifeq ($(FUSE_LIBS),)
           FUSE_LIBS = -lfuse
         endif
-        LDFLAGS += $(FUSE_LIBS) -lpthread $(SQLITE_LIBS) -lz
+        LDFLAGS += $(FUSE_LIBS) -lpthread $(SQLITE_LIBS) -lz -ludev
     endif
 
     ifeq ($(UNAME_S),Darwin)
@@ -166,9 +177,9 @@ else
         CFLAGS+=-Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types
         CFLAGS += $(SQLITE_CFLAGS) $(FUSE_CFLAGS)
         ifeq ($(FUSE_LIBS),)
-          FUSE_LIBS = -losxfuse
+          FUSE_LIBS = -lfuse
         endif
-		LDFLAGS += $(FUSE_LIBS) $(SQLITE_LIBS) -framework Cocoa
+		LDFLAGS += $(FUSE_LIBS) $(SQLITE_LIBS) -lz -framework Cocoa -framework IOKit
     endif
 endif
 
@@ -229,15 +240,15 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/$(LIB_A): $(OBJ) $(OBJNOFS) | $(BUILD_DIR)
-	$(AR) $@ $(OBJ) $(OBJNOFS)
+	$(AR) $(ARFLAGS) $@ $(OBJ) $(OBJNOFS)
 	$(RANLIB) $@
 
 fs: $(OBJ) $(OBJFS) | $(BUILD_DIR)
-	$(AR) $(BUILD_DIR)/$(LIB_A) $(OBJ) $(OBJFS)
+	$(AR) $(ARFLAGS) $(BUILD_DIR)/$(LIB_A) $(OBJ) $(OBJFS)
 	$(RANLIB) $(BUILD_DIR)/$(LIB_A)
 
 cli: fs
-	$(CC) $(CFLAGS) -o $(BUILD_DIR)/cli cli.c $(BUILD_DIR)/$(LIB_A) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(BUILD_DIR)/cli cli.c cli_ipc.c $(BUILD_DIR)/$(LIB_A) $(LDFLAGS)
 
 overlay_client:
 	cd ./lib/poverlay_linux && make
@@ -286,9 +297,129 @@ check:
 
 test: check
 
+# ── Integration test variables ───────────────────────────────────────────────
+CLI_DATA_DIR          ?= /tmp/pcloud-ci-data
+DRIVE_PATH            ?= /tmp/pcloud-ci-mount
+MOUNT_TIMEOUT         ?= 30
+CLI_WRAPPER           ?=
+PYTEST_MARKER         ?=
+SKIP_VENV             ?=
+CLEAN_TEST_FOLDER     ?=
+TEST_ROOT             ?= /integration-tests/
+PCLOUD_CRYPTO_SECRET  ?=
+CRYPTO_TEST_ROOT      ?= /Crypto Folder/integration-tests/
+CRYPTO_UNLOCK_TIMEOUT ?= 30
+
+integration-test: cli
+	@for var in PCLOUD_AUTH_TOKEN PCLOUD_API_SERVER PCLOUD_LOCATION_ID; do \
+	  eval val=\$$$$var; \
+	  if [ -z "$$val" ]; then \
+	    echo "ERROR: $$var is not set"; \
+	    exit 1; \
+	  fi; \
+	done; \
+	mkdir -p $(CLI_DATA_DIR) $(DRIVE_PATH); \
+	echo "Starting CLI: mount=$(DRIVE_PATH) data=$(CLI_DATA_DIR)"; \
+	$(CLI_WRAPPER) $(BUILD_DIR)/cli start \
+	  --auth $(PCLOUD_AUTH_TOKEN) \
+	  --mountpoint $(DRIVE_PATH) \
+	  --datadir $(CLI_DATA_DIR) \
+	  --apiserver $(PCLOUD_API_SERVER) \
+	  --locationid $(PCLOUD_LOCATION_ID) & \
+	CLI_PID=$$!; \
+	echo "CLI PID: $$CLI_PID"; \
+	ELAPSED=0; \
+	while [ $$ELAPSED -lt $(MOUNT_TIMEOUT) ]; do \
+	  if mountpoint -q $(DRIVE_PATH) 2>/dev/null || mount | grep -q " $(DRIVE_PATH) "; then \
+	    break; \
+	  fi; \
+	  sleep 1; \
+	  ELAPSED=$$((ELAPSED + 1)); \
+	done; \
+	if ! mountpoint -q $(DRIVE_PATH) 2>/dev/null && ! mount | grep -q " $(DRIVE_PATH) "; then \
+	  echo "ERROR: FUSE mount did not appear within $(MOUNT_TIMEOUT)s"; \
+	  kill $$CLI_PID 2>/dev/null || true; \
+	  exit 1; \
+	fi; \
+	echo "FUSE mount ready after $${ELAPSED}s"; \
+	EFFECTIVE_TEST_ROOT="$(TEST_ROOT)"; \
+	if [ -n "$(PCLOUD_CRYPTO_SECRET)" ]; then \
+	  echo "Unlocking crypto folder..."; \
+	  PCLOUD_CRYPTO_SECRET="$(PCLOUD_CRYPTO_SECRET)" \
+	    $(BUILD_DIR)/cli crypto unlock --datadir $(CLI_DATA_DIR) \
+	    || { echo "ERROR: Failed to send crypto unlock"; kill $$CLI_PID 2>/dev/null || true; exit 1; }; \
+	  ELAPSED=0; STATE=; \
+	  while [ $$ELAPSED -lt $(CRYPTO_UNLOCK_TIMEOUT) ]; do \
+	    STATE=$$($(BUILD_DIR)/cli crypto status --just-unlock-state --datadir $(CLI_DATA_DIR) 2>/dev/null); \
+	    if [ "$$STATE" = "unlocked" ]; then break; fi; \
+	    if [ "$$STATE" = "not setup" ]; then \
+	      echo "ERROR: Crypto is not set up on this account"; \
+	      kill $$CLI_PID 2>/dev/null || true; exit 1; \
+	    fi; \
+	    sleep 1; ELAPSED=$$((ELAPSED + 1)); \
+	  done; \
+	  if [ "$$STATE" != "unlocked" ]; then \
+	    echo "ERROR: Crypto did not unlock within $(CRYPTO_UNLOCK_TIMEOUT)s (state: $$STATE)"; \
+	    kill $$CLI_PID 2>/dev/null || true; exit 1; \
+	  fi; \
+	  echo "Crypto unlocked after $${ELAPSED}s"; \
+	  EFFECTIVE_TEST_ROOT="$(CRYPTO_TEST_ROOT)"; \
+	fi; \
+	if [ -n "$(SYNC_FOLDER_LOCAL_PATH)" ] && [ -n "$(SYNC_FOLDER_REMOTE_PATH)" ]; then \
+	  mkdir -p "$(SYNC_FOLDER_LOCAL_PATH)"; \
+	  echo "Creating sync: $(SYNC_FOLDER_LOCAL_PATH) <-> $(SYNC_FOLDER_REMOTE_PATH)"; \
+	  $(BUILD_DIR)/cli sync add \
+	    --datadir $(CLI_DATA_DIR) \
+	    --local "$(SYNC_FOLDER_LOCAL_PATH)" \
+	    --remote "$(SYNC_FOLDER_REMOTE_PATH)" \
+	    --type full || { echo "ERROR: Failed to create sync"; kill $$CLI_PID 2>/dev/null || true; exit 1; }; \
+	fi; \
+	if [ -z "$(SKIP_VENV)" ]; then \
+	  python3 -m venv integration-tests/venv; \
+	  . integration-tests/venv/bin/activate; \
+	  pip install --quiet -r integration-tests/requirements.txt; \
+	fi; \
+	PYTEST_EXIT=0; \
+	DRIVE_PATH=$(DRIVE_PATH) \
+	PCLOUD_AUTH_TOKEN=$(PCLOUD_AUTH_TOKEN) \
+	PCLOUD_API_SERVER=$(PCLOUD_API_SERVER) \
+	PCLOUD_LOCATION_ID=$(PCLOUD_LOCATION_ID) \
+	SYNC_FOLDER_LOCAL_PATH="$(SYNC_FOLDER_LOCAL_PATH)" \
+	SYNC_FOLDER_REMOTE_PATH="$(SYNC_FOLDER_REMOTE_PATH)" \
+	TEST_ROOT="$$EFFECTIVE_TEST_ROOT" \
+	CLEAN_TEST_FOLDER="$(CLEAN_TEST_FOLDER)" \
+	  python3 -m pytest integration-tests/ \
+	  $(if $(PYTEST_MARKER),-m "$(PYTEST_MARKER)",) \
+	  || PYTEST_EXIT=$$?; \
+	$(BUILD_DIR)/cli stop --datadir $(CLI_DATA_DIR) 2>/dev/null || kill $$CLI_PID 2>/dev/null || true; \
+	WAIT_STOP=0; while kill -0 $$CLI_PID 2>/dev/null && [ $$WAIT_STOP -lt 10 ]; do sleep 1; WAIT_STOP=$$((WAIT_STOP+1)); done; \
+	fusermount -u $(DRIVE_PATH) 2>/dev/null || umount $(DRIVE_PATH) 2>/dev/null || true; \
+	exit $$PYTEST_EXIT
+
+_DRIVE_MARKER = filesystem$(if $(PYTEST_MARKER), and $(PYTEST_MARKER),)
+_SYNC_MARKER  = sync$(if $(PYTEST_MARKER), and $(PYTEST_MARKER),)
+
+integration-test-drive: cli
+	$(MAKE) integration-test PYTEST_MARKER="$(_DRIVE_MARKER)" \
+	  SYNC_FOLDER_LOCAL_PATH= SYNC_FOLDER_REMOTE_PATH=
+
+integration-test-sync: cli
+	$(MAKE) integration-test PYTEST_MARKER="$(_SYNC_MARKER)" \
+	  SYNC_FOLDER_LOCAL_PATH="$(SYNC_FOLDER_LOCAL_PATH)" \
+	  SYNC_FOLDER_REMOTE_PATH="$(SYNC_FOLDER_REMOTE_PATH)"
+
+integration-test-drive-crypto: cli
+	@if [ -z "$(PCLOUD_CRYPTO_SECRET)" ]; then \
+	  echo "ERROR: PCLOUD_CRYPTO_SECRET is not set"; exit 1; \
+	fi
+	$(MAKE) integration-test PYTEST_MARKER="$(_DRIVE_MARKER)" \
+	  PCLOUD_CRYPTO_SECRET="$(PCLOUD_CRYPTO_SECRET)" \
+	  SYNC_FOLDER_LOCAL_PATH= SYNC_FOLDER_REMOTE_PATH=
+
 clean:
-	rm -rf $(BUILD_DIR) ./lib/poverlay_linux/*.o ./lib/poverlay_linux/overlay_client
+	rm -rf $(BUILD_DIR)
+	$(MAKE) -C ./lib/poverlay_linux clean
 	rm -f $(LIB_SO_BASE).so $(LIB_SO_BASE).so.* $(LIB_SO_BASE).dylib $(LIB_SO_BASE).*.dylib
 
-.PHONY: shared shared-fs check test clean
+.PHONY: shared shared-fs check test integration-test integration-test-drive integration-test-sync integration-test-drive-crypto clean
 
