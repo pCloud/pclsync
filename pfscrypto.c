@@ -522,7 +522,7 @@ static void psync_fs_crypto_set_sector_log_offset(psync_openfile_t *of, psync_cr
   ntr->sectorid=sectorid;
   ntr->logoffset=offset;
   memcpy(ntr->auth, auth, PSYNC_CRYPTO_AUTH_SIZE);
-  psync_tree_added_at(&of->sectorsinlog, &tr->tree, &ntr->tree);
+  psync_tree_added_at(&of->sectorsinlog, tr ? &tr->tree : NULL, &ntr->tree);
 }
 
 static int psync_fs_crypto_switch_sectors(psync_openfile_t *of, psync_crypto_sectorid_t oldsectorid, psync_crypto_sectorid_t newsectorid,
@@ -1267,7 +1267,7 @@ int psync_fs_crypto_read_modified_locked(psync_openfile_t *of, char *buf, uint64
         rd=size;
       rfr=psync_fs_crypto_read_newfile_partial_sector(of, buf, sectorid, rd, offmod);
       if (unlikely_log(rfr!=rd))
-        psync_fs_unlock_ret(of, rfr);
+        return psync_fs_unlock_ret(of, rfr);
     }
     else{
       bufoff=buf+(sectorid-firstsectorid)*PSYNC_CRYPTO_SECTOR_SIZE-offmod;
@@ -1280,7 +1280,7 @@ int psync_fs_crypto_read_modified_locked(psync_openfile_t *of, char *buf, uint64
       else
         rfr=psync_fs_crypto_read_newfile_partial_sector(of, bufoff, sectorid, rd, 0);
       if (unlikely_log(rfr!=rd))
-        psync_fs_unlock_ret(of, rfr);
+        return psync_fs_unlock_ret(of, rfr);
     }
   }
   return psync_fs_unlock_ret(of, size);
@@ -1537,8 +1537,10 @@ retry:
     writeid=of->writeid;
     ret=psync_fs_crypto_read_modified_locked(of, buf, lastsectoroldsize, lastsectoff);
     // unlocked now
-    if (ret<0)
+    if (ret<0){
+      psync_fs_lock_file(of);
       return ret;
+    }
     psync_fs_lock_file(of);
     if (unlikely(of->writeid!=writeid)){
       debug(D_NOTICE, "writeid changed, restarting");
@@ -1547,8 +1549,10 @@ retry:
     // the write will push all the auth data we need to the datafile (it is probably in cache from the read)
     ret=psync_fs_crypto_write_modified_locked(of, buf, lastsectoroldsize, lastsectoff);
     // unlocked now
-    if (ret<0)
+    if (ret<0){
+      psync_fs_lock_file(of);
       return ret;
+    }
     psync_fs_lock_file(of);
     if (unlikely(of->writeid!=writeid)){
       debug(D_NOTICE, "writeid changed, restarting");
@@ -1771,17 +1775,18 @@ static unsigned conv_xdigit(char dig){
 }
 
 static void psync_fs_pause_task_by_name(const char *fn){
-  uint64_t taskid, mul;
-  psync_sql_res *res;
-  taskid=0;
-  mul=1;
-  while (isxdigit(fn[0]) && isxdigit(fn[1])){
-    fn+=2;
+  uint64_t taskid = 0;
+  uint64_t mul = 1;
+  for (size_t i = 0; i<sizeof(psync_fsfileid_t); i++){
+    if (!isxdigit(fn[0]) || !isxdigit(fn[1])) {
+      break;
+    }
     taskid+=mul*(conv_xdigit(fn[0])*16+conv_xdigit(fn[1]));
     mul*=256;
+    fn+=2;
   }
   debug(D_NOTICE, "pausing taskid %lu", (unsigned long)taskid);
-  res=psync_sql_prep_statement("UPDATE fstask SET status=1 WHERE id=?");
+  psync_sql_res *res = psync_sql_prep_statement("UPDATE fstask SET status=1 WHERE id=?");
   psync_sql_bind_uint(res, 1, taskid);
   psync_sql_run_free(res);
 }

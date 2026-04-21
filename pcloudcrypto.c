@@ -457,7 +457,7 @@ int psync_cloud_crypto_get_hint(char **hint){
   return PSYNC_CRYPTO_HINT_SUCCESS;
 }
 
-static int crypto_keys_match(){
+static int crypto_keys_match(psync_rsa_publickey_t pubkey, psync_rsa_privatekey_t privkey){
   psync_symmetric_key_t key, deckey;
   psync_encrypted_symmetric_key_t enckey;
   int res;
@@ -465,13 +465,13 @@ static int crypto_keys_match(){
   key=(psync_symmetric_key_t)psync_malloc(offsetof(psync_symmetric_key_struct_t, key)+64);
   key->keylen=64;
   psync_ssl_rand_weak(key->key, key->keylen);
-  enckey=psync_ssl_rsa_encrypt_symmetric_key(crypto_pubkey, key);
+  enckey=psync_ssl_rsa_encrypt_symmetric_key(pubkey, key);
   if (unlikely_log(enckey==PSYNC_INVALID_ENC_SYM_KEY)){
     psync_free(key);
     return 0;
   }
 
-  deckey=psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, enckey);
+  deckey=psync_ssl_rsa_decrypt_symmetric_key(privkey, enckey);
 
   psync_free(enckey);
   if (unlikely_log(deckey==PSYNC_INVALID_SYM_KEY)){
@@ -593,7 +593,7 @@ retry:
     return PRINT_RETURN_CONST(PSYNC_CRYPTO_START_BAD_PASSWORD);
   }
 
-  if (!crypto_keys_match()){
+  if (!crypto_keys_match(crypto_pubkey, crypto_privkey)){
     psync_ssl_rsa_free_public(crypto_pubkey);
     crypto_pubkey=PSYNC_INVALID_RSA;
     psync_ssl_rsa_free_private(crypto_privkey);
@@ -926,7 +926,7 @@ static psync_symmetric_key_t psync_crypto_get_folder_symkey_locked(psync_folderi
   if (psync_crypto_is_error(enckey))
     return (psync_symmetric_key_t)enckey;
 
-  symkey = psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, enckey);
+  symkey = psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, enckey);
 
   psync_free(enckey);
   if (symkey==PSYNC_INVALID_SYM_KEY)
@@ -952,7 +952,7 @@ static psync_symmetric_key_t psync_crypto_get_file_symkey_locked(psync_fileid_t 
   if (nonetwork && enckey==(psync_encrypted_symmetric_key_t)PSYNC_CRYPTO_UNLOADED_SECTOR_ENCODER)
     return (psync_symmetric_key_t)PSYNC_CRYPTO_UNLOADED_SECTOR_ENCODER;
 
-  symkey = psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, enckey);
+  symkey = psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, enckey);
 
   psync_free(enckey);
   if (unlikely_log(symkey==PSYNC_INVALID_SYM_KEY))
@@ -1181,7 +1181,7 @@ psync_crypto_aes256_text_decoder_t psync_cloud_crypto_get_folder_decoder(psync_f
   pthread_rwlock_rdlock(&crypto_lock);
   if (!crypto_started_l)
     dec=(psync_crypto_aes256_text_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_NOT_STARTED));
-  if (folderid>0)
+  else if (folderid>0)
     dec=psync_crypto_get_folder_decoder_locked(folderid);
   else if (folderid<0)
     dec=psync_crypto_get_temp_folder_decoder_locked(folderid);
@@ -1242,7 +1242,7 @@ psync_crypto_aes256_text_encoder_t psync_cloud_crypto_get_folder_encoder(psync_f
   pthread_rwlock_rdlock(&crypto_lock);
   if (!crypto_started_l)
     enc=(psync_crypto_aes256_text_encoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_NOT_STARTED));
-  if (folderid>0)
+  else if (folderid>0)
     enc=psync_crypto_get_folder_encoder_locked(folderid);
   else if (folderid<0)
     enc=psync_crypto_get_temp_folder_encoder_locked(folderid);
@@ -1325,6 +1325,11 @@ static psync_crypto_aes256_sector_encoder_decoder_t psync_crypto_get_temp_file_e
   }
   switch (psync_get_number(row[0])){
     case PSYNC_FS_TASK_CREAT:
+      if (psync_is_null(row[2])){
+        psync_sql_free_result(res);
+        debug(D_WARNING, "missing encrypted key for temporary file %lu", (unsigned long)fileid);
+        return (psync_crypto_aes256_sector_encoder_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_INVALID_KEY));
+      }
       b64enckey=(const unsigned char *)psync_get_lstring(row[2], &b64enckeylen);
       enckey=psync_base64_decode(b64enckey, b64enckeylen, &enckeylen);
       psync_sql_free_result(res);
@@ -1382,7 +1387,7 @@ psync_crypto_aes256_sector_encoder_decoder_t psync_cloud_crypto_get_file_encoder
   pthread_rwlock_rdlock(&crypto_lock);
   if (!crypto_started_l)
     enc=(psync_crypto_aes256_sector_encoder_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_NOT_STARTED));
-  if (fileid>0)
+  else if (fileid>0)
     enc=psync_crypto_get_file_encoder_locked(fileid, hash, nonetwork);
   else if (fileid<0)
     enc=psync_crypto_get_temp_file_encoder_locked(fileid, nonetwork);
@@ -1414,10 +1419,13 @@ psync_crypto_aes256_sector_encoder_decoder_t psync_cloud_crypto_get_file_encoder
     enc=(psync_crypto_aes256_sector_encoder_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_NOT_STARTED));
   else{
     // save_file_key_to_db runs thread to save to db, that's why we insert decrypted key to cache, so psync_crypto_get_file_encoder_locked finds it
-    symkey = psync_ssl_rsa_decrypt_symm_key_lock(crypto_privkey, esym);
-
-    psync_crypto_release_file_symkey_locked(fileid, hash, symkey);
-    enc=psync_crypto_get_file_encoder_locked(fileid, hash, 0);
+    symkey = psync_ssl_rsa_decrypt_symmetric_key(crypto_privkey, esym);
+    if (unlikely_log(symkey==PSYNC_INVALID_SYM_KEY))
+      enc=(psync_crypto_aes256_sector_encoder_decoder_t)err_to_ptr(PRINT_RETURN_CONST(PSYNC_CRYPTO_INVALID_KEY));
+    else{
+      psync_crypto_release_file_symkey_locked(fileid, hash, symkey);
+      enc=psync_crypto_get_file_encoder_locked(fileid, hash, 0);
+    }
   }
   pthread_rwlock_unlock(&crypto_lock);
   psync_free(esym);
@@ -1714,7 +1722,7 @@ int psync_pcloud_crypto_reencode_key(const unsigned char *rsapub, size_t rsapubl
       rsapriv_struct=(priv_key_ver1 *)newpriv;
       rsapriv_struct->type=PSYNC_CRYPTO_TYPE_RSA4096_64BYTESALT_20000IT;
       rsapriv_struct->flags=flags;
-      psync_ssl_rand_weak(rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN);
+      psync_ssl_rand_strong(rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN);
       aeskey=psync_ssl_gen_symmetric_key_from_pass(newpassphrase, PSYNC_AES256_KEY_SIZE+PSYNC_AES256_BLOCK_SIZE,
                                                      rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, 20000);
       if (unlikely(aeskey==PSYNC_INVALID_SYM_KEY))
@@ -1798,7 +1806,7 @@ int psync_pcloud_crypto_encode_key(const char *newpassphrase, uint32_t flags, ch
   rsapriv_struct=(priv_key_ver1 *)newpriv;
   rsapriv_struct->type=PSYNC_CRYPTO_TYPE_RSA4096_64BYTESALT_20000IT;
   rsapriv_struct->flags=flags;
-  psync_ssl_rand_weak(rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN);
+  psync_ssl_rand_strong(rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN);
   aeskey=psync_ssl_gen_symmetric_key_from_pass(newpassphrase, PSYNC_AES256_KEY_SIZE+PSYNC_AES256_BLOCK_SIZE,
                                                  rsapriv_struct->salt, PSYNC_CRYPTO_PBKDF2_SALT_LEN, 20000);
   if (unlikely(aeskey==PSYNC_INVALID_SYM_KEY))
@@ -1926,6 +1934,13 @@ retry:
       psync_free(privkey);
       psync_free(pubkey);
       cres=PERROR_NO_MEMORY;
+      goto ex;
+    }
+    if (privkeylen<offsetof(priv_key_ver1, key)){
+      psync_free(privkey);
+      psync_free(pubkey);
+      psync_free(salt);
+      cres=PSYNC_CRYPTO_BAD_KEY;
       goto ex;
     }
     memcpy(((priv_key_ver1*)privkey)->salt, salt, saltlen);

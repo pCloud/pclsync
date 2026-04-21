@@ -27,8 +27,8 @@
 
 #include "ppassword.h"
 #include "ppassworddict.h"
-#include "plibs.h"
-#include "pssl.h"
+#include "pcore.h"
+#include "pmem.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -53,7 +53,7 @@ static int find_in_dict(const unsigned char *pwd, size_t len){
       lo=med+1;
     else{
 //      if (l==8 || passworddict[med][l]==0){
-        while (l<8 && l<=len && med<ARRAY_SIZE(passworddict) && !memcmp(pwd, passworddict[med+1], l+1)){
+        while (l<8 && l<len && med+1<ARRAY_SIZE(passworddict) && !memcmp(pwd, passworddict[med+1], l+1)){
           hi=len;
           med++;
           while (hi>0 && passworddict[med][hi-1]==0)
@@ -74,7 +74,7 @@ static int find_in_dict(const unsigned char *pwd, size_t len){
 }
 
 static int is_punct(int c){
-  return strchr("!@#$%^&*()_+[]{},.<>:;'\"`\\/~|", c)!=NULL;
+  return c!=0 && strchr("!@#$%^&*()_+[]{},.<>:;'\"`\\/~|", c)!=NULL;
 }
 
 #define mul_score(num) do{\
@@ -236,12 +236,15 @@ ex:;
 }
 
 static uint64_t uint_sqrt(uint64_t n){
+  if (n<=1){
+    return n;
+  }
   uint64_t h, l, m, m2;
   h=n/2;
   l=1;
   m=1;
-  if (n==1)
-    return 1;
+
+
   while (h>l+1){
     m=(h+l)/2;
     m2=m*m;
@@ -294,11 +297,15 @@ uint64_t psync_password_score(const char *cpassword){
     // number in the end, low score
     num=0;
     nlen=0;
-    do {
-      plen--;
-      num=num*10+password[plen]-'0';
-      nlen++;
-    } while (plen && isdigit(password[plen-1]));
+    {
+      uint64_t place=1;
+      do {
+        plen--;
+        num+=(password[plen]-'0')*place;
+        place*=10;
+        nlen++;
+      } while (plen && isdigit(password[plen-1]));
+    }
     mul_score(trailing_num_score(num, nlen, password+plen));
     // check for punctuation again
     while (plen && is_punct(password[plen-1])){
@@ -337,8 +344,8 @@ uint64_t psync_password_score(const char *cpassword){
       ldpwd[nlen]=lpwd[nlen];
   }
   num=score_variants(password, lpwd, ldpwd, plen);
-  psync_ssl_memclean(lpwd, plen);
-  psync_ssl_memclean(ldpwd, plen);
+  psync_memclean(lpwd, plen);
+  psync_memclean(ldpwd, plen);
   psync_free(lpwd);
   psync_free(ldpwd);
   mul_score(num);

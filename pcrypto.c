@@ -25,7 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "plibs.h"
+#include "pcore.h"
 #include "pcrypto.h"
 #include "psettings.h"
 #include "pmemlock.h"
@@ -177,6 +177,8 @@ void psync_crypto_aes256_ctr_encode_decode_inplace(psync_crypto_aes256_ctr_encod
     copy_iv_and_xor_with_counter(aessrc, enc->iv, counter);
     psync_aes256_encode_block(enc->encoder, aessrc, aesdst);
     blocksrem=PSYNC_AES256_BLOCK_SIZE-dataoffset;
+    if (blocksrem>datalen)
+      blocksrem=datalen;
     xor_cnt_inplace(data, aesdst+dataoffset, blocksrem);
     datalen-=blocksrem;
     counter++;
@@ -392,7 +394,7 @@ psync_crypto_aes256_text_decoder_t psync_crypto_aes256_text_decoder_create(psync
 }
 
 void psync_crypto_aes256_text_decoder_free(psync_crypto_aes256_text_decoder_t enc){
-  psync_ssl_aes256_free_encoder(enc->encoder);
+  psync_ssl_aes256_free_decoder(enc->encoder);
   psync_ssl_memclean(enc->iv, enc->ivlen);
   psync_locked_free(enc);
 }
@@ -407,7 +409,7 @@ psync_crypto_aes256_sector_encoder_decoder_t psync_crypto_aes256_sector_encoder_
   if (unlikely_log(enc==PSYNC_INVALID_ENCODER))
     return PSYNC_CRYPTO_INVALID_ENCODER;
   dec=psync_ssl_aes256_create_decoder(key);
-  if (unlikely_log(enc==PSYNC_INVALID_ENCODER)){
+  if (unlikely_log(dec==PSYNC_INVALID_ENCODER)){
     psync_ssl_aes256_free_encoder(enc);
     return PSYNC_CRYPTO_INVALID_ENCODER;
   }
