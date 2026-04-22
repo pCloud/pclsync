@@ -419,6 +419,7 @@ integration-test-drive-crypto: cli
 clean:
 	rm -rf $(BUILD_DIR)
 	$(MAKE) -C ./lib/poverlay_linux clean
+	$(MAKE) -C tests clean
 	rm -f $(LIB_SO_BASE).so $(LIB_SO_BASE).so.* $(LIB_SO_BASE).dylib $(LIB_SO_BASE).*.dylib
 
 .PHONY: shared shared-fs check test integration-test integration-test-drive integration-test-sync integration-test-drive-crypto clean

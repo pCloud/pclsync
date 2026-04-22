@@ -3341,7 +3341,7 @@ static void psync_diff_thread(){
         sock = get_connected_socket();
         continue;
       }
-      
+
       g_is_over_quota = 0; //Reset account full constant.
 
       psync_diff_check_quota(sock);

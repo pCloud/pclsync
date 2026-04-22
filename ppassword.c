@@ -244,7 +244,6 @@ static uint64_t uint_sqrt(uint64_t n){
   l=1;
   m=1;
 
-
   while (h>l+1){
     m=(h+l)/2;
     m2=m*m;
