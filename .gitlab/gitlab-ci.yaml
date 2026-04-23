@@ -523,8 +523,6 @@ integration-asan-macos:
 .integration-crypto-common:
   variables:
     CRYPTO_TEST_ROOT: "/Crypto Folder/pclsync-integration-tests/${CI_PIPELINE_ID}"
-    SYNC_FOLDER_LOCAL_PATH: ""
-    SYNC_FOLDER_REMOTE_PATH: ""
   script:
     - >-
       make integration-test-drive-crypto USESSL=$USESSL
