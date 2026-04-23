@@ -336,6 +336,7 @@ test-valgrind:
     - linux
     - amd64
     - podman
+    - fuse
   needs:
     - job: linux-amd64
       artifacts: true
@@ -345,6 +346,7 @@ test-valgrind:
   tags:
     - macos
     - arm64
+    - fuse
   allow_failure: true
   needs:
     - job: macos-arm64
