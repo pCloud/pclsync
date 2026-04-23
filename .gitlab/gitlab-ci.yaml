@@ -538,6 +538,7 @@ integration-asan-macos:
       CLI_DATA_DIR=$CLI_DATA_DIR
       TEST_FOLDER=$TEST_FOLDER
       TEST_ROOT=$TEST_ROOT
+      CRYPTO_TEST_ROOT=$CRYPTO_TEST_ROOT
       PCLOUD_CRYPTO_SECRET=$PCLOUD_CRYPTO_SECRET
 
 # -- Linux crypto jobs --
