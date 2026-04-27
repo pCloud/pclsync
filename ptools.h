@@ -155,7 +155,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  void delete_element(uint64_t id);
 
- stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, char* path, char* name);
+ stuck_item* create_stuck_elem(uint64_t id, int msg_id, int item_type, uint64_t next_elem, const char* path, const char* name);
 
  stuck_item* search_list(uint64_t id);
 
@@ -163,7 +163,7 @@ int set_be_file_dates(uint64_t fileid, time_t ctime, time_t mtime);
 
  stuck_return_list* get_stuck_list(void);
 
- char* nvl_str(char* str, const char* def);
+ const char* nvl_str(const char* str, const char* def);
 
  char* get_file_name_from_path(const char* path);
 

@@ -5,3 +5,4 @@
 *.dylib
 build/
 /.idea
+/test-history/

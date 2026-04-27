@@ -156,8 +156,12 @@ uint64_t psync_get_folderid_by_path_or_create(const char *p) { (void)p; return 0
 #include "../pcompiler.h"
 #include "../ptree.h"
 
-/* Include psyncer.c directly to test its static functions too */
+/* Include psyncer.c directly to test its static functions too — suppress
+ * warnings for unused static functions only exercised in the full build. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include "../psyncer.c"
+#pragma GCC diagnostic pop
 
 /* ══════════════════════════════════════════════════════════════════════════
  *  Tests: psync_str_is_prefix

@@ -153,7 +153,7 @@ void psync_decrease_local_folder_taskcnt(psync_folderid_t lfolderid){
 psync_folderid_t psync_create_local_folder_in_db(psync_syncid_t syncid, psync_folderid_t folderid, psync_folderid_t localparentfolderid, const char *name){
   psync_sql_res *res;
   psync_uint_row row;
-  psync_folderid_t lfolderid, dbfolderid;
+  psync_folderid_t lfolderid, dbfolderid = 0;
   const char *ptr;
   char *vname;
   debug(D_NOTICE, "creating local folder in db as %lu/%s for folderid %lu", (unsigned long)localparentfolderid, name, (unsigned long)folderid);

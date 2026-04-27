@@ -514,7 +514,6 @@ event_data_struct* pop_elem(de_elem_list* list) {
 void data_event_thread(void* ptr) {
   de_elem_list* event_list = (de_elem_list*)ptr;
   event_data_struct* data;
-  char* path;
   int i;
 
   while (psync_do_run) {

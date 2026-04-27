@@ -156,25 +156,36 @@ int is_task_crypto(psync_fsfileid_t taskid) {
 }
 /**********************************************************************************************************/
 void get_lost_and_found_fid() {
-  int res = 0;
-  char* err;
-
   if (lost_and_found_fid != 0) {
     return;
   }
 
-  psync_sql_lock();
-
+  psync_sql_rdlock();
   lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+  psync_sql_rdunlock();
 
   if (lost_and_found_fid == -1) {
-    res = psync_create_remote_folder(0, LOST_AND_FOUND_FNAME, &err);
-
-    lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+    char* err;
+    const int res = psync_create_remote_folder(0, LOST_AND_FOUND_FNAME, &err);
+    if (res == 0) {
+      psync_sql_rdlock();
+      lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+      psync_sql_rdunlock();
+    }
   }
-
-  psync_sql_unlock();
 }
+
+static void set_task_to_stuck(uint64_t taskid) {
+  psync_sql_res* res;
+
+  debug(D_NOTICE, "Set task: [%"P_PRI_U64"] to Stuck.", taskid);
+
+  res = psync_sql_prep_statement("UPDATE fstask SET status=3 WHERE id=?");
+
+  psync_sql_bind_uint(res, 1, taskid);
+  psync_sql_run_free(res);
+}
+
 /**********************************************************************************************************/
 static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
   psync_sql_res *res;
@@ -199,7 +210,7 @@ static void handle_mkdir_api_error(uint64_t result, fsupload_task_t *task){
     case 2344: /* can't create folders in backup folder */
       get_lost_and_found_fid();
 
-      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
+      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%"P_PRI_U64"].", lost_and_found_fid);
 
       res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
       psync_sql_bind_uint(res, 1, lost_and_found_fid);
@@ -289,7 +300,7 @@ static int psync_process_task_rmdir(fsupload_task_t *task){
   psync_ops_delete_folder_from_db(psync_find_result(task->res, "metadata", PARAM_HASH));
   psync_fstask_folder_deleted(task->folderid, task->id, task->text1);
   
-  debug(D_NOTICE, "folder %llu/%s deleted", task->folderid, task->text1);
+  debug(D_NOTICE, "folder %"P_PRI_U64"/%s deleted", task->folderid, task->text1);
   
   return 0;
 }
@@ -422,7 +433,7 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
       else {
         get_lost_and_found_fid();
 
-        debug(D_NOTICE, "Not a crypto file. Do nothing. Update task parent folder to [%llu].", lost_and_found_fid);
+        debug(D_NOTICE, "Not a crypto file. Do nothing. Update task parent folder to [%"P_PRI_U64"].", lost_and_found_fid);
 
         res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
         psync_sql_bind_uint(res, 1, lost_and_found_fid);
@@ -438,7 +449,7 @@ static int handle_upload_api_error_taskid(uint64_t result, uint64_t taskid){
     case 2346: /* backup folder */
       get_lost_and_found_fid();
 
-      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%llu].", lost_and_found_fid);
+      debug(D_NOTICE, "Error target folder does not exist folder. Update task parent folder to [%"P_PRI_U64"].", lost_and_found_fid);
 
       res = psync_sql_prep_statement("UPDATE fstask SET folderid=? WHERE id=?");
       psync_sql_bind_uint(res, 1, lost_and_found_fid);
@@ -2022,7 +2033,7 @@ static void clean_stuck_tasks(){
   for (i=0; i<fr->rows; i++){
     taskid=psync_get_result_cell(fr, i, 0);
 
-    debug(D_NOTICE, "Clean up stuck task: [%llu]", taskid);
+    debug(D_NOTICE, "Clean up stuck task: [%"P_PRI_U64"]", taskid);
 
     psync_binhex(fileidhex, &taskid, sizeof(psync_fsfileid_t));
     fileidhex[sizeof(psync_fsfileid_t)]='d';
@@ -2114,7 +2125,7 @@ static void psync_fsupload_check_tasks(){
     task->ccreat=0;
     psync_list_add_tail(&tasks, &task->list);
 
-    debug(D_NOTICE, "Process fs task: taskid: [%lu], type: [%llu]", (unsigned long)task->id, task->type);
+    debug(D_NOTICE, "Process fs task: taskid: [%"P_PRI_U64"], type: [%"P_PRI_U64"]", task->id, task->type);
   }
 
   current_upload_batch=&tasks;
@@ -2172,16 +2183,3 @@ void psync_fsupload_wake(){
     pthread_cond_signal(&upload_cond);
   pthread_mutex_unlock(&upload_mutex);
 }
-
-/****************************************************************************************************/
-static void set_task_to_stuck(uint64_t taskid) {
-  psync_sql_res* res;
-
-  debug(D_NOTICE, "Set task: [%llu] to Stuck.", taskid);
-
-  res = psync_sql_prep_statement("UPDATE fstask SET status=3 WHERE id=?");
-
-  psync_sql_bind_uint(res, 1, taskid);
-  psync_sql_run_free(res);
-}
-/****************************************************************************************************/

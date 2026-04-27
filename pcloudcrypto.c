@@ -493,7 +493,7 @@ int psync_cloud_crypto_start(const char *password){
   psync_variant_row row;
   const char *id;
   unsigned char *rsapriv, *rsaprivdec, *rsapub, *salt;
-  size_t iterations, rsaprivlen, rsapublen, saltlen;
+  size_t iterations, rsaprivlen=0, rsapublen=0, saltlen=0;
   psync_symmetric_key_t aeskey;
   psync_crypto_aes256_ctr_encoder_decoder_t enc;
   uint32_t rowcnt, flags;

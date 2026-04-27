@@ -43,6 +43,8 @@
 #include "ppathstatus.h"
 #include "ptools.h"
 
+
+static void delete_uptaks_uploadids(psync_fileid_t localfileid);
 //Flags to control the cancelation of upload
 extern int p_uptaks_scanning;
 extern int p_uptaks_stop;
@@ -67,7 +69,7 @@ typedef struct {
   psync_folderid_t folderid;
   psync_folderid_t newparentfolderid;
   char* newName;
-  char* err_msg;
+  const char* err_msg;
   uint64_t err;
 } sync_err_struct;
 
@@ -342,7 +344,6 @@ static int task_renamefile(uint64_t taskid, psync_syncid_t syncid, psync_fileid_
 /****************************************************************************/
 int handle_api_errors(sync_err_struct *err_struct) {
   int ret = -1;
-  event_data_struct *event_data;
   psync_syncid_t syncId;
   char* syncFolder;
   char* folder;
@@ -1398,7 +1399,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
   psync_str_row srow;
   char *localpath, *nname;
   psync_file_lock_t *lock;
-  psync_folderid_t folderid;
+  psync_folderid_t folderid = 0;
   psync_uploadid_t uploadid;
   uint64_t fsize, ufsize;
   psync_stat_t st;
@@ -1526,7 +1527,6 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
 
   if (unlikely(ret)){
     stuck_item* elem;
-    uint64_t itemid;
 
     if (strlen(localpath) > 0) {
       elem = create_stuck_elem(Hash64(localpath, strlen(localpath)), STUCK_MSG_NO_PERMISSION, STUCK_ITEM_TYPE_FILE, 0, localpath, name);
@@ -1666,7 +1666,7 @@ static int task_uploadfile(psync_syncid_t syncid, psync_folderid_t localfileid, 
       ret=upload_big_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, uploadid, ufsize, &st, pr);
     }
     else{
-      if (uploadid && memcmp(phashhex, uhashhex, PSYNC_HASH_DIGEST_HEXLEN)){
+      if (uploadid && memcmp(phashhex, uhashhex, PSYNC_HASH_DIGEST_HEXLEN) != 0){
         debug(D_WARNING, "restarting upload due to checksum mismatch up to offset %lu, expected: %."NTO_STR(PSYNC_HASH_DIGEST_HEXLEN)"s, got: %."NTO_STR(PSYNC_HASH_DIGEST_HEXLEN)"s", (unsigned long)ufsize, phashhex, uhashhex);
       }
       ret=upload_big_file(localpath, hashhex, fsize, folderid, name, localfileid, syncid, upload, 0, 0, &st, pr);
@@ -1713,11 +1713,8 @@ static void delete_upload_task(uint64_t taskid, psync_fileid_t localfileid) {
 static void task_run_upload_file_thread(void *ptr){
   upload_task_t *ut;
   psync_sql_res *res;
-
-  stuck_item* elem;
-  int item_type, ret;
+  int ret;
   char* local_path = NULL;
-  uint64_t itemid;
 
   ut=(upload_task_t *)ptr;
 
@@ -1919,7 +1916,6 @@ static int task_deletefolderrec(uint64_t taskid, psync_folderid_t folderid){
 static int upload_task(uint64_t taskid, uint32_t type, psync_syncid_t syncid, uint64_t itemid, uint64_t localitemid,
                        uint64_t newitemid, const char *name, psync_syncid_t newsyncid){
   int res;
-  psync_sql_res* sqlres;
 
   switch (type){
     case PSYNC_CREATE_REMOTE_FOLDER:
@@ -2007,8 +2003,7 @@ static void upload_thread(){
           psync_sql_res* res;
           stuck_item* elem;
           int item_type;
-          char* local_name, * local_path;
-          uint64_t itemid;
+          const char* local_name, * local_path;
 
           item_type = STUCK_ITEM_TYPE_FOLDER;
           local_name = nvl_str(psync_get_string_or_null(row[6]), STUCK_ITEM_UNKNOWN_FOLDER);
@@ -2131,7 +2126,6 @@ int upload_logs(char* filename, char* fPath) {
   ssize_t rrd;
   psync_file_t fd;
   psync_stat_t st;
-  int ret = 0;
 
   debug(D_NOTICE, "Upload zipped logs file: [%s]", fPath);
 
@@ -2236,7 +2230,6 @@ err_upload:
 /*************************************************************/
 int cancel_uptasks() {
   psync_sql_res* sql;
-  psync_variant_row row;
   upload_list_t* upl;
 
   debug(D_NOTICE, "Cancel Stop all inprogress uptasks!");
