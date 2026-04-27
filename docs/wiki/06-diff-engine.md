@@ -229,7 +229,8 @@ The diff thread's first action is to call `get_connected_socket()`, which handle
    - 2306: Email verification required.
    - 2321: Server redirect (location change), updates API server and retries.
    - 2330: Account relocated, sets `PSTATUS_AUTH_RELOCATING`.
-   - 2000/2012: Bad credentials, sets `PSTATUS_AUTH_BADLOGIN` or `PSTATUS_AUTH_BADTOKEN`.
+   - 2000: Bad credentials, sets `PSTATUS_AUTH_BADLOGIN` (password login) or `PSTATUS_AUTH_BADTOKEN` (token login).
+   - 2012/2064/2074/2092: Bad 2FA code, sets `PSTATUS_AUTH_BADCODE` and clears the stored 2FA code.
    - 2205/2229: Expired session.
    - 4000: Rate limited, sleeps 5 minutes.
 5. **Store user info** -- saves userid, quota, premium status, crypto keys, and other account data to the `setting` table in a single transaction.

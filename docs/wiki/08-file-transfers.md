@@ -226,14 +226,16 @@ Both upload and download threads retry failed tasks indefinitely while the engin
 
 ### Sleep Durations
 
-| Constant | Value | When Used |
-|----------|-------|-----------|
-| `PSYNC_SLEEP_ON_FAILED_UPLOAD` | 2 seconds | After a failed upload, before retry |
-| `PSYNC_SLEEP_ON_FAILED_DOWNLOAD` | 2 seconds | After a failed download, before retry |
-| `PSYNC_SLEEP_ON_DISK_FULL` | 10 seconds | When local disk is full |
-| `PSYNC_SLEEP_ON_LOCKED_FILE` | 2 seconds | When a file lock cannot be acquired |
-| `PSYNC_SLEEP_ON_OS_LOCK` | 5 seconds | When the OS reports a lock conflict |
-| `PSYNC_SLEEP_FILE_CHANGE` | 2 seconds | When a file changes during transfer |
+The constants below are defined in milliseconds in `psettings.h` and passed to `psync_milisleep()`.
+
+| Constant | Value (ms) | Effective | When Used |
+|----------|-----------:|-----------|-----------|
+| `PSYNC_SLEEP_ON_FAILED_UPLOAD` | 2000 | 2 s | After a failed upload, before retry |
+| `PSYNC_SLEEP_ON_FAILED_DOWNLOAD` | 2000 | 2 s | After a failed download, before retry |
+| `PSYNC_SLEEP_ON_DISK_FULL` | 10000 | 10 s | When local disk is full |
+| `PSYNC_SLEEP_ON_LOCKED_FILE` | 2000 | 2 s | When a file lock cannot be acquired |
+| `PSYNC_SLEEP_ON_OS_LOCK` | 5000 | 5 s | When the OS reports a lock conflict |
+| `PSYNC_SLEEP_FILE_CHANGE` | 2000 | 2 s | When a file changes during transfer |
 
 ### Required Status Checks
 

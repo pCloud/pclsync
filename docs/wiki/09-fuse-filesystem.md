@@ -347,8 +347,8 @@ When a file is written and then closed (or quiescent), it becomes eligible for u
 | Platform | Files injected |
 |---|---|
 | Linux | `.directory` (desktop entry pointing to icon), `.pcloudicon.png` (PNG icon) |
-| Windows | `desktop.ini` (shell class info), `pCloud.ico` (Windows icon) |
-| macOS | Previously `.VolumeIcon.icns`, currently disabled |
+| Windows | None currently; the `Desktop.ini` and `pCloud.ico` injection code is present but commented out in `pfsstatic.c` |
+| macOS | None currently; `.VolumeIcon.icns` injection is disabled (commented out) due to a static-file management crash tracked under JIRA PCS-1377 |
 
 Static files are created via `psync_fstask_add_local_creat_static()`, which inserts a creat task with `fileid=0` and an inline `psync_fstask_local_creat_t` containing a pointer to the static data buffer and its length. The data is compiled directly into the binary as a `static const unsigned char[]` array.
 
