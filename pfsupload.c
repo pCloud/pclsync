@@ -156,24 +156,23 @@ int is_task_crypto(psync_fsfileid_t taskid) {
 }
 /**********************************************************************************************************/
 void get_lost_and_found_fid() {
-  // TODO: Propagate error codes from `psync_create_remote_folder()` and update callers
-  char* err;
-
   if (lost_and_found_fid != 0) {
     return;
   }
 
-  psync_sql_lock();
-
+  psync_sql_rdlock();
   lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+  psync_sql_rdunlock();
 
   if (lost_and_found_fid == -1) {
-    psync_create_remote_folder(0, LOST_AND_FOUND_FNAME, &err);
-
-    lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+    char* err;
+    const int res = psync_create_remote_folder(0, LOST_AND_FOUND_FNAME, &err);
+    if (res == 0) {
+      psync_sql_rdlock();
+      lost_and_found_fid = psync_get_folderid(0, LOST_AND_FOUND_FNAME);
+      psync_sql_rdunlock();
+    }
   }
-
-  psync_sql_unlock();
 }
 
 static void set_task_to_stuck(uint64_t taskid) {

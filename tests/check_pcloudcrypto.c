@@ -538,8 +538,7 @@ START_TEST(test_is_error_small_ptr) {
 
 START_TEST(test_is_error_real_ptr) {
   /* Real heap pointers should not be detected as errors */
-  void *p = NULL;
-  p = malloc(64);
+  void *p = malloc(64);
   ck_assert_ptr_nonnull(p);
   ck_assert(!psync_crypto_is_error(p));
   free(p);
