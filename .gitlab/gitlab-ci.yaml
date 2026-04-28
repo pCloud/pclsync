@@ -302,6 +302,11 @@ test-valgrind:
     CLI_DATA_DIR: "/tmp/pclsync-integration-tests/${CI_PIPELINE_ID}/${CI_JOB_NAME_SLUG}/data"
     DRIVE_PATH: "/tmp/pclsync-integration-tests/${CI_PIPELINE_ID}/${CI_JOB_NAME_SLUG}/mount"
     SYNC_TIMEOUT: 90
+    # Linux integration runners use the pre-baked integration-tests image where
+    # pytest and friends are already installed system-wide — no venv needed.
+    # macOS runners are bare hosts and override this to "" so the Makefile
+    # creates integration-tests/venv on demand.
+    SKIP_VENV: "1"
   tags:
     - fuse
   script:
@@ -309,7 +314,7 @@ test-valgrind:
       if [ "$TEST_MODE" = "drive" ]; then TARGET="integration-test-drive"; else TARGET="integration-test-sync"; fi
       make "$TARGET" USESSL="$USESSL" \
         PYTEST_MARKER="${PYTEST_MARKER}" \
-        SKIP_VENV=1 \
+        SKIP_VENV="$SKIP_VENV" \
         CLEAN_TEST_FOLDER=true \
         PCLOUD_AUTH_TOKEN="$PCLOUD_AUTH_TOKEN" \
         PCLOUD_API_SERVER="$PCLOUD_API_SERVER" \
@@ -530,7 +535,7 @@ integration-asan-macos:
     - >-
       make integration-test-drive-crypto USESSL="$USESSL"
       PYTEST_MARKER="${PYTEST_MARKER}"
-      SKIP_VENV=1
+      SKIP_VENV="$SKIP_VENV"
       CLEAN_TEST_FOLDER=true
       PCLOUD_AUTH_TOKEN="$PCLOUD_AUTH_TOKEN"
       PCLOUD_API_SERVER="$PCLOUD_API_SERVER"
