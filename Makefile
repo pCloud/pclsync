@@ -302,6 +302,7 @@ DRIVE_PATH            ?= /tmp/pcloud-ci-mount
 MOUNT_TIMEOUT         ?= 30
 CLI_WRAPPER           ?=
 PYTEST_MARKER         ?=
+PYTEST_ARGS           ?=
 SKIP_VENV             ?=
 CLEAN_TEST_FOLDER     ?=
 TEST_ROOT             ?= /integration-tests/
@@ -318,6 +319,29 @@ integration-test: cli
 	  fi; \
 	done; \
 	mkdir -p $(CLI_DATA_DIR) $(DRIVE_PATH); \
+	CLI_PID=; \
+	cleanup() { \
+	  if [ -n "$$CLI_PID" ]; then \
+	    $(BUILD_DIR)/cli stop --datadir $(CLI_DATA_DIR) 2>/dev/null \
+	      || kill $$CLI_PID 2>/dev/null \
+	      || true; \
+	    WAIT_STOP=0; \
+	    while kill -0 $$CLI_PID 2>/dev/null && [ $$WAIT_STOP -lt 10 ]; do \
+	      sleep 1; WAIT_STOP=$$((WAIT_STOP + 1)); \
+	    done; \
+	  fi; \
+	  fusermount -u $(DRIVE_PATH) 2>/dev/null || umount $(DRIVE_PATH) 2>/dev/null || true; \
+	}; \
+	on_signal() { \
+	  trap - EXIT HUP INT QUIT TERM; \
+	  cleanup; \
+	  kill -s "$$1" $$$$; \
+	}; \
+	trap cleanup EXIT; \
+	trap 'on_signal HUP'  HUP; \
+	trap 'on_signal INT'  INT; \
+	trap 'on_signal QUIT' QUIT; \
+	trap 'on_signal TERM' TERM; \
 	echo "Starting CLI: mount=$(DRIVE_PATH) data=$(CLI_DATA_DIR)"; \
 	$(CLI_WRAPPER) $(BUILD_DIR)/cli start \
 	  --auth $(PCLOUD_AUTH_TOKEN) \
@@ -387,12 +411,9 @@ integration-test: cli
 	SYNC_FOLDER_REMOTE_PATH="$(SYNC_FOLDER_REMOTE_PATH)" \
 	TEST_ROOT="$$EFFECTIVE_TEST_ROOT" \
 	CLEAN_TEST_FOLDER="$(CLEAN_TEST_FOLDER)" \
-	  python3 -m pytest integration-tests/ \
-	  $(if $(PYTEST_MARKER),-m "$(PYTEST_MARKER)",) \
+	  python3 -m pytest \
+	  $(if $(PYTEST_ARGS),$(PYTEST_ARGS),integration-tests/ $(if $(PYTEST_MARKER),-m "$(PYTEST_MARKER)",)) \
 	  || PYTEST_EXIT=$$?; \
-	$(BUILD_DIR)/cli stop --datadir $(CLI_DATA_DIR) 2>/dev/null || kill $$CLI_PID 2>/dev/null || true; \
-	WAIT_STOP=0; while kill -0 $$CLI_PID 2>/dev/null && [ $$WAIT_STOP -lt 10 ]; do sleep 1; WAIT_STOP=$$((WAIT_STOP+1)); done; \
-	fusermount -u $(DRIVE_PATH) 2>/dev/null || umount $(DRIVE_PATH) 2>/dev/null || true; \
 	exit $$PYTEST_EXIT
 
 _DRIVE_MARKER = filesystem$(if $(PYTEST_MARKER), and $(PYTEST_MARKER),)
@@ -400,11 +421,13 @@ _SYNC_MARKER  = sync$(if $(PYTEST_MARKER), and $(PYTEST_MARKER),)
 
 integration-test-drive: cli
 	$(MAKE) integration-test PYTEST_MARKER="$(_DRIVE_MARKER)" \
+	  PYTEST_ARGS="$(PYTEST_ARGS)" \
 	  SYNC_FOLDER_LOCAL_PATH= SYNC_FOLDER_REMOTE_PATH= \
 	  PCLOUD_CRYPTO_SECRET=
 
 integration-test-sync: cli
 	$(MAKE) integration-test PYTEST_MARKER="$(_SYNC_MARKER)" \
+	  PYTEST_ARGS="$(PYTEST_ARGS)" \
 	  SYNC_FOLDER_LOCAL_PATH="$(SYNC_FOLDER_LOCAL_PATH)" \
 	  SYNC_FOLDER_REMOTE_PATH="$(SYNC_FOLDER_REMOTE_PATH)" \
 	  PCLOUD_CRYPTO_SECRET=
@@ -414,6 +437,7 @@ integration-test-drive-crypto: cli
 	  echo "ERROR: PCLOUD_CRYPTO_SECRET is not set"; exit 1; \
 	fi
 	$(MAKE) integration-test PYTEST_MARKER="$(_DRIVE_MARKER)" \
+	  PYTEST_ARGS="$(PYTEST_ARGS)" \
 	  PCLOUD_CRYPTO_SECRET="$(PCLOUD_CRYPTO_SECRET)" \
 	  SYNC_FOLDER_LOCAL_PATH= SYNC_FOLDER_REMOTE_PATH=
 
