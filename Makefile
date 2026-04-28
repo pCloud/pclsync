@@ -351,15 +351,16 @@ integration-test: cli
 	  --locationid $(PCLOUD_LOCATION_ID) & \
 	CLI_PID=$$!; \
 	echo "CLI PID: $$CLI_PID"; \
+	RESOLVED_DRIVE_PATH=$$(cd $(DRIVE_PATH) 2>/dev/null && pwd -P || echo $(DRIVE_PATH)); \
 	ELAPSED=0; \
 	while [ $$ELAPSED -lt $(MOUNT_TIMEOUT) ]; do \
-	  if mountpoint -q $(DRIVE_PATH) 2>/dev/null || mount | grep -q " $(DRIVE_PATH) "; then \
+	  if mountpoint -q $(DRIVE_PATH) 2>/dev/null || mount | grep -qF " $$RESOLVED_DRIVE_PATH "; then \
 	    break; \
 	  fi; \
 	  sleep 1; \
 	  ELAPSED=$$((ELAPSED + 1)); \
 	done; \
-	if ! mountpoint -q $(DRIVE_PATH) 2>/dev/null && ! mount | grep -q " $(DRIVE_PATH) "; then \
+	if ! mountpoint -q $(DRIVE_PATH) 2>/dev/null && ! mount | grep -qF " $$RESOLVED_DRIVE_PATH "; then \
 	  echo "ERROR: FUSE mount did not appear within $(MOUNT_TIMEOUT)s"; \
 	  kill $$CLI_PID 2>/dev/null || true; \
 	  exit 1; \
