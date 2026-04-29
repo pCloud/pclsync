@@ -1451,7 +1451,7 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 
   while (list_elem != &disklist) {
     if (p_uptaks_stop != 0) {
-      debug(D_NOTICE, "Cancel action detected. Stop scaning. Level: [%d]", level);
+      debug(D_NOTICE, "Cancel action detected. Stop scanning. Level: [%d]", level);
       break;
     }
 
@@ -1470,18 +1470,17 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
     if (elem->isfolder == 1) {
       // TODO: Add error handling and cleanup
       const uint64_t task_id = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, level, parent_folder_id, elem->name, path);
-      *taskcnt = *taskcnt + 1;
-
-      //debug(D_NOTICE, "Folder detected [%s]. Scan it.", nextpath);
-      uptask_scan(level + 1, nextpath, task_id, local_folder_id, taskcnt);
+      if (task_id != -1) {
+        *taskcnt = *taskcnt + 1;
+        uptask_scan(level + 1, nextpath, task_id, local_folder_id, taskcnt);
+      }
     }
     else {
-      //debug(D_NOTICE, "File detected [%s]. ", nextpath);
-
       psync_stat(nextpath, &stat_struct);
 
-      create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), level, parent_folder_id, elem->name, path);
-      *taskcnt = *taskcnt + 1;
+      if (create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), level, parent_folder_id, elem->name, path) != -1) {
+        *taskcnt = *taskcnt + 1;
+      }
     }
 
     list_elem = list_next;
@@ -1496,11 +1495,7 @@ void uptask_scan(int level, char* path, psync_folderid_t parent_folder_id, psync
 void do_create_upload_from_list(void* ptr) {
   type_upload_task_t* upl_data = (type_upload_task_t*)ptr;
   psync_stat_t stat_struct;
-  char* folder;
   char* name;
-  int ret;
-  size_t path_size;
-  int i;
   uint64_t taskcnt = 0;
 
   psync_pstat st; //OS compatible stat struct
@@ -1509,18 +1504,15 @@ void do_create_upload_from_list(void* ptr) {
 
   p_uptaks_scanning = p_uptaks_scanning + 1;
 
-  for (i = 0; i < upl_data->path_cnt; i++) {
+  for (int i = 0; i < upl_data->path_cnt; i++) {
     if (p_uptaks_stop != 0) {
-      debug(D_NOTICE, "Cancel action detected. Stop scaning.");
-
+      debug(D_NOTICE, "Cancel action detected. Stop scanning.");
       break;
     }
 
-    ret = psync_stat(upl_data->paths[i], &stat_struct);
-
-    if (ret == 0) {
-      folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
-      path_size = strlen(folder);
+    if (psync_stat(upl_data->paths[i], &stat_struct) == 0) {
+      const char *folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
+      const size_t path_size = strlen(folder);
 
       if (path_size > 0) {
         name = upl_data->paths[i]+path_size+strlen(PSYNC_DIRECTORY_SEPARATOR);
@@ -1534,37 +1526,38 @@ void do_create_upload_from_list(void* ptr) {
       st.path = psync_strdup(folder);
       st.stat = stat_struct;
       
-      ret = psync_is_name_to_ignore(name); //Check ignore patterns
-
-      if (ret  != 0) {
+      if (psync_is_name_to_ignore(name)) {
         continue;
       }
 
-      ret = check_ignored_paths(upl_data->paths[i]);  //Check ignored paths
-
-      if (ret != 0) {
+      //Check ignored paths
+      if (check_ignored_paths(upl_data->paths[i])) {
         continue;
       }
 
       if (psync_stat_isfolder(&stat_struct)) {
-        ret = create_upload_task(PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING, 0, 0, upl_data->dest_folid, name, folder);
-        taskcnt++;
+        // TODO: Add error handling
+        const uint64_t upload_task_id = create_upload_task(
+          PSYNC_CREATE_REMOTE_FOLDER, PUPTASK_STATUS_WAITING,
+          0, 0, upl_data->dest_folid, name, folder);
+        if (upload_task_id !=-1) {
+          taskcnt++;
 
-        uptask_scan(0, upl_data->paths[i], ret, 0, &taskcnt);
-      }
-      else {
-        ret = is_file_to_ignore(&st);
-
-        if (ret == -1) {
+          // TODO: Refactor recursive calls to avoid stack overflows for deep hierarchies.
+          uptask_scan(0, upl_data->paths[i], upload_task_id, 0, &taskcnt);
+        }
+      } else {
+        if (is_file_to_ignore(&st) == -1) {
           psync_free((void *)st.name);
           psync_free((void *)st.path);
 
           continue;
         }
 
-        ret = create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder);
-        taskcnt++;
-     }
+        if (create_upload_task(PSYNC_UPLOAD_FILE, PUPTASK_STATUS_WAITING, psync_stat_size(&stat_struct), 0, upl_data->dest_folid, name, folder) != -1) {
+          taskcnt++;
+        }
+      }
 
       psync_free((void *)st.name);
       psync_free((void *)st.path);
@@ -1589,7 +1582,7 @@ void do_create_upload_from_list(void* ptr) {
   }
 
   if (p_uptaks_stop != 0) {
-    debug(D_NOTICE, "Scanning canceled. Ommit process thread wakeup.");
+    debug(D_NOTICE, "Scanning canceled. Omit process thread wakeup.");
   }
   else {
     debug(D_NOTICE, "Finished Upload task init. Tasks created: [%"P_PRI_U64"] Send some signals.", taskcnt);

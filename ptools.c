@@ -1498,17 +1498,14 @@ uint64_t create_upload_task(int type, const int status, uint64_t size, int level
     return -1;
   }
 
-  uint64_t upTaskId = psync_sql_insertid();
+  uint64_t upload_task_id = psync_sql_insertid();
 
-  if (unlikely(!psync_sql_commit_transaction())) {
-
+  if (unlikely(psync_sql_commit_transaction())) {
     debug(D_NOTICE, "Transaction failed.");
-
     return -1;
   }
-  psync_sql_commit_transaction();
 
-  return upTaskId;
+  return upload_task_id;
 }
 /**********************************************************************/
 uint64_t create_uptask_lfolder_in_db(uint64_t parent_folder_id, char* foname) {
