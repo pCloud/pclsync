@@ -1,7 +1,7 @@
 #ifndef _PSYNC_SSLCERTS_H
 #define _PSYNC_SSLCERTS_H
 
-static const char __attribute__((unused)) *psync_ssl_trusted_pk_sha256[]={
+static const char *psync_ssl_trusted_pk_sha256[]={
   "c4fe0872215f16af17c1f2da80ca23863105590a5e64c8ddc9693d21cb835a4e",
   "cc5e7d264759ce57d8d2616532ddc7224d2ea721433bd3828e9f70fd89fcf81d",
   "1b1b4d26a98774c84709c5400cd5c0b5e2f0bc7d46ef6053c9a872efe825b116", // priv1

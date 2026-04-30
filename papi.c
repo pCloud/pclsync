@@ -104,8 +104,8 @@ static const binresult NUM_SMALL[VSMALL_NUMBER_NUM]={
 };
 
 // The total memory (pointers + data) size for the elements in a binresult array
-static const size_t MAX_ARRAY_ELEM_SIZE = 1024 * 1024 * 250; // 250MB
-static const psync_uint_t MAX_ARRAY_ELEM_COUNT = MAX_ARRAY_ELEM_SIZE / (sizeof(binresult) + sizeof(binresult *));
+#define MAX_ARRAY_ELEM_SIZE  (1024 * 1024 * 250) // 250MB
+#define MAX_ARRAY_ELEM_COUNT (MAX_ARRAY_ELEM_SIZE / (sizeof(binresult) + sizeof(binresult *)))
 
 #define MAX_REQ_COMMAND_SIZE 127
 #define MAX_REQ_PARAM_COUNT 255
