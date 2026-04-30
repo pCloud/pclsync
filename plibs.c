@@ -169,7 +169,17 @@ int psync_sql_connect(const char *db){
     sqlite3_config(SQLITE_CONFIG_LOG, psync_sql_err_callback, NULL);
   }
 
-  code=sqlite3_open(db, &psync_db);
+  /* Open the shared connection in serialized threading mode. The connection
+     is used concurrently from multiple worker threads (diff, scanner,
+     transfer, ...) under a reader-shared rwlock. Apple's stock libsqlite3
+     ships in Multi-thread mode (SQLITE_THREADSAFE=2), where a single
+     connection cannot be used from more than one thread, leading to parser
+     races and SIGSEGV/SIGBUS in sqlite3_prepare_v2(). SQLITE_OPEN_FULLMUTEX
+     is per-connection (no global init-state requirement) so it stays safe
+     on sqlite reconnects. */
+  code=sqlite3_open_v2(db, &psync_db,
+                       SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX,
+                       NULL);
 
   if (likely(code==SQLITE_OK)){
     if (initmutex){
@@ -225,7 +235,9 @@ int psync_sql_reopen(const char *path){
   sqlite3 *db;
   int code;
   debug(D_NOTICE, "reopening database %s", path);
-  code=sqlite3_open(path, &db);
+  code=sqlite3_open_v2(path, &db,
+                       SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX,
+                       NULL);
   if (likely(code==SQLITE_OK)){
     code=sqlite3_wal_checkpoint(db, NULL);
     if (unlikely(code!=SQLITE_OK)){
