@@ -36,6 +36,8 @@
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
+#include <openssl/x509.h>
+#include <openssl/crypto.h>
 
 #define SSL_CIPHERS \
   "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:"\
@@ -200,6 +202,38 @@ static int psync_ssl_cn_match_hostname(X509 *cert, const char *hostname){
   }
 }
 
+/* SPKI fingerprint pinning: SHA-256 of the peer certificate's
+ * SubjectPublicKeyInfo (DER) must match one of the entries in
+ * psync_ssl_trusted_pk_sha256[]. Matches the equivalent checks in the
+ * mbedTLS and wolfSSL backends. */
+static int psync_ssl_check_peer_public_key(X509 *cert){
+  X509_PUBKEY *pubkey;
+  unsigned char *der=NULL;
+  unsigned char digest[PSYNC_SHA256_DIGEST_LEN];
+  char hex[PSYNC_SHA256_DIGEST_HEXLEN+1];
+  int derlen;
+  int rc=-1;
+  size_t i;
+  pubkey=X509_get_X509_PUBKEY(cert);
+  if (unlikely_log(!pubkey))
+    goto out;
+  derlen=i2d_X509_PUBKEY(pubkey, &der);
+  if (unlikely_log(derlen<=0 || !der))
+    goto out;
+  psync_sha256(der, derlen, digest);
+  psync_binhex(hex, digest, PSYNC_SHA256_DIGEST_LEN);
+  hex[PSYNC_SHA256_DIGEST_HEXLEN]=0;
+  for (i=0; i<ARRAY_SIZE(psync_ssl_trusted_pk_sha256); i++)
+    if (!strcmp(hex, psync_ssl_trusted_pk_sha256[i])){
+      rc=0;
+      goto out;
+    }
+  debug(D_ERROR, "got sha256hex of public key %s that does not match any approved fingerprint", hex);
+out:
+  OPENSSL_free(der); /* OPENSSL_free(NULL) is a no-op */
+  return rc;
+}
+
 static int psync_ssl_verify_cert(SSL *ssl, const char *hostname){
   X509 *cert;
   int ret;
@@ -209,6 +243,8 @@ static int psync_ssl_verify_cert(SSL *ssl, const char *hostname){
   if (unlikely_log(!cert))
     return -1;
   ret=psync_ssl_cn_match_hostname(cert, hostname);
+  if (!ret)
+    ret=psync_ssl_check_peer_public_key(cert);
   X509_free(cert);
   return ret;
 }
