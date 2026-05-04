@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# PreToolUse hook for pclsync: when Edit/Write/MultiEdit targets a .c or .h file
+# in this repo, inject a system-reminder re-loading the high-frequency rules
+# from docs/c-style-guide.md.  Soft variant — never blocks; exits 0 always.
+#
+# Output protocol: PreToolUse hooks may emit a JSON object on stdout with
+#   { "hookSpecificOutput": { "hookEventName": "PreToolUse",
+#                             "additionalContext": "..." } }
+# Anything in additionalContext is injected back to the model as context for
+# the in-flight tool call.
+
+set -u
+
+# Read the entire stdin payload.
+input=$(cat 2>/dev/null || true)
+
+# Hard-fail safe: if jq is missing, exit 0 silently rather than crashing the
+# harness.  Without jq we cannot parse the input; informational hook only.
+if ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+
+# Extract the file_path the tool will write to.  Empty string if missing.
+file_path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // ""' 2>/dev/null || true)
+
+# Only fire for .c / .h files inside this repo.  PROJECT_DIR is the canonical
+# pclsync root; CLAUDE_PROJECT_DIR is set by the harness when the hook runs.
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-/home/georgi-neykov/Projects/synclib}"
+
+case "$file_path" in
+  "$PROJECT_DIR"/*.c|"$PROJECT_DIR"/*.h|\
+  "$PROJECT_DIR"/*/*.c|"$PROJECT_DIR"/*/*.h|\
+  "$PROJECT_DIR"/*/*/*.c|"$PROJECT_DIR"/*/*/*.h)
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+# Build the reminder body.  Use jq to construct the JSON so quoting is safe.
+reminder="C-style-guide reminder for ${file_path}: this file is governed by docs/c-style-guide.md. High-frequency rules — §3: sentinel-init every owned resource (NULL/-1/MAP_FAILED) at declaration; single goto out: cleanup; single return at the bottom. §6: project allocator wrappers only (psync_malloc / psync_new / psync_strdup / psync_locked_malloc) — never libc. §8: no strcpy/strcat/sprintf/gets/atoi; use psync_strlcpy / psync_slprintf / psync_strcat / strtoul. §9: capture errno into a local IMMEDIATELY after a failed syscall, before logging. §10: every shared-struct field has a /* protected by ... */ or /* atomic */ or /* immutable after init */ comment; use PSYNC_THREAD not _Thread_local; never volatile for thread sync. §11: debug(level, \"literal format\", ...) with D_ERROR/D_WARNING/D_NOTICE; format strings must be literals; never log secrets or auth tokens. §12: no #pragma diagnostic ignored to silence warnings; fix at source. Suggestion: route this edit through the pclsync-c-author subagent — its operating manual is the full style guide."
+
+jq -nc --arg ctx "$reminder" '{
+  hookSpecificOutput: {
+    hookEventName: "PreToolUse",
+    additionalContext: $ctx
+  }
+}'
+
+exit 0
