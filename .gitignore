@@ -6,3 +6,4 @@
 build/
 /.idea
 /test-history/
+/.releases/

@@ -1,4 +1,6 @@
-Generate a changelog, create an annotated git tag, and show QA focus areas.
+Generate a changelog draft for a new release and save it under `.releases/`.
+
+This skill only produces the changelog text. It does NOT show QA focus areas (`/qa-focus`) and does NOT create the git tag (`/release-tag`).
 
 Steps:
 
@@ -18,7 +20,7 @@ Steps:
 
 4. **Read current version** from `psettings.h` — extract the `PSYNC_LIB_VERSION` define value.
 
-5. **Compose the tag message** using this exact format (version as title, then grouped changelog):
+5. **Compose the changelog** using this exact format (version as title, then grouped sections):
 
 ```
 v{version}
@@ -42,13 +44,15 @@ v{version}
    - Write descriptions in past tense, concise, focusing on what changed and why it matters.
    - Collapse related commits into a single entry when appropriate.
 
-6. **Show the draft tag message** to the user for approval. Do NOT create the tag until the user approves.
+6. **Show the draft** to the user for approval. Do NOT save until the user approves.
 
-7. **Ask if the user wants to create the annotated git tag** on HEAD: `git tag -a v{version} -m "{message}"`.
-
-8. **Show QA Focus Areas** in the conversation (NOT in the tag message). Present a concise markdown table with columns `Area` and `What to test`, targeting a QA engineer. Focus on areas affected by the changes in this release.
+7. **Save the approved draft** to `.releases/v{version}-changelog.md`:
+   - Create `.releases/` if it does not exist (`mkdir -p .releases`).
+   - If the target file already exists, show a diff against the new content and ask whether to overwrite.
+   - Write the file content **without** any leading or trailing fences — the file will be passed verbatim to `git tag -F` by `/release-tag`.
 
 Rules:
-- Do NOT push tags to remote unless explicitly asked.
-- Do NOT modify any files — this command only reads the repo and creates a tag.
-- If the tag `v{version}` already exists, report this to the user and stop.
+- Do NOT modify any source files. Only writes to `.releases/`.
+- Do NOT create the git tag — that is `/release-tag`.
+- Do NOT show QA focus areas — that is `/qa-focus`.
+- Do NOT push anything to remote.
