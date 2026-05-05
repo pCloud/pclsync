@@ -956,11 +956,13 @@ static int psync_wait_socket_writable_microsec(psync_socket_t sock, long sec, lo
   fd_set wfds;
   struct timeval tv;
   int res;
+#if defined(P_OS_POSIX)
   if (unlikely(sock>=FD_SETSIZE)){
     debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
     psync_sock_set_err(P_INVAL);
     return SOCKET_ERROR;
   }
+#endif
   tv.tv_sec=sec;
   tv.tv_usec=usec;
   FD_ZERO(&wfds);
@@ -987,11 +989,13 @@ static int psync_wait_socket_readable_microsec(psync_socket_t sock, long sec, lo
   unsigned long msec;
 #endif
   int res;
+#if defined(P_OS_POSIX)
   if (unlikely(sock>=FD_SETSIZE)){
     debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
     psync_sock_set_err(P_INVAL);
     return SOCKET_ERROR;
   }
+#endif
   tv.tv_sec=sec;
   tv.tv_usec=usec;
   FD_ZERO(&rfds);
@@ -1581,10 +1585,12 @@ static int wait_sock_ready_for_ssl(psync_socket_t sock){
   fd_set fds, *rfds, *wfds;
   struct timeval tv;
   int res;
+#if defined(P_OS_POSIX)
   if (unlikely(sock>=FD_SETSIZE)){
     debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
     return SOCKET_ERROR;
   }
+#endif
   FD_ZERO(&fds);
   FD_SET(sock, &fds);
 
@@ -1622,10 +1628,12 @@ static int wait_sock_ready_for_ssl_v2(psync_socket_t sock, int timeout) {
   fd_set fds, * rfds, * wfds;
   struct timeval tv;
   int res;
+#if defined(P_OS_POSIX)
   if (unlikely(sock>=FD_SETSIZE)){
     debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
     return SOCKET_ERROR;
   }
+#endif
   FD_ZERO(&fds);
   FD_SET(sock, &fds);
 
@@ -2779,10 +2787,12 @@ int psync_socket_pair(psync_socket_t sfd[2]){
 int psync_socket_is_broken(psync_socket_t sock){
   fd_set rfds;
   struct timeval tv;
+#if defined(P_OS_POSIX)
   if (unlikely(sock>=FD_SETSIZE)){
     debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sock, FD_SETSIZE);
     return 1;
   }
+#endif
   memset(&tv, 0, sizeof(tv));
   FD_ZERO(&rfds);
   FD_SET(sock, &rfds);
@@ -2804,14 +2814,20 @@ int psync_select_in(psync_socket_t *sockets, int cnt, int64_t timeoutmillisec){
     ptv=&tv;
   }
 
+  if (unlikely(cnt>FD_SETSIZE)){
+    debug(D_ERROR, "socket count %d exceeds FD_SETSIZE %d", cnt, FD_SETSIZE);
+    return SOCKET_ERROR;
+  }
   FD_ZERO(&rfds);
   max=0;
 
   for (i=0; i<cnt; i++){
+#if defined(P_OS_POSIX)
     if (unlikely(sockets[i]>=FD_SETSIZE)){
       debug(D_ERROR, "socket fd %d exceeds FD_SETSIZE %d", (int)sockets[i], FD_SETSIZE);
       return SOCKET_ERROR;
     }
+#endif
     FD_SET(sockets[i], &rfds);
     if (sockets[i]>=max)
       max=sockets[i]+1;
