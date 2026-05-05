@@ -21,10 +21,11 @@ Steps:
 5. **Create the tag** only after the user confirms:
 
 ```
-git tag -a v{version} -F .releases/v{version}-changelog.md
+git tag -a v{version} -F .releases/v{version}-changelog.md --cleanup=verbatim
 ```
 
-   Use `-F <file>` rather than `-m "$(cat ...)"` to preserve formatting and avoid shell-escaping issues.
+   - Use `-F <file>` rather than `-m "$(cat ...)"` to preserve formatting and avoid shell-escaping issues.
+   - `--cleanup=verbatim` is required: the default `strip` mode treats lines starting with `#` as comments and drops them, which would remove the `## New Features & Enhancements` / `## Bug Fixes` / etc. section headers from the annotation. Verbatim mode keeps the markdown intact.
 
 6. **Confirm success:** Run `git show v{version} --no-patch --format=fuller` and show the user the tag was created correctly.
 
