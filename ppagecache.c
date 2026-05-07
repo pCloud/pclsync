@@ -1922,6 +1922,8 @@ retry:
   if (unlikely(request->needkey)){
     enc=psync_cloud_crypto_get_file_encoder(request->fileid, request->hash, 0);
     if (psync_crypto_to_error(enc)){
+      release_urls(urls);
+      psync_fs_dec_of_refcnt_and_readers(request->of);
       psync_pagecache_send_error(request, -EIO);
       return;
     }
@@ -2037,6 +2039,7 @@ err_api0:
     if (err){
       if (tries++<5){
         psync_http_close(sock);
+        release_bad_urls(urls);
 
         goto retry;
       }
