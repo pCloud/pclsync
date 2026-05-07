@@ -2657,17 +2657,19 @@ int psync_pagecache_read_unmodified_encrypted_locked(psync_openfile_t *of, char 
   else
     psync_free(rq);
   ret=0;
-  if (needkey){
-    debug(D_NOTICE, "waiting for key to download");
+  if (needkey || psync_crypto_is_error(of->encoder)){
+    if (needkey)
+      debug(D_NOTICE, "waiting for key to download");
     psync_fs_lock_file(of);
     while (of->encoder==PSYNC_CRYPTO_LOADING_SECTOR_ENCODER)
       pthread_cond_wait(&enc_key_cond, &of->mutex);
-    if (of->encoder==PSYNC_CRYPTO_FAILED_SECTOR_ENCODER){
+    if (of->encoder==PSYNC_CRYPTO_FAILED_SECTOR_ENCODER || psync_crypto_is_error(of->encoder)){
       debug(D_NOTICE, "failed to download key");
       ret=-EIO;
     }
     pthread_mutex_unlock(&of->mutex);
-    debug(D_NOTICE, "waited for key to download");
+    if (needkey)
+      debug(D_NOTICE, "waited for key to download");
   }
   for (i=0; i<pagecnt; i++){
     ap=dp[i].authpage;
