@@ -58,7 +58,7 @@ make all USESSL=mbed
 
 ### Dependency discovery
 
-Dependencies are discovered via `pkg-config` by default. If `pkg-config` is not available or a library is installed in a non-standard location, use the `*_INCLUDE_DIR` override variables listed below.
+Dependencies are discovered via `pkg-config` by default. If `pkg-config` is not available or a library is installed in a non-standard location, override variables listed below.
 
 ### Build variables
 
@@ -70,6 +70,8 @@ Dependencies are discovered via `pkg-config` by default. If `pkg-config` is not 
 | `OPENSSL_INCLUDE_DIR`    | *(pkg-config)* | Path to OpenSSL headers                   |
 | `MBEDTLS_INCLUDE_DIR`    | *(pkg-config)* | Path to mbedTLS headers                   |
 | `WOLFSSL_INCLUDE_DIR`    | *(pkg-config)* | Path to wolfSSL headers                   |
+| `SQLITE_LDFLAGS`         | *(pkg-config)* | Path to SQLite library libsqlite3.a       |
+| `SQLITE_LDFLAGS`         | *(pkg-config)* | Path to wolfSSL library libwolfssl.a      |
 | `GCC_OPTIMIZATION_LEVEL` | `s`           | GCC `-O` level (macOS)                     |
 | `DEBUG_LEVEL`            | *(unset)*     | Debug verbosity: 0 (trace) to 4 (critical) |
 

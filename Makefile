@@ -38,9 +38,15 @@ ifdef SQLITE_INCLUDE_DIR
 else
   SQLITE_CFLAGS := $(call pkg_cflags,sqlite3)
 endif
-SQLITE_LIBS := $(call pkg_libs,sqlite3)
-ifeq ($(SQLITE_LIBS),)
-  SQLITE_LIBS = -lsqlite3
+ifdef SQLITE_LDFLAGS
+  ifneq ($(SQLITE_LDFLAGS),)
+    SQLITE_LIBS = $(SQLITE_LDFLAGS)
+  endif
+else
+  SQLITE_LIBS := $(call pkg_libs,sqlite3)
+  ifeq ($(SQLITE_LIBS),)
+    SQLITE_LIBS = -lsqlite3
+  endif
 endif
 
 # FUSE (resolved per-platform below)
@@ -81,9 +87,15 @@ ifdef WOLFSSL_INCLUDE_DIR
 else
   WOLFSSL_CFLAGS := $(call pkg_cflags,wolfssl)
 endif
-WOLFSSL_LIBS := $(call pkg_libs,wolfssl)
-ifeq ($(WOLFSSL_LIBS),)
-  WOLFSSL_LIBS = -lwolfssl
+ifdef WOLFSSL_LDFLAGS
+  ifneq ($(WOLFSSL_LDFLAGS),)
+    WOLFSSL_LIBS = $(WOLFSSL_LDFLAGS)
+  endif
+else
+  WOLFSSL_LIBS := $(call pkg_libs,wolfssl)
+  ifeq ($(WOLFSSL_LIBS),)
+    WOLFSSL_LIBS = -lwolfssl
+  endif
 endif
 
 # ── SSL provider auto-detection ──────────────────────────────────────────────
