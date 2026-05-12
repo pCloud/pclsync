@@ -683,22 +683,12 @@ int cache_links(char **err /*OUT*/) {
       return -2;
     }
     bres = send_command(api, "listpublinks", params);
-  } else if (psync_my_user  && psync_my_pass) {
-
-    binparam params[] = {P_STR("username", psync_my_user), P_STR("password", psync_my_pass), P_STR("timeformat", "timestamp"),  P_STR("iconformat","id")};
-    api = psync_apipool_get();
-    if (unlikely(!api)) {
-      debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
-      *err = psync_strndup("Connection error.", 17);
-      return -2;
-    }
-    bres = send_command(api, "listpublinks", params);
   } else return -1;
   if (likely(bres))
     psync_apipool_release(api);
   else {
     psync_apipool_release_bad(api);
-    debug(D_WARNING, "Send command returned in valid result.\n");
+    debug(D_WARNING, "Send command returned invalid result.\n");
     *err = psync_strndup("Connection error.", 17);
     return 0;
   }
@@ -1319,15 +1309,6 @@ int cache_upload_links(char **err /*OUT*/) {
 
   if(psync_my_auth[0]) {
     binparam params[] = {P_STR("auth", psync_my_auth), P_STR("timeformat", "timestamp"),  P_STR("iconformat","id")};
-    api = psync_apipool_get();
-    if (unlikely(!api)) {
-      debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");
-      *err = psync_strndup("Connection error.", 17);
-      return -2;
-    }
-    bres = send_command(api, "listuploadlinks", params);
-  } else if (psync_my_user  && psync_my_pass) {
-    binparam params[] = {P_STR("username", psync_my_user), P_STR("password", psync_my_pass), P_STR("timeformat", "timestamp"),  P_STR("iconformat","id")};
     api = psync_apipool_get();
     if (unlikely(!api)) {
       debug(D_WARNING, "Can't gat api from the pool. No pool ?\n");

@@ -127,80 +127,6 @@ void psync_delete_cached_crypto_keys(){
 	delete_cached_crypto_keys();
 }
 
-static binresult *get_userinfo_user_digest(psync_socket *sock, const char *username, size_t userlen, const char *pwddig, const char *digest, uint32_t diglen,
-                                           const char *osversion, const char *appversion, const char *deviceid, const char *devicestring){
-
-  debug(D_NOTICE, "No digest login. User: [%s] Digest:[%s] PassDigest: [%s] OSv: [%s] AppV: [%s] DevId: [%s] DeviceStr: [%s] OSid:[%d]", username, digest, pwddig, osversion, appversion, deviceid, devicestring, P_OS_ID);
-  debug(D_NOTICE, "No digest login. timeformat getauth : [1] , cryptokeyssign : [1] , getapiserver : [1] , getlastsubscription : [1]");
-
-  binparam params[]={P_STR("timeformat", "timestamp"),
-                     P_LSTR("username", username, userlen),
-                     P_LSTR("digest", digest, diglen),
-                     P_LSTR("passworddigest", pwddig, PSYNC_SHA1_DIGEST_HEXLEN),
-                     P_STR("osversion", osversion),
-                     P_STR("appversion", appversion),
-                     P_STR("deviceid", deviceid),
-                     P_STR("device", devicestring),
-                     P_BOOL("getauth", 1),
-                     P_BOOL("getapiserver", 1),
-                     P_BOOL("cryptokeyssign", 1),
-                     P_BOOL("getlastsubscription", 1),
-                     P_NUM("os", P_OS_ID)};
-
-  return send_command(sock, "login", params);
-}
-
-static binresult *get_userinfo_user_pass(psync_socket *sock, const char *username, const char *password, const char *osversion,
-                                         const char *appversion, const char *deviceid, const char *devicestring){
-  binparam empty_params[]={P_STR("MS", "sucks")};
-  psync_sha1_ctx ctx;
-  binresult *res, *ret;
-  const binresult *dig;
-  unsigned char *uc;
-  size_t ul, i;
-  unsigned char sha1bin[PSYNC_SHA1_DIGEST_LEN];
-  char sha1hex[PSYNC_SHA1_DIGEST_HEXLEN];
-
-  debug(D_NOTICE, "Sending [getdigest] command.");
-
-  res=send_command(sock, "getdigest", empty_params);
-
-  if (!res)
-    return res;
-
-  if (psync_find_result(res, "result", PARAM_NUM)->num!=0){
-    psync_free(res);
-    return NULL;
-  }
-
-  dig=psync_find_result(res, "digest", PARAM_STR);
-
-  debug(D_NOTICE, "got digest [%s]", dig->str);
-
-  ul=strlen(username);
-  uc=psync_new_cnt(unsigned char, ul);
-
-  for (i=0; i<ul; i++)
-    uc[i]=tolower(username[i]);
-
-  psync_sha1(uc, ul, sha1bin);
-  psync_free(uc);
-
-  psync_binhex(sha1hex, sha1bin, PSYNC_SHA1_DIGEST_LEN);
-  psync_sha1_init(&ctx);
-  psync_sha1_update(&ctx, password, strlen(password));
-  psync_sha1_update(&ctx, sha1hex, PSYNC_SHA1_DIGEST_HEXLEN);
-  psync_sha1_update(&ctx, dig->str, dig->length);
-  psync_sha1_final(sha1bin, &ctx);
-  psync_binhex(sha1hex, sha1bin, PSYNC_SHA1_DIGEST_LEN);
-
-  ret=get_userinfo_user_digest(sock, username, ul, sha1hex, dig->str, dig->length, osversion, appversion, deviceid, devicestring);
-
-  psync_free(res);
-
-  return ret;
-}
-
 char *generate_device_id(){
   psync_sql_res *q;
   unsigned char deviceidbin[16];
@@ -271,18 +197,17 @@ int check_user_relocated(uint64_t luserid, psync_socket* sock){
 }
 
 static psync_socket *get_connected_socket(){
-  char *auth, *user, *pass, *deviceid, *osversion, *devicestring, *binapi, *chrUserid;
+  char *auth, *deviceid, *osversion, *devicestring, *binapi, *chrUserid;
   const char *appversion;
   psync_socket *sock;
   binresult *res;
   const binresult *cres;
   psync_sql_res *q;
   uint64_t result, userid, locationid;
-  int saveauth, isbusiness, cryptosetup, digest, lid, isFirstLogin;
+  int saveauth, isbusiness, cryptosetup, lid, isFirstLogin;
 
-  digest=1;
   psync_free(psync_my_2fa_token);
-  auth=user=pass=psync_my_2fa_token=NULL;
+  auth=psync_my_2fa_token=NULL;
   psync_is_business=0;
 
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
@@ -299,17 +224,10 @@ static psync_socket *get_connected_socket(){
 
   while (1){
     psync_free(auth);
-    psync_free(user);
-    psync_free(pass);
 
     psync_wait_status(PSTATUS_TYPE_RUN, PSTATUS_RUN_RUN|PSTATUS_RUN_PAUSE);
 
     auth=psync_sql_cellstr("SELECT value FROM setting WHERE id='auth'");
-    user=psync_sql_cellstr("SELECT value FROM setting WHERE id='user'");
-    pass=psync_sql_cellstr("SELECT value FROM setting WHERE id='pass'");
-
-    if (user && !user[0]) { psync_free(user); user = NULL; }
-    if (pass && !pass[0]) { psync_free(pass); pass = NULL; }
     if (auth && !auth[0]) { psync_free(auth); auth = NULL; }
 
     chrUserid = psync_sql_cellstr("SELECT value FROM setting WHERE id='userid'");
@@ -327,13 +245,7 @@ static psync_socket *get_connected_socket(){
     if (!auth && psync_my_auth[0])
       auth=psync_strdup(psync_my_auth);
 
-    if (!user && psync_my_user)
-      user=psync_strdup(psync_my_user);
-
-    if (!pass && psync_my_pass)
-      pass=psync_strdup(psync_my_pass);
-
-    if (!auth && (!pass || !user)){
+    if (!auth){
 #if defined(P_OS_LINUX)
       if(tfa){
         tfa=0;
@@ -385,31 +297,6 @@ static psync_socket *get_connected_socket(){
 						            P_BOOL("getlastsubscription", 1),
                         P_NUM("os", P_OS_ID)};
       res=send_command(sock, method, params);
-    }
-    else if (user && pass && pass[0]){
-      if (digest){
-        debug(D_NOTICE, "Using digerst login.");
-        res=get_userinfo_user_pass(sock, user, pass, osversion, appversion, deviceid, devicestring);
-      }
-      else{
-        debug(D_NOTICE, "No digest login. User: [%s] Pass:[%s] OSv: [%s] AppV: [%s] DevId: [%s] DeviceStr: [%s] OSid:[%d]", user, pass, osversion, appversion, deviceid, devicestring, P_OS_ID);
-        debug(D_NOTICE, "No digest login. timeformat getauth : [1] , cryptokeyssign : [1] , getapiserver : [1] , getlastsubscription : [1]");
-
-        binparam params[]={P_STR("timeformat", "timestamp"),
-                         P_STR("username", user),
-                         P_STR("password", pass),
-                         P_STR("osversion", osversion),
-                         P_STR("appversion", appversion),
-                         P_STR("deviceid", deviceid),
-                         P_STR("device", devicestring),
-                         P_BOOL("getauth", 1),
-                         P_BOOL("cryptokeyssign", 1),
-                         P_BOOL("getapiserver", 1),
-                         P_BOOL("getlastsubscription", 1),
-                         P_NUM("os", P_OS_ID)};
-
-        res=send_command(sock, "login", params);
-      }
     }
     else {
       binparam params[]={P_STR("timeformat", "timestamp"),
@@ -506,19 +393,6 @@ static psync_socket *get_connected_socket(){
         if (result == 2012 || result == 2064 || result == 2074 || result == 2092) {
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
         }          
-        else if (user && pass){
-          //Ugly fix, sorry :(
-          if (!strcmp(user, "pass") && !strcmp(pass, "dummy")){
-            debug(D_NOTICE, "got %lu, for user=%s, not rising PSTATUS_AUTH_BADLOGIN", (unsigned long)result, user);
-            psync_milisleep(1000);
-            continue;
-          }
-          else {
-            psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADLOGIN);
-            psync_free(psync_my_pass);
-            psync_my_pass = NULL;
-          }
-        }
         else {
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADTOKEN);
           psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
@@ -533,10 +407,6 @@ static psync_socket *get_connected_socket(){
         psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
         psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_EXPIRED);
         psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-      }
-      else if (result==2237) {
-        digest=0;
-        continue;
       }
       else {
         psync_milisleep(PSYNC_SLEEP_BEFORE_RECONNECT);
@@ -562,7 +432,9 @@ static psync_socket *get_connected_socket(){
 	  lid=psync_setting_get_uint(_PS(location_id));
     psync_sql_start_transaction();
 
+    pthread_mutex_lock(&psync_my_auth_mutex);
     psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
+    pthread_mutex_unlock(&psync_my_auth_mutex);
 
     if (sizeof(psync_my_auth) > 0) {
       debug(D_NOTICE, "Auth token is populated!");
@@ -744,18 +616,6 @@ static psync_socket *get_connected_socket(){
 
     psync_sql_free_result(q);
     psync_sql_commit_transaction();
-    pthread_mutex_lock(&psync_my_auth_mutex);
-
-    if (psync_my_pass){
-      memset(psync_my_pass, 'X', strlen(psync_my_pass));
-      q=psync_sql_prep_statement("UPDATE setting SET value=? WHERE id='pass'");
-      psync_sql_bind_string(q, 1, psync_my_pass);
-      psync_sql_run_free(q);
-      psync_free(psync_my_pass);
-      psync_my_pass=NULL;
-    }
-
-    pthread_mutex_unlock(&psync_my_auth_mutex);
 
     if (saveauth) {
       psync_sql_statement("DELETE FROM setting WHERE id='pass'");
@@ -841,8 +701,6 @@ static psync_socket *get_connected_socket(){
     }
 
     psync_free(auth);
-    psync_free(user);
-    psync_free(pass);
 
     psync_free(psync_my_2fa_token);
     psync_my_2fa_token=NULL;

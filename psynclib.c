@@ -406,45 +406,6 @@ static void clear_db(int save){
   psync_setting_set_bool(_PS(saveauth), save);
 }
 
-void psync_set_user_pass(const char *username, const char *password, int save){
-  clear_db(save);
-  if (save){
-    psync_set_string_value("user", username);
-    if (password && password[0])
-      psync_set_string_value("pass", password);
-  }
-  else{
-    pthread_mutex_lock(&psync_my_auth_mutex);
-    psync_free(psync_my_user);
-    psync_my_user=psync_strdup(username);
-    psync_free(psync_my_pass);
-    if (password && password[0])
-      psync_my_pass=psync_strdup(password);
-    pthread_mutex_unlock(&psync_my_auth_mutex);
-  }
-
-  debug(D_NOTICE, "STATUS: psync_set_user_pass. User: [%s]", psync_my_user);
-
-  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-  psync_recache_contacts=1;
-}
-
-void psync_set_pass(const char *password, int save){
-  clear_db(save);
-  if (save)
-    psync_set_string_value("pass", password);
-  else{
-    pthread_mutex_lock(&psync_my_auth_mutex);
-    psync_free(psync_my_pass);
-    psync_my_pass=psync_strdup(password);
-    pthread_mutex_unlock(&psync_my_auth_mutex);
-  }
-
-  debug(D_NOTICE, "STATUS: psync_set_pass");
-
-  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-}
-
 void psync_set_auth(const char *auth, int save){
   clear_db(save);
 
@@ -452,7 +413,9 @@ void psync_set_auth(const char *auth, int save){
     psync_set_string_value("auth", auth);
   }
   else {
+    pthread_mutex_lock(&psync_my_auth_mutex);
     psync_strlcpy(psync_my_auth, auth, sizeof(psync_my_auth));
+    pthread_mutex_unlock(&psync_my_auth_mutex);
   }
 
   debug(D_NOTICE, "STATUS: psync_set_auth");
@@ -484,13 +447,10 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
     psync_invalidate_auth(psync_my_auth);
   }
 
-  memset(psync_my_auth, 0, sizeof(psync_my_auth));
-  psync_cloud_crypto_stop();
-
   pthread_mutex_lock(&psync_my_auth_mutex);
-  psync_free(psync_my_pass);
-  psync_my_pass=NULL;
+  memset(psync_my_auth, 0, sizeof(psync_my_auth));
   pthread_mutex_unlock(&psync_my_auth_mutex);
+  psync_cloud_crypto_stop();
 
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_set_status(PSTATUS_TYPE_AUTH, auth_status);
@@ -664,8 +624,6 @@ void psync_unlink(){
 
   pthread_mutex_lock(&psync_my_auth_mutex);
   memset(psync_my_auth, 0, sizeof(psync_my_auth));
-  psync_my_user=NULL;
-  psync_my_pass=NULL;
   psync_my_userid=0;
   pthread_mutex_unlock(&psync_my_auth_mutex);
 
@@ -1361,7 +1319,10 @@ int psync_change_password(const char *currentpass, const char *newpass, char **e
   if (ret)
     return ret;
 
-  psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
+  const char *auth=psync_find_result(res, "auth", PARAM_STR)->str;
+  pthread_mutex_lock(&psync_my_auth_mutex);
+  psync_strlcpy(psync_my_auth, auth, sizeof(psync_my_auth));
+  pthread_mutex_unlock(&psync_my_auth_mutex);
   psync_free(res);
 
   return 0;

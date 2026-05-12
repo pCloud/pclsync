@@ -813,19 +813,16 @@ uint32_t psync_get_lib_state();
 
 void psync_get_status(pstatus_t *status);
 
-/* psync_set_user_pass and psync_set_auth functions can be used for initial login
+/* psync_set_auth function can be used for initial login
  * (PSTATUS_LOGIN_REQUIRED) and when PSTATUS_BAD_LOGIN_DATA error is returned, however
  * if the username do not match previously logged in user, PSTATUS_USER_MISMATCH event
- * will be generated. Preferably on PSTATUS_BAD_LOGIN_DATA the user should be only prompted
- * for new password and psync_set_pass should be called. To change the current user, psync_unlink
+ * will be generated. To change the current user, psync_unlink
  * is to be called first and then the new user may log in.
  *
  * The pointer returned by psync_get_username() is to be free()d.
  */
 
 char *psync_get_username();
-void psync_set_user_pass(const char *username, const char *password, int save);
-void psync_set_pass(const char *password, int save);
 void psync_set_auth(const char *auth, int save);
 void psync_logout();
 void psync_unlink();

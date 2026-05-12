@@ -1423,7 +1423,9 @@ int wait_auth_token(char* request_id) {
   }
 
   if (rememberme) {
+    pthread_mutex_lock(&psync_my_auth_mutex);
     psync_strlcpy(psync_my_auth, token, sizeof(psync_my_auth));
+    pthread_mutex_unlock(&psync_my_auth_mutex);
   }
 
   psync_set_auth(token, (int)rememberme);
