@@ -401,7 +401,7 @@ char *psync_get_username(){
 }
 
 static void clear_db(int save){
-  psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth')");
+  psync_sql_statement("DELETE FROM setting WHERE id='auth'");
   psync_setting_set_bool(_PS(saveauth), save);
 }
 
@@ -437,7 +437,7 @@ static void psync_invalidate_auth(const char *auth){
 
 void psync_logout2(uint32_t auth_status, int doinvauth){
   debug(D_NOTICE, "logout");
-  psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth', 'saveauth')");
+  psync_sql_statement("DELETE FROM setting WHERE id IN ('auth', 'saveauth')");
 
   if (doinvauth) {
     debug(D_NOTICE, "Logout Invalidate auth!");

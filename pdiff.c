@@ -571,12 +571,8 @@ static psync_socket *get_connected_socket(){
     psync_sql_free_result(q);
     psync_sql_commit_transaction();
 
-    if (saveauth) {
-      psync_sql_statement("DELETE FROM setting WHERE id='pass'");
-    }      
-    else {
-      psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth')");
-    }      
+    if (!saveauth)
+      psync_sql_statement("DELETE FROM setting WHERE id='auth'");
 
     cres=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
 

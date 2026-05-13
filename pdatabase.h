@@ -43,7 +43,7 @@
 #define PSYNC_TEXT_COL "COLLATE NOCASE"
 #endif
 
-#define PSYNC_DATABASE_VERSION 24
+#define PSYNC_DATABASE_VERSION 25
 
 #define PSYNC_DATABASE_CONFIG \
 "\
@@ -315,6 +315,10 @@ COMMIT;",//DB Version 23 End
 CREATE INDEX IF NOT EXISTS kfoldername ON folder(parentfolderid, name);\
 CREATE INDEX IF NOT EXISTS kfilename ON file(parentfolderid, name);\
 UPDATE setting SET value=24 WHERE id='dbversion'; \
-COMMIT;"//DB Version 24 End
+COMMIT;",//DB Version 24 End
+"BEGIN; \
+DELETE FROM setting WHERE id='pass'; \
+UPDATE setting SET value=25 WHERE id='dbversion'; \
+COMMIT;"//DB Version 25 End
 };
 #endif
