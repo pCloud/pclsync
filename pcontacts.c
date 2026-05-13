@@ -41,16 +41,11 @@ int do_call_contactlist(result_visitor vis, void *param) {
   if(psync_my_auth[0]) {
     binparam params[] = {P_STR("auth", psync_my_auth)};
     sock = psync_apipool_get();
-    if (sock)
-      bres = send_command(sock, "contactlist", params);
-    else return -2;
-  } else if (psync_my_user && psync_my_pass) {
-    binparam params[] = {P_STR("username", psync_my_user), P_STR("password", psync_my_pass)};
-    sock = psync_apipool_get();
-    if (sock)
-      bres = send_command(sock, "contactlist", params);
-    else return -2;
+    if (!sock)
+      return -2;
+    bres = send_command(sock, "contactlist", params);
   } else return -1;
+
   if (likely(bres))
     psync_apipool_release(sock);
   else {
@@ -58,7 +53,6 @@ int do_call_contactlist(result_visitor vis, void *param) {
     debug(D_WARNING, "Send command returned invalid result.\n");
     return -1;
   }
-
 
   contacts = psync_find_result(bres, "contacts", PARAM_ARRAY);
 
@@ -307,15 +301,8 @@ void cache_shares() {
       return;
     }
     bres = send_command(api, "listshares", params);
-  } else if (psync_my_user && psync_my_pass) {
-    binparam params[] = {P_STR("username", psync_my_user), P_STR("password", psync_my_pass), P_STR("timeformat", "timestamp")};
-    api = psync_apipool_get();
-    if (unlikely(!api)) {
-      debug(D_WARNING, "Can't get api from the pool. No pool ?\n");
-      return;
-    }
-    bres = send_command(api, "listshares", params);
-  } else return;
+  } 
+  else return;
   if (likely(bres))
     psync_apipool_release(api);
   else {

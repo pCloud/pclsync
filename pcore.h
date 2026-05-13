@@ -180,8 +180,8 @@ extern int psync_diff_waiting;
 
 extern int psync_recache_contacts;
 extern pstatus_t psync_status;
-extern char psync_my_auth[64], psync_my_2fa_code[32], *psync_my_user, *psync_my_pass, *psync_my_2fa_token, *psync_my_verify_token;
-extern int psync_my_2fa_code_type, psync_my_2fa_trust, psync_my_2fa_has_devices, psync_my_2fa_type;
+extern char psync_my_auth[64];
+extern char *psync_my_verify_token;
 extern uint64_t psync_my_userid;
 extern pthread_mutex_t psync_my_auth_mutex;
 extern PSYNC_THREAD uint32_t psync_error;

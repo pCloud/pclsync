@@ -406,45 +406,6 @@ static void clear_db(int save){
   psync_setting_set_bool(_PS(saveauth), save);
 }
 
-void psync_set_user_pass(const char *username, const char *password, int save){
-  clear_db(save);
-  if (save){
-    psync_set_string_value("user", username);
-    if (password && password[0])
-      psync_set_string_value("pass", password);
-  }
-  else{
-    pthread_mutex_lock(&psync_my_auth_mutex);
-    psync_free(psync_my_user);
-    psync_my_user=psync_strdup(username);
-    psync_free(psync_my_pass);
-    if (password && password[0])
-      psync_my_pass=psync_strdup(password);
-    pthread_mutex_unlock(&psync_my_auth_mutex);
-  }
-
-  debug(D_NOTICE, "STATUS: psync_set_user_pass. User: [%s]", psync_my_user);
-
-  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-  psync_recache_contacts=1;
-}
-
-void psync_set_pass(const char *password, int save){
-  clear_db(save);
-  if (save)
-    psync_set_string_value("pass", password);
-  else{
-    pthread_mutex_lock(&psync_my_auth_mutex);
-    psync_free(psync_my_pass);
-    psync_my_pass=psync_strdup(password);
-    pthread_mutex_unlock(&psync_my_auth_mutex);
-  }
-
-  debug(D_NOTICE, "STATUS: psync_set_pass");
-
-  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-}
-
 void psync_set_auth(const char *auth, int save){
   clear_db(save);
 
@@ -452,7 +413,9 @@ void psync_set_auth(const char *auth, int save){
     psync_set_string_value("auth", auth);
   }
   else {
+    pthread_mutex_lock(&psync_my_auth_mutex);
     psync_strlcpy(psync_my_auth, auth, sizeof(psync_my_auth));
+    pthread_mutex_unlock(&psync_my_auth_mutex);
   }
 
   debug(D_NOTICE, "STATUS: psync_set_auth");
@@ -484,13 +447,10 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
     psync_invalidate_auth(psync_my_auth);
   }
 
-  memset(psync_my_auth, 0, sizeof(psync_my_auth));
-  psync_cloud_crypto_stop();
-
   pthread_mutex_lock(&psync_my_auth_mutex);
-  psync_free(psync_my_pass);
-  psync_my_pass=NULL;
+  memset(psync_my_auth, 0, sizeof(psync_my_auth));
   pthread_mutex_unlock(&psync_my_auth_mutex);
+  psync_cloud_crypto_stop();
 
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_set_status(PSTATUS_TYPE_AUTH, auth_status);
@@ -664,8 +624,6 @@ void psync_unlink(){
 
   pthread_mutex_lock(&psync_my_auth_mutex);
   memset(psync_my_auth, 0, sizeof(psync_my_auth));
-  psync_my_user=NULL;
-  psync_my_pass=NULL;
   psync_my_userid=0;
   pthread_mutex_unlock(&psync_my_auth_mutex);
 
@@ -697,139 +655,6 @@ void psync_unlink(){
   if (psync_fs_need_per_folder_refresh()) {
     psync_fs_refresh_folder(0);
   }
-}
-
-int psync_tfa_has_devices() {
-  return psync_my_2fa_has_devices;
-}
-
-int psync_tfa_type() {
-	return psync_my_2fa_type;
-}
-
-static void check_tfa_result(uint64_t result){
-  if (result==2064){
-    if (psync_status_get(PSTATUS_TYPE_AUTH)==PSTATUS_AUTH_TFAREQ){
-      psync_free(psync_my_2fa_token);
-      psync_my_2fa_token=NULL;
-
-      debug(D_NOTICE, "STATUS: check_tfa_result");
-
-      psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-    }
-  }
-}
-
-static char *binresult_to_str(const binresult *res){
-  if (!res)
-    return psync_strdup("field not found");
-  if (res->type==PARAM_STR)
-    return psync_strdup(res->str);
-  else if (res->type==PARAM_NUM){
-    char buff[32], *ptr;
-    uint64_t n;
-    ptr=buff+sizeof(buff);
-    *--ptr=0;
-    n=res->num;
-    do {
-      *--ptr='0'+n%10;
-      n/=10;
-    } while (n);
-    return psync_strdup(ptr);
-  }
-  else{
-    return psync_strdup("bad field type");
-  }
-}
-
-int psync_tfa_send_sms(char **country_code, char **phone_number){
-  if (country_code)
-    *country_code=NULL;
-  if (phone_number)
-    *phone_number=NULL;
-  if (!psync_my_2fa_token){
-    return -2;
-  }
-  else{
-    binresult *res;
-    uint64_t code;
-    binparam params[]={P_STR("token", psync_my_2fa_token)};
-    res=psync_api_run_command("tfa_sendcodeviasms", params);
-    if (!res)
-      return -1;
-    code=psync_find_result(res, "result", PARAM_NUM)->num;
-    if (code){
-      free(res);
-      check_tfa_result(code);
-      return code;
-    }
-    if (country_code || phone_number) {
-      const binresult *cres=psync_find_result(res, "phonedata", PARAM_HASH);
-      if (country_code)
-        *country_code=binresult_to_str(psync_get_result(cres, "countrycode"));
-      if (phone_number)
-        *phone_number=binresult_to_str(psync_get_result(cres, "msisdn"));
-    }
-    free(res);
-    return 0;
-  }
-}
-
-int psync_tfa_send_nofification(plogged_device_list_t **devices_list){
-  if (devices_list)
-    *devices_list=NULL;
-  if (!psync_my_2fa_token){
-    return -2;
-  }
-  else{
-    binresult *res;
-    uint64_t code;
-    binparam params[]={P_STR("token", psync_my_2fa_token)};
-    res=psync_api_run_command("tfa_sendcodeviasysnotification", params);
-    if (!res)
-      return -1;
-    code=psync_find_result(res, "result", PARAM_NUM)->num;
-    if (code){
-      free(res);
-      check_tfa_result(code);
-      return code;
-    }
-    if (devices_list){
-      const binresult *cres=psync_find_result(res, "devices", PARAM_ARRAY);
-      psync_list_builder_t *builder;
-      uint32_t i;
-      builder=psync_list_builder_create(sizeof(plogged_device_t), offsetof(plogged_device_list_t, devices));
-      for (i=0; i<cres->length; i++){
-        plogged_device_t *dev=(plogged_device_t *)psync_list_bulder_add_element(builder);
-        const binresult *str=psync_find_result(cres->array[i], "name", PARAM_STR);
-        dev->type=psync_find_result(cres->array[i], "type", PARAM_NUM)->num;
-        dev->name=str->str;
-        psync_list_add_lstring_offset(builder, offsetof(plogged_device_t, name), str->length);
-      }
-      *devices_list=(plogged_device_list_t *)psync_list_builder_finalize(builder);
-    }
-    free(res);
-    return 0;
-  }
-}
-
-plogged_device_list_t *psync_tfa_send_nofification_res(){
-  plogged_device_list_t *devices_list;
-  if (psync_tfa_send_nofification(&devices_list))
-    return NULL;
-  else
-    return devices_list;
-}
-
-void psync_tfa_set_code(const char *code, int trusted, int is_recovery){
-  strncpy(psync_my_2fa_code, code, sizeof(psync_my_2fa_code));
-  psync_my_2fa_code[sizeof(psync_my_2fa_code)-1]=0;
-  psync_my_2fa_trust=trusted;
-  psync_my_2fa_code_type=is_recovery?2:1;
-
-  debug(D_NOTICE, "STATUS: psync_tfa_set_code");
-
-  psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 }
 
 psync_syncid_t psync_add_sync_by_path(const char *localpath, const char *remotepath, psync_synctype_t synctype){
@@ -1361,7 +1186,10 @@ int psync_change_password(const char *currentpass, const char *newpass, char **e
   if (ret)
     return ret;
 
-  psync_strlcpy(psync_my_auth, psync_find_result(res, "auth", PARAM_STR)->str, sizeof(psync_my_auth));
+  const char *auth=psync_find_result(res, "auth", PARAM_STR)->str;
+  pthread_mutex_lock(&psync_my_auth_mutex);
+  psync_strlcpy(psync_my_auth, auth, sizeof(psync_my_auth));
+  pthread_mutex_unlock(&psync_my_auth_mutex);
   psync_free(res);
 
   return 0;

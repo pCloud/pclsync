@@ -428,9 +428,6 @@ void cache_account_emails() {
   if (psync_my_auth[0]) {
     binparam params[] = {P_STR("auth", psync_my_auth), P_STR("timeformat", "timestamp")};
     bres =  psync_api_run_command("account_users", params);
-  } else if (psync_my_user  && psync_my_pass) {
-    binparam params[] =  {P_STR("username", psync_my_user), P_STR("password", psync_my_pass), P_STR("timeformat", "timestamp")};
-    bres =  psync_api_run_command("account_users", params);
   } else return;
     
   if (!bres) {
@@ -498,13 +495,10 @@ void cache_account_teams() {
   if (psync_my_auth[0]) {
       binparam params[] = {P_STR("auth", psync_my_auth), P_STR("timeformat", "timestamp"), P_STR("showeveryone", "1")};
       bres = psync_api_run_command("account_teams", params);
-  } else if (psync_my_user && psync_my_pass) {
-      binparam params[] =  {P_STR("username", psync_my_user), P_STR("password", psync_my_pass), P_STR("timeformat", "timestamp"), P_STR("showeveryone", "1")};
-      bres = psync_api_run_command("account_teams", params);
   } else return;
   
   if (!bres) {
-    debug(D_WARNING, "Send command returned in valid result.\n");
+    debug(D_WARNING, "Send command returned invalid result.\n");
     return;
   }
   

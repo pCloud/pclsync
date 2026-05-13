@@ -556,16 +556,6 @@ typedef struct {
 typedef void(*device_event_callback)(device_event event, void *device_info_);
 
 typedef struct {
-  uint32_t type;
-  const char *name;
-} plogged_device_t;
-
-typedef struct {
-  uint32_t entrycnt;
-  plogged_device_t devices[];
-} plogged_device_list_t;
-
-typedef struct {
   const char *name;
   uint64_t created;
   uint64_t modified;
@@ -813,58 +803,19 @@ uint32_t psync_get_lib_state();
 
 void psync_get_status(pstatus_t *status);
 
-/* psync_set_user_pass and psync_set_auth functions can be used for initial login
+/* psync_set_auth function can be used for initial login
  * (PSTATUS_LOGIN_REQUIRED) and when PSTATUS_BAD_LOGIN_DATA error is returned, however
  * if the username do not match previously logged in user, PSTATUS_USER_MISMATCH event
- * will be generated. Preferably on PSTATUS_BAD_LOGIN_DATA the user should be only prompted
- * for new password and psync_set_pass should be called. To change the current user, psync_unlink
+ * will be generated. To change the current user, psync_unlink
  * is to be called first and then the new user may log in.
  *
  * The pointer returned by psync_get_username() is to be free()d.
  */
 
 char *psync_get_username();
-void psync_set_user_pass(const char *username, const char *password, int save);
-void psync_set_pass(const char *password, int save);
 void psync_set_auth(const char *auth, int save);
 void psync_logout();
 void psync_unlink();
-
-/* Upon seein a status of PSTATUS_TFA_REQUIRED the application is supposed to let the user know that two factor
- * authentication is enabled and provide the user with three choices
- * 1) get code by SMS. After that the application calls psync_tfa_send_sms(), possibly display the returned phone number, wait for code input and call
- *    psync_tfa_set_code(code, trusted, 0)
- * 2) get code by notification at any other logged in device. Application calls psync_tfa_send_nofification(), possibly display logged devices list, wait for code input
- *    and call psync_tfa_set_code(code, trusted, 0)
- * 3) use recovery code, in this case the user provides the recovery code and application calls psync_tfa_set_code(code, trusted, 1)
- *
- * psync_tfa_has_devices() - can be called after PSTATUS_TFA_REQUIRED is received and returns true if the user has other devices logged in
- *
- * psync_tfa_type() - can be called after PSTATUS_TFA_REQUIRED is received and returns TFA type.
- *  1 - msisdn
- *  2 - google authenticator
- *
- * psync_tfa_send_sms() - sends SMS with two factor authentication code to the phone number on file. If parameters country_code and phone_number are not NULL,
- *  those are filled with user's phone number (split in two parts). In this case the caller needs to free the returned values. Returns -1 in case of network error or
- *  one of the positive error codes listed at https://docsqa2.pcloud.com/methods/auth/tfa_sendcodeviasms.html
- *
- * psync_tfa_send_nofification() - sends notification with two factor authentication code to all already logged in devices. If devices_list is not null it is filled in
- *  with list of user's devices. In this case the caller is supposed to free the list with a single call to psync_free(). Returns -1 in case of network error or
- *  one of the positive error codes listed at https://docsqa2.pcloud.com/methods/auth/tfa_sendcodeviasysnotification.html
- *
- * psync_tfa_set_code() - sets the two factor code that is to be used for logging in. If "trusted" is set, this device will be marked trusted and will not require
- *  two factor authentication in the future. The "is_recovery" parameter is supposed to be set if a recovery code is used and be zero in case of SMS or notification code.
- *  Note that the function is void. Bad code will be signalled with status change to PSTATUS_BAD_LOGIN_DATA. In that case the login procedure can either be retried from
- *  the beggining or from sending/providing two factor authentication code.
- *
- */
-
-int psync_tfa_has_devices();
-int psync_tfa_type();
-int psync_tfa_send_sms(char **country_code, char **phone_number);
-int psync_tfa_send_nofification(plogged_device_list_t **devices_list);
-plogged_device_list_t *psync_tfa_send_nofification_res();
-void psync_tfa_set_code(const char *code, int trusted, int is_recovery);
 
 /* psync_add_sync_by_path and psync_add_sync_by_folderid are to be used to add a folder to be synced,
  * on success syncid is returned, on error PSYNC_INVALID_SYNCID. The value of synctype should always be one of PSYNC_DOWNLOAD_ONLY,
