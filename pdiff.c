@@ -206,8 +206,7 @@ static psync_socket *get_connected_socket(){
   uint64_t result, userid, locationid;
   int saveauth, isbusiness, cryptosetup, lid, isFirstLogin;
 
-  psync_free(psync_my_2fa_token);
-  auth=psync_my_2fa_token=NULL;
+  auth=NULL;
   psync_is_business=0;
 
   deviceid=psync_sql_cellstr("SELECT value FROM setting WHERE id='deviceid'");
@@ -281,12 +280,8 @@ static psync_socket *get_connected_socket(){
     debug(D_NOTICE, "deviceid: [%s]", deviceid);
     debug(D_NOTICE, "device: [%s]", devicestring);
 
-    if (psync_my_2fa_token && psync_my_2fa_code_type && psync_my_2fa_code[0]){
-      const char *method=psync_my_2fa_code_type==1?"tfa_login":"tfa_loginwithrecoverycode";
-      binparam params[]={P_STR("timeformat", "timestamp"),
-                        P_STR("token", psync_my_2fa_token),
-                        P_STR("code", psync_my_2fa_code),
-                        P_BOOL("trustdevice", psync_my_2fa_trust),
+    binparam params[]={P_STR("timeformat", "timestamp"),
+                        P_STR("auth", auth),
                         P_STR("osversion", osversion),
                         P_STR("appversion", appversion),
                         P_STR("deviceid", deviceid),
@@ -294,25 +289,10 @@ static psync_socket *get_connected_socket(){
                         P_BOOL("getauth", 1),
                         P_BOOL("cryptokeyssign", 1),
                         P_BOOL("getapiserver", 1),
-						            P_BOOL("getlastsubscription", 1),
+                        P_BOOL("getlastsubscription", 1),
                         P_NUM("os", P_OS_ID)};
-      res=send_command(sock, method, params);
-    }
-    else {
-      binparam params[]={P_STR("timeformat", "timestamp"),
-                         P_STR("auth", auth),
-                         P_STR("osversion", osversion),
-                         P_STR("appversion", appversion),
-                         P_STR("deviceid", deviceid),
-                         P_STR("device", devicestring),
-                         P_BOOL("getauth", 1),
-                         P_BOOL("cryptokeyssign", 1),
-                         P_BOOL("getapiserver", 1),
-                         P_BOOL("getlastsubscription", 1),
-                         P_NUM("os", P_OS_ID)};
 
-      res=send_command(sock, "userinfo", params);
-    }
+    res=send_command(sock, "userinfo", params);
 
     psync_free(osversion);
     osversion=NULL;
@@ -333,21 +313,7 @@ static psync_socket *get_connected_socket(){
     if (unlikely(result)){
       debug(D_NOTICE, "userinfo returned error %lu %s", (unsigned long)result, psync_find_result(res, "error", PARAM_STR)->str);
       // here we only handle statuses that need to access the result
-      if (result==2297){
-        psync_free(psync_my_2fa_token);
-        psync_my_2fa_token=psync_strdup(psync_find_result(res, "token", PARAM_STR)->str);
-        psync_my_2fa_has_devices=psync_find_result(res, "hasdevices", PARAM_BOOL)->num;
-        psync_my_2fa_type=psync_find_result(res, "tfatype", PARAM_NUM)->num;
-        psync_my_2fa_code_type=0;
-        psync_my_2fa_code[0]=0;
-        psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_TFAREQ);
-        psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
-        psync_socket_close(sock);
-        psync_free(res);
 
-        continue;
-      }
-      
       if (result==2306){
         psync_free(psync_my_verify_token);
         psync_my_verify_token = psync_strdup(psync_find_result(res, "verifytoken", PARAM_STR)->str);
@@ -387,9 +353,6 @@ static psync_socket *get_connected_socket(){
       psync_free(res);
       
       if (result==2000 || result==2012 || result==2064 || result==2074 || result==2092){
-        psync_my_2fa_code_type=0;
-        psync_my_2fa_code[0]=0;
-        
         if (result == 2012 || result == 2064 || result == 2074 || result == 2092) {
           psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_BADCODE);
         }          
@@ -701,11 +664,6 @@ static psync_socket *get_connected_socket(){
     }
 
     psync_free(auth);
-
-    psync_free(psync_my_2fa_token);
-    psync_my_2fa_token=NULL;
-    psync_my_2fa_code_type=0;
-    psync_my_2fa_code[0]=0;
 
     psync_sql_sync();
 
