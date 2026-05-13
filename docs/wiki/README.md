@@ -22,7 +22,7 @@ These documents explain *how the library works internally* -- not how to use the
 
 | # | Document                                           | Summary                                                                                                    |
 |---|----------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| 4 | [Authentication](04-authentication.md)             | Credential and web-based login, token lifecycle, 2FA flow, saveauth mechanism, logout vs unlink comparison |
+| 4 | [Authentication](04-authentication.md)             | Web-based login, token lifecycle, saveauth mechanism, logout vs unlink comparison                          |
 | 5 | [Status and Callbacks](05-status-and-callbacks.md) | Six status dimensions, composite status calculation, callback delivery threads, event types and dispatch   |
 
 ### Core Sync Engine
@@ -47,7 +47,7 @@ These documents explain *how the library works internally* -- not how to use the
 graph TB
     subgraph "Public API (psynclib.h)"
         API[psync_init / psync_start_sync / psync_stop]
-        AUTH[psync_set_user_pass / psync_set_auth]
+        AUTH[psync_set_auth / psync_wait_auth_token]
         SYNC[psync_add_sync / psync_delete_sync]
         FS[psync_fs_start / psync_fs_stop]
         CRYPTO[psync_crypto_setup / psync_crypto_start]

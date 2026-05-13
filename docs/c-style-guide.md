@@ -703,7 +703,7 @@ Higher numeric value = lower priority. `DEBUG_LEVEL` defaults to `D_NOTICE`; mes
 
 ### Never log
 
-- **Secrets** — passwords, auth tokens (`psync_my_pass`, `psync_my_auth`), private keys, AES keys, RSA private keys, password hashes, TFA codes (`psync_my_2fa_code`).
+- **Secrets** — auth tokens (`psync_my_auth`), private keys, AES keys, RSA private keys, password hashes.
 - **PII** — beyond what is intrinsic to the error context (logging a path that the user owns is fine; logging an arbitrary buffer's contents because it might "help" is not).
 - **Raw user-supplied input** without escaping. Filename paths logged for debugging are fine; logging *content* of a file or *content* of a network response body is not, unless explicitly stripped of secrets and bounded.
 - **Full request/response bodies** in production. Truncate or summarize.

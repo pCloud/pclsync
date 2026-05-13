@@ -81,11 +81,11 @@ The run status is persisted in the SQLite `setting` table under the key `runstat
 | `PSTATUS_AUTH_PROVIDED` | 1 | Credentials accepted, authenticated |
 | `PSTATUS_AUTH_REQUIRED` | 2 | No credentials provided yet |
 | `PSTATUS_AUTH_MISMATCH` | 4 | Credentials do not match previously logged-in user |
-| `PSTATUS_AUTH_BADLOGIN` | 8 | Invalid username or password |
+| `PSTATUS_AUTH_BADLOGIN` | 8 | Invalid username or password *(constant retained for ABI; no longer reachable)* |
 | `PSTATUS_AUTH_BADTOKEN` | 16 | Invalid authentication token |
 | `PSTATUS_AUTH_EXPIRED` | 32 | Account has expired |
-| `PSTATUS_AUTH_TFAREQ` | 64 | Two-factor authentication code required |
-| `PSTATUS_AUTH_BADCODE` | 128 | Invalid two-factor authentication code |
+| `PSTATUS_AUTH_TFAREQ` | 64 | Two-factor authentication code required *(constant retained for ABI; no longer reachable)* |
+| `PSTATUS_AUTH_BADCODE` | 128 | Invalid two-factor authentication code *(constant retained for ABI; no longer reachable)* |
 | `PSTATUS_AUTH_VERIFYREQ` | 256 | Email verification required |
 | `PSTATUS_AUTH_RELOCATING` | 512 | Account is being relocated to another server |
 | `PSTATUS_AUTH_RELOCATED` | 1024 | Account has been relocated |
@@ -122,7 +122,7 @@ The composite status is a single integer derived from all six dimensions. It is 
 | `PSTATUS_UPLOADING` | 2 | Uploading files |
 | `PSTATUS_DOWNLOADINGANDUPLOADING` | 3 | Downloading and uploading simultaneously |
 | `PSTATUS_LOGIN_REQUIRED` | 4 | Waiting for credentials |
-| `PSTATUS_BAD_LOGIN_DATA` | 5 | Invalid username/password |
+| `PSTATUS_BAD_LOGIN_DATA` | 5 | Invalid username/password *(constant retained for ABI; no longer reachable)* |
 | `PSTATUS_BAD_LOGIN_TOKEN` | 6 | Invalid auth token |
 | `PSTATUS_ACCOUNT_FULL` | 7 | Remote account over quota |
 | `PSTATUS_DISK_FULL` | 8 | Local disk full |
@@ -133,8 +133,8 @@ The composite status is a single integer derived from all six dimensions. It is 
 | `PSTATUS_SCANNING` | 13 | Scanning (remote or local) |
 | `PSTATUS_USER_MISMATCH` | 14 | Credentials do not match stored user |
 | `PSTATUS_ACCOUNT_EXPIRED` | 15 | Account expired |
-| `PSTATUS_TFA_REQUIRED` | 16 | Two-factor code needed |
-| `PSTATUS_BAD_TFA_CODE` | 17 | Invalid two-factor code |
+| `PSTATUS_TFA_REQUIRED` | 16 | Two-factor code needed *(constant retained for ABI; no longer reachable)* |
+| `PSTATUS_BAD_TFA_CODE` | 17 | Invalid two-factor code *(constant retained for ABI; no longer reachable)* |
 | `PSTATUS_VERIFY_REQUIRED` | 18 | Email verification needed |
 | `PSTATUS_RELOCATION` | 19 | Account relocating |
 | `PSTATUS_RELOCATED` | 20 | Account relocated |

@@ -217,22 +217,16 @@ Other thread                     Diff thread
 
 The diff thread's first action is to call `get_connected_socket()`, which handles the entire authentication handshake:
 
-1. **Wait for credentials** -- blocks until either an auth token or username/password is available (checking the database and in-memory globals).
+1. **Wait for a token** -- blocks until an auth token is available (read from the `setting` table or from the `psync_my_auth` in-memory global). If none is present, transitions to `PSTATUS_AUTH_REQUIRED` and waits for the host application to supply one via `psync_set_auth()` or the web-login flow.
 2. **Connect** -- opens a socket to the API server via `psync_api_connect()`.
-3. **Authenticate** -- sends one of several login commands depending on available credentials:
-   - `login` with digest authentication (username + SHA1 password digest + server nonce)
-   - `login` with plain password (fallback if digest is rejected with error 2237)
-   - `userinfo` with an existing auth token
-   - `tfa_login` or `tfa_loginwithrecoverycode` for two-factor authentication
+3. **Authenticate** -- sends `userinfo` with the auth token.
 4. **Handle errors** -- maps API error codes to status updates:
-   - 2297: TFA required, sets `PSTATUS_AUTH_TFAREQ` and waits for a code.
-   - 2306: Email verification required.
-   - 2321: Server redirect (location change), updates API server and retries.
+   - 2306: Email verification required, sets `PSTATUS_AUTH_VERIFYREQ` and stores the `verifytoken`.
+   - 2321: Server redirect (location change), updates the API server and retries.
    - 2330: Account relocated, sets `PSTATUS_AUTH_RELOCATING`.
-   - 2000: Bad credentials, sets `PSTATUS_AUTH_BADLOGIN` (password login) or `PSTATUS_AUTH_BADTOKEN` (token login).
-   - 2012/2064/2074/2092: Bad 2FA code, sets `PSTATUS_AUTH_BADCODE` and clears the stored 2FA code.
-   - 2205/2229: Expired session.
+   - 2205/2229: Expired session, sets `PSTATUS_AUTH_EXPIRED`.
    - 4000: Rate limited, sleeps 5 minutes.
+   - default (any other non-zero result): sets `PSTATUS_AUTH_BADTOKEN` and resets the API server to the default.
 5. **Store user info** -- saves userid, quota, premium status, crypto keys, and other account data to the `setting` table in a single transaction.
 6. **Return the socket** -- the authenticated socket is reused for `initial_diff()` and then `subscribe`.
 

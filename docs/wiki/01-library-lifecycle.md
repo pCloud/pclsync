@@ -235,16 +235,14 @@ The library maintains significant global state, declared primarily in `pcore.h` 
 | `psync_diff_waiting` | `int` | Indicates the diff thread is in a wait state |
 | `psync_status` | `pstatus_t` | Current library status (download/upload progress, speed, file counts) |
 | `psync_my_auth` | `char[64]` | Current authentication token |
-| `psync_my_user` | `char*` | Current username |
-| `psync_my_pass` | `char*` | Current password |
 | `psync_my_userid` | `uint64_t` | Current user ID |
-| `psync_my_auth_mutex` | `pthread_mutex_t` | Protects auth credential fields |
+| `psync_my_auth_mutex` | `pthread_mutex_t` | Held by writers of `psync_my_auth` (see note below) |
 | `psync_error` | `PSYNC_THREAD uint32_t` | Thread-local last error code |
 | `psync_flag_online` | `int` | Indicates whether the library is online; tasks are not failed while offline |
 | `lost_and_found_fid` | `psync_folderid_t` | Folder ID for the lost-and-found recovery folder |
 | `psync_current_time` | (in `ptimer.c`) | Cached UNIX timestamp, updated by the timer thread |
 
-Note that `psync_error` is thread-local (`PSYNC_THREAD`), so each thread has its own last-error value. The auth-related fields (`psync_my_auth`, `psync_my_user`, `psync_my_pass`) are protected by `psync_my_auth_mutex` and must be accessed under that lock.
+Note that `psync_error` is thread-local (`PSYNC_THREAD`), so each thread has its own last-error value. `psync_my_auth_mutex` is held when **writing** `psync_my_auth` (five sites in `pdiff.c`, `ptools.c`, and `psynclib.c`). Readers across the codebase do not take the lock — torn reads of the 64-byte buffer are tolerated because a bad token causes a server-side rejection followed by reconnection. The mutex historically also guarded the removed `psync_my_user`/`psync_my_pass` heap pointers.
 
 ## Phase 3: Runtime
 

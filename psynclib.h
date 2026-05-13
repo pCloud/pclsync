@@ -803,18 +803,42 @@ uint32_t psync_get_lib_state();
 
 void psync_get_status(pstatus_t *status);
 
-/* psync_set_auth function can be used for initial login
- * (PSTATUS_LOGIN_REQUIRED) and when PSTATUS_BAD_LOGIN_DATA error is returned, however
- * if the username do not match previously logged in user, PSTATUS_USER_MISMATCH event
- * will be generated. To change the current user, psync_unlink
- * is to be called first and then the new user may log in.
- *
- * The pointer returned by psync_get_username() is to be free()d.
+/* Returns the username of the currently logged-in user, or NULL if none is
+ * stored. The caller owns the returned string and must release it with
+ * psync_free().
  */
-
 char *psync_get_username();
+
+/* Supplies an auth token obtained from a prior login (e.g. from the
+ * web-login flow via psync_wait_auth_token) or restored from
+ * application-side storage. Call this as the initial login mechanism, or
+ * in response to a PSTATUS_BAD_LOGIN_TOKEN transition.
+ *
+ * If `save` is non-zero, the token is persisted to the `setting` table and
+ * survives a library restart; otherwise it is held only in memory.
+ *
+ * Sets PSTATUS_AUTH_PROVIDED, waking the diff thread to authenticate.
+ *
+ * To switch users, call psync_unlink() first to clear all local state
+ * before supplying a token belonging to a different account.
+ */
 void psync_set_auth(const char *auth, int save);
+
+/* Ends the current session. Invalidates the auth token on the server,
+ * clears the in-memory token, stops the crypto engine, pauses transfers
+ * and the FUSE mount, and transitions to PSTATUS_AUTH_REQUIRED. Local data
+ * and sync state are preserved; the same user can log back in by calling
+ * psync_set_auth() with a fresh token.
+ */
 void psync_logout();
+
+/* Fully deregisters the device. In addition to everything psync_logout()
+ * does, deletes the local SQLite database from disk and recreates an empty
+ * schema, purges the page cache file, stops device backups, and resets
+ * settings to defaults. Local data is destroyed; the device ID is
+ * preserved so the same machine identity is retained across re-link. Use
+ * when switching users or performing a full local reset.
+ */
 void psync_unlink();
 
 /* psync_add_sync_by_path and psync_add_sync_by_folderid are to be used to add a folder to be synced,
