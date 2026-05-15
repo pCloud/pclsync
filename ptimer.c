@@ -118,10 +118,7 @@ static void timer_prepare_timers(time_t from, time_t to, psync_list *list){
 PSYNC_NOINLINE static void timer_process_timers(psync_list *timers){
   psync_timer_t timer;
   psync_list *l1, *l2;
-  if (unlikely(!psync_do_run)){
-    psync_list_for_each_element_call(timers, psync_timer_structure_t, list, psync_free);
-    return;
-  }
+
   psync_list_for_each_element(timer, timers, psync_timer_structure_t, list)
     timer->call(timer, timer->param);
   pthread_mutex_lock(&timer_mutex);

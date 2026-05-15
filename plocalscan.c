@@ -1512,6 +1512,10 @@ void do_create_upload_from_list(void* ptr) {
 
     if (psync_stat(upl_data->paths[i], &stat_struct) == 0) {
       const char *folder = psync_get_path_from_str_noslash(upl_data->paths[i]);
+      if (!folder) {
+        debug(D_NOTICE, "Path is empty. Skip it.");
+        continue;
+      }
       const size_t path_size = strlen(folder);
 
       if (path_size > 0) {

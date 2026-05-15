@@ -371,6 +371,10 @@ void psync_send_event_by_path(psync_eventtype_t eventid, psync_syncid_t syncid, 
     event_list_t *event;
     size_t llen, rlen, slen;
     char *lcopy, *rcopy, *strct, *name;
+    if (unlikely_log(!localpath))
+      return;
+    if (unlikely_log(!remotepath))
+      return;
     llen=strlen(localpath)+1;
     rlen=strlen(remotepath)+1;
     if (eventid&PEVENT_TYPE_FOLDER)

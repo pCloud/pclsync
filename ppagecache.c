@@ -490,6 +490,29 @@ static int send_key_request(psync_socket *api, psync_request_t *request){
   return send_command_no_res(api, "crypto_getfilekey", params)!=PTR_OK?-1:0;
 }
 
+static void release_urls(psync_urls_t *urls){
+  pthread_mutex_lock(&url_cache_mutex);
+  if (--urls->refcnt==0){
+    if (likely(urls->status==1)){
+      char buff[16];
+      time_t ctime, etime;
+      psync_tree_del(&url_cache_tree, &urls->tree);
+      ctime=psync_timer_time();
+      etime=psync_find_result(urls->urls, "expires", PARAM_NUM)->num;
+      if (etime>ctime+3600){
+        psync_get_string_id(buff, "URLS", urls->hash);
+        psync_cache_add(buff, urls->urls, etime-ctime-3600, psync_free, 2);
+        urls->urls=NULL;
+      }
+    }
+    pthread_mutex_unlock(&url_cache_mutex);
+    psync_free(urls->urls);
+    psync_free(urls);
+    return;
+  }
+  pthread_mutex_unlock(&url_cache_mutex);
+}
+
 static int get_urls(psync_request_t *request, psync_urls_t *urls){
   binparam params[]={P_STR("auth", psync_my_auth), P_NUM("fileid", request->fileid), P_NUM("hash", request->hash),
                     P_STR("timeformat", "timestamp"), P_BOOL("skipfilename", 1)};
@@ -582,6 +605,10 @@ static int get_urls(psync_request_t *request, psync_urls_t *urls){
 err1:
     psync_apipool_release_bad(api);
   }
+  /* Reached after retry exhaustion or after `break` on a non-zero getfilelink
+   * server result. urls was never advertised (status==0); invalidate so any
+   * waiters fail fast and the cache slot is freed if no one else holds it. */
+  set_urls(urls, NULL);
   return -1;
 err4:
   psync_free(ret);
@@ -591,6 +618,10 @@ err3:
 err2:
   mark_shared_api_bad(api);
   psync_apipool_release_bad(api);
+  /* line 544's set_urls(urls, ret) bumped refcnt; the URLs are still good for
+   * other readers, only our API operation failed. Drop our refcnt so we don't
+   * leak the cache entry. */
+  release_urls(urls);
   return -1;
 }
 
@@ -661,34 +692,9 @@ static psync_urls_t *get_urls_for_request(psync_request_t *req){
   }
 
   if (get_urls(req, urls)){
-    set_urls(urls, NULL);
     return NULL;
   }
-  else
-    return urls;
-}
-
-static void release_urls(psync_urls_t *urls){
-  pthread_mutex_lock(&url_cache_mutex);
-  if (--urls->refcnt==0){
-    if (likely(urls->status==1)){
-      char buff[16];
-      time_t ctime, etime;
-      psync_tree_del(&url_cache_tree, &urls->tree);
-      ctime=psync_timer_time();
-      etime=psync_find_result(urls->urls, "expires", PARAM_NUM)->num;
-      if (etime>ctime+3600){
-        psync_get_string_id(buff, "URLS", urls->hash);
-        psync_cache_add(buff, urls->urls, etime-ctime-3600, psync_free, 2);
-        urls->urls=NULL;
-      }
-    }
-    pthread_mutex_unlock(&url_cache_mutex);
-    psync_free(urls->urls);
-    psync_free(urls);
-    return;
-  }
-  pthread_mutex_unlock(&url_cache_mutex);
+  return urls;
 }
 
 static void release_bad_urls(psync_urls_t *urls){
@@ -1922,6 +1928,8 @@ retry:
   if (unlikely(request->needkey)){
     enc=psync_cloud_crypto_get_file_encoder(request->fileid, request->hash, 0);
     if (psync_crypto_to_error(enc)){
+      release_urls(urls);
+      psync_fs_dec_of_refcnt_and_readers(request->of);
       psync_pagecache_send_error(request, -EIO);
       return;
     }
@@ -2037,6 +2045,7 @@ err_api0:
     if (err){
       if (tries++<5){
         psync_http_close(sock);
+        release_bad_urls(urls);
 
         goto retry;
       }
@@ -2657,17 +2666,19 @@ int psync_pagecache_read_unmodified_encrypted_locked(psync_openfile_t *of, char 
   else
     psync_free(rq);
   ret=0;
-  if (needkey){
-    debug(D_NOTICE, "waiting for key to download");
+  if (needkey || psync_crypto_is_error(of->encoder)){
+    if (needkey)
+      debug(D_NOTICE, "waiting for key to download");
     psync_fs_lock_file(of);
     while (of->encoder==PSYNC_CRYPTO_LOADING_SECTOR_ENCODER)
       pthread_cond_wait(&enc_key_cond, &of->mutex);
-    if (of->encoder==PSYNC_CRYPTO_FAILED_SECTOR_ENCODER){
+    if (of->encoder==PSYNC_CRYPTO_FAILED_SECTOR_ENCODER || psync_crypto_is_error(of->encoder)){
       debug(D_NOTICE, "failed to download key");
       ret=-EIO;
     }
     pthread_mutex_unlock(&of->mutex);
-    debug(D_NOTICE, "waited for key to download");
+    if (needkey)
+      debug(D_NOTICE, "waited for key to download");
   }
   for (i=0; i<pagecnt; i++){
     ap=dp[i].authpage;
