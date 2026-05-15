@@ -85,7 +85,6 @@ static unsigned char adapter_hash[PSYNC_FAST_HASH256_LEN];
 
 
 volatile int unlinked=0;
-volatile int tfa = 0;
 
 //Is account already overquota, to avoid spamming overquota message.
 volatile int g_is_over_quota = 0;
@@ -245,14 +244,6 @@ static psync_socket *get_connected_socket(){
       auth=psync_strdup(psync_my_auth);
 
     if (!auth){
-#if defined(P_OS_LINUX)
-      if(tfa){
-        tfa=0;
-        psync_milisleep(1000);
-        debug(D_WARNING, "tfa sleep");
-		continue;
-      }
-#endif
       psync_set_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_REQUIRED);
       psync_wait_status(PSTATUS_TYPE_AUTH, PSTATUS_AUTH_PROVIDED);
 
@@ -580,12 +571,8 @@ static psync_socket *get_connected_socket(){
     psync_sql_free_result(q);
     psync_sql_commit_transaction();
 
-    if (saveauth) {
-      psync_sql_statement("DELETE FROM setting WHERE id='pass'");
-    }      
-    else {
-      psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth')");
-    }      
+    if (!saveauth)
+      psync_sql_statement("DELETE FROM setting WHERE id='auth'");
 
     cres=psync_find_result(psync_find_result(res, "apiserver", PARAM_HASH), "binapi", PARAM_ARRAY);
 

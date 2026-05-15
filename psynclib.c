@@ -91,7 +91,6 @@ static uint32_t psync_libstate=PSYNC_LIB_STATE_UNINITIALIZED;
 static time_t links_last_refresh_time;
 
 extern volatile int unlinked;
-extern volatile int tfa;
 
 #define return_error(err) do {psync_error=err; return -1;} while (0)
 #define return_isyncid(err) do {psync_error=err; return PSYNC_INVALID_SYNCID;} while (0)
@@ -402,7 +401,7 @@ char *psync_get_username(){
 }
 
 static void clear_db(int save){
-  psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth')");
+  psync_sql_statement("DELETE FROM setting WHERE id='auth'");
   psync_setting_set_bool(_PS(saveauth), save);
 }
 
@@ -437,10 +436,8 @@ static void psync_invalidate_auth(const char *auth){
 }
 
 void psync_logout2(uint32_t auth_status, int doinvauth){
-  tfa=0;
-
   debug(D_NOTICE, "logout");
-  psync_sql_statement("DELETE FROM setting WHERE id IN ('pass', 'auth', 'saveauth')");
+  psync_sql_statement("DELETE FROM setting WHERE id IN ('auth', 'saveauth')");
 
   if (doinvauth) {
     debug(D_NOTICE, "Logout Invalidate auth!");
@@ -552,7 +549,6 @@ void psync_unlink(){
   debug(D_NOTICE, "Unlink!");
 
   unlinked=1;
-  tfa=0;
 
   psync_diff_run = 0;
   psync_diff_wait_lock();
@@ -2613,11 +2609,6 @@ int psync_has_crypto_folders(){
   	debug(D_NOTICE, "There are no crypto folders in the DB");
   psync_sql_free_result(res);
   return cnt>0;
-}
-
-void set_tfa_flag(int value){
-  debug(D_NOTICE, "set tfa %u", value);
-  tfa=value;
 }
 
 int psync_send_publink(const char *code, const char *mail, const char *message, char **err){
