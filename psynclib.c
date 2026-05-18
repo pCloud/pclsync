@@ -2586,14 +2586,14 @@ uint64_t psync_crypto_priv_key_flags(){
   psync_uint_row row;
   uint64_t ret=0;
   res=psync_sql_query_rdlock_nocache("SELECT value FROM setting WHERE id='crypto_private_flags'");
-  if((row=psync_sql_fetch_rowint(res))){
-  	ret=row[0];
-  	psync_sql_free_result(res);
-  	return ret;
+  if (res){
+    if((row=psync_sql_fetch_rowint(res))){
+      ret=row[0];
+    }
+    psync_sql_free_result(res);
   }
-  else
+  if (!res || !row)
   	debug(D_NOTICE, "Can't read private key flags from the DB");
-  psync_sql_free_result(res);
   return ret;
 }
 
@@ -2602,12 +2602,14 @@ int psync_has_crypto_folders(){
   psync_uint_row row;
   uint64_t cnt=0;
   res=psync_sql_query_rdlock_nocache("SELECT count(*) FROM folder WHERE flags&"NTO_STR(PSYNC_FOLDER_FLAG_ENCRYPTED)"");
-  if((row=psync_sql_fetch_rowint(res))){
-  	cnt=row[0];
+  if (res){
+    if((row=psync_sql_fetch_rowint(res))){
+      cnt=row[0];
+    }
+    psync_sql_free_result(res);
   }
-  else
+  if (!res || !row)
   	debug(D_NOTICE, "There are no crypto folders in the DB");
-  psync_sql_free_result(res);
   return cnt>0;
 }
 

@@ -205,6 +205,13 @@ void psync_status_recalc_to_download(){
   psync_uint_row row;
 
   res=psync_sql_query_rdlock("SELECT COUNT(*), SUM(f.size) FROM task t, file f WHERE t.type=? AND t.itemid=f.id");
+  if (!res){
+    psync_status.filestodownload=0;
+    psync_status.bytestodownload=0;
+    psync_status.downloadspeed=0;
+    psync_status.status = psync_calc_status();
+    return;
+  }
 
   psync_sql_bind_uint(res, 1, PSYNC_DOWNLOAD_FILE);
 
