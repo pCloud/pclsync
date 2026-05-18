@@ -119,12 +119,16 @@ $(BUILD_DIR)/check_pp2p: check_pp2p.c | $(BUILD_DIR)
 $(BUILD_DIR)/check_pcloudcrypto: check_pcloudcrypto.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
 
+$(BUILD_DIR)/check_prunratelimit: check_prunratelimit.c ../ptree.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
+
 CORE_BINS = $(BUILD_DIR)/check_plist $(BUILD_DIR)/check_ptree \
             $(BUILD_DIR)/check_pintervaltree $(BUILD_DIR)/check_pcrc32c \
             $(BUILD_DIR)/check_pmemlock $(BUILD_DIR)/check_ppassword \
             $(BUILD_DIR)/check_plocks $(BUILD_DIR)/check_pcompression \
             $(BUILD_DIR)/check_papi $(BUILD_DIR)/check_psyncer \
-            $(BUILD_DIR)/check_pp2p $(BUILD_DIR)/check_pcloudcrypto
+            $(BUILD_DIR)/check_pp2p $(BUILD_DIR)/check_pcloudcrypto \
+            $(BUILD_DIR)/check_prunratelimit
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Per-provider SSL unit tests

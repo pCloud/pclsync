@@ -41,6 +41,12 @@ These documents explain *how the library works internally* -- not how to use the
 | 10 | [Crypto Folder](10-crypto-folder.md)     | Key hierarchy (password → AES → RSA → per-folder/file keys), setup/start/stop flows, sector encryption      |
 | 11 | [Scanner, Tasks and Stuck Items](11-scanner-tasks-and-stuck-items.md) | Scanner internals, task-table dependency model, in-memory stuck list, fstask.status=3, obsolete-task cleanup |
 
+### Infrastructure
+
+| #  | Document                                                     | Summary                                                                                                              |
+|----|--------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| 11 | [Debounce Rate Limiter](11-debounce-rate-limiter.md)         | Leading-edge + trailing/ceiling debounce for `prunratelimit.c`, timer state machine, anti-starvation ceiling mechanism |
+
 ## Architecture at a Glance
 
 ```mermaid
