@@ -1708,6 +1708,7 @@ int psync_get_isdebug();
 /*500*/
 #define PEVENT_MP_NOT_EMPTY_ERR 501
 #define PEVENT_MP_NOT_EMPTY_NO_ERR 502
+#define PEVENT_MP_INACCESSIBLE 503
 
 /*600*///Upload tasks status update
 #define PEVENT_UPL_TASKS_STAT           601

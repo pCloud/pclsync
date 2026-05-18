@@ -407,6 +407,7 @@ These events are delivered through the data event subsystem (see below) and use 
 | `PEVENT_BKUP_F_DEL_DRIVE` | 404 | Backup folder deleted from drive |
 | `PEVENT_MP_NOT_EMPTY_ERR` | 501 | Mount point not empty (error) |
 | `PEVENT_MP_NOT_EMPTY_NO_ERR` | 502 | Mount point not empty (non-error) |
+| `PEVENT_MP_INACCESSIBLE` | 503 | Mount point cannot be accessed or created (e.g. permissions) |
 | `PEVENT_UPL_TASKS_STAT` | 601 | Upload task status update |
 | `PEVENT_UPL_TASKS_FINISH` | 602 | All upload tasks finished |
 | `PEVENT_UPL_TASKS_NO_TASKS_ADDED` | 603 | No upload tasks were created (e.g., all files hidden) |
