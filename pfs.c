@@ -3436,9 +3436,7 @@ static void psync_fs_do_stop(void){
 #endif
 
 #if defined(P_OS_LINUX)
-	char *mp;
-	mp = psync_fuse_get_mountpoint();
-	fuse_unmount(mp, psync_fuse_channel);
+    fuse_unmount(psync_current_mountpoint, psync_fuse_channel);
 #endif
 
     debug(D_NOTICE, "running fuse_exit");
@@ -3662,6 +3660,12 @@ static int psync_fs_do_start(){
     goto err00;
 
   mp=psync_fuse_get_mountpoint();
+
+  if (unlikely_log(!mp)) {
+    debug(D_WARNING, "Cannot access or create FUSE mount point. Warn the user.");
+    psync_send_data_event(PEVENT_MP_INACCESSIBLE, "", "", 0, 0);
+    goto err00;
+  }
 
 #if defined(P_OS_MACOSX)
   unmount(mp, MNT_FORCE);
