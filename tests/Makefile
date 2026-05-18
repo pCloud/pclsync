@@ -28,7 +28,7 @@ LDFLAGS = $(CHECK_LIBS) $(EXTRA_LDFLAGS)
 NET_CFLAGS = -I.. -I. -std=gnu99 -g -O0 -Wall -fPIC \
              -DDEBUG_LEVEL=0 -DP_OS_LINUX -D_FILE_OFFSET_BITS=64 \
              -Wno-error=int-conversion -Wno-error=incompatible-pointer-types \
-             $(CHECK_CFLAGS)
+             $(CHECK_CFLAGS) $(EXTRA_CFLAGS)
 
 # --- SSL library detection (mirrors top-level Makefile) ---
 HAS_PKG_CONFIG := $(shell command -v $(PKG_CONFIG) >/dev/null 2>&1 && echo yes)
@@ -122,13 +122,16 @@ $(BUILD_DIR)/check_pcloudcrypto: check_pcloudcrypto.c | $(BUILD_DIR)
 $(BUILD_DIR)/check_prunratelimit: check_prunratelimit.c ../ptree.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
 
+$(BUILD_DIR)/check_pdocument_editing: check_pdocument_editing.c ../pdocument_editing.c pdocument_editing_test_stubs.c pssl_test_stubs.c | $(BUILD_DIR)
+	$(CC) $(NET_CFLAGS) $(SQLITE_CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
+
 CORE_BINS = $(BUILD_DIR)/check_plist $(BUILD_DIR)/check_ptree \
             $(BUILD_DIR)/check_pintervaltree $(BUILD_DIR)/check_pcrc32c \
             $(BUILD_DIR)/check_pmemlock $(BUILD_DIR)/check_ppassword \
             $(BUILD_DIR)/check_plocks $(BUILD_DIR)/check_pcompression \
             $(BUILD_DIR)/check_papi $(BUILD_DIR)/check_psyncer \
             $(BUILD_DIR)/check_pp2p $(BUILD_DIR)/check_pcloudcrypto \
-            $(BUILD_DIR)/check_prunratelimit
+            $(BUILD_DIR)/check_prunratelimit $(BUILD_DIR)/check_pdocument_editing
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Per-provider SSL unit tests

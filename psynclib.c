@@ -63,6 +63,7 @@
 #include "ppathstatus.h"
 #include "pdevice_monitor.h"
 #include "pfsfolder.h"
+#include "pdocument_editing.h"
 #include <string.h>
 #include <ctype.h>
 #include <stddef.h>
@@ -273,6 +274,7 @@ int psync_init() {
   psync_status_init();
   psync_timer_sleep_handler(psync_stop_crypto_on_sleep);
   psync_path_status_init();
+  psync_do_document_editing_init();
 
   psync_run_thread("Overlay main thread", overlay_main_loop);
   init_overlay_callbacks();
@@ -338,6 +340,8 @@ int psync_start_sync(pstatus_change_callback_t status_callback, pevent_callback_
   debug(D_NOTICE, "Netlibs init done.");
   psync_localscan_init();
   debug(D_NOTICE, "Localscan init done.");
+  psync_do_document_editing_start();
+  debug(D_NOTICE, "Document editing start done.");
   psync_p2p_init();
   debug(D_NOTICE, "P2P init done.");
 
@@ -373,6 +377,7 @@ int psync_destroy(){
   debug(D_NOTICE, "Running psync_destroy. Stop all syncs.");
 
   psync_do_run=0;
+  psync_do_document_editing_destroy();
   psync_fs_stop();
   psync_terminate_status_waiters();
   psync_send_status_update();
@@ -448,6 +453,7 @@ void psync_logout2(uint32_t auth_status, int doinvauth){
   memset(psync_my_auth, 0, sizeof(psync_my_auth));
   pthread_mutex_unlock(&psync_my_auth_mutex);
   psync_cloud_crypto_stop();
+  psync_do_document_editing_stop();
 
   psync_set_status(PSTATUS_TYPE_ONLINE, PSTATUS_ONLINE_CONNECTING);
   psync_set_status(PSTATUS_TYPE_AUTH, auth_status);
@@ -573,6 +579,7 @@ void psync_unlink(){
   }
 
   psync_cloud_crypto_stop();
+  psync_do_document_editing_stop();
   psync_set_apiserver(PSYNC_API_HOST, PSYNC_LOCATIONID_DEFAULT);
   psync_milisleep(20);
   psync_stop_localscan();
@@ -3406,6 +3413,20 @@ int psync_get_filename_by_id(psync_fileid_t fileId, char** filename) {
   return 0;
 }
 /******************************************************************************************************************/
-/******************************************************************************************************************/
-/******************************************************************************************************************/
-/******************************************************************************************************************/
+
+int psync_document_editing_is_supported_ext(const char *ext) {
+  return psync_do_document_editing_is_supported_ext(ext);
+}
+
+psync_document_extensions_t *psync_document_editing_get_supported_extensions(void) {
+  return psync_do_document_editing_get_supported_extensions();
+}
+
+char *psync_document_editing_get_url(psync_fileid_t fileid, int mode,
+                                     const psync_document_url_opts_t *opts) {
+  return psync_do_document_editing_get_url(fileid, mode, opts);
+}
+
+int psync_document_editing_refresh(void) {
+  return psync_do_document_editing_refresh();
+}

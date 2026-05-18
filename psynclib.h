@@ -51,6 +51,36 @@ typedef uint32_t psync_eventtype_t;
 typedef uint32_t psync_synctype_t;
 typedef uint32_t psync_listtype_t;
 
+#define PSYNC_DOC_MODE_EDIT 1
+#define PSYNC_DOC_MODE_VIEW 2
+
+/* Options for psync_document_editing_get_url().
+ * All fields are optional — set to NULL to omit the corresponding query param.
+ * lang:         BCP-47 language tag (e.g. "en", "de")
+ * theme:        UI theme hint (e.g. "light", "dark")
+ * gobackurl:    URL to return to when the user closes the editor; base64-encoded
+ *               internally before appending to the URL
+ * forcedisplay: Override the display mode passed to the editor */
+typedef struct {
+  const char *lang;
+  const char *theme;
+  const char *gobackurl;
+  const char *forcedisplay;
+} psync_document_url_opts_t;
+
+/* Default options — all fields NULL. Pass this (or NULL) to
+ * psync_document_editing_get_url() when no customisation is needed. */
+extern const psync_document_url_opts_t psync_document_url_default_opts;
+
+/* Snapshot of server-supported document extensions.
+ * Allocated as a single contiguous block; release with psync_free().
+ * extensions[] holds `count` NUL-terminated strings (lowercase, no dot),
+ * sorted lexicographically for binary search. */
+typedef struct psync_document_extensions_t {
+  size_t count;
+  const char *extensions[];
+} psync_document_extensions_t;
+
 typedef struct {
   psync_fileid_t fileid;
   uint64_t size;
@@ -174,7 +204,7 @@ typedef struct pstatus_struct_ {
 } pstatus_t;
 
 /* PEVENT_LOCAL_FOLDER_CREATED means that a folder was created in remotely and this action was replicated
- * locally, not the other way around. Accordingly PEVENT_REMOTE_FOLDER_CREATED is fired when locally created
+ * locally, not the other way around. Accordingly, PEVENT_REMOTE_FOLDER_CREATED is fired when locally created
  * folder is replicated to the server.
  */
 
@@ -227,6 +257,8 @@ typedef struct pstatus_struct_ {
 #define PEVENT_SHARE_RENAME_F    (PEVENT_FIRST_SHARE_EVENT+12)
 #define PEVENT_SHARE_RELOAD_ALL  (PEVENT_FIRST_SHARE_EVENT+13)
 
+#define PEVENT_DOCUMENT_TYPES_CHANGED (PEVENT_FIRST_BACKUP_EVENT+200)
+
 #define PNOTIFICATION_ACTION_NONE          0
 #define PNOTIFICATION_ACTION_GO_TO_FOLDER  1
 #define PNOTIFICATION_ACTION_GO_TO_URL     2
@@ -265,7 +297,13 @@ typedef struct pstatus_struct_ {
 #define PERROR_NO_MEMORY               15
 #define PERROR_NET_ERROR               16
 #define PERROR_PARENT_IS_IGNORED       17
-#define PERROR_INVALID_LIB_STATE      18
+#define PERROR_INVALID_LIB_STATE       18
+#define PERROR_FILE_NOT_FOUND          19
+#define PERROR_ACCESS_DENIED           20
+#define PERROR_NOT_BUSINESS_ACCOUNT    21
+#define PERROR_FEATURE_DISABLED        22
+#define PERROR_INTERNAL_SERVER_ERROR   23
+#define PERROR_INVALID_PARAMETER       24
 
 #define PERROR_CACHE_MOVE_NOT_EMPTY       1
 #define PERROR_CACHE_MOVE_NO_WRITE_ACCESS 2
@@ -411,6 +449,7 @@ typedef union {
   psync_file_event_t *file;
   psync_folder_event_t *folder;
   psync_share_event_t *share;
+  psync_document_extensions_t *doc_extensions;
   void *ptr;
 } psync_eventdata_t;
 
@@ -1743,6 +1782,33 @@ void psync_cancel_uptasks();
 /*******************************************************************************/
 int psync_get_filename_by_id(psync_fileid_t fileId, char** filename);
 /*******************************************************************************/
+
+/* Returns 1 if `ext` (lowercase, no leading dot) is a supported document type,
+ * 0 otherwise. Reads from the in-memory cache; thread-safe.
+ * The cache is populated after the first successful psync_document_editing_refresh()
+ * following psync_start_sync(), or restored from the local DB on psync_init(). */
+int psync_document_editing_is_supported_ext(const char *ext);
+
+/* Returns a caller-owned snapshot of supported extensions.
+ * Release with psync_free(). Always returns a valid pointer (never NULL);
+ * count == 0 when the list is empty or not yet fetched from the server. */
+psync_document_extensions_t *psync_document_editing_get_supported_extensions(void);
+
+/* Build an editor URL for `fileid`. `mode` is PSYNC_DOC_MODE_EDIT or
+ * PSYNC_DOC_MODE_VIEW. `opts` may be NULL (equivalent to default opts).
+ * Returns a psync_malloc()-allocated string on success, NULL on failure
+ * with psync_error set (PERROR_ACCESS_DENIED, PERROR_FILE_NOT_FOUND, etc.).
+ * SECURITY: the returned URL embeds the auth token — treat as a credential.
+ * Requires psync_start_sync() to have been called and auth to be present. */
+char *psync_document_editing_get_url(psync_fileid_t fileid, int mode,
+                                     const psync_document_url_opts_t *opts);
+
+/* Synchronously fetch the supported extensions list from the server and
+ * update the in-memory cache and local DB. Fires PEVENT_DOCUMENT_TYPES_CHANGED
+ * if the set changed. Returns 0 on success, -1 on network or API error
+ * (psync_error set). Requires auth to be present. */
+int psync_document_editing_refresh(void);
+
 #ifdef __cplusplus
 }
 #endif
